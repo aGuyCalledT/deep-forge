@@ -59,6 +59,7 @@ public final class Factory {
         Rules.building(f, "smelter-1").queue.add(q);
         f.nextRaidAt = now + 48 * Rules.H;
         f.nextMigrantsAt = now + 8 * Rules.H;
+        Expeditions.refreshOffers(f, r, now);
         f.rng = r.s;
         Rules.log(f, now, "good", "Seven dwarves have claimed a mountain. Welcome to " + f.name + "!");
         Rules.log(f, now, "info", "Your miners dig copper and tin. Smelt ore into bars, forge goods and send merchants to the cities.");

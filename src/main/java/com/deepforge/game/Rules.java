@@ -281,7 +281,7 @@ public final class Rules {
     public static Cost buildCost(Fortress f, String type) {
         Content.BuildingType t = Content.BUILDINGS.get(type);
         int n = count(f, type);
-        double g = n == 0 ? 1 : Math.pow(2.2, n - 1) * (type.equals("smelter") || type.equals("forge") || type.equals("farm") || type.equals("brewery") ? 1 : 2.2);
+        double g = Math.pow(2.2, n);
         Map<String, Integer> goods = new LinkedHashMap<>();
         for (Map.Entry<String, Integer> e : t.buildGoods().entrySet())
             goods.put(e.getKey(), (int) Math.round(e.getValue() * g));

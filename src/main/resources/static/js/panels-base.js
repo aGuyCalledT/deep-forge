@@ -1,0 +1,303 @@
+// Fortress overview, dwarves, war and "more" panels.
+import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue } from './data.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast } from './ui.js';
+import * as S from './sprites.js';
+import { api, setToken } from './api.js';
+
+// ================================================================== fortress
+
+const EFFECT = {
+  warehouse: () => `Holds ${fmt(D().capacity)} goods`,
+  lift: () => `Carries ${fmt(D().liftCap)} ore per hour`,
+  quarters: () => `${D().beds} beds for ${D().pop} dwarves`,
+  tavern: (b) => `+${Math.min(28, 4 + 3 * (b.level - 1))} happiness (needs ale)`,
+  barracks: (b) => `Warriors gain ${6 + 4 * b.level} combat xp per hour`,
+  walls: (b) => b.level ? `+${15 * b.level} defence at the gate` : 'Not built yet',
+  vault: () => `Raiders can't touch ${Math.round(D().vaultProtect * 100)}% of your goods`,
+  trading_post: () => `${D().caravanSlots} caravan(s), ${D().caravanCapacity} goods per merchant`,
+  expedition_hall: () => `${D().expeditionSlots} expedition(s), up to ${D().partyMax} dwarves each`,
+};
+
+export function renderFortress() {
+  const f = F(), d = D();
+  const out = [];
+  out.push(h('div', { class: 'card' },
+    h('div', { class: 'row between' }, h('h3', null, f.name), h('span', { class: 'gold-t pix' }, 'Level ' + f.level)),
+    bar(f.xp / d.xpNeed), h('p', { class: 'small muted' }, `${fmt(f.xp)} / ${fmt(d.xpNeed)} xp to the next level.`
+      + (d.traditionPoints > 0 ? ` You have ${d.traditionPoints} tradition point(s) to spend (More tab).` : ''))));
+
+  // storage & lift
+  const mineTotal = d.layers.reduce((s, l) => s + l.rate, 0);
+  out.push(...section('Storage and lift',
+    h('div', { class: 'card' + (f.storageFull ? ' bad' : '') },
+      h('div', { class: 'row between' }, h('span', null, 'Warehouse'), h('span', { class: f.storageFull ? 'bad-t' : '' }, `${fmt(d.used)} / ${fmt(d.capacity)}`)),
+      bar(d.used / d.capacity),
+      h('div', { class: 'row between', style: { marginTop: '8px' } }, h('span', null, 'Mine lift'),
+        h('span', { class: f.liftLimited ? 'warn-t' : '' }, `${fmt(Math.min(mineTotal, d.liftCap))} of ${fmt(mineTotal)} ore/h carried`)),
+      bar(Math.min(1, mineTotal / d.liftCap), ''),
+      f.storageFull ? h('p', { class: 'bad-t small' }, 'Full! Mining has stopped. Smelt, sell or upgrade the warehouse.') : null,
+      f.liftLimited ? h('p', { class: 'warn-t small' }, 'The lift is the bottleneck. Upgrade it or move miners elsewhere.') : null,
+      h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('warehouse')), upgradeBtn(building('lift'))))));
+
+  // mine
+  out.push(h('h2', null, 'The mine'));
+  G.data.layers.forEach((layer, i) => {
+    const ls = f.layers[i], dl = d.layers[i];
+    const ores = Object.keys(layer.weights).filter((k) => k !== 'stone');
+    const th = ls.threat ? f.threats.find((x) => String(x.id) === ls.threat) : null;
+    out.push(h('div', { class: 'card' + (th ? ' bad' : '') },
+      h('div', { class: 'row between' }, h('h3', null, layer.name), ls.unlocked ? h('span', { class: 'muted' }, 'Shaft level ' + ls.level) : null),
+      h('div', { class: 'row' }, ores.map((k) => h('span', { title: goodName(k) }, goodIcon(k)))),
+      h('p', { class: 'small muted' }, layer.note),
+      ls.unlocked ? [
+        h('p', null, `${dl.miners} miner(s) · `, h('b', { class: 'gold-t' }, fmt(dl.rate) + ' ore/h'),
+          th ? h('span', { class: 'bad-t' }, ` · Blocked by ${th.name.toLowerCase()}!`) : null),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn small', onclick: () => bus.go('dwarves') }, 'Assign miners'),
+          costBtn('Improve shafts', dl.upgrade, { type: 'upgradeLayer', layer: i })),
+      ] : dl.discovered
+        ? costBtn('Open the ' + layer.name, dl.unlock, { type: 'unlockLayer', layer: i }, !f.layers[i - 1].unlocked ? 'Open the layer above first' : null)
+        : h('p', { class: 'warn-t small' }, 'Nobody knows the way down. Send an expedition to scout it.')));
+  });
+
+  // stockpile
+  out.push(h('h2', null, 'Stockpile'));
+  const groups = { Ores: [], Bars: [], Goods: [], Other: [] };
+  for (const [k, v] of Object.entries(f.stock)) {
+    if (v <= 0) continue;
+    (isItem(k) ? groups.Goods : isBar(k) ? groups.Bars : byId.ores[k] ? groups.Ores : groups.Other).push([k, v]);
+  }
+  for (const [g, list] of Object.entries(groups)) {
+    if (!list.length) continue;
+    list.sort((a, b) => baseValue(b[0]) * b[1] - baseValue(a[0]) * a[1]);
+    out.push(h('div', { class: 'card' }, h('h3', null, g),
+      h('div', { class: 'stock-grid' }, list.map(([k, v]) =>
+        h('div', { title: goodName(k) }, goodIcon(k), h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'n' }, fmt(v)))))));
+  }
+  if (f.artifacts.length) out.push(h('div', { class: 'card' }, h('h3', null, 'Artifacts'),
+    f.artifacts.map((a) => h('div', { class: 'row' }, img(S.artifact()), h('span', { class: 'grow' }, a.name), h('span', { class: 'gold-t' }, '~' + fmt(a.value))))));
+
+  // buildings
+  out.push(h('h2', null, 'Buildings'));
+  for (const b of f.buildings) {
+    const t = byId.buildings[b.type];
+    if (t.kind !== 'passive' || b.type === 'warehouse' || b.type === 'lift') continue;
+    out.push(h('div', { class: 'card' },
+      h('div', { class: 'row between' }, h('h3', null, t.name), h('span', { class: 'muted' }, b.level ? 'Level ' + b.level : 'Not built')),
+      h('p', { class: 'small muted' }, t.note), h('p', { class: 'small' }, EFFECT[b.type] ? EFFECT[b.type](b) : ''),
+      upgradeBtn(b)));
+  }
+  out.push(h('h2', null, 'Build workshops'));
+  out.push(h('div', { class: 'card' }, h('p', { class: 'small muted' }, 'Every workshop needs a dwarf. More workshops of the same kind cost more.'),
+    Object.entries(d.buildCosts).map(([type, c]) => {
+      const t = byId.buildings[type];
+      const have = f.buildings.filter((b) => b.type === type).length;
+      return h('div', { class: 'row', style: { margin: '6px 0' } },
+        h('span', { class: 'grow' }, h('b', null, t.name), have ? h('span', { class: 'muted' }, ` (you have ${have})`) : null, h('br'), h('span', { class: 'small muted' }, t.note)),
+        costBtn('Build', c, { type: 'build', building: type }));
+    })));
+  return out;
+}
+
+export function upgradeBtn(b) {
+  if (!b) return null;
+  const c = D().buildings[b.id].upgrade;
+  return costBtn(b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`, c, { type: 'upgrade', building: b.id });
+}
+
+export function costBtn(label, cost, action, blocked) {
+  const ok = !blocked && canPay(cost);
+  return h('button', { class: 'btn small' + (ok ? ' good' : ''), disabled: !ok, title: blocked || '', onclick: () => bus.act(action) },
+    h('span', null, label, h('br'), h('span', { class: 'small', style: { fontWeight: 400 } }, blocked || costText(cost))));
+}
+
+// ================================================================== dwarves
+
+let dwarfFilter = 'all';
+
+export function renderDwarves() {
+  const f = F(), d = D();
+  const avg = f.dwarves.length ? f.dwarves.reduce((s, x) => s + x.happiness, 0) / f.dwarves.length : 0;
+  const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
+  const jobs = ['all', 'idle', 'miner', 'worker', 'warrior', 'merchant', 'away'];
+  const list = f.dwarves.filter((x) => dwarfFilter === 'all' || (dwarfFilter === 'away' ? x.busy : !x.busy && x.job === dwarfFilter));
+  return [
+    h('div', { class: 'card' },
+      h('div', { class: 'row between' }, h('span', null, img(S.icon('dwarf'), 'icon s'), ` ${d.pop} dwarves, ${d.beds} beds`),
+        h('span', null, img(S.icon('mood'), 'icon s'), ` ${Math.round(avg)}% happy`)),
+      idle ? h('p', { class: 'warn-t small' }, `${idle} dwarf(s) idle. Idle dwarves sit in the tavern.`) : null,
+      d.pop > d.beds ? h('p', { class: 'bad-t small' }, 'Not enough beds! Upgrade the quarters.') : null,
+      h('p', { class: 'small muted' }, 'Happy dwarves work up to 40% faster. Miserable ones may leave. Food, ale, beds, the tavern and fine goblets in stock all help.')),
+    h('div', { class: 'row', style: { marginBottom: '10px' } }, jobs.map((j) =>
+      h('button', { class: 'btn small' + (dwarfFilter === j ? ' primary' : ''), onclick: () => { dwarfFilter = j; bus.render(); } }, j))),
+    h('div', { class: 'list' }, list.map(dwarfCard)),
+    f.memorials.length ? [h('h2', null, 'In memory'), h('div', { class: 'card sub' }, f.memorials.slice().reverse().slice(0, 10).map((m) =>
+      h('p', { class: 'small' }, h('b', null, m.name), ' — ', m.cause, h('span', { class: 'dim' }, ' · ' + ago(m.t)))))] : null,
+  ];
+}
+
+function dwarfCard(x) {
+  const dd = D().dwarves[x.id] || {};
+  const top = Object.entries(dd.skills || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const gear = ['tool', 'weapon', 'helm', 'armor'].map((s) => x[s]).filter(Boolean);
+  const portrait = img(S.dwarfSprite(x, 'stand', 0), '');
+  portrait.style.width = '48px'; portrait.style.height = '58px';
+  return h('div', { class: 'card dwarf-card' },
+    h('div', null, portrait),
+    h('div', null,
+      h('div', { class: 'row between' }, h('b', null, fullName(x)), h('span', { class: 'small muted' }, x.age + ' years')),
+      h('div', { class: 'small ' + (x.busy ? 'warn-t' : x.job === 'idle' ? 'muted' : 'gold-t') }, jobLabel(x), dd.rate ? ` · ${fmt(dd.rate)} ore/h` : ''),
+      h('div', null, x.traits.map((t) => h('span', { class: 'chip', title: byId.traits[t].note }, byId.traits[t].name))),
+      h('div', { class: 'row small', style: { gap: '4px 10px' } },
+        h('span', { class: 'grow' }, 'Health', bar(x.health / 100, 'hp')),
+        h('span', { class: 'grow' }, 'Mood' + (dd.target > x.happiness + 3 ? ' ↑' : dd.target < x.happiness - 3 ? ' ↓' : ''), bar(x.happiness / 100, 'mood'))),
+      h('div', { class: 'small muted' }, top.map(([k, v]) => `${k} ${v}`).join(' · ') || 'No skills yet', ` · power ${fmt(dd.power)}`),
+      gear.length ? h('div', { class: 'row' }, gear.map((k) => h('span', { title: goodName(k) }, goodIcon(k, 'icon s')))) : null,
+      !x.busy ? h('div', { class: 'row', style: { marginTop: '6px' } },
+        h('button', { class: 'btn small', onclick: () => jobSheet(x) }, 'Job'),
+        h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear')) : null));
+}
+
+export function jobSheet(x) {
+  const f = F();
+  const opt = (label, sub, action, current) => h('button', { class: 'pick' + (current ? ' on' : ''), style: { width: '100%' },
+    onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, ...action }); closeSheet(); } },
+    h('span', { class: 'grow', style: { textAlign: 'left' } }, h('b', null, label), sub ? h('span', { class: 'small muted' }, ' · ' + sub) : null));
+  openSheet(() => h('div', null,
+    h('h2', null, fullName(x)),
+    h('p', { class: 'small muted' }, 'Skills: ' + Object.entries(D().dwarves[x.id].skills).map(([k, v]) => `${k} ${v}`).join(', ')),
+    h('h3', null, 'Mine'),
+    f.layers.filter((l) => l.unlocked).map((l) => opt(G.data.layers[l.index].name, `${D().layers[l.index].miners} miners`, { job: 'miner', layer: l.index }, x.job === 'miner' && x.layer === l.index)),
+    h('h3', null, 'Workshops'),
+    f.buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive').map((b) => {
+      const w = D().buildings[b.id].worker;
+      const wn = w ? (w === x.id ? 'this dwarf' : fullName(f.dwarves.find((y) => y.id === w))) : 'empty';
+      return opt(buildingName(b), wn + ' · ' + byId.buildings[b.type].skill, { job: 'worker', building: b.id }, x.job === 'worker' && x.building === b.id);
+    }),
+    h('h3', null, 'Other'),
+    opt('Warrior at the gate', 'defends against raids', { job: 'warrior', post: 'fortress' }, x.job === 'warrior' && x.post === 'fortress'),
+    opt('Warrior on mine patrol', 'fights monsters in the mine', { job: 'warrior', post: 'mine' }, x.job === 'warrior' && x.post === 'mine'),
+    opt('Merchant', 'leads caravans', { job: 'merchant' }, x.job === 'merchant'),
+    opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
+}
+
+const SLOTS = [['tool', 'Tool', 'Pickaxes make miners faster'], ['weapon', 'Weapon', 'Axes for fighting'], ['helm', 'Helm', 'Protection'], ['armor', 'Armor', 'Chain mail: strong protection']];
+
+export function gearSheet(x) {
+  openSheet(() => {
+    const f = F();
+    const me = f.dwarves.find((y) => y.id === x.id) || x;
+    return h('div', null, h('h2', null, fullName(me) + "'s gear"),
+      SLOTS.map(([slot, name, note]) => {
+        const items = Object.entries(f.stock).filter(([k, v]) => v > 0 && isItem(k) && byId.items[parseItem(k).type].slot === slot)
+          .sort((a, b) => baseValue(b[0]) - baseValue(a[0])).slice(0, 8);
+        return h('div', { class: 'card sub' },
+          h('div', { class: 'row between' }, h('b', null, name), h('span', { class: 'small muted' }, note)),
+          me[slot] ? h('div', { class: 'row' }, goodIcon(me[slot]), h('span', { class: 'grow small' }, goodName(me[slot])),
+            h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, 'Remove'))
+            : h('p', { class: 'small muted' }, 'Nothing equipped.'),
+          items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
+            h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, item: k }); refreshSheet(); } }, 'Equip'))));
+      }));
+  });
+}
+
+// ================================================================== war
+
+export function renderWar() {
+  const f = F(), d = D(), t = now();
+  const out = [];
+  const warriors = f.dwarves.filter((x) => x.job === 'warrior');
+  out.push(h('div', { class: 'card' },
+    h('div', { class: 'row between' }, h('h3', null, 'Gate defence'), h('b', { class: 'gold-t' }, fmt(d.gatePower))),
+    h('p', { class: 'small muted' }, `${warriors.filter((x) => x.post === 'fortress' && !x.busy).length} warriors at the gate + ${fmt(d.wallPower)} from walls. `
+      + `The vault protects ${Math.round(d.vaultProtect * 100)}% of your goods.`),
+    h('div', { class: 'row' }, h('span', { class: 'grow' }, 'Mine patrol'), h('b', null, fmt(d.minePower))),
+    h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('walls')), upgradeBtn(building('vault')), upgradeBtn(building('barracks')))));
+
+  if (f.raid) {
+    const ok = d.gatePower >= f.raid.power;
+    out.push(h('div', { class: 'card bad' }, h('h3', null, img(S.icon('warn'), 'icon s'), ' ', f.raid.name, ' incoming!'),
+      h('p', null, 'Strength ', h('b', null, fmt(f.raid.power)), ' vs your gate ', h('b', { class: ok ? 'good-t' : 'bad-t' }, fmt(d.gatePower)),
+        '. Arrives in ', h('b', { 'data-until': f.raid.arrivesAt }, dur(f.raid.arrivesAt - t)), '.'),
+      h('p', { class: 'small muted' }, ok ? 'Your defence should hold, but fights are never certain.' : 'Too weak! Post more warriors at the gate, give them axes and armor, or build walls. If the raid wins, they steal goods, may kill dwarves and besiege the gate.')));
+  }
+  if (f.siege) {
+    out.push(h('div', { class: 'card bad' }, h('h3', null, 'Siege! ', f.siege.name, ' at the gate'),
+      h('p', null, 'All workshops are shut. Strength ', h('b', null, fmt(f.siege.power)), '. They leave by themselves in ', h('b', { 'data-until': f.siege.until }, dur(f.siege.until - t)), '.'),
+      h('button', { class: 'btn danger', onclick: () => fightSheet('Break the siege', f.siege.power, (ids) => ({ type: 'breakSiege', warriors: ids })) }, 'Break the siege')));
+  }
+  for (const th of f.threats) {
+    out.push(h('div', { class: 'card bad' },
+      h('div', { class: 'row' }, img(S.monster(th.monster, 0), 'icon l'), h('div', { class: 'grow' }, h('h3', null, th.name), h('span', { class: 'small' }, G.data.layers[th.layer].name))),
+      h('p', null, 'Strength ', h('b', null, fmt(th.power)), '. Mining there has stopped. It may kill a hiding miner in ', h('b', { 'data-until': th.nextHarm }, dur(th.nextHarm - t)), '.'),
+      h('button', { class: 'btn danger', onclick: () => fightSheet('Fight the ' + th.name.toLowerCase(), th.power, (ids) => ({ type: 'fightThreat', threat: th.id, warriors: ids })) }, 'Send warriors')));
+  }
+  if (!f.raid && !f.siege && !f.threats.length) out.push(h('p', { class: 'muted' }, 'All quiet. For now.'));
+
+  out.push(h('h2', null, 'Warriors'));
+  if (!warriors.length) out.push(h('p', { class: 'muted' }, 'No warriors. Give dwarves the warrior job in the Dwarves tab. Forge axes, helms and chain mail for them.'));
+  out.push(h('div', { class: 'list' }, warriors.map((x) => h('div', { class: 'card sub row' },
+    img(S.dwarfSprite(x, 'stand', 0)), h('span', { class: 'grow' }, h('b', null, fullName(x)), h('br'), h('span', { class: 'small muted' }, jobLabel(x))),
+    h('span', { class: 'gold-t' }, fmt(D().dwarves[x.id].power)),
+    !x.busy ? h('button', { class: 'btn small', onclick: () => bus.act({ type: 'assign', dwarf: x.id, job: 'warrior', post: x.post === 'mine' ? 'fortress' : 'mine' }) }, x.post === 'mine' ? 'To gate' : 'To mine') : null,
+    !x.busy ? h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear') : null))));
+  return out;
+}
+
+function fightSheet(title, enemy, makeAction) {
+  const sel = new Set();
+  openSheet(() => {
+    const f = F();
+    const free = f.dwarves.filter((x) => x.job === 'warrior' && !x.busy);
+    const p = [...sel].reduce((s, id) => s + (D().dwarves[id] ? D().dwarves[id].power : 0), 0);
+    const r = p / Math.max(1, enemy), chance = Math.round(Math.max(0.03, Math.min(0.98, r * r / (r * r + 1))) * 100);
+    return h('div', null, h('h2', null, title),
+      h('p', null, 'Enemy strength ', h('b', null, fmt(enemy)), '. Your party ', h('b', { class: p >= enemy ? 'good-t' : 'bad-t' }, fmt(p)), ` · about ${chance}% to win.`),
+      h('p', { class: 'small muted' }, 'Warriors can be hurt or killed, even when they win.'),
+      dwarfPicker(free, sel, (x) => 'power ' + fmt(D().dwarves[x.id].power), refreshSheet),
+      h('button', { class: 'btn danger big', disabled: !sel.size, onclick: async () => { await bus.act(makeAction([...sel])); closeSheet(); } }, 'Attack'));
+  });
+}
+
+// ================================================================== more
+
+export function renderMore() {
+  const f = F(), d = D();
+  const out = [];
+  out.push(...section('Traditions', h('div', { class: 'card' },
+    h('p', { class: 'small muted' }, `Choose how your fortress specialises. One point per fortress level. Points left: `, h('b', { class: 'gold-t' }, d.traditionPoints)),
+    G.data.traditions.map((t) => {
+      const r = f.traditions[t.id] || 0;
+      return h('div', { class: 'row', style: { margin: '6px 0' } },
+        h('span', { class: 'grow' }, h('b', null, t.name), ' ', h('span', { class: 'gold-t' }, '■'.repeat(r) + '□'.repeat(t.maxRank - r)), h('br'), h('span', { class: 'small muted' }, t.note)),
+        h('button', { class: 'btn small good', disabled: d.traditionPoints <= 0 || r >= t.maxRank, onclick: () => bus.act({ type: 'tradition', id: t.id }) }, '+'));
+    }))));
+
+  const players = h('div', { class: 'card scroll-x' }, h('p', { class: 'muted' }, 'Loading...'));
+  api.get('/players').then((list) => players.replaceChildren(h('table', null,
+    h('tr', null, ['Hold', 'Lvl', 'Depth', 'Dwarves', 'Earned', 'Lost'].map((x) => h('th', null, x))),
+    list.map((p) => h('tr', null, h('td', null, h('b', null, p.name), h('br'), h('span', { class: 'small muted' }, p.owner)),
+      h('td', null, p.level), h('td', null, p.depth), h('td', null, p.dwarves), h('td', null, fmt(p.coinsEarned)), h('td', null, p.lost)))))).catch(() => {});
+  out.push(...section('Other holds', players));
+
+  out.push(...section('Chronicle', h('div', { class: 'card' }, f.log.slice().reverse().slice(0, 60).map((l) =>
+    h('div', { class: 'log-line ' + l.kind }, h('span', { class: 't' }, ago(l.t)), l.text)))));
+
+  const name = h('input', { value: f.name, maxLength: 32 });
+  out.push(...section('Settings', h('div', { class: 'card' },
+    h('label', null, 'Name of your hold', name),
+    h('div', { class: 'row' }, h('button', { class: 'btn small', onclick: () => bus.act({ type: 'rename', name: name.value }) }, 'Rename'),
+      h('button', { class: 'btn small danger', onclick: async () => { try { await api.post('/auth/logout'); } catch { /* ignore */ } setToken(null); location.reload(); } }, 'Log out')),
+    h('p', { class: 'small muted' }, `Logged in as ${G.me ? G.me.name : ''}.`))));
+
+  if (G.me && G.me.admin) {
+    const who = h('input', { placeholder: 'Player name' }), pw = h('input', { placeholder: 'New password (8+ characters)', type: 'text' });
+    out.push(...section('Admin', h('div', { class: 'card' }, h('p', { class: 'small muted' }, 'Reset a forgotten password.'), who, pw,
+      h('button', { class: 'btn small', onclick: async () => {
+        try { await api.post('/admin/password', { name: who.value, password: pw.value }); toast('Password reset.', 'good'); } catch (e) { toast(e.message, 'bad'); }
+      } }, 'Reset password'))));
+  }
+  out.push(h('p', { class: 'small dim' }, 'Deep Forge · stats: ' + `${f.stats.barsSmelted} bars smelted, ${f.stats.itemsCrafted} goods forged, ${f.stats.masterworks} masterworks, ${f.stats.expeditions} expeditions, ${f.stats.monstersSlain} monsters slain, ${f.stats.raidsRepelled} raids repelled, ${f.stats.dwarvesLost} dwarves lost.`));
+  return out;
+}

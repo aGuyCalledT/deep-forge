@@ -1,0 +1,55 @@
+# Deep Forge on your own server.
+#   cp .env.example .env   (and fill it in)
+#   docker compose up -d --build
+# With HTTPS through Caddy (needs a domain pointing at the server, ports 80+443 open):
+#   docker compose --profile https up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: deepforge
+      POSTGRES_USER: deepforge
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deepforge -d deepforge"]
+      interval: 10s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/deepforge
+      DB_USER: deepforge
+      DB_PASSWORD: ${DB_PASSWORD}
+      INVITE_CODE: ${INVITE_CODE:-}
+      ADMINS: ${ADMINS:-}
+      SPRITES_DIR: /app/sprites
+    volumes:
+      - ./sprites:/app/sprites:ro
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
+volumes:
+  dbdata:
+  caddy_data:

@@ -1,0 +1,21 @@
+name: test
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: JavaScript syntax
+        run: for f in src/main/resources/static/js/*.js; do node --check "$f"; done
+      - name: Tests
+        run: mvn -B test

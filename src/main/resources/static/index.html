@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17131a">
+  <title>Deep Forge</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="login" class="login" hidden>
+    <canvas id="login-art" class="login-art" width="160" height="90"></canvas>
+    <h1 class="title">Deep Forge</h1>
+    <p class="tagline">Dig deep. Forge well. Trade wisely. Don't lose your dwarves.</p>
+    <form id="login-form" class="card login-card" autocomplete="on">
+      <label>Name <input name="name" autocomplete="username" required minlength="3" maxlength="20"></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required minlength="8"></label>
+      <label id="invite-row" hidden>Invite code <input name="invite" autocomplete="off"></label>
+      <div class="row">
+        <button type="submit" class="btn primary" data-mode="login">Enter the hold</button>
+        <button type="submit" class="btn" data-mode="register">Found a new hold</button>
+      </div>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </div>
+
+  <div id="app" class="app" hidden>
+    <header class="top">
+      <div class="hold-name" id="hold-name">Deep Forge</div>
+      <div class="res" id="res"></div>
+    </header>
+    <div class="alerts" id="alerts" role="status"></div>
+    <main class="main">
+      <section class="scene-wrap" id="scene-wrap" aria-label="Your fortress">
+        <canvas id="scene"></canvas>
+      </section>
+      <section class="panel" id="panel" aria-live="polite"></section>
+    </main>
+    <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  </div>
+
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-back" data-close></div>
+    <div class="sheet-body" role="dialog" aria-modal="true">
+      <button class="sheet-x" data-close aria-label="Close">×</button>
+      <div id="sheet-content"></div>
+    </div>
+  </div>
+  <div id="toasts" class="toasts" aria-live="assertive"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
