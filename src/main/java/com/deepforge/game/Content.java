@@ -526,6 +526,8 @@ public final class Content {
         plan.put("floors", Layouts.FLOORS);
         plan.put("shaft", Layouts.SHAFT);
         plan.put("rooms", Layouts.ROOM_CELLS);
+        plan.put("machineCells", Layouts.MACHINE_CELLS);
+        plan.put("maxMachines", Rules.MAX_MACHINES);
         d.put("plan", plan);
         Map<String, Object> looks = new LinkedHashMap<>();
         looks.put("beardStyles", Factory.BEARD_STYLES);

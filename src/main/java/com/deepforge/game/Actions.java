@@ -66,6 +66,7 @@ public final class Actions {
             case "assign" -> assign(f, a);
             case "build" -> build(f, a);
             case "upgrade" -> upgrade(f, a);
+            case "addMachine" -> addMachine(f, a);
             case "upgradeLayer" -> upgradeLayer(f, a);
             case "unlockLayer" -> unlockLayer(f, a, t);
             case "queueAdd" -> queueAdd(f, a);
@@ -118,10 +119,14 @@ public final class Actions {
                 check(b != null && b.level > 0, "No such building.");
                 String kind = Content.BUILDINGS.get(b.type).kind();
                 check(!kind.equals("passive"), "Nobody works there.");
-                Dwarf old = worker(f, b);
-                if (old != null && old != d) old.job = "idle";
-                for (Dwarf o : f.dwarves)
-                    if (o != d && o.job.equals("worker") && b.id.equals(o.building)) o.job = "idle";
+                if (!(d.job.equals("worker") && b.id.equals(d.building))) {
+                    List<Dwarf> at = assigned(f, b);
+                    if (at.size() >= machines(b)) {
+                        // all machines taken: with one machine the newcomer takes over, otherwise say what to do
+                        check(machines(b) == 1, "All " + machines(b) + " machines are taken. Add a machine or free a worker first.");
+                        for (Dwarf o : at) o.job = "idle";
+                    }
+                }
                 d.job = "worker";
                 d.building = b.id;
             }
@@ -222,6 +227,23 @@ public final class Actions {
         log(f, "info", Content.BUILDINGS.get(b.type).name() + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."));
     }
 
+    /** Another workstation in a workshop: the room grows to the right, one more dwarf can work there. */
+    static void addMachine(Fortress f, Map<String, Object> a) {
+        Building b = building(f, str(a, "building"));
+        check(b != null && b.level > 0, "No such building.");
+        check(!Content.BUILDINGS.get(b.type).kind().equals("passive"), "Only workshops have machines.");
+        check(machines(b) < maxMachines(b), machines(b) >= MAX_MACHINES ? "This workshop is full."
+                : "Upgrade the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + " to make room for another machine.");
+        Layouts.ensure(f);
+        check(Layouts.canGrow(f, b), "No space to the right of the room. Move the room or clear the way.");
+        Cost c = machineCost(b);
+        check(canPay(f, c), "Not enough coins or materials.");
+        pay(f, c);
+        Layouts.grow(f, b);
+        b.machines = machines(b) + 1;
+        log(f, "info", "A new machine stands in the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ". Put another dwarf to work there.");
+    }
+
     static void upgradeLayer(Fortress f, Map<String, Object> a) {
         int idx = num(a, "layer", -1);
         check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
@@ -300,12 +322,20 @@ public final class Actions {
 
     static void quench(Fortress f, Map<String, Object> a, double t, Rng r) {
         Building b = building(f, str(a, "building"));
-        check(b != null && b.job != null && b.job.quenching, "Nothing to quench right now.");
+        check(b != null, "Nothing to quench right now.");
+        int i = Math.max(0, num(a, "machine", 0));
+        check(i < machines(b), "Nothing to quench right now.");
+        List<Dwarf> ws = workers(f, b);
+        Dwarf w = i < ws.size() ? ws.get(i) : null;
+        Sim.onMachine(b, i, () -> quenchJob(f, b, w, t, r));
+    }
+
+    static void quenchJob(Fortress f, Building b, Dwarf w, double t, Rng r) {
+        check(b.job != null && b.job.quenching, "Nothing to quench right now.");
         Content.Metal m = Content.METALS.get(b.job.mat);
         double since = t - b.job.quenchStart;
         // generous: half a second of grace on both sides for network lag
         boolean perfect = since >= m.qStart() - 0.5 && since <= m.qStart() + m.qWidth() + 0.5;
-        Dwarf w = worker(f, b);
         String item = Content.ITEMS.get(b.job.itype).name().toLowerCase();
         Sim.finishQuench(f, b, w, perfect ? 18 : 0, r, t);
         log(f, t, perfect ? "good" : "info", perfect

@@ -2,7 +2,7 @@
 import { G, F, D, byId, fmt, stock, contextResources } from './data.js';
 import * as S from './sprites.js';
 import { text, sign } from './pixfont.js';
-import { drawRoom, RH, CELL, TOOL_OF } from './hold.js';
+import { drawRoom, roomLights, jobOf, RH, CELL, TOOL_OF } from './hold.js';
 
 const fitScale = (w) => (w < 560 ? 2 : Math.max(3, Math.min(4, Math.floor(w / 220))));
 
@@ -119,7 +119,9 @@ export const minesScreen = {
 export const workshopScreen = {
   fit(cssW) {
     const b = F().buildings.find((x) => x.id === G.ws);
-    const pw = b && G.data.plan.rooms[b.type] ? G.data.plan.rooms[b.type] * CELL : 96;
+    const pw = b && G.data.plan.rooms[b.type] ? S.roomWidth(b) : 96;
+    // wide rooms with many machines: shrink below 2 so the whole room fits (slightly uneven pixels beat a cut-off room)
+    if (pw * 2 > cssW) return Math.max(1, Math.floor((cssW / pw) * 4) / 4);
     return Math.max(2, Math.min(cssW < 560 ? 4 : 6, Math.floor(cssW / pw)));
   },
   size(cssW, sc) {
@@ -142,30 +144,34 @@ export const workshopScreen = {
     this._w = w;
     for (let x = 0; x < w; x += 32) for (let y = 0; y < view.h; y += 32) S.draw(ctx, 'rock', x, y);
     if (!b || !G.data.plan.rooms[b.type]) return;
-    const pw = G.data.plan.rooms[b.type] * CELL;
+    const pw = S.roomWidth(b);
     const r = { b, x: Math.floor((w - pw) / 2), y: 0, pw };
     this._r = r;
     drawRoom(ctx, t, r);
     const a = S.META.ROOMS[b.type] || {};
     const info = D().buildings[b.id] || {};
-    const wk = info.worker ? f.dwarves.find((x) => x.id === info.worker) : null;
-    if (wk && a.worker) {
-      const working = b.job && !b.job.quenching || byId.buildings[b.type].kind === 'continuous';
-      const busy = working && !f.siege;
-      const spr = S.dwarfSprite(wk, busy ? 'work' : 'idle', Math.floor(t * (busy ? 5 : 1.5)) % (busy ? 4 : 2), busy ? TOOL_OF[b.type] : null);
-      S.placeDwarf(ctx, spr, r.x + a.worker[0], r.y + a.worker[1], b.type === 'smelter');
-    }
+    (info.workers || (info.worker ? [info.worker] : [])).forEach((id, i) => {
+      const wk = f.dwarves.find((x) => x.id === id), m = S.machineAt(b, i);
+      if (!wk || !m.a || !m.a.worker) return;
+      const job = jobOf(b, i);
+      const busy = (job && !job.quenching || byId.buildings[b.type].kind === 'continuous') && !f.siege;
+      const spr = S.dwarfSprite(wk, busy ? 'work' : 'idle', Math.floor(t * (busy ? 5 : 1.5) + i) % (busy ? 4 : 2), busy ? TOOL_OF[b.type] : null);
+      S.placeDwarf(ctx, spr, r.x + m.x + m.a.worker[0], r.y + m.a.worker[1], (m.a.face || 1) < 0);
+    });
     sign(ctx, byId.buildings[b.type].name + (b.level > 1 ? ' ' + b.level : ''), r.x + pw / 2, 9, '#e3c06e');
     if (b.type === 'smelter') {
       const heat = G.heat ? G.heat(b.id) : 0;
-      const tx = r.x + pw - 16, ty = 26, hh = 44;
+      const tx = r.x + S.META.ROOMS.smelter.w * CELL - 16, ty = 26, hh = 44;
       ctx.fillStyle = '#1d1b2c'; ctx.fillRect(tx - 1, ty - 1, 6, hh + 6);
       ctx.fillStyle = '#33364a'; ctx.fillRect(tx, ty, 4, hh);
       const fill = Math.round((heat / 100) * (hh - 2));
       for (let i = 0; i < fill; i++) { ctx.fillStyle = S.mix('#a9473c', '#ffd98e', i / hh); ctx.fillRect(tx + 1, ty + hh - 1 - i, 2, 1); }
       ctx.fillStyle = heat > 5 ? '#d9704a' : '#623e45'; ctx.fillRect(tx - 1, ty + hh, 6, 4);
     }
-    if (b.type === 'forge' && b.job && b.job.quenching && Math.floor(t * 3) % 2) sign(ctx, 'QUENCH!', r.x + a.quench[0] - 8, 52, '#e3c06e');
+    if (b.type === 'forge' && Math.floor(t * 3) % 2) for (let i = 0; i < (b.machines || 1); i++) {
+      const job = jobOf(b, i), m = S.machineAt(b, i), q = m.a.quench || m.a.anvil;
+      if (job && job.quenching) sign(ctx, 'QUENCH!', r.x + m.x + q[0] - 8, 52, '#e3c06e');
+    }
     // storeroom
     const keys = this.keys();
     if (keys.length) {
@@ -184,25 +190,20 @@ export const workshopScreen = {
     }
   },
   ambient() { return [{ y0: 0, y1: RH + 4, color: '#140f20', a: 0.3 }, { y0: RH + 4, y1: 10000, color: '#140f20', a: 0.15 }]; },
-  lights() {
-    const r = this._r;
-    if (!r) return [];
-    const a = S.META.ROOMS[r.b.type] || {};
-    const info = D().buildings[r.b.id] || {};
-    const working = r.b.job || (byId.buildings[r.b.type].kind === 'continuous' && info.worker);
-    const heat = r.b.type === 'smelter' && G.heat ? G.heat(r.b.id) / 100 : 0;
-    return (a.lights || []).map(([x, y, rr, col]) => ({ x: r.x + x, y: r.y + y, r: rr * (working ? 1 + heat * 0.4 : 0.8), color: col, flicker: 2, power: working ? 1 + heat : 0.6 }));
-  },
+  lights() { return this._r ? roomLights(this._r).map((l) => ({ ...l, flicker: l.flicker || 2 })) : []; },
   hit(x, y) {
     const r = this._r;
     if (!r) return null;
     const a = S.META.ROOMS[r.b.type] || {};
-    if (r.b.type === 'smelter' && a.fire) {
-      const [fx, fy, fw, fh] = a.fire;
-      if (x >= r.x + fx - 13 && x < r.x + fx + fw + 30 && y >= 24 && y < 90) return { kind: 'bellows', id: r.b.id, rect: [r.x + fx - 13, 24, fw + 43, 66], round: true };
+    if (r.b.type === 'smelter') for (let i = 0; i < (r.b.machines || 1); i++) {
+      const m = S.machineAt(r.b, i), [fx, , fw] = m.a.fire, x0 = r.x + m.x + fx - 13, ww = fw + (i ? 26 : 43);
+      if (x >= x0 && x < x0 + ww && y >= 24 && y < 90) return { kind: 'bellows', id: r.b.id, rect: [x0, 24, ww, 66], round: true };
     }
-    if (r.b.type === 'forge' && r.b.job && r.b.job.quenching && a.quench) {
-      if (x >= r.x + a.quench[0] - 9 && x < r.x + a.quench[0] + 9 && y >= 66 && y < 92) return { kind: 'quench', id: r.b.id, rect: [r.x + a.quench[0] - 8, 70, 16, 20], round: true };
+    if (r.b.type === 'forge') for (let i = 0; i < (r.b.machines || 1); i++) {
+      const job = jobOf(r.b, i), m = S.machineAt(r.b, i), q = m.a.quench || m.a.anvil;
+      if (!job || !job.quenching || !q) continue;
+      const qx = r.x + m.x + q[0];
+      if (x >= qx - 9 && x < qx + 9 && y >= 66 && y < 92) return { kind: 'quench', id: r.b.id, machine: i, rect: [qx - 8, 70, 16, 20], round: true };
     }
     if (x >= r.x && x < r.x + r.pw && y < RH) return { kind: 'room', id: r.b.id, rect: [r.x, 0, r.pw, RH], round: true };
     return null;
@@ -222,10 +223,10 @@ export function drawLoginArt(c) {
   for (let x = 0; x < w; x += 32) for (let y = top; y < h; y += 32) S.draw(g, 'rock', x, y);
   const stand = (name, x) => { const s = S.sprite(name); if (s) S.draw(g, name, x, top - 4 - s.height + 1); };
   stand('tree_1', 8); stand('stall', 120); stand('tree_0', 214); stand('tent', 266);
-  S.draw(g, 'room_tavern', 0, top);
+  g.drawImage(S.roomImage({ type: 'tavern', id: 'login-tavern', level: 2 }), 0, top);
   const A = S.META.ROOMS.tavern;
   S.draw(g, 'fire_place_1', A.fire[0], top + A.fire[1] + 4);
-  S.draw(g, 'room_forge', 192, top);
+  g.drawImage(S.roomImage({ type: 'forge', id: 'login-forge', level: 3 }), 192, top);
   const pals = [['#e8b090', '#c4622d'], ['#d9a77c', '#e0b04a'], ['#b97f57', '#3b2a20'], ['#f0c8a0', '#9a9a9a'], ['#8d5a3b', '#e8e2d4']];
   const wear = (top, dye, hat) => Object.assign({ top: 'wear:' + top + ':' + dye, legs: 'wear:trousers:brown', feet: 'wear:boots:brown' }, hat ? { hat: 'wear:' + hat } : {});
   pals.forEach(([skin, hair], i) => {

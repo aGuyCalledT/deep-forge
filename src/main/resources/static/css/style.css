@@ -304,6 +304,16 @@ td.num, th.num { text-align: right; }
 .dot.ok { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); } .dot.hot { background: var(--ember); }
 .queue-item { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: rgba(255, 240, 220, 0.05); border-radius: 10px; }
 .queue-item.blocked { background: rgba(236, 133, 119, 0.13); }
+.machines { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.machines h3 { margin: 0; }
+.machine { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 10px 6px 6px; background: rgba(255, 240, 220, 0.05); border-radius: var(--r-s); }
+.machine.empty { background: rgba(236, 133, 119, 0.09); }
+.machine .grow { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.machine .grow > div:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.machine-no { font-family: 'Pixelify Sans', sans-serif; color: var(--gold); width: 18px; text-align: center; flex: none; }
+.machine-seat { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px dashed var(--dim); opacity: 0.7; }
+.machine .btn { min-height: 40px; flex: none; }
+.bar.thin { height: 6px; margin-top: 2px; }
 
 /* mines */
 .ore-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 3px; margin: 6px 0; }

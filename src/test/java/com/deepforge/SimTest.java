@@ -166,6 +166,40 @@ class SimTest {
     }
 
     @Test
+    void aSecondMachineLetsTwoSmithsWorkAtOnce() {
+        Fortress f = fresh(12);
+        Market m = Market.inMemory(12, T0);
+        f.stock.put("bar:copper", 30);
+        f.stock.put("coal", 50);
+        act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
+        Building forge = f.buildings.stream().filter(x -> x.id.equals("forge-1")).findFirst().orElseThrow();
+        assertEquals(2, Rules.maxMachines(forge));
+        Rules.Cost c = Rules.machineCost(forge);
+        f.coins += c.coins() + 10;
+        c.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
+        Dwarf a = f.dwarves.get(0), b = f.dwarves.get(1), x = f.dwarves.get(2);
+        act(f, m, T0, "type", "assign", "dwarf", a.id, "job", "worker", "building", "forge-1");
+        act(f, m, T0, "type", "addMachine", "building", "forge-1");
+        assertEquals(2, forge.machines);
+        assertEquals(Layouts.ROOM_CELLS.get("forge") + Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
+        // the room grew over the cells to its right: nothing else may stand there
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 27, "floor", 5));
+        act(f, m, T0, "type", "assign", "dwarf", b.id, "job", "worker", "building", "forge-1");
+        assertEquals(2, Rules.workers(f, forge).size());
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "assign", "dwarf", x.id, "job", "worker", "building", "forge-1"));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "addMachine", "building", "forge-1"));
+        act(f, m, T0, "type", "queueAdd", "building", "forge-1", "recipe", "craft", "itype", "goblet", "mat", "copper", "count", 6);
+        Sim.advance(f, T0 + 60, m);
+        assertNotNull(forge.job);
+        assertNotNull(forge.more.get(0));
+        Sim.advance(f, T0 + 3 * 3600, m);
+        int goblets = 0;
+        for (Map.Entry<String, Integer> e : f.stock.entrySet())
+            if (e.getKey().startsWith("item:goblet:copper")) goblets += e.getValue();
+        assertEquals(6, goblets);
+    }
+
+    @Test
     void roomsHallsAndStairsCanBePlaced() {
         Fortress f = fresh(42);
         Market m = Market.inMemory(42, T0);

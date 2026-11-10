@@ -32,7 +32,7 @@ function grid() {
   for (const [id, [c, fl]] of Object.entries(L.rooms)) {
     const b = f.buildings.find((x) => x.id === id);
     if (!b) continue;
-    const w = plan.rooms[b.type];
+    const w = (D().buildings[id] || {}).cells || S.roomWidth(b) / CELL;
     rooms.push({ b, c, f: fl, w, x: c * CELL, y: ftop(fl), pw: w * CELL });
     for (let x = c; x < c + w; x++) cells.set(x + ',' + fl, { kind: 'room', id });
   }
@@ -125,10 +125,16 @@ function want(g, d, ctx) {
   if (d.job === 'worker') {
     const r = g.rooms.find((x) => x.b.id === d.building);
     if (r && !sch.off) {
-      const a = S.META.ROOMS[r.b.type] || {};
-      const wx = a.worker ? r.x + a.worker[0] : r.x + r.pw / 2;
-      const busy = r.b.job || byId.buildings[r.b.type].kind === 'continuous';
-      return { f: r.f, x: wx, pose: busy && !F().siege ? 'work' : 'idle', tool: TOOL_OF[r.b.type], face: r.b.type === 'smelter' ? -1 : 1 };
+      const info = D().buildings[r.b.id] || {};
+      const i = (info.workers || [info.worker]).indexOf(d.id);
+      if (i >= 0) {
+        const m = S.machineAt(r.b, i), a = m.a || {};
+        const wx = a.worker ? r.x + m.x + a.worker[0] : r.x + r.pw / 2;
+        const busy = jobOf(r.b, i) || byId.buildings[r.b.type].kind === 'continuous';
+        return { f: r.f, x: wx, pose: busy && !F().siege ? 'work' : 'idle', tool: TOOL_OF[r.b.type], face: a.face || 1 };
+      }
+      // waiting for a free machine: stands by the door
+      return { f: r.f, x: r.x + 10 + (S.hash('wait' + d.id) % 20), pose: 'idle', face: 1 };
     }
     return free();
   }
@@ -143,6 +149,9 @@ function want(g, d, ctx) {
   void room;
   return free();
 }
+
+/** The job running on machine i (machine 0 uses b.job). */
+export function jobOf(b, i) { return i === 0 ? b.job : (b.more || [])[i - 1] || null; }
 
 /** What each workshop's worker holds while working (the same work animation for all). */
 export const TOOL_OF = { forge: 'hammer', smelter: 'shovel', brewery: 'paddle', farm: 'hoe', engraver: 'chisel', jeweler: 'chisel', grindstone: 'hammer' };
@@ -404,7 +413,7 @@ function depthLayers(g) {
     S.draw(hc, 'hall_a', c * CELL, fl * RH);
   }
   for (const s of g.stairs) S.draw(hc, 'stairs', s.c * CELL, s.f * RH);
-  for (const rm of g.rooms) S.draw(hc, 'room_' + rm.b.type, rm.x, rm.y - SURF);
+  for (const rm of g.rooms) hc.drawImage(S.roomImage(rm.b), rm.x, rm.y - SURF);
   hc.globalCompositeOperation = 'destination-out';
   for (const [k, v] of g.cells) {
     if (v.kind !== 'hall') continue;
@@ -459,23 +468,52 @@ function drawUnderground(ctx, t, view, g) {
 /** A room and everything that moves in it (fire, wheels, smoke). Also used by the workshop screen. */
 export function drawRoom(ctx, t, r) {
   const b = r.b;
-  S.draw(ctx, 'room_' + b.type, r.x, r.y);
-  const a = S.META.ROOMS[b.type] || {};
+  ctx.drawImage(S.roomImage(b), r.x, r.y);
   const f = F(), info = D().buildings[b.id] || {};
-  const working = !f.siege && (b.job && !b.job.quenching || (byId.buildings[b.type].kind === 'continuous' && info.worker));
+  const continuous = byId.buildings[b.type].kind === 'continuous';
+  const workers = info.workers || (info.worker ? [info.worker] : []);
   const fr = Math.floor(t * 8) % 4;
-  if (b.type === 'smelter' && (working || (G.heat && G.heat(b.id) > 2))) S.draw(ctx, 'fire_furnace_' + fr, r.x + a.fire[0], r.y + a.fire[1]);
-  if (b.type === 'forge' && (working || (b.job && b.job.quenching))) S.draw(ctx, 'fire_hearth_' + fr, r.x + a.fire[0], r.y + a.fire[1] - 2);
+  const n = S.META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
+  for (let i = 0; i < n; i++) {
+    const m = S.machineAt(b, i), a = m.a || {}, x = r.x + m.x, job = jobOf(b, i);
+    const working = !f.siege && (job && !job.quenching || (continuous && workers[i] != null));
+    if (b.type === 'smelter' && (working || (G.heat && G.heat(b.id) > 2 && (i === 0 || job)))) S.draw(ctx, 'fire_furnace_' + ((fr + i) % 4), x + a.fire[0], r.y + a.fire[1]);
+    if (b.type === 'forge' && (working || (job && job.quenching))) S.draw(ctx, 'fire_hearth_' + ((fr + i) % 4), x + a.fire[0], r.y + a.fire[1] - 2);
+    if (b.type === 'grindstone' && working) S.draw(ctx, 'wheel_spin_' + fr, x + a.wheel[0] - 15, r.y + a.wheel[1] - 15);
+    // smoke, steam, sparks
+    if (a.chimney && working && Math.random() < 0.25) particles.push({ x: x + a.chimney[0] - 3 + Math.random() * 6, y: r.y + 22, vx: (Math.random() - 0.5) * 3, vy: -6, life: 1.6, c: '#9a92a8' });
+    if (b.type === 'forge' && working && Math.random() < 0.3) for (let k = 0; k < 3; k++) particles.push({ x: x + a.anvil[0], y: r.y + a.anvil[1] - 5, vx: (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 14, life: 0.45, c: Math.random() < 0.5 ? '#ffd98e' : '#fff6d6', g: 30 });
+    const q = a.quench || a.anvil;
+    if (job && job.quenching && q && Math.random() < 0.7) particles.push({ x: x + q[0] - 3 + Math.random() * 6, y: r.y + 72, vx: (Math.random() - 0.5) * 3, vy: -7, life: 1.2, c: '#e8eef4' });
+    if (b.type === 'brewery' && working && Math.random() < 0.4) particles.push({ x: x + a.steam[0] + Math.random() * 6, y: r.y + a.steam[1], vx: (Math.random() - 0.5) * 2, vy: -5, life: 1.4, c: '#e8eef4' });
+    if (b.type === 'grindstone' && working && Math.random() < 0.5) particles.push({ x: x + a.wheel[0] + 13, y: r.y + a.wheel[1] - 2, vx: 10 + Math.random() * 14, vy: -6, life: 0.4, c: '#fff6d6', g: 30 });
+  }
+  const a = S.META.ROOMS[b.type] || {};
   if (b.type === 'tavern') S.draw(ctx, 'fire_place_' + (Math.floor(t * 6) % 4), r.x + a.fire[0], r.y + a.fire[1] + 4);
-  if (b.type === 'grindstone' && working) S.draw(ctx, 'wheel_spin_' + fr, r.x + a.wheel[0] - 15, r.y + a.wheel[1] - 15);
-  // smoke, steam, sparks
-  if (a.chimney && working && Math.random() < 0.25) particles.push({ x: r.x + a.chimney[0] - 3 + Math.random() * 6, y: r.y + 22, vx: (Math.random() - 0.5) * 3, vy: -6, life: 1.6, c: '#9a92a8' });
-  if (b.type === 'forge' && working && Math.random() < 0.3) for (let k = 0; k < 3; k++) particles.push({ x: r.x + a.anvil[0], y: r.y + a.anvil[1] - 5, vx: (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 14, life: 0.45, c: Math.random() < 0.5 ? '#ffd98e' : '#fff6d6', g: 30 });
-  if (b.job && b.job.quenching && Math.random() < 0.7) particles.push({ x: r.x + a.quench[0] - 3 + Math.random() * 6, y: r.y + 72, vx: (Math.random() - 0.5) * 3, vy: -7, life: 1.2, c: '#e8eef4' });
-  if (b.type === 'brewery' && working && Math.random() < 0.4) particles.push({ x: r.x + a.steam[0] + Math.random() * 6, y: r.y + a.steam[1], vx: (Math.random() - 0.5) * 2, vy: -5, life: 1.4, c: '#e8eef4' });
-  if (b.type === 'grindstone' && working && Math.random() < 0.5) particles.push({ x: r.x + a.wheel[0] + 13, y: r.y + a.wheel[1] - 2, vx: 10 + Math.random() * 14, vy: -6, life: 0.4, c: '#fff6d6', g: 30 });
   if (b.type === 'farm' && Math.random() < 0.05) particles.push({ x: r.x + 10 + Math.random() * (r.pw - 20), y: r.y + 80, vx: 0, vy: -3, life: 2, c: '#c6e3b8' });
   if (b.type === 'jeweler' && Math.random() < 0.06) particles.push({ x: r.x + 76 + Math.random() * 32, y: r.y + 32 + Math.random() * 50, vx: 0, vy: 0, life: 0.5, c: '#ffffff' });
+}
+
+/** Lights of a room: every machine's own, plus the extra lamps of its tier. */
+export function roomLights(r) {
+  const b = r.b, out = [];
+  const info = D().buildings[b.id] || {};
+  const continuous = byId.buildings[b.type].kind === 'continuous';
+  const workers = info.workers || (info.worker ? [info.worker] : []);
+  const heat = b.type === 'smelter' && G.heat ? G.heat(b.id) / 100 : 0;
+  const n = S.META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
+  for (let i = 0; i < n; i++) {
+    const m = S.machineAt(b, i), a = m.a || {};
+    const working = jobOf(b, i) || (continuous && workers[i] != null);
+    for (const [x, y, rr, col] of a.lights || []) {
+      const isFire = a.fire && Math.abs(x - a.fire[0] - a.fire[2] / 2) < 14 && Math.abs(y - a.fire[1]) < 14;
+      if (isFire && !working && b.type !== 'tavern') { out.push({ x: r.x + m.x + x, y: r.y + y, r: rr * 0.45, color: col, power: 0.4 }); continue; }
+      out.push({ x: r.x + m.x + x, y: r.y + y, r: rr * (1 + (isFire ? heat : 0) * 0.35), color: col, flicker: isFire ? 3 : 1, power: isFire ? 1.3 + heat : 0.8 });
+    }
+  }
+  const tier = (S.META.TIER_LIGHTS || {})[b.type] || {};
+  for (const [x, y, rr, col] of tier[S.roomTier(b)] || []) out.push({ x: r.x + x, y: r.y + y, r: rr, color: col, flicker: 1, power: 0.7 });
+  return out;
 }
 
 function drawParticles(ctx, dt) {
@@ -535,17 +573,7 @@ export const holdScreen = {
     if (!G_) return [];
     const out = [];
     const f = F();
-    for (const r of G_.rooms) {
-      const a = S.META.ROOMS[r.b.type] || {};
-      const info = D().buildings[r.b.id] || {};
-      const working = r.b.job || (byId.buildings[r.b.type].kind === 'continuous' && info.worker);
-      for (const [x, y, rr, col] of a.lights || []) {
-        const isFire = a.fire && Math.abs(x - a.fire[0] - a.fire[2] / 2) < 14 && Math.abs(y - a.fire[1]) < 14;
-        if (isFire && !working && r.b.type !== 'tavern') { out.push({ x: r.x + x, y: r.y + y, r: rr * 0.45, color: col, power: 0.4 }); continue; }
-        const heat = r.b.type === 'smelter' && G.heat ? G.heat(r.b.id) / 100 : 0;
-        out.push({ x: r.x + x, y: r.y + y, r: rr * (1 + heat * 0.35), color: col, flicker: isFire ? 3 : 1, power: isFire ? 1.3 + heat : 0.8 });
-      }
-    }
+    for (const r of G_.rooms) out.push(...roomLights(r));
     for (const [k, v] of G_.cells) {
       if (v.kind !== 'hall') continue;
       const [c, fl] = k.split(',').map(Number);
@@ -701,7 +729,7 @@ function buildOverlay(ctx, t, mouse) {
   const g = ghostFor(mouse);
   if (g) {
     const x = g.c * CELL, y = ftop(g.f), w = g.w * CELL, h = g.h * RH;
-    if (g.room) { ctx.globalAlpha = 0.55; S.draw(ctx, 'room_' + g.room.b.type, x, y); ctx.globalAlpha = 1; }
+    if (g.room) { ctx.globalAlpha = 0.55; ctx.drawImage(S.roomImage(g.room.b), x, y); ctx.globalAlpha = 1; }
     ctx.fillStyle = g.ok ? 'rgba(144,224,140,0.28)' : 'rgba(217,112,74,0.3)';
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = g.ok ? '#9ee08e' : '#d9704a';

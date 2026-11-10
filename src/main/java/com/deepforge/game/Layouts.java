@@ -33,6 +33,39 @@ public final class Layouts {
         ROOM_CELLS.put("barracks", 6);
     }
 
+    /** Extra cells each additional machine adds to the right of a workshop. */
+    public static final Map<String, Integer> MACHINE_CELLS = new LinkedHashMap<>();
+
+    static {
+        MACHINE_CELLS.put("smelter", 3);
+        MACHINE_CELLS.put("forge", 3);
+        MACHINE_CELLS.put("grindstone", 2);
+        MACHINE_CELLS.put("engraver", 2);
+        MACHINE_CELLS.put("jeweler", 2);
+        MACHINE_CELLS.put("farm", 2);
+        MACHINE_CELLS.put("brewery", 2);
+    }
+
+    /** Width of the room in cells: the base room plus one bay per extra machine. */
+    public static int width(Building b) {
+        return ROOM_CELLS.get(b.type) + (Rules.machines(b) - 1) * MACHINE_CELLS.getOrDefault(b.type, 0);
+    }
+
+    /** True if the cells right of the room are free (or hallway) for one more machine. */
+    public static boolean canGrow(Fortress f, Building b) {
+        int[] p = f.layout.rooms.get(b.id);
+        if (p == null) return false;
+        int w = width(b), extra = MACHINE_CELLS.getOrDefault(b.type, 0);
+        return fits(f, b.id, p[0], p[1], w + extra);
+    }
+
+    /** Make room for one more machine: hallway cells under the new bay become part of the room. */
+    static void grow(Fortress f, Building b) {
+        int[] p = f.layout.rooms.get(b.id);
+        int w = width(b), extra = MACHINE_CELLS.getOrDefault(b.type, 0);
+        for (int x = p[0] + w; x < p[0] + w + extra; x++) f.layout.halls.remove(key(x, p[1]));
+    }
+
     public static boolean hasRoom(Building b) {
         return b.level > 0 && ROOM_CELLS.containsKey(b.type);
     }
@@ -53,7 +86,7 @@ public final class Layouts {
         for (Building b : f.buildings) if (hasRoom(b) && !l.rooms.containsKey(b.id)) todo.add(b);
         todo.sort(Comparator.comparingInt((Building b) -> ORDER.indexOf(b.type)).thenComparing(b -> b.id));
         for (Building b : todo) {
-            int[] spot = freeSpot(f, ROOM_CELLS.get(b.type));
+            int[] spot = freeSpot(f, width(b));
             if (spot != null) l.rooms.put(b.id, spot);
         }
         return l;
@@ -76,7 +109,7 @@ public final class Layouts {
             Building b = Rules.building(f, e.getKey());
             if (b == null) continue;
             int[] p = e.getValue();
-            if (p[1] == fl && c >= p[0] && c < p[0] + ROOM_CELLS.get(b.type)) return "room:" + b.id;
+            if (p[1] == fl && c >= p[0] && c < p[0] + width(b)) return "room:" + b.id;
         }
         if (l.stairs.contains(key(c, fl)) || l.stairs.contains(key(c - 1, fl))
                 || l.stairs.contains(key(c, fl - 1)) || l.stairs.contains(key(c - 1, fl - 1))) return "stair";
@@ -97,7 +130,7 @@ public final class Layouts {
         ensure(f);
         Building b = Rules.building(f, id);
         Actions.check(b != null && hasRoom(b), "That room can't be moved.");
-        int w = ROOM_CELLS.get(b.type);
+        int w = width(b);
         Actions.check(fits(f, id, c, fl, w), "There is no room for it there.");
         for (int x = c; x < c + w; x++) f.layout.halls.remove(key(x, fl));
         f.layout.rooms.put(id, new int[]{c, fl});

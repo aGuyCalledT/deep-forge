@@ -4,7 +4,8 @@ import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast,
 import * as A from './audio.js';
 const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
-import { upgradeBtn, jobSheet } from './panels-base.js';
+import { upgradeBtn, jobSheet, costBtn } from './panels-base.js';
+import { jobOf } from './hold.js';
 import { api } from './api.js';
 
 const QUENCH_WAIT = 12;
@@ -49,7 +50,7 @@ export function renderWork() {
       const [st, label] = wsState(x);
       return h('button', { class: 'ws-tab' + (x.id === G.ws ? ' on' : ''), role: 'tab', 'aria-selected': String(x.id === G.ws), title: label,
         onclick: () => { G.ws = x.id; bus.render(); if (!window.matchMedia('(min-width: 900px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' }); } },
-        img(S.room(x.type), 'thumb'), h('span', { class: 'nm' }, buildingName(x)), h('i', { class: 'dot ' + st }));
+        img(S.room(x), 'thumb'), h('span', { class: 'nm' }, buildingName(x)), h('i', { class: 'dot ' + st }));
     })),
     b ? workCard(b) : h('p', { class: 'muted' }, 'No workshops yet. Build one in the Hold tab.'),
   ];
@@ -59,21 +60,22 @@ export function workCard(b) {
   const f = F(), t = byId.buildings[b.type], info = D().buildings[b.id] || {};
   const w = info.worker ? f.dwarves.find((x) => x.id === info.worker) : null;
   const [st, label] = wsState(b);
+  const multi = (info.maxMachines || 1) > 1 || (info.machines || 1) > 1;
   const out = h('div', { class: 'card ws-card' });
   out.append(
     h('div', { class: 'row between' }, h('h3', null, buildingName(b)), h('span', { class: 'muted small' }, 'Level ' + b.level + (info.speed ? ` · speed ×${info.speed.toFixed(2)}` : ''))),
     h('p', { class: 'small muted' }, t.note),
-    h('div', { class: 'row' }, w ? [img(S.portrait(w), 'icon'), h('span', { class: 'grow' }, w.first + ' ' + w.clan, h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`))]
+    multi ? machinesBlock(b) : h('div', { class: 'row' }, w ? [img(S.portrait(w), 'icon'), h('span', { class: 'grow' }, w.first + ' ' + w.clan, h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`))]
       : h('span', { class: 'grow bad-t' }, 'No worker - nothing happens here.'),
     h('button', { class: 'btn small', onclick: () => assignSheet(b) }, w ? 'Change' : 'Assign')),
-    w ? h('p', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, b.job && b.status ? b.status : label) : null);
+    w && !multi ? h('p', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, b.job && b.status ? b.status : label) : '');
 
   if (t.kind === 'continuous') {
     out.append(h('p', { class: 'small' }, b.type === 'farm' ? `About ${fmt(5 * (info.speed || 0))} mushrooms per hour.` : `About ${fmt(5 * (info.speed || 0))} ale per hour from half as many mushrooms.`),
       h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(b)));
     return out;
   }
-  if (b.job) out.append(jobBlock(b));
+  for (let i = 0; i < (info.machines || 1); i++) { const j = jobOf(b, i); if (j && (j.quenching || !multi)) out.append(jobBlock(b, i)); }
   if (b.type === 'smelter') out.append(bellows(b));
   out.append(h('h3', null, 'Orders'));
   if (!b.queue.length) out.append(h('p', { class: 'small muted' }, 'No orders. Add one and the worker keeps at it, even while you are away.'));
@@ -92,11 +94,43 @@ export function workCard(b) {
   return out;
 }
 
-function jobBlock(b) {
-  const j = b.job;
-  if (j.quenching) return quenchBlock(b);
+/** One row per machine: who works there and what it makes. Plus the button for another machine. */
+function machinesBlock(b) {
+  const f = F(), t = byId.buildings[b.type], info = D().buildings[b.id] || {};
+  const n = info.machines || 1, ids = info.workers || [];
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const w = ids[i] != null ? f.dwarves.find((x) => x.id === ids[i]) : null;
+    const j = jobOf(b, i);
+    const what = !w ? h('span', { class: 'small bad-t' }, 'Nobody here')
+      : j ? (j.quenching ? h('span', { class: 'small gold-t' }, 'Quench now!') : h('span', { class: 'small muted' }, (info.jobNames || [])[i] || 'Working'))
+        : h('span', { class: 'small muted' }, t.kind === 'continuous' ? 'Working' : 'Waiting for an order');
+    rows.push(h('div', { class: 'machine' + (w ? '' : ' empty') },
+      h('span', { class: 'machine-no' }, String(i + 1)),
+      w ? img(S.portrait(w), 'icon') : h('span', { class: 'machine-seat' }, ico('dwarf')),
+      h('div', { class: 'grow' },
+        h('div', null, w ? w.first + ' ' + w.clan : 'Free machine', w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
+        what,
+        j && !j.quenching ? h('div', { class: 'bar thin' }, h('i', { 'data-job': b.id, 'data-machine': i })) : null),
+      w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free')
+        : h('button', { class: 'btn small', onclick: () => assignSheet(b) }, 'Assign')));
+  }
+  const waiting = (info.waiting || []).map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
+  const more = n < (info.maxMachines || 1)
+    ? costBtn('Add a machine', info.machineCost, { type: 'addMachine', building: b.id }, info.canGrow === false ? 'No space to the right. Move the room first.' : null)
+    : n < 5 ? h('p', { class: 'small muted' }, `Upgrade the ${buildingName(b).toLowerCase()} to fit another machine.`) : null;
+  return h('div', { class: 'machines' },
+    h('div', { class: 'row between' }, h('h3', null, 'Machines'), h('span', { class: 'small muted' }, `${ids.length} of ${n} staffed`)),
+    rows,
+    waiting.length ? h('p', { class: 'small warn-t' }, waiting.map((x) => x.first).join(', ') + ' waiting for a free machine. Add one or give them other work.') : null,
+    more);
+}
+
+function jobBlock(b, i = 0) {
+  const j = jobOf(b, i);
+  if (j.quenching) return quenchBlock(b, i);
   const m = j.recipe === 'smelt' ? byId.metals[byId.ores[j.mat].metal] : byId.metals[j.mat];
-  const p = h('div', { class: 'bar' }, h('i', { 'data-job': b.id }));
+  const p = h('div', { class: 'bar' }, h('i', { 'data-job': b.id, 'data-machine': i }));
   return h('div', null, h('div', { class: 'small' }, D().buildings[b.id].jobName || ''), p,
     m && b.type === 'smelter' ? h('p', { class: 'tip' }, m.meltNote) : null);
 }
@@ -138,21 +172,21 @@ export function currentHeat(id) {
 
 // ------------------------------------------------------------------ quench
 
-function quenchBlock(b) {
-  const j = b.job, m = byId.metals[j.mat];
+function quenchBlock(b, i = 0) {
+  const j = jobOf(b, i), m = byId.metals[j.mat];
   const box = h('div', { class: 'quench' });
   const glow = h('div', { class: 'glow' }), mark = h('div', { class: 'mark' }), nowEl = h('div', { class: 'now' });
   const W = QUENCH_WAIT;
   mark.style.left = (m.qStart / W * 100) + '%';
   mark.style.width = (m.qWidth / W * 100) + '%';
   box.append(glow, mark, nowEl);
-  box.dataset.quench = b.id;
+  box.dataset.quench = b.id; box.dataset.machine = i;
   return h('div', null,
-    h('div', { class: 'row between' }, h('b', null, 'Ready to quench: ', byId.metals[j.mat].name.toLowerCase(), ' ', byId.items[j.itype].name.toLowerCase()),
+    h('div', { class: 'row between' }, h('b', null, (b.machines || 1) > 1 ? `Machine ${i + 1}: ready to quench ` : 'Ready to quench: ', byId.metals[j.mat].name.toLowerCase(), ' ', byId.items[j.itype].name.toLowerCase()),
       h('span', { class: 'small muted' }, 'or the smith does it')),
     box,
     h('p', { class: 'tip' }, m.quenchNote),
-    h('button', { class: 'btn big primary', onclick: () => bus.act({ type: 'quench', building: b.id }) }, 'Quench!'));
+    h('button', { class: 'btn big primary', onclick: () => bus.act({ type: 'quench', building: b.id, machine: i }) }, 'Quench!'));
 }
 
 /** Called every frame by main.js: moves progress bars, heat and quench glow smoothly. */
@@ -161,17 +195,19 @@ export function animateWork() {
   const t = now();
   document.querySelectorAll('[data-job]').forEach((el) => {
     const b = F().buildings.find((x) => x.id === el.dataset.job);
-    if (!b || !b.job) return;
+    const i = +(el.dataset.machine || 0), j = b && jobOf(b, i);
+    if (!j) return;
     const info = D().buildings[b.id] || {};
-    const speed = (info.speed || 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
+    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
     const since = Math.max(0, t - G.state.now);
-    el.style.width = Math.min(100, (b.job.progress + speed * since) / b.job.time * 100) + '%';
+    el.style.width = Math.min(100, (j.progress + speed * since) / j.time * 100) + '%';
   });
   document.querySelectorAll('[data-heat]').forEach((el) => { el.style.width = currentHeat(el.dataset.heat) + '%'; });
   document.querySelectorAll('[data-quench]').forEach((el) => {
     const b = F().buildings.find((x) => x.id === el.dataset.quench);
-    if (!b || !b.job || !b.job.quenching) return;
-    const since = Math.max(0, Math.min(QUENCH_WAIT, t - b.job.quenchStart));
+    const j = b && jobOf(b, +(el.dataset.machine || 0));
+    if (!j || !j.quenching) return;
+    const since = Math.max(0, Math.min(QUENCH_WAIT, t - j.quenchStart));
     const k = since / QUENCH_WAIT;
     // glowing metal cools from white-yellow over orange and red to dark
     const col = k < 0.25 ? S.mix('#fff6c0', '#ffb040', k / 0.25) : k < 0.6 ? S.mix('#ffb040', '#d0401a', (k - 0.25) / 0.35) : S.mix('#d0401a', '#3a1a14', (k - 0.6) / 0.4);
@@ -187,8 +223,9 @@ function assignSheet(b) {
     const f = F(), skill = byId.buildings[b.type].skill;
     const free = f.dwarves.filter((x) => !x.busy).sort((a, c) => (D().dwarves[c.id].skills[skill] || 0) - (D().dwarves[a.id].skills[skill] || 0));
     return h('div', null, h('h2', null, 'Who works at the ' + buildingName(b).toLowerCase() + '?'),
-      h('p', { class: 'small muted' }, `Sorted by ${skill} skill. The current worker becomes idle.`),
-      free.map((x) => h('button', { class: 'pick', style: { width: '100%' }, onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, job: 'worker', building: b.id }); closeSheet(); } },
+      h('p', { class: 'small muted' }, `Sorted by ${skill} skill. ` + ((b.machines || 1) > 1
+        ? `Each of the ${b.machines} machines takes one dwarf.` : 'The current worker becomes idle.')),
+      free.filter((x) => !(x.job === 'worker' && x.building === b.id)).map((x) => h('button', { class: 'pick', style: { width: '100%' }, onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, job: 'worker', building: b.id }); closeSheet(); } },
         img(S.portrait(x)), h('span', { class: 'grow', style: { textAlign: 'left' } }, x.first + ' ' + x.clan, h('br'), h('span', { class: 'small muted' }, (x.job === 'idle' ? 'Idle' : 'now: ' + x.job) + ` · ${skill} ${D().dwarves[x.id].skills[skill]}`)))));
   });
 }

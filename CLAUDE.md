@@ -63,8 +63,10 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   optional Bauplan). Pixel-Art in `sprites.js` → `item()`. Wenn ausrüstbar: Wirkung in `Rules.power`/`toolBonus`.
 - **Neues Gebäude:** `building(...)` in `Content.java`. Werkstatt (`queue`): Rezepte in `Recipes.java`
   (`BY_BUILDING`, `validate`, `inputs`, `start`) und Bestell-Sheet in `panels-work.js`. Passiv: Wirkung in
-  `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raum in `art-src/rooms.px.js`, Anker in `art-src/shared.js` (`ROOMS`),
+  `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raum in `art-src/rooms.px.js` (`room(...)`, drei Stufen), Anker in `art-src/shared.js` (`ROOMS`),
   Breite in `Layouts.ROOM_CELLS`, Vorräte für den Tab in `contextResources()`, Pfeil-Logik in `hold.js` (`hasInputs`).
+  Werkstatt mit Maschinen: Breite einer Erweiterung in `Layouts.MACHINE_CELLS`, Grafik mit `bay(...)` in
+  `rooms.px.js`, Anker in `BAYS` (`shared.js`).
 - **Neue Eigenschaft:** `trait(...)` in `Content.java`, Wirkung in `Rules.workSpeed`, `Rules.power`,
   `Sim.happinessTarget` oder `Expeditions`.
 - **Neues Expeditions-Ereignis:** in `Expeditions.choice()` (Text + Optionen) und `applyChoice()` (Wirkung).

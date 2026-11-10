@@ -30,9 +30,24 @@ Neue Grafik, die umgefärbt werden soll, nutzt genau diese Palettenschlüssel.
 
 ## Eigene Bilder
 
-Eine PNG-Datei im Ordner `sprites/` mit dem Namen eines Sprites ersetzt es, z. B. `sprites/room_forge.png`,
+Eine PNG-Datei im Ordner `sprites/` mit dem Namen eines Sprites ersetzt es, z. B. `sprites/room_forge.png` (ersetzt den Raum in allen Stufen, ohne Erweiterungen),
 `sprites/ore_galena.png`, `sprites/ui_war.png`. Ein `sprites/dwarf.png` ersetzt alle Zwerge (Füße unten in der Mitte).
 Alle Namen stehen in `static/art/atlas.json`. Neu laden reicht.
+
+## Räume: Stufen, Varianten, Maschinen
+
+Jeder Raum gibt es dreimal: `room_<typ>_<stufe>_<variante>`. Stufe 0 „ausgehöhlt“ (Fels, Fackeln, Fässer als Tisch) ab
+Gebäudestufe 1, Stufe 1 „eingerichtet“ (Bretter, Ziegel, Stein, Laternen) ab Stufe 2, Stufe 2 „prächtig“
+(Täfelung, Goldfries, Fliesen, Kronleuchter) ab Stufe 3 (`ROOM_TIERS` in `shared.js`). Je zwei Varianten pro Stufe,
+das Spiel wählt sie fest nach der Gebäude-ID, damit zwei Schmieden nicht gleich aussehen.
+
+Werkstätten bekommen pro zusätzlicher Maschine eine Erweiterung `bay_<typ>_<stufe>_<variante>`, die rechts angesetzt
+wird. Wand-, Boden- und Deckenmuster wiederholen sich alle 24 px, damit die Naht nicht auffällt.
+
+Die Quellen sind **nicht** ausgeschnitten: `sprites.js` (`roomImage`) setzt Raum und Erweiterungen zusammen, legt
+eine Spinnwebe (`deco_web_*`) in eine Ecke und schneidet dann Gewölbe und Ecken aus. Kleine Fehler (andersfarbige
+Steine und Ziegel, Risse, Wasserflecken, eingesunkene Bretter) entstehen in `rooms.px.js` beim Zeichnen der Wand,
+damit Möbel sie verdecken.
 
 ## Größen
 
@@ -40,6 +55,7 @@ Alle Namen stehen in `static/art/atlas.json`. Neu laden reicht.
 |---|---|---|
 | Raster-Zelle | 24 × 96 | `CELL` in `shared.js` und `hold.js`; der Grundriss in `Layouts.java` zählt Zellen |
 | Raum | Zellen × 24 breit, 96 hoch | Füße der Zwerge auf y = 90; Tisch ca. 13 px hoch, Sitz 7 px, Etagenbett 51 px |
+| Maschinen-Erweiterung | `BAYS[type].w` × 24 breit, 96 hoch | beginnt mit einem Pfeiler (x 0–5), eigene Anker in `BAYS` |
 | Zwerg | Leinwand 44 × 52, Figur ca. 33 px hoch | Anker unten Mitte (x 22, y 50); liegend 34 × 20 |
 | Gang | 24 × 96 | runde Enden `hall_cap_l/r` 8 × 96 |
 | Treppe | 48 × 192 | zwei Spalten, zwei Stockwerke, nach rechts unten; Zwerge laufen die Stufen entlang |

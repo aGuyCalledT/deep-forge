@@ -43,6 +43,13 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
   in Zwergengröße, Treppen werden die Stufen entlang gegangen, Raster 48 statt 40 Spalten.
 - [ ] Kleidung selbst herstellen (Schneiderei/Weberei) und mit Karawanen handeln.
 - [ ] NPCs an der Oberfläche (Händlerin am Stand, Reisende) mit `Figure.person`.
+- [x] **Maschinen:** jede Werkstatt lässt sich um Maschinen erweitern (bis Stufe + 1, höchstens 5), jede mit eigenem
+  Zwerg und eigener Bestellung; der Raum wird breiter.
+- [x] **Räume sehen nach Ausbau anders aus:** drei Stufen (ausgehöhlt, eingerichtet, prächtig), je zwei Varianten,
+  Spinnweben, Risse, andersfarbige Steine.
+- [ ] Ab Gebäudestufe 4 ändert sich das Aussehen nicht mehr; eine vierte Stufe wäre möglich.
+- [ ] Maschinen einzeln einem Zwerg zuweisen (jetzt: Reihenfolge nach Zwergen-ID) und einzeln abbauen.
+- [ ] Werkstatt-Bild am Handy: Räume mit 4–5 Maschinen werden kleiner als ×2 gezeigt (krumme Pixel); besser seitlich wischen.
 - [ ] Die Steine im Fels wiederholen sich alle 32 px sichtbar; eine zweite, passende Kachel würde helfen.
 
 - [ ] Gänge per Ziehen am Stück graben (jetzt: Klick pro Zelle).

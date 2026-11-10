@@ -269,7 +269,7 @@ function render() {
 
 function onPick(q) {
   if (q.kind === 'bellows') return pump(q.id);
-  if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id });
+  if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id, machine: q.machine || 0 });
   if (q.kind === 'room') {
     const b = F().buildings.find((x) => x.id === q.id);
     if (b) { A.sfx('open'); openRoomSheet(b); }

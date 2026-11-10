@@ -10,7 +10,7 @@ export function openRoomSheet(b) {
   openSheet(() => {
     const cur = F().buildings.find((x) => x.id === b.id) || b;
     const t = byId.buildings[cur.type];
-    const pic = img(S.room(cur.type), 'room-pic');
+    const pic = img(S.room(cur), 'room-pic');
     if (t.kind !== 'passive') return h('div', null, pic, workCard(cur),
       h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('work'); } }, 'Open the workshop screen'));
     const f = F();

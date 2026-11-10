@@ -306,7 +306,71 @@ export function wearIcon(key) {
 export function monster(id, frame = 0) { return sprite(`mon_${id}_${frame % 2}`); }
 export function wagon(frame = 0) { return sprite(`wagon_${frame % 2}`); }
 export function torch(frame) { return sprite(`torch_${((frame % 3) + 3) % 3}`); }
-export function room(type) { return sprite('room_' + type); }
+
+// ------------------------------------------------------------------ rooms
+
+
+/** Look tier of a room: 0 dug out, 1 settled, 2 grand (ROOM_TIERS gives the level each one starts at). */
+export function roomTier(b) {
+  const t = META.ROOM_TIERS || [1, 2, 3], lv = b.level || 1;
+  let k = 0; for (let i = 0; i < t.length; i++) if (lv >= t[i]) k = i;
+  return k;
+}
+export function roomVariant(b, i = 0) { return hash((b.id || b.type) + ':' + i) % (META.ROOM_VARIANTS || 1); }
+
+/** Width in pixels of a room with all its machines. */
+export function roomWidth(b) {
+  const R = META.ROOMS[b.type], bay = META.BAYS[b.type];
+  return (R.w + (bay ? (Math.max(1, b.machines || 1) - 1) * bay.w : 0)) * META.CELL;
+}
+
+/** Pixel x of machine i inside the room, plus that machine's anchors (BAYS for i >= 1, ROOMS for i = 0). */
+export function machineAt(b, i) {
+  if (i === 0) return { x: 0, a: META.ROOMS[b.type] };
+  return { x: (META.ROOMS[b.type].w + (i - 1) * META.BAYS[b.type].w) * META.CELL, a: META.BAYS[b.type] };
+}
+
+/** Rooms are carved caves, not boxes: a round vault on top, soft rounded lower corners, a dark rim. */
+function carve(c) {
+  const g = c.getContext('2d'), w = c.width, H = c.height, R = 24, r2 = 6;
+  const id = g.getImageData(0, 0, w, H), d = id.data;
+  const set = (x, y, rim) => { const k = (y * w + x) * 4; if (rim) { d[k] = 0x1f; d[k + 1] = 0x1c; d[k + 2] = 0x28; d[k + 3] = 255; } else d[k + 3] = 0; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < w; x++) {
+    let edge = false;
+    if (y < R && (x < R || x >= w - R)) {
+      const cx = x < R ? R : w - R - 1, dd = Math.hypot(x - cx, y - R);
+      if (dd > R) { set(x, y, false); continue; }
+      edge = dd > R - 1.6;
+    }
+    if (y >= H - r2 && (x < r2 || x >= w - r2)) {
+      const cx = x < r2 ? r2 : w - r2 - 1, dd = Math.hypot(x - cx, y - (H - r2 - 1));
+      if (dd > r2) { set(x, y, false); continue; }
+    }
+    if (edge || (y >= R && (x === 0 || x === w - 1)) || (y === 0 && x >= R && x < w - R)) set(x, y, true);
+  }
+  g.putImageData(id, 0, 0);
+}
+
+/** The finished picture of a room: base room of its tier and variant, one bay per extra machine, a cobweb or two, carved. */
+export function roomImage(b) {
+  if (overrides.has('room_' + b.type)) return sprite('room_' + b.type);
+  const T = roomTier(b), n = META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
+  const key = 'r:' + b.type + ':' + T + ':' + n + ':' + (b.id || '');
+  if (cache.has(key)) return cache.get(key);
+  const c = mk(roomWidth(b), META.ROOM_H), g = c.getContext('2d');
+  const base = 'room_' + b.type + '_' + T + '_' + roomVariant(b);
+  draw(g, frames[base] ? base : 'room_' + b.type + '_1_0', 0, 0);
+  for (let i = 1; i < n; i++) draw(g, 'bay_' + b.type + '_' + T + '_' + roomVariant(b, i), machineAt(b, i).x, 0);
+  // a cobweb that only this room has, in a corner the base art leaves free
+  const h = hash(b.id || b.type);
+  if (n > 1 || h % 3 === 0) draw(g, 'deco_web_' + (h % 3), c.width - 30 - (h % 5) * 2, 8 + (h % 2) * 2, true);
+  carve(c);
+  cache.set(key, c);
+  return c;
+}
+
+/** Room picture for cards and sheets: a building, or just a type (shown settled, one machine). */
+export function room(b) { return roomImage(typeof b === 'string' ? { type: b, level: 2, id: b } : b); }
 
 /** A soft pixel shadow on the ground under feet at (x, y): two rows, darker in the middle. */
 export function groundShadow(ctx, x, y, half = 6) {

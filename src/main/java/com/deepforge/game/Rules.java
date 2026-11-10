@@ -60,10 +60,37 @@ public final class Rules {
     }
 
     public static Dwarf worker(Fortress f, Building b) {
-        for (Dwarf d : f.dwarves)
-            if (d.job.equals("worker") && b.id.equals(d.building) && d.busy == null) return d;
-        return null;
+        List<Dwarf> ws = workers(f, b);
+        return ws.isEmpty() ? null : ws.get(0);
     }
+
+    /** Dwarves at their machines, machine 1 first. Workers beyond the number of machines wait. */
+    public static List<Dwarf> workers(Fortress f, Building b) {
+        List<Dwarf> out = new ArrayList<>();
+        for (Dwarf d : assigned(f, b)) if (d.busy == null && out.size() < machines(b)) out.add(d);
+        return out;
+    }
+
+    /** Everyone assigned to the building, in a stable order (by id). */
+    public static List<Dwarf> assigned(Fortress f, Building b) {
+        List<Dwarf> out = new ArrayList<>();
+        for (Dwarf d : f.dwarves) if (d.job.equals("worker") && b.id.equals(d.building)) out.add(d);
+        out.sort(Comparator.comparingInt((Dwarf d) -> d.id));
+        return out;
+    }
+
+    public static int machines(Building b) {
+        return Math.max(1, b.machines);
+    }
+
+    /** Workshops (queue and continuous kinds) can hold more machines as they grow: one more per level, at most 5. */
+    public static int maxMachines(Building b) {
+        String kind = Content.BUILDINGS.get(b.type).kind();
+        if (kind.equals("passive")) return 1;
+        return Math.max(1, Math.min(MAX_MACHINES, b.level + 1));
+    }
+
+    public static final int MAX_MACHINES = 5;
 
     public static String fullName(Dwarf d) {
         return d.first + " " + d.clan;
@@ -276,6 +303,17 @@ public final class Rules {
         goods.put("stone", (int) Math.round(t.upStone() * Math.pow(1.3, b.level - 1)));
         goods.put(Content.upgradeBar(target), 4 + 3 * b.level);
         return new Cost(Math.round(t.upCoins() * g), goods);
+    }
+
+    /** Cost of the next machine: half a new workshop per machine already standing, and stone for the floor. */
+    public static Cost machineCost(Building b) {
+        Content.BuildingType t = Content.BUILDINGS.get(b.type);
+        int n = machines(b);
+        Map<String, Integer> goods = new LinkedHashMap<>();
+        goods.put("stone", 25 * n);
+        for (Map.Entry<String, Integer> e : t.buildGoods().entrySet())
+            if (!e.getKey().equals("stone")) goods.put(e.getKey(), e.getValue() * n);
+        return new Cost(Math.round(t.buildCoins() * 0.5 * n), goods);
     }
 
     public static Cost buildCost(Fortress f, String type) {

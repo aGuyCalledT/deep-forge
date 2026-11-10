@@ -118,6 +118,8 @@ public final class State {
         public double heatT;
         public double acc;        // continuous production accumulator
         public String status;     // human readable why idle
+        public int machines = 1;  // workstations in the room; each one needs its own worker
+        public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
     }
 
     public static class QueueEntry {
