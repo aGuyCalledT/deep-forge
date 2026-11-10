@@ -4,8 +4,9 @@
     <module name="deep-forge" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
     <envs>
-      <!-- Serve the frontend straight from the sources: edit JS/CSS, reload the browser, done. -->
-      <env name="SPRING_WEB_RESOURCES_STATIC_LOCATIONS" value="file:src/main/resources/static/" />
+      <!-- Serve the frontend straight from the sources (edit JS/CSS, reload the browser).
+           Falls back to the built-in copy if that folder cannot be read. -->
+      <env name="SPRING_WEB_RESOURCES_STATIC_LOCATIONS" value="file:$PROJECT_DIR$/src/main/resources/static/,classpath:/static/" />
       <!-- A player called "admin" may reset passwords (More tab). -->
       <env name="ADMINS" value="admin" />
     </envs>
