@@ -380,6 +380,13 @@ export function icon(name) {
       trend_down: ['rrrrrrr', '.rrrrr.', '..rrr..', '...r...'],
       plus: ['...cc...', '...cc...', 'cccccccc', 'cccccccc', '...cc...', '...cc...'],
       minus: ['cccccccc', 'cccccccc'],
+      note: ['....cccc', '....c..c', '....c..c', '....c..c', '.ccc.ccc', 'cccccccc', '.cc..cc.'],
+      speaker: ['...c.....', '..cc..c..', 'cccc...c.', 'cccc.c.c.', 'cccc...c.', '..cc..c..', '...c.....'],
+      speaker_off: ['...c.....', '..cc.r..r', 'cccc..rr.', 'cccc..rr.', 'cccc.r..r', '..cc.....', '...c.....'],
+      play: ['cc....', 'cccc..', 'cccccc', 'cccc..', 'cc....'],
+      pause: ['cc.cc', 'cc.cc', 'cc.cc', 'cc.cc', 'cc.cc'],
+      next: ['c...c.c', 'cc..c.c', 'cccc..c', 'cc..c.c', 'c...c.c'],
+      prev: ['c.c...c', 'c.c..cc', 'c..cccc', 'c.c..cc', 'c.c...c'],
       lock: ['..ddd..', '.d...d.', '.d...d.', 'aaaaaaa', 'aaabaaa', 'aaabaaa', 'aaaaaaa'],
       dwarf: ['...dddd...', '..dddddd..', '..cccccc..', '..c.cc.c..', '.eeeeeeee.', '.eeeeeeee.', '..eeeeee..', '...eeee...'],
     }[name] || ['aa', 'aa'];

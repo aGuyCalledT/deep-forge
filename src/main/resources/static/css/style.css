@@ -276,3 +276,18 @@ td.num, th.num { text-align: right; }
   .panel-stores .store { font-size: 12px; padding: 2px 5px; }
   .panel-stores .stores-title { margin: 4px 0 3px; }
 }
+
+/* ---------- music and sound */
+.top { position: sticky; }
+.audio-btn {
+  position: absolute; top: 6px; right: 8px; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 32px; padding: 3px 8px; background: #2e2534; border: 2px solid var(--line); color: var(--muted);
+  box-shadow: 0 3px 0 var(--line); cursor: pointer; font-size: 12px; max-width: 46vw;
+}
+.audio-btn .audio-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 899px) { .audio-btn .audio-title { display: none; } .hold-name { padding-right: 48px; } }
+@media (min-width: 900px) { .audio-btn { position: static; margin-left: auto; max-width: 260px; } }
+.now-playing .np-title { font-family: "Silkscreen", monospace; color: var(--gold); font-size: 15px; margin-top: 2px; }
+.range { -webkit-appearance: none; appearance: none; height: 12px; padding: 0; min-height: 0; background: #120e14; border: 2px solid var(--line); }
+.range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 22px; background: var(--gold); border: 2px solid var(--line); cursor: pointer; }
+.range::-moz-range-thumb { width: 16px; height: 20px; background: var(--gold); border: 2px solid var(--line); border-radius: 0; cursor: pointer; }

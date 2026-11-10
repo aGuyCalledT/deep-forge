@@ -3,6 +3,7 @@ import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, ful
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico } from './ui.js';
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
+import { openAudioSheet } from './panels-audio.js';
 
 // ================================================================== fortress
 
@@ -266,6 +267,7 @@ export function renderMore() {
   out.push(...section('Settings', h('div', { class: 'card' },
     h('label', null, 'Name of your hold', name),
     h('div', { class: 'row' }, h('button', { class: 'btn small', onclick: () => bus.act({ type: 'rename', name: name.value }) }, 'Rename'),
+      h('button', { class: 'btn small', onclick: openAudioSheet }, ico('note'), 'Music and sound'),
       h('button', { class: 'btn small danger', onclick: async () => { try { await api.post('/auth/logout'); } catch { /* ignore */ } setToken(null); location.reload(); } }, 'Log out')),
     h('p', { class: 'small muted' }, `Logged in as ${G.me ? G.me.name : ''}.`))));
 

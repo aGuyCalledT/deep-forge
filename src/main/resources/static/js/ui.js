@@ -1,5 +1,6 @@
 // DOM helpers, the bottom sheet, toasts and a tiny event bus.
 import * as S from './sprites.js';
+import * as A from './audio.js';
 import { F, G, goodName, fmt, stock, isItem, parseItem, byId, contextResources } from './data.js';
 
 export const bus = {
@@ -58,6 +59,7 @@ let sheetRender = null;
 
 export function openSheet(render) {
   sheetRender = render;
+  if (sheetEl().hidden) A.sfx('open');
   const c = document.getElementById('sheet-content');
   c.replaceChildren(render());
   sheetEl().hidden = false;
@@ -75,6 +77,7 @@ export function refreshSheet() {
 }
 
 export function closeSheet() {
+  if (!sheetEl().hidden) A.sfx('close');
   sheetEl().hidden = true;
   sheetRender = null;
 }
