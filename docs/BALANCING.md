@@ -79,5 +79,8 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
   Wachstum: Lager, Lift, Kaserne, Mauern, Tresor, Handelsposten 1,7 · Expeditionshalle 1,75 · Taverne 1,65 · Rest 1,55–1,6.
 - Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener Werkstatt dieser Art.
 - Schichten: Grey Veins 800 Münzen, Silver Halls 4 000, Golden Deep 15 000 + Erkundung, Crystal Abyss 50 000 + Erkundung.
+- Bauen in der Festung (`Rules.DIG_COST` usw.): Gang 10 Münzen je Zelle, Treppe 40 Münzen + 20 Stein, Tür 15 Münzen
+  + 5 Stein, Raum versetzen 30 Münzen + 10 Stein. Zuschütten ist frei. Zieht ein Raum beim Ausbau um, weil er wächst,
+  kostet das nichts extra.
 - Festungsstufe: `150 × 1,5^(Stufe−1)` xp. Xp aus Verkäufen (1 pro 10 Münzen), Schmelzen, Schmieden, Expeditionen,
   Kämpfen, Ausbau.

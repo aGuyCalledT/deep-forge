@@ -165,12 +165,20 @@ public final class Layouts {
         return true;
     }
 
+    /** The player moves a room (costs MOVE_COST). */
     public static void moveRoom(Fortress f, String id, int c, int fl) {
+        place(f, id, c, fl, true);
+    }
+
+    /** Put a room somewhere; an upgrade that needs more space moves the room for free. */
+    static void place(Fortress f, String id, int c, int fl, boolean charge) {
         ensure(f);
         Building b = Rules.building(f, id);
         Actions.check(b != null && hasRoom(b), "That room can't be moved.");
         int w = width(b);
         Actions.check(fits(f, id, c, fl, w), "There is no room for it there.");
+        int[] old = f.layout.rooms.get(id);
+        if (charge && old != null && (old[0] != c || old[1] != fl)) pay(f, Rules.MOVE_COST, "move a room");
         for (int x = c; x < c + w; x++) { f.layout.halls.remove(key(x, fl)); f.layout.doors.remove(key(x, fl)); }
         f.layout.rooms.put(id, new int[]{c, fl});
     }
@@ -179,7 +187,46 @@ public final class Layouts {
         ensure(f);
         Actions.check(c >= SHAFT && c < COLS && fl >= 0 && fl < FLOORS, "You can't dig there.");
         Actions.check(at(f, c, fl, null) == null, "Something is already there.");
+        pay(f, Rules.DIG_COST, "dig a hallway");
         f.layout.halls.add(key(c, fl));
+    }
+
+    /** Dig a stroke of cells: skips cells that are taken, stops when the coins run out. Returns how many were dug. */
+    public static int digMany(Fortress f, List<int[]> cells) {
+        ensure(f);
+        Actions.check(cells.size() <= COLS * FLOORS, "That is too much at once.");
+        int n = 0;
+        for (int[] p : cells) {
+            int c = p[0], fl = p[1];
+            if (c < SHAFT || c >= COLS || fl < 0 || fl >= FLOORS || at(f, c, fl, null) != null) continue;
+            if (!Rules.canPay(f, Rules.DIG_COST)) break;
+            Rules.pay(f, Rules.DIG_COST);
+            f.layout.halls.add(key(c, fl));
+            n++;
+        }
+        Actions.check(n > 0, Rules.canPay(f, Rules.DIG_COST) ? "There is nothing to dig there." : "Digging costs " + (int) Rules.DIG_COST.coins() + " coins per cell. Sell some goods first.");
+        return n;
+    }
+
+    /** Fill a stroke of hallway cells back in (stairs are left alone). */
+    public static int fillMany(Fortress f, List<int[]> cells) {
+        ensure(f);
+        int n = 0;
+        for (int[] p : cells) if (f.layout.halls.remove(key(p[0], p[1]))) { f.layout.doors.remove(key(p[0], p[1])); n++; }
+        Actions.check(n > 0, "Only hallways can be filled in that way.");
+        return n;
+    }
+
+    private static void pay(Fortress f, Rules.Cost c, String what) {
+        Actions.check(Rules.canPay(f, c), "Not enough to " + what + ": it costs " + describe(c) + ".");
+        Rules.pay(f, c);
+    }
+
+    static String describe(Rules.Cost c) {
+        List<String> parts = new ArrayList<>();
+        if (c.coins() > 0) parts.add((int) c.coins() + " coins");
+        c.goods().forEach((k, v) -> parts.add(v + " " + k));
+        return String.join(" and ", parts);
     }
 
     public static void stairs(Fortress f, int c, int fl) {
@@ -190,6 +237,7 @@ public final class Layouts {
                 String o = at(f, x, y, null);
                 Actions.check(o == null || o.equals("hall"), "Something is in the way of the stairs.");
             }
+        pay(f, Rules.STAIRS_COST, "build stairs");
         for (int x = c; x < c + 2; x++) for (int y = fl; y < fl + 2; y++) { f.layout.halls.remove(key(x, y)); f.layout.doors.remove(key(x, y)); }
         f.layout.stairs.add(key(c, fl));
     }
@@ -210,6 +258,8 @@ public final class Layouts {
         ensure(f);
         String k = key(c, fl);
         Actions.check(f.layout.halls.contains(k), "Doors go into hallways. Dig one first.");
-        if (!f.layout.doors.remove(k)) f.layout.doors.add(k);
+        if (f.layout.doors.remove(k)) return;
+        pay(f, Rules.DOOR_COST, "put in a door");
+        f.layout.doors.add(k);
     }
 }

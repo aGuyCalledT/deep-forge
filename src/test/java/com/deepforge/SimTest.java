@@ -257,6 +257,30 @@ class SimTest {
     }
 
     @Test
+    void buildingInTheHoldCosts() {
+        Fortress f = fresh(44);
+        Market m = Market.inMemory(44, T0);
+        f.coins = 1000;
+        f.stock.put("stone", 100);
+        act(f, m, T0, "type", "dig", "col", 10, "floor", 6);
+        assertEquals(1000 - Rules.DIG_COST.coins(), f.coins, 1e-9);
+        act(f, m, T0, "type", "stairs", "col", 12, "floor", 6);
+        assertEquals(100 - 20, f.stock.get("stone"));
+        // a dragged stroke: taken cells are skipped, the rest is dug while coins last
+        f.coins = Rules.DIG_COST.coins() * 3;
+        act(f, m, T0, "type", "digMany", "cells", List.of(List.of(10, 6), List.of(20, 7), List.of(21, 7), List.of(22, 7), List.of(23, 7)));
+        assertTrue(f.layout.halls.containsAll(List.of("20,7", "21,7", "22,7")));
+        assertFalse(f.layout.halls.contains("23,7"));
+        assertEquals(0, f.coins, 1e-9);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 30, "floor", 7));
+        act(f, m, T0, "type", "fillMany", "cells", List.of(List.of(20, 7), List.of(21, 7)));
+        assertFalse(f.layout.halls.contains("20,7"));
+        // moving a room costs, an upgrade that has to move it does not
+        f.coins = 0;
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 30, "floor", 5));
+    }
+
+    @Test
     void newWorkshopsGetAPlace() {
         Fortress f = fresh(43);
         Market m = Market.inMemory(43, T0);

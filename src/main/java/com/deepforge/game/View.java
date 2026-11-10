@@ -110,6 +110,7 @@ public final class View {
         for (Content.BuildingType t : Content.BUILDINGS.values())
             if (t.multi()) build.put(t.id(), buildCost(f, t.id()));
         d.put("buildCosts", build);
+        d.put("layoutCosts", Map.of("dig", DIG_COST, "stairs", STAIRS_COST, "door", DOOR_COST, "move", MOVE_COST));
 
         // provisions per hour
         double eat = 0, drink = 0;

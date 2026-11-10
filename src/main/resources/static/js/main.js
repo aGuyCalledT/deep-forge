@@ -1,7 +1,7 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
-import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn } from './ui.js';
+import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips } from './ui.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
 import { holdScreen, roomCenter, roomAt, roomRect } from './hold.js';
@@ -324,9 +324,11 @@ function onPick(q, at) {
 
 // ------------------------------------------------------------------ toolbar over the hold
 
-const TOOLS = [['move', 'hand', 'Move rooms', 'Click a room, then click where it should go.'], ['dig', 'dig', 'Dig hallway', 'Click rock next to a room or hallway to dig a tunnel.'],
-  ['door', 'door', 'Door', 'Click a hallway to put a door in its back wall, or take one out. Dwarves use doors to reach the floors above and below.'],
-  ['stairs', 'stairs', 'Stairs', 'Click where the top of the stairs should be. They lead one floor down to the right.'], ['fill', 'fill', 'Fill in', 'Click a hallway or stairs to fill it back in.']];
+const TOOLS = [['move', 'hand', 'Move rooms', 'Click a room, then click where it should go.', 'move'],
+  ['dig', 'dig', 'Dig hallway', 'Drag over rock to dig a hallway, one cell or a whole row at once.', 'dig'],
+  ['door', 'door', 'Door', 'Click a hallway to put a door in its back wall, or take one out. Dwarves use doors to reach the floors above and below.', 'door'],
+  ['stairs', 'stairs', 'Stairs', 'Click where the top of the stairs should be. They lead one floor down to the right.', 'stairs'],
+  ['fill', 'fill', 'Fill in', 'Drag over hallways or click stairs to fill them back in. Free.', null]];
 
 function renderToolbar() {
   const bar = $('scene-tools');
@@ -347,7 +349,16 @@ function renderToolbar() {
       h('button', { class: 'tool' + (b ? ' on' : ''), onclick: () => { G.build = b ? null : { tool: 'move', held: null }; renderToolbar(); } }, img(S.icon('build'), 'icon s'), b ? 'Done' : 'Build'),
       time),
     b ? h('div', { class: 'tool-row' }, TOOLS.map(([id, icon, label]) => h('button', { class: 'tool' + (b.tool === id ? ' on' : ''), onclick: () => { b.tool = id; b.held = null; renderToolbar(); } }, img(S.icon(icon), 'icon s'), label))) : null,
+    b ? toolCost(b) : null,
     b && helpOn() ? h('div', { class: 'tool-hint' }, b.held ? 'Now click where the room should go. Right click or Esc to cancel.' : TOOLS.find((x) => x[0] === b.tool)[3]) : null].filter(Boolean));
+}
+
+/** What the chosen build tool costs per use (per cell for digging). */
+function toolCost(b) {
+  const key = TOOLS.find((x) => x[0] === b.tool)[4];
+  const cost = key && (D().layoutCosts || {})[key];
+  if (!cost) return null;
+  return h('div', { class: 'tool-cost' }, h('span', null, b.tool === 'dig' ? 'Per cell' : 'Costs'), costChips(cost));
 }
 
 // ------------------------------------------------------------------ timers

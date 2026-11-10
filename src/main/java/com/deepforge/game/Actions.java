@@ -90,8 +90,22 @@ public final class Actions {
             case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
             case "door" -> Layouts.door(f, num(a, "col", -1), num(a, "floor", -1));
+            case "digMany" -> Layouts.digMany(f, cells(a));
+            case "fillMany" -> Layouts.fillMany(f, cells(a));
             default -> throw new GameException("Unknown action: " + type);
         }
+    }
+
+    /** A list of [col, floor] pairs from the client. */
+    static List<int[]> cells(Map<String, Object> a) {
+        check(a.get("cells") instanceof List<?>, "Choose some cells.");
+        List<int[]> out = new ArrayList<>();
+        for (Object o : (List<?>) a.get("cells")) {
+            check(o instanceof List<?> l && l.size() == 2 && l.get(0) instanceof Number && l.get(1) instanceof Number, "Bad cell.");
+            List<?> l = (List<?>) o;
+            out.add(new int[]{((Number) l.get(0)).intValue(), ((Number) l.get(1)).intValue()});
+        }
+        return out;
     }
 
     // ------------------------------------------------------------ dwarves
@@ -231,7 +245,7 @@ public final class Actions {
         if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
             int[] p = f.layout.rooms.get(b.id);
             moved = p[1] != spot[1] || Math.abs(p[0] - spot[0]) > Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
-            Layouts.moveRoom(f, b.id, spot[0], spot[1]);
+            Layouts.place(f, b.id, spot[0], spot[1], false);
             Layouts.grow(f, b);
             b.machines = machines(b) + 1;
         }

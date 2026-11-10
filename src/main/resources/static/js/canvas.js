@@ -21,7 +21,7 @@ export function initCanvas(c, w, s, pick) {
   canvas.addEventListener('pointerdown', down);
   canvas.addEventListener('pointermove', move);
   canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); drag = null; });
+  canvas.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); if (drag && drag.paint && screen.paint) screen.paint(null, 'cancel'); drag = null; });
   canvas.addEventListener('pointerleave', () => { hover = null; mouse = null; canvas.style.cursor = ''; });
   canvas.addEventListener('wheel', wheel, { passive: false });
   canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (screen && screen.cancel) screen.cancel(); });
@@ -73,8 +73,16 @@ function fitScale() {
 function down(e) {
   canvas.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: 0, t: performance.now() };
-  if (pointers.size === 2) drag = { pinch: dist(), zoom: cam.zoom };
+  if (pointers.size === 1) {
+    drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: 0, t: performance.now() };
+    // tools that paint (digging a row of hallway): the stroke follows the pointer instead of the camera
+    const p = toWorld(e);
+    if (screen && screen.paint && screen.dragging && screen.dragging(p)) { drag.paint = true; screen.paint(p, 'start'); }
+  }
+  if (pointers.size === 2) {
+    if (drag && drag.paint && screen.paint) screen.paint(null, 'cancel');
+    drag = { pinch: dist(), zoom: cam.zoom };
+  }
 }
 
 function dist() {
@@ -90,6 +98,7 @@ function move(e) {
     setZoom(drag.zoom * dist() / drag.pinch, r.width / 2, r.height / 2);
     return;
   }
+  if (drag && drag.paint && pointers.size === 1) { screen.paint(mouse, 'move'); return; }
   if (drag && !drag.pinch && pointers.size === 1) {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
@@ -110,6 +119,7 @@ function up(e) {
   const d = drag;
   if (pointers.size === 0) drag = null;
   canvas.style.cursor = hover ? 'pointer' : '';
+  if (d && d.paint && screen && screen.paint) { screen.paint(toWorld(e), 'end'); return; }
   if (!d || d.pinch || d.moved > 6 || !screen) return;
   const p = toWorld(e);
   const q = screen.hit(p.x, p.y);

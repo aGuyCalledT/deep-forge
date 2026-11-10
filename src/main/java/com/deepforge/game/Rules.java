@@ -308,6 +308,20 @@ public final class Rules {
         return new Cost(Math.round(t.upCoins() * g), goods);
     }
 
+    // digging and building in the hold: a hallway cell costs coins (the rubble is carted out), stairs, doors and
+    // moving a room also need stone
+    public static final Cost DIG_COST = new Cost(10, Map.of());
+    public static final Cost STAIRS_COST = new Cost(40, Map.of("stone", 20));
+    public static final Cost DOOR_COST = new Cost(15, Map.of("stone", 5));
+    public static final Cost MOVE_COST = new Cost(30, Map.of("stone", 10));
+
+    /** Cost times n (for digging several cells at once). */
+    public static Cost times(Cost c, int n) {
+        Map<String, Integer> goods = new LinkedHashMap<>();
+        c.goods().forEach((k, v) -> goods.put(k, v * n));
+        return new Cost(c.coins() * n, goods);
+    }
+
     public static Cost buildCost(Fortress f, String type) {
         Content.BuildingType t = Content.BUILDINGS.get(type);
         int n = count(f, type);

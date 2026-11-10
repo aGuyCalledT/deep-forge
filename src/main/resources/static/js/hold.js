@@ -751,7 +751,8 @@ export const holdScreen = {
     if (G.build) buildOverlay(ctx, t, mouse);
   },
   click(x, y, hit) { return G.build ? buildClick(x, y, hit) : false; },
-  dragging() { return false; },
+  dragging(p) { return !!(G.build && (G.build.tool === 'dig' || G.build.tool === 'fill') && p && cellAt(p.x, p.y)); },
+  paint(p, phase) { buildPaint(p, phase); },
   cancel() { if (G.build) { G.build.held = null; if (G.onBuildChange) G.onBuildChange(); } },
 };
 
@@ -906,10 +907,49 @@ function buildOverlay(ctx, t, mouse) {
     ctx.fillStyle = g.ok ? '#9ee08e' : '#d9704a';
     ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
   }
+  const st = G.build.stroke;
+  if (st) {
+    const cost = (D().layoutCosts || {}).dig, n = st.cells.size;
+    ctx.fillStyle = G.build.tool === 'dig' ? 'rgba(144,224,140,0.35)' : 'rgba(217,112,74,0.35)';
+    for (const c of st.cells.keys()) ctx.fillRect(c * CELL + 1, ftop(st.f) + 1, CELL - 2, RH - 2);
+    if (G.build.tool === 'dig' && cost && n) {
+      const can = Math.floor(F().coins / cost.coins);
+      text(ctx, n + ' CELLS ' + Math.round(n * cost.coins) + ' COINS' + (can < n ? ' - ONLY ' + can : ''), (st.last ?? st.from) * CELL, ftop(st.f) - 8, can < n ? '#ff9a7a' : '#fbf4e6');
+    }
+  }
   if (G.build.held && G_) {
     const r = G_.rooms.find((q) => q.b.id === G.build.held);
     if (r) { ctx.fillStyle = 'rgba(227,192,110,0.25)'; ctx.fillRect(r.x, r.y, r.pw, RH); }
   }
+}
+
+/**
+ * Digging (or filling) by dragging: every cell the pointer crosses joins the stroke, on the floor where the stroke
+ * started, and goes to the server in one action when the pointer lets go.
+ */
+function buildPaint(p, phase) {
+  const b = G.build;
+  if (!b) return;
+  if (phase === 'cancel') { b.stroke = null; return; }
+  const cell = p && cellAt(p.x, p.y);
+  if (phase === 'start') { b.stroke = cell ? { f: cell.f, from: cell.c, cells: new Map() } : null; }
+  const st = b.stroke;
+  if (!st) return;
+  if (cell) {
+    // fill the gap since the last cell, so fast drags leave no holes
+    const last = st.last === undefined ? cell.c : st.last;
+    for (let c = Math.min(last, cell.c); c <= Math.max(last, cell.c); c++) {
+      if (c < plan.shaft || c >= plan.cols) continue;
+      const v = G_ && G_.cells.get(c + ',' + st.f);
+      const ok = b.tool === 'dig' ? !v : !!v && v.kind === 'hall';
+      if (ok) st.cells.set(c, true);
+    }
+    st.last = cell.c;
+  }
+  if (phase !== 'end') return;
+  b.stroke = null;
+  const cells = [...st.cells.keys()].sort((x, y) => (st.from <= (st.last ?? st.from) ? x - y : y - x)).map((c) => [c, st.f]);
+  if (cells.length) G.act({ type: b.tool === 'dig' ? 'digMany' : 'fillMany', cells });
 }
 
 function buildClick(x, y, hit) {
@@ -924,7 +964,7 @@ function buildClick(x, y, hit) {
     if (G.onBuildChange) G.onBuildChange();
     return true;
   }
-  if (b.tool === 'dig') G.act({ type: 'dig', col: cell.c, floor: cell.f });
+  if (b.tool === 'dig') G.act({ type: 'dig', col: cell.c, floor: cell.f });   // only reached when dragging is off
   if (b.tool === 'stairs') G.act({ type: 'stairs', col: cell.c, floor: cell.f });
   if (b.tool === 'fill') G.act({ type: 'fill', col: cell.c, floor: cell.f });
   if (b.tool === 'door') G.act({ type: 'door', col: cell.c, floor: cell.f });
