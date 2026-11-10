@@ -87,10 +87,8 @@ public final class View {
             m.put("machines", machines(b));
             m.put("maxMachines", maxMachines(b));
             m.put("cells", Layouts.hasRoom(b) ? Layouts.width(b) : 0);
-            if (machines(b) < maxMachines(b)) {
-                m.put("machineCost", machineCost(b));
+            if (isWorkshop(b) && machines(b) < MAX_MACHINES)
                 m.put("canGrow", Layouts.hasRoom(b) && f.layout.rooms.containsKey(b.id) && Layouts.canGrow(f, b));
-            }
             List<String> jobNames = new ArrayList<>();
             jobNames.add(b.job == null ? null : Sim.jobName(b.job));
             for (int i = 1; i < machines(b); i++) { Job j = i - 1 < b.more.size() ? b.more.get(i - 1) : null; jobNames.add(j == null ? null : Sim.jobName(j)); }

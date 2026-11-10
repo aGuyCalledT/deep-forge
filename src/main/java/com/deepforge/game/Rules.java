@@ -83,11 +83,14 @@ public final class Rules {
         return Math.max(1, b.machines);
     }
 
-    /** Workshops (queue and continuous kinds) can hold more machines as they grow: one more per level, at most 5. */
+    /** Workshops (queue and continuous kinds) get one machine per level, at most 5: the room grows with every upgrade. */
     public static int maxMachines(Building b) {
-        String kind = Content.BUILDINGS.get(b.type).kind();
-        if (kind.equals("passive")) return 1;
-        return Math.max(1, Math.min(MAX_MACHINES, b.level + 1));
+        if (!isWorkshop(b)) return 1;
+        return Math.max(1, Math.min(MAX_MACHINES, b.level));
+    }
+
+    public static boolean isWorkshop(Building b) {
+        return !Content.BUILDINGS.get(b.type).kind().equals("passive");
     }
 
     public static final int MAX_MACHINES = 5;
@@ -303,17 +306,6 @@ public final class Rules {
         goods.put("stone", (int) Math.round(t.upStone() * Math.pow(1.3, b.level - 1)));
         goods.put(Content.upgradeBar(target), 4 + 3 * b.level);
         return new Cost(Math.round(t.upCoins() * g), goods);
-    }
-
-    /** Cost of the next machine: half a new workshop per machine already standing, and stone for the floor. */
-    public static Cost machineCost(Building b) {
-        Content.BuildingType t = Content.BUILDINGS.get(b.type);
-        int n = machines(b);
-        Map<String, Integer> goods = new LinkedHashMap<>();
-        goods.put("stone", 25 * n);
-        for (Map.Entry<String, Integer> e : t.buildGoods().entrySet())
-            if (!e.getKey().equals("stone")) goods.put(e.getKey(), e.getValue() * n);
-        return new Cost(Math.round(t.buildCoins() * 0.5 * n), goods);
     }
 
     public static Cost buildCost(Fortress f, String type) {

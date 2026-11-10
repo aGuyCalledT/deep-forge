@@ -166,20 +166,20 @@ class SimTest {
     }
 
     @Test
-    void aSecondMachineLetsTwoSmithsWorkAtOnce() {
+    void upgradingAWorkshopAddsAMachineForASecondSmith() {
         Fortress f = fresh(12);
         Market m = Market.inMemory(12, T0);
         f.stock.put("bar:copper", 30);
         f.stock.put("coal", 50);
         act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
         Building forge = f.buildings.stream().filter(x -> x.id.equals("forge-1")).findFirst().orElseThrow();
-        assertEquals(2, Rules.maxMachines(forge));
-        Rules.Cost c = Rules.machineCost(forge);
+        assertEquals(1, Rules.maxMachines(forge));
+        Rules.Cost c = Rules.upgradeCost(forge);
         f.coins += c.coins() + 10;
         c.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
         Dwarf a = f.dwarves.get(0), b = f.dwarves.get(1), x = f.dwarves.get(2);
         act(f, m, T0, "type", "assign", "dwarf", a.id, "job", "worker", "building", "forge-1");
-        act(f, m, T0, "type", "addMachine", "building", "forge-1");
+        act(f, m, T0, "type", "upgrade", "building", "forge-1");
         assertEquals(2, forge.machines);
         assertEquals(Layouts.ROOM_CELLS.get("forge") + Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
         // the room grew over the cells to its right: nothing else may stand there
@@ -187,7 +187,6 @@ class SimTest {
         act(f, m, T0, "type", "assign", "dwarf", b.id, "job", "worker", "building", "forge-1");
         assertEquals(2, Rules.workers(f, forge).size());
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "assign", "dwarf", x.id, "job", "worker", "building", "forge-1"));
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "addMachine", "building", "forge-1"));
         act(f, m, T0, "type", "queueAdd", "building", "forge-1", "recipe", "craft", "itype", "goblet", "mat", "copper", "count", 6);
         Sim.advance(f, T0 + 60, m);
         assertNotNull(forge.job);
@@ -213,6 +212,11 @@ class SimTest {
         act(f, m, T0, "type", "fill", "col", 13, "floor", 7);
         assertTrue(f.layout.stairs.isEmpty());
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 0, "floor", 1));
+        act(f, m, T0, "type", "door", "col", 10, "floor", 6);
+        assertTrue(f.layout.doors.contains("10,6"));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "door", "col", 30, "floor", 7));
+        act(f, m, T0, "type", "fill", "col", 10, "floor", 6);
+        assertFalse(f.layout.doors.contains("10,6"));
     }
 
     @Test

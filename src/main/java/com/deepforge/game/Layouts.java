@@ -63,7 +63,7 @@ public final class Layouts {
     static void grow(Fortress f, Building b) {
         int[] p = f.layout.rooms.get(b.id);
         int w = width(b), extra = MACHINE_CELLS.getOrDefault(b.type, 0);
-        for (int x = p[0] + w; x < p[0] + w + extra; x++) f.layout.halls.remove(key(x, p[1]));
+        for (int x = p[0] + w; x < p[0] + w + extra; x++) { f.layout.halls.remove(key(x, p[1])); f.layout.doors.remove(key(x, p[1])); }
     }
 
     public static boolean hasRoom(Building b) {
@@ -89,6 +89,13 @@ public final class Layouts {
             int[] spot = freeSpot(f, width(b));
             if (spot != null) l.rooms.put(b.id, spot);
         }
+        // workshops from before rooms grew with their level: let them catch up where there is space
+        for (Building b : f.buildings)
+            while (hasRoom(b) && l.rooms.containsKey(b.id) && Rules.machines(b) < Rules.maxMachines(b) && canGrow(f, b)) {
+                grow(f, b);
+                b.machines = Rules.machines(b) + 1;
+            }
+        l.doors.removeIf(k -> !l.halls.contains(k));
         return l;
     }
 
@@ -132,7 +139,7 @@ public final class Layouts {
         Actions.check(b != null && hasRoom(b), "That room can't be moved.");
         int w = width(b);
         Actions.check(fits(f, id, c, fl, w), "There is no room for it there.");
-        for (int x = c; x < c + w; x++) f.layout.halls.remove(key(x, fl));
+        for (int x = c; x < c + w; x++) { f.layout.halls.remove(key(x, fl)); f.layout.doors.remove(key(x, fl)); }
         f.layout.rooms.put(id, new int[]{c, fl});
     }
 
@@ -151,7 +158,7 @@ public final class Layouts {
                 String o = at(f, x, y, null);
                 Actions.check(o == null || o.equals("hall"), "Something is in the way of the stairs.");
             }
-        for (int x = c; x < c + 2; x++) for (int y = fl; y < fl + 2; y++) f.layout.halls.remove(key(x, y));
+        for (int x = c; x < c + 2; x++) for (int y = fl; y < fl + 2; y++) { f.layout.halls.remove(key(x, y)); f.layout.doors.remove(key(x, y)); }
         f.layout.stairs.add(key(c, fl));
     }
 
@@ -159,10 +166,18 @@ public final class Layouts {
     public static void fill(Fortress f, int c, int fl) {
         ensure(f);
         Layout l = f.layout;
-        if (l.halls.remove(key(c, fl))) return;
+        if (l.halls.remove(key(c, fl))) { l.doors.remove(key(c, fl)); return; }
         for (int dx = 0; dx <= 1; dx++)
             for (int dy = 0; dy <= 1; dy++)
                 if (l.stairs.remove(key(c - dx, fl - dy))) return;
         throw new Actions.GameException("Only hallways and stairs can be filled in.");
+    }
+
+    /** Put a door into a hallway, or take it out again. Behind it a stairwell leads to the rooms above and below. */
+    public static void door(Fortress f, int c, int fl) {
+        ensure(f);
+        String k = key(c, fl);
+        Actions.check(f.layout.halls.contains(k), "Doors go into hallways. Dig one first.");
+        if (!f.layout.doors.remove(k)) f.layout.doors.add(k);
     }
 }

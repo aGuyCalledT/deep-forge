@@ -66,7 +66,6 @@ public final class Actions {
             case "assign" -> assign(f, a);
             case "build" -> build(f, a);
             case "upgrade" -> upgrade(f, a);
-            case "addMachine" -> addMachine(f, a);
             case "upgradeLayer" -> upgradeLayer(f, a);
             case "unlockLayer" -> unlockLayer(f, a, t);
             case "queueAdd" -> queueAdd(f, a);
@@ -90,6 +89,7 @@ public final class Actions {
             case "dig" -> Layouts.dig(f, num(a, "col", -1), num(a, "floor", -1));
             case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
+            case "door" -> Layouts.door(f, num(a, "col", -1), num(a, "floor", -1));
             default -> throw new GameException("Unknown action: " + type);
         }
     }
@@ -220,28 +220,17 @@ public final class Actions {
         check(b.level < 30, "Already at the highest level.");
         Cost c = upgradeCost(b);
         check(canPay(f, c), "Not enough coins or materials.");
+        Layouts.ensure(f);
+        boolean grows = isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
+        check(!grows || Layouts.canGrow(f, b), "The " + Content.BUILDINGS.get(b.type).name().toLowerCase()
+                + " grows to the right when upgraded, but something is in the way. Move the room or fill in what is there.");
         pay(f, c);
         b.level++;
+        if (grows) { Layouts.grow(f, b); b.machines = machines(b) + 1; }
         Layouts.ensure(f);
         fortressXp(f, 5 * b.level);
-        log(f, "info", Content.BUILDINGS.get(b.type).name() + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."));
-    }
-
-    /** Another workstation in a workshop: the room grows to the right, one more dwarf can work there. */
-    static void addMachine(Fortress f, Map<String, Object> a) {
-        Building b = building(f, str(a, "building"));
-        check(b != null && b.level > 0, "No such building.");
-        check(!Content.BUILDINGS.get(b.type).kind().equals("passive"), "Only workshops have machines.");
-        check(machines(b) < maxMachines(b), machines(b) >= MAX_MACHINES ? "This workshop is full."
-                : "Upgrade the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + " to make room for another machine.");
-        Layouts.ensure(f);
-        check(Layouts.canGrow(f, b), "No space to the right of the room. Move the room or clear the way.");
-        Cost c = machineCost(b);
-        check(canPay(f, c), "Not enough coins or materials.");
-        pay(f, c);
-        Layouts.grow(f, b);
-        b.machines = machines(b) + 1;
-        log(f, "info", "A new machine stands in the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ". Put another dwarf to work there.");
+        log(f, "info", Content.BUILDINGS.get(b.type).name() + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
+                + (grows ? " A new machine stands in it: put another dwarf to work there." : "")));
     }
 
     static void upgradeLayer(Fortress f, Map<String, Object> a) {
