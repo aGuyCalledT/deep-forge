@@ -69,6 +69,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 ## Testen
 
 - **Backend:** `mvn test` (Simulation über eine Woche, Markt, Karawane, Schmiede, Legierung, Expedition, Überfall, API).
+- **IntelliJ:** Startkonfigurationen in `.run/` („Deep Forge“ startet das Spiel mit H2 und liefert das Frontend
+  direkt aus `src/main/resources/static/`, „Deep Forge tests“ führt alle Tests aus).
 - **JS-Syntax:** `for f in src/main/resources/static/js/*.js; do node --check "$f"; done`
 - **Im Browser:** `mvn -DskipTests package && java -jar target/deep-forge.jar` (H2 in `./data`), dann Playwright gegen
   `http://localhost:8080`: registrieren, alle Tabs öffnen, Screenshots am Handy (iPhone 13) und Desktop ansehen,
