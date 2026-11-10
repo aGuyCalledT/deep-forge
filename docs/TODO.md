@@ -58,8 +58,8 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
   „Door“). Türen verbinden sich mit Türen der Etage darüber/darunter, deren Raum sich überschneidet; Zwerge nehmen
   lieber Türen als Seitenwände.
 - [x] Treppe passt zum Gang: gleiche Bretterwand, Deckenbalken entlang der Schräge, Pfosten an beiden Öffnungen, Laterne.
-- [ ] Türpositionen (`ROOMS[type].door`) passen zur Variante 0 der Stufe 1; in anderen Varianten kann die Tür vor Möbeln
-  stehen. Besser: Tür in `rooms.px.js` mitzeichnen.
+- [x] Alle Räume eine Zelle breiter: rechts ein freier Streifen für die Hintertür (Haken mit Umhang, Laufspur am Boden),
+  damit die Tür nie vor Möbeln steht. Alte Spielstände: Räume, die dadurch überlappen, suchen sich einen neuen Platz.
 - [ ] Am Handy überdeckt das Fenster die untere Hälfte der Szene; der Raum wird darüber gezeigt, aber Zwerge darunter
   sind dann verdeckt.
 - [ ] Die Steine im Fels wiederholen sich alle 32 px sichtbar; eine zweite, passende Kachel würde helfen.

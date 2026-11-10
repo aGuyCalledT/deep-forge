@@ -706,7 +706,7 @@ function machineOverlay(ctx, t, r) {
   const b = r.b;
   if (b.type === 'smelter') {
     const heat = G.heat ? G.heat(b.id) : 0;
-    const tx = r.x + S.META.ROOMS.smelter.w * CELL - 16, ty = r.y + 26, hh = 44;
+    const tx = r.x + (S.META.ROOMS.smelter.w - 1) * CELL - 16, ty = r.y + 26, hh = 44;
     ctx.fillStyle = '#1d1b2c'; ctx.fillRect(tx - 1, ty - 1, 6, hh + 6);
     ctx.fillStyle = '#33364a'; ctx.fillRect(tx, ty, 4, hh);
     const fill = Math.round((heat / 100) * (hh - 2));

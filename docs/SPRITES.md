@@ -54,7 +54,7 @@ damit Möbel sie verdecken.
 | Was | Größe | Hinweis |
 |---|---|---|
 | Raster-Zelle | 24 × 96 | `CELL` in `shared.js` und `hold.js`; der Grundriss in `Layouts.java` zählt Zellen |
-| Raum | Zellen × 24 breit, 96 hoch | Füße der Zwerge auf y = 90; Tisch ca. 13 px hoch, Sitz 7 px, Etagenbett 51 px |
+| Raum | Zellen × 24 breit, 96 hoch; die letzte Zelle ist der Tür-Streifen (Möbel werden mit `w - 24` gezeichnet, `doorStrip` in `rooms.px.js`) | Füße der Zwerge auf y = 90; Tisch ca. 13 px hoch, Sitz 7 px, Etagenbett 51 px |
 | Maschinen-Erweiterung | `BAYS[type].w` × 24 breit, 96 hoch | beginnt mit einem Pfeiler (x 0–5), eigene Anker in `BAYS` |
 | Zwerg | Leinwand 44 × 52, Figur ca. 33 px hoch | Anker unten Mitte (x 22, y 50); liegend 34 × 20 |
 | Gang | 24 × 96 | runde Enden `hall_cap_l/r` 8 × 96 |

@@ -199,6 +199,23 @@ class SimTest {
     }
 
     @Test
+    void roomsThatOverlapAfterGettingWiderFindANewPlace() {
+        Fortress f = fresh(12);
+        Layouts.ensure(f);
+        // an old save: the forge placed right where the (now wider) smelter ends
+        Building smelter = f.buildings.stream().filter(x -> x.type.equals("smelter")).findFirst().orElseThrow();
+        int[] s = f.layout.rooms.get(smelter.id);
+        f.layout.rooms.put("forge-1", new int[]{s[0] + Layouts.width(smelter) - 1, s[1]});
+        Layouts.ensure(f);
+        assertArrayEquals(s, f.layout.rooms.get(smelter.id), "the earlier room stays");
+        for (String id : f.layout.rooms.keySet()) {
+            Building b = Rules.building(f, id);
+            int[] p = f.layout.rooms.get(id);
+            for (int x = p[0]; x < p[0] + Layouts.width(b); x++) assertEquals("room:" + id, Layouts.at(f, x, p[1], null));
+        }
+    }
+
+    @Test
     void aWorkshopWithoutSpaceMovesWhenUpgraded() {
         Fortress f = fresh(12);
         Market m = Market.inMemory(12, T0);

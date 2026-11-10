@@ -30,7 +30,9 @@ function stain(c, x, y, w, col, rng) {
   for (let i = 0; i < w; i += 2) { const l = 2 + Math.floor(rng() * 7); c.vline(x + i, y, l, col); }
 }
 
+let webShift = { from: Infinity, by: 0 };   // while a room's furniture is drawn: webs in its right corner move to the real corner
 function cobweb(c, x, y, right = false, size = 9) {
+  if (x >= webShift.from) x += webShift.by;
   const d = right ? -1 : 1;
   for (let i = 0; i < size; i++) c.px(x + d * i, y, "6");
   for (let i = 0; i < size; i++) c.px(x, y + i, "6");
@@ -578,9 +580,21 @@ function room(type, draw) {
       weather(c, 0, w, T, rng);
       ceiling(c, 0, w, T);
       floor(type, c, 0, w, T, rng);
-      draw(c, w, ROOMS[type], T, v, rng);
+      // furniture fills all but the last cell; that one stays free for the back door (drawn by the game)
+      webShift = { from: w - CELL - 12, by: CELL };
+      draw(c, w - CELL, ROOMS[type], T, v, rng);
+      webShift = { from: Infinity, by: 0 };
+      doorStrip(c, w - CELL, T);
     }, glow("yY0", { r: 8, strength: 0.3 }));
   }
+}
+
+/** The strip by the back door: a worn path on the floor and a hook by the frame. */
+function doorStrip(c, x, T) {
+  const mat = T === 2 ? "f" : T === 1 ? "v" : "W";
+  c.rect(x + 4, FY, 16, 2, mat); c.hline(x + 4, FY, 16, T === 2 ? "F" : "V");
+  c.rect(x + 1, 52, 2, 2, "4"); c.px(x + 2, 54, "4");                               // a hook
+  if (T > 0) { c.rect(x, 54, 4, 7, T === 2 ? "f" : "R"); c.hline(x, 54, 4, T === 2 ? "F" : "t"); }   // a cloak on it
 }
 
 function bay(type, draw) {

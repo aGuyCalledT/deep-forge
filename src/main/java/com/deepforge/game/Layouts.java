@@ -18,19 +18,20 @@ public final class Layouts {
     public static final List<String> ORDER = List.of("tavern", "quarters", "warehouse", "vault", "smelter", "forge",
             "grindstone", "engraver", "jeweler", "farm", "brewery", "barracks");
 
+    // every room has one cell more than its furniture needs: the back door to the stairwell stands there
     static {
-        ROOM_CELLS.put("tavern", 8);
-        ROOM_CELLS.put("quarters", 6);
-        ROOM_CELLS.put("warehouse", 6);
-        ROOM_CELLS.put("vault", 4);
-        ROOM_CELLS.put("smelter", 6);
-        ROOM_CELLS.put("forge", 6);
-        ROOM_CELLS.put("grindstone", 4);
-        ROOM_CELLS.put("engraver", 4);
-        ROOM_CELLS.put("jeweler", 5);
-        ROOM_CELLS.put("farm", 6);
-        ROOM_CELLS.put("brewery", 5);
-        ROOM_CELLS.put("barracks", 6);
+        ROOM_CELLS.put("tavern", 9);
+        ROOM_CELLS.put("quarters", 7);
+        ROOM_CELLS.put("warehouse", 7);
+        ROOM_CELLS.put("vault", 5);
+        ROOM_CELLS.put("smelter", 7);
+        ROOM_CELLS.put("forge", 7);
+        ROOM_CELLS.put("grindstone", 5);
+        ROOM_CELLS.put("engraver", 5);
+        ROOM_CELLS.put("jeweler", 6);
+        ROOM_CELLS.put("farm", 7);
+        ROOM_CELLS.put("brewery", 6);
+        ROOM_CELLS.put("barracks", 7);
     }
 
     /** Extra cells each additional machine adds to the right of a workshop. */
@@ -104,6 +105,15 @@ public final class Layouts {
             Building b = Rules.building(f, id);
             return b == null || !hasRoom(b);
         });
+        // rooms that overlap (old saves, rooms that got wider): the later one looks for a new place
+        List<String> placed = new ArrayList<>(l.rooms.keySet());
+        placed.sort(Comparator.comparingInt((String id) -> ORDER.indexOf(Rules.building(f, id).type)).thenComparing(id -> id));
+        Collections.reverse(placed);   // later rooms move, earlier ones stay
+        for (String id : placed) {
+            int[] p = l.rooms.get(id);
+            Building b = Rules.building(f, id);
+            if (!fits(f, id, p[0], p[1], width(b))) l.rooms.remove(id);
+        }
         List<Building> todo = new ArrayList<>();
         for (Building b : f.buildings) if (hasRoom(b) && !l.rooms.containsKey(b.id)) todo.add(b);
         todo.sort(Comparator.comparingInt((Building b) -> ORDER.indexOf(b.type)).thenComparing(b -> b.id));
