@@ -45,35 +45,47 @@ export function openDwarfSheet(d) {
 // ------------------------------------------------------------------ cheats
 
 const LOOK_NAMES = {
-  beardStyle: ['Full', 'Long', 'Forked', 'Braided', 'Fluffy', 'Moustache', 'Goatee', 'Wizard'],
-  hairStyle: ['Bald', 'Short', 'Messy', 'Long', 'Bun', 'Braids'],
-  hat: ['None', 'Hood', 'Miner helmet', 'Beanie', 'Felt cap', 'Horned helm'],
-  body: ['Stout', 'Tall', 'Round'],
-  accessory: ['None', 'Pipe', 'Glasses', 'Flower', 'Earring'],
+  sex: ['Man', 'Woman'],
+  body: ['Classic', 'Barrel', 'Tall', 'Brawler', 'Little'],
+  hairStyle: ['Short', 'Fringe', 'Bald', 'Topknot', 'Long', 'Wavy', 'Braids', 'Bun', 'Pigtails', 'Mohawk'],
+  beardStyle: ['Full', 'Wide', 'Braided', 'Forked', 'Long', 'Goatee', 'Mutton chops', 'Moustache'],
+  nose: ['Bulb', 'Potato', 'Long', 'Broad', 'Button', 'Pointy', 'Hooked', 'Snub', 'Tiny'],
+  brows: ['Bushy', 'Thick', 'Thin', 'Arched', 'Stern', 'Worried', 'Long'],
+  eyeColor: ['Brown', 'Grey', 'Blue', 'Green', 'Amber', 'Violet', 'Dark'],
+  mouth: ['Smile', 'Full', 'Small', 'Grin', 'Pout'],
 };
+const BODY_NAMES_F = ['Classic', 'Hourglass', 'Slender', 'Sturdy', 'Little'];
 
 export function lookSheet(d) {
   const L = S.look(d);
-  const st = { first: d.first, clan: d.clan, beardStyle: L.beard, hairStyle: L.hair, hat: d.hat >= 0 ? d.hat : L.hat, body: L.body, accessory: L.acc,
-    skin: L.skin, beard: L.beardC, hair: L.hairC, outfit: L.outfit };
+  const st = { first: d.first, clan: d.clan, sex: L.sex === 'f' ? 1 : 0, body: L.body, hairStyle: L.hairStyle, beardStyle: L.beard, nose: L.nose,
+    brows: L.brows, eyeColor: L.eye, mouth: L.mouth, freckles: L.freckles, skin: L.skin, hair: L.hair };
   openSheet(() => {
-    const preview = { ...d, ...st, id: 'preview' + d.id, beardStyle: st.beardStyle, helm: null };
+    const preview = { ...d, ...st, sex: st.sex ? 'f' : 'm', id: 'preview' + d.id, helm: null };
     const big = document.createElement('canvas');
-    big.width = 20 * 5; big.height = 32 * 5; big.className = 'dwarf-preview';
+    const pic = S.portrait(preview, 'talk');
+    big.width = pic.width * 4; big.height = pic.height * 4; big.className = 'dwarf-preview';
     const g = big.getContext('2d'); g.imageSmoothingEnabled = false;
-    g.drawImage(S.dwarfSprite(preview, 'idle', 0), 0, 0, 20 * 5, 32 * 5);
-    const sel = (k) => h('label', null, k === 'beardStyle' ? 'Beard' : k === 'hairStyle' ? 'Hair' : k[0].toUpperCase() + k.slice(1),
-      h('select', { onchange: (e) => { st[k] = +e.target.value; refreshSheet(); } }, LOOK_NAMES[k].map((n, i) => h('option', { value: i, selected: st[k] === i }, n))));
-    const col = (k, label) => h('label', { class: 'color' }, label, h('input', { type: 'color', value: st[k], oninput: (e) => { st[k] = e.target.value; refreshSheet(); } }));
+    g.drawImage(pic, 0, 0, big.width, big.height);
+    const label = { sex: 'Dwarf', hairStyle: 'Hair', beardStyle: 'Beard', eyeColor: 'Eyes', body: 'Body' };
+    const sel = (k) => {
+      const names = k === 'body' && st.sex ? BODY_NAMES_F : LOOK_NAMES[k];
+      return h('label', null, label[k] || k[0].toUpperCase() + k.slice(1),
+        h('select', { onchange: (e) => { st[k] = +e.target.value; refreshSheet(); } }, names.map((n, i) => h('option', { value: i, selected: st[k] === i }, n))));
+    };
+    const col = (k, lbl) => h('label', { class: 'color' }, lbl, h('input', { type: 'color', value: st[k], oninput: (e) => { st[k] = e.target.value; refreshSheet(); } }));
+    const fields = ['sex', 'body', 'hairStyle', ...(st.sex ? ['mouth'] : ['beardStyle']), 'nose', 'brows', 'eyeColor'];
     return h('div', null, h('h2', null, 'Looks of ' + fullName(d)),
       h('div', { class: 'look-grid' }, big,
         h('div', null,
           h('div', { class: 'row' }, h('label', { class: 'grow' }, 'First name', h('input', { value: st.first, maxLength: 20, onchange: (e) => { st.first = e.target.value; } })),
             h('label', { class: 'grow' }, 'Clan', h('input', { value: st.clan, maxLength: 20, onchange: (e) => { st.clan = e.target.value; } }))),
-          h('div', { class: 'row' }, ...['beardStyle', 'hairStyle', 'hat', 'body', 'accessory'].map(sel)),
-          h('div', { class: 'row' }, col('skin', 'Skin'), col('beard', 'Beard'), col('hair', 'Hair'), col('outfit', 'Tunic')))),
+          h('div', { class: 'row' }, ...fields.map(sel)),
+          h('div', { class: 'row' }, col('skin', 'Skin'), col('hair', st.sex ? 'Hair' : 'Hair and beard'),
+            h('label', null, h('input', { type: 'checkbox', checked: st.freckles, onchange: (e) => { st.freckles = e.target.checked; refreshSheet(); } }), ' Freckles')),
+          h('p', { class: 'small muted' }, 'Clothes are items now: change them under Gear.'))),
       h('button', { class: 'btn primary big', onclick: async () => {
-        await bus.act({ type: 'cheatLook', dwarf: d.id, ...st });
+        await bus.act({ type: 'cheatLook', dwarf: d.id, ...st, sex: st.sex ? 'f' : 'm' });
         toast('Looking sharp!', 'good');
         closeSheet();
       } }, 'Save'));
@@ -82,7 +94,9 @@ export function lookSheet(d) {
 
 export function cheatsSection() {
   if (!G.state.cheats) return null;
-  const keys = ['coins', ...G.data.ores.map((o) => o.id), 'coal', 'limestone', 'stone', 'food', 'ale', 'rough_gem', 'cut_gem', ...G.data.metals.map((m) => 'bar:' + m.id)];
+  const dyes = Object.keys(G.data.dyes || {});
+  const keys = ['coins', ...G.data.ores.map((o) => o.id), 'coal', 'limestone', 'stone', 'food', 'ale', 'rough_gem', 'cut_gem', ...G.data.metals.map((m) => 'bar:' + m.id),
+    ...(G.data.clothes || []).flatMap((c) => dyes.map((dy) => 'wear:' + c.id + ':' + dy))];
   const what = h('select', null, keys.map((k) => h('option', { value: k }, k === 'coins' ? 'Coins' : goodName(k))));
   const amount = h('input', { type: 'number', value: 100, min: -100000, max: 100000 });
   return h('div', { class: 'card cheats' },

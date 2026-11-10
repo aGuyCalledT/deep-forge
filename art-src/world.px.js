@@ -28,32 +28,32 @@ sprite("rock", { w: 32, h: 32 }, (c) => {
 });
 sprite("rock_dark", { base: "rock", swap: { "]": "[", "[": ")", ")": "(" } });
 
-// ---------------------------------------------------------------- hallway: a timbered tunnel, 16 x 64
+// ---------------------------------------------------------------- hallway: a timbered tunnel, 16 x 64, tall enough for a dwarf in a hat
 function hall(name, extra) {
   sprite(name, { w: 16, h: 64 }, (c) => {
-    c.rect(0, 22, 16, 36, "W");                                  // back wall
-    for (let x = 0; x < 16; x += 8) { c.vline(x, 22, 36, "w"); c.vline(x + 1, 22, 36, "v"); }
-    c.rect(0, 20, 16, 3, "V"); c.hline(0, 20, 16, "u"); c.hline(0, 23, 16, "w");   // lintel
+    c.rect(0, 8, 16, 50, "W");                                   // back wall
+    for (let x = 0; x < 16; x += 8) { c.vline(x, 8, 50, "w"); c.vline(x + 1, 8, 50, "v"); }
+    c.rect(0, 6, 16, 3, "V"); c.hline(0, 6, 16, "u"); c.hline(0, 9, 16, "w");      // lintel
     c.rect(0, 58, 16, 6, "W"); c.hline(0, 58, 16, "V"); c.hline(0, 59, 16, "v");   // floor
     c.px(5, 61, "w"); c.px(12, 61, "w");
     if (extra) extra(c);
   });
 }
 hall("hall_a");
-hall("hall_b", (c) => { c.rect(6, 24, 4, 1, "2"); c.rect(6, 25, 4, 4, "y"); c.rect(7, 26, 2, 2, "Y"); c.vline(6, 25, 4, "2"); c.vline(9, 25, 4, "2"); });   // lamp
+hall("hall_b", (c) => { c.rect(6, 11, 4, 1, "2"); c.rect(6, 12, 4, 4, "y"); c.rect(7, 13, 2, 2, "Y"); c.vline(6, 12, 4, "2"); c.vline(9, 12, 4, "2"); });   // lamp
 hall("hall_c", (c) => { c.rect(3, 50, 9, 8, "V"); c.box(3, 50, 9, 8, "v"); c.hline(4, 51, 7, "u"); });                                            // crate
 hall("hall_d", (c) => { c.rect(4, 32, 8, 6, "u"); c.box(4, 32, 8, 6, "v"); c.hline(5, 34, 6, "W"); c.px(8, 30, "4"); c.px(8, 31, "4"); });         // notice
-hall("hall_e", (c) => { c.vline(2, 22, 36, "v"); c.vline(13, 22, 36, "v"); c.rect(1, 22, 3, 3, "V"); c.rect(12, 22, 3, 3, "V"); });                // posts
+hall("hall_e", (c) => { c.vline(2, 8, 50, "v"); c.vline(13, 8, 50, "v"); c.rect(1, 8, 3, 3, "V"); c.rect(12, 8, 3, 3, "V"); });                  // posts
 
 // rounded tunnel ends (placed by the game where a hallway meets rock)
-sprite("hall_cap_l", { w: 6, h: 64 }, (c) => { for (let y = 20; y < 64; y++) { const d = y < 30 ? Math.round((30 - y) * 0.6) : 0; c.hline(0, y, Math.min(6, 2 + d), "("); } });
+sprite("hall_cap_l", { w: 6, h: 64 }, (c) => { for (let y = 6; y < 64; y++) { const d = y < 16 ? Math.round((16 - y) * 0.6) : 0; c.hline(0, y, Math.min(6, 2 + d), "("); } });
 sprite("hall_cap_r", { base: "hall_cap_l", flip: "x" });
 
 // ---------------------------------------------------------------- stairs: 32 wide, two floors (128) tall, going down to the right
 sprite("stairs", { w: 32, h: 128 }, (c) => {
-  c.poly([0, 20, 32, 84, 32, 128, 0, 128, 0, 58], "_");
-  // the cut in the rock
-  c.poly([0, 22, 12, 22, 32, 84, 32, 122, 20, 122, 0, 58], "W");
+  c.poly([0, 6, 32, 68, 32, 128, 0, 128, 0, 58], "_");
+  // the cut in the rock, tall enough for a dwarf
+  c.poly([0, 8, 12, 8, 32, 68, 32, 122, 20, 122, 0, 58], "W");
   for (let i = 0; i < 16; i++) {
     const x = Math.round(i * 2), y = 58 + Math.round(i * 4);
     c.rect(x, y, 4, 2, "V"); c.hline(x, y, 4, "u"); c.px(x + 3, y + 1, "v");
@@ -166,13 +166,13 @@ LAYERS.forEach((L, i) => {
     for (const [x, y] of [[4, 14], [44, 20], [28, 44], [58, 56]]) c.hline(x, y, 6, d3);
   });
 });
-sprite("tunnel", { w: 32, h: 28 }, (c) => {
-  c.rect(0, 0, 32, 22, "(");
-  c.rect(0, 22, 32, 6, "W"); c.hline(0, 22, 32, "V");
-  c.hline(0, 24, 32, "5"); c.hline(0, 26, 32, "5");               // rails
-  for (let x = 1; x < 32; x += 5) c.rect(x, 25, 3, 1, "v");        // sleepers
+sprite("tunnel", { w: 32, h: 54 }, (c) => {
+  c.rect(0, 0, 32, 48, "(");
+  c.rect(0, 48, 32, 6, "W"); c.hline(0, 48, 32, "V");
+  c.hline(0, 50, 32, "5"); c.hline(0, 52, 32, "5");               // rails
+  for (let x = 1; x < 32; x += 5) c.rect(x, 51, 3, 1, "v");        // sleepers
 });
-sprite("beam", { w: 14, h: 24, outline: "k" }, (c) => { c.rect(1, 3, 3, 21, "v"); c.rect(10, 3, 3, 21, "v"); c.rect(0, 0, 14, 4, "V"); c.hline(0, 0, 14, "u"); c.vline(1, 3, 21, "V"); });
+sprite("beam", { w: 14, h: 50, outline: "k" }, (c) => { c.rect(1, 3, 3, 47, "v"); c.rect(10, 3, 3, 47, "v"); c.rect(0, 0, 14, 4, "V"); c.hline(0, 0, 14, "u"); c.vline(1, 3, 47, "V"); });
 sprite("cart", { w: 22, h: 14, outline: "k" }, (c) => {
   c.poly([0, 2, 22, 2, 19, 10, 3, 10], "4"); c.hline(0, 2, 22, "6"); c.hline(3, 6, 16, "3");
   c.circ(6, 11, 2, "2"); c.circ(16, 11, 2, "2");

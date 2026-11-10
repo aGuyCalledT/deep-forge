@@ -208,13 +208,15 @@ function mushroom(c, x, b, s, cap, glow) {
   c.px(x + Math.floor(s / 2) - 1, b - s - 1, glow || "C");
 }
 
+// a bunk bed long enough for a dwarf lying down: two mattresses, pillows on the left, blankets folded at the foot
 function bunk(c, x, b, top, bottom) {
-  c.rect(x, b - 26, 2, 27, "W"); c.rect(x + 24, b - 26, 2, 27, "W");
-  c.rect(x + 2, b - 4, 22, 2, "V"); c.rect(x + 2, b - 18, 22, 2, "V");
-  // bottom bed: pillow + blanket
-  c.rect(x + 2, b - 7, 5, 3, "C"); c.rect(x + 7, b - 7, 17, 3, bottom); c.hline(x + 7, b - 7, 17, "C");
-  c.rect(x + 2, b - 21, 5, 3, "C"); c.rect(x + 7, b - 21, 17, 3, top); c.hline(x + 7, b - 21, 17, "C");
-  c.rect(x + 24, b - 30, 2, 4, "W");
+  c.rect(x, b - 32, 2, 33, "W"); c.rect(x + 44, b - 32, 2, 33, "W");
+  for (const [y, col] of [[b - 4, bottom], [b - 26, top]]) {
+    c.rect(x + 2, y, 42, 2, "V"); c.hline(x + 2, y, 42, "u");
+    c.rect(x + 2, y - 2, 42, 2, "C"); c.hline(x + 2, y - 1, 42, "4");
+    c.rect(x + 3, y - 5, 7, 3, "C"); c.hline(x + 3, y - 3, 7, "4");
+    c.rect(x + 34, y - 4, 9, 2, col); c.hline(x + 34, y - 4, 9, "C");
+  }
 }
 
 function chest(c, x, b) {
@@ -309,10 +311,7 @@ room("tavern", plankWall, floorPlanks, (c, w, R) => {
 
 room("quarters", plankWall, floorPlanks, (c, w) => {
   const cols = [["P", "G"], ["n", "h"], ["h", "P"]];
-  for (let i = 0; i < 3; i++) bunk(c, 4 + i * 30, FY - 1, cols[i][0], cols[i][1]);
-  rug(c, 30, 36, "B", "n");
-  chest(c, w - 16, FY - 1);
-  mushroom(c, 33, FY - 1, 5, "Z");
+  for (let i = 0; i < 2; i++) bunk(c, 2 + i * 48, FY - 1, cols[i][0], cols[i][1]);
   lantern(c, 46, 8);
   painting(c, 66, 6);
   cobweb(c, w - 4, 5, true);

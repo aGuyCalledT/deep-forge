@@ -192,6 +192,43 @@ class SimTest {
     }
 
     @Test
+    void dwarvesWearClothesFromTheStore() {
+        Fortress f = fresh(45);
+        Market m = Market.inMemory(45, T0);
+        Dwarf d = f.dwarves.get(0);
+        assertNotNull(d.wear.get("top"), "every dwarf starts dressed");
+        assertEquals(d.hair, d.beard, "the beard matches the hair");
+        String hat = Content.wearKey("beanie", "red");
+        f.stock.put(hat, 1);
+        act(f, m, T0, "type", "wear", "dwarf", d.id, "item", hat);
+        assertEquals(hat, d.wear.get("hat"));
+        assertEquals(0, f.stock.getOrDefault(hat, 0));
+        String oldTop = d.wear.get("top");
+        String dress = Content.wearKey("dress", "teal");
+        f.stock.put(dress, 1);
+        act(f, m, T0, "type", "wear", "dwarf", d.id, "item", dress);
+        assertEquals(1, f.stock.getOrDefault(oldTop, 0), "the old top goes back to the store");
+        act(f, m, T0, "type", "unwear", "dwarf", d.id, "slot", "hat");
+        assertNull(d.wear.get("hat"));
+        assertEquals(1, f.stock.getOrDefault(hat, 0));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "wear", "dwarf", d.id, "item", "wear:crown:gold"));
+    }
+
+    @Test
+    void oldDwarvesGetTheNewLook() {
+        Fortress f = fresh(46);
+        Dwarf d = f.dwarves.get(0);
+        d.looks = 0; d.sex = null; d.wear.clear(); d.beard = "#c4622d"; d.hair = "#9a9a9a"; d.hairStyle = 0; d.hat = 2; d.accessory = 2;
+        Factory.upgrade(f);
+        assertEquals("m", d.sex);
+        assertEquals("#c4622d", d.hair);
+        assertEquals(2, d.hairStyle, "old bald stays bald");
+        assertTrue(d.wear.get("hat").startsWith("wear:miner_helmet:"));
+        assertTrue(d.wear.containsKey("face") && d.wear.containsKey("top") && d.wear.containsKey("feet"));
+        assertTrue(d.nose >= 0 && d.brows >= 0 && d.eyeColor >= 0);
+    }
+
+    @Test
     void cheatSkipPlaysOutTime() {
         Fortress f = fresh(44);
         Market m = Market.inMemory(44, T0);

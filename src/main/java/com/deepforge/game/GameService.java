@@ -41,7 +41,9 @@ public class GameService {
         String json = store.loadFortress(uid);
         if (json == null) return Factory.newFortress(uid, owner, now, seeds.nextLong());
         try {
-            return om.readValue(json, Fortress.class);
+            Fortress f = om.readValue(json, Fortress.class);
+            Factory.upgrade(f);
+            return f;
         } catch (Exception e) {
             throw new IllegalStateException("Broken save for user " + uid, e);
         }

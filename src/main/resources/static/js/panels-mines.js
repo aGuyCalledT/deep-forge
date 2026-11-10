@@ -43,7 +43,7 @@ export function renderMines() {
             onclick: () => bus.act({ type: 'assign', dwarf: idle[0].id, job: 'miner', layer: i }) }, ico('plus')))));
       if (!idle.length) card.append(h('p', { class: 'small dim' }, 'No idle dwarves to add. Free someone up in the Dwarves tab.'));
       if (miners.length) card.append(h('div', { class: 'miners' }, miners.map((m) => h('span', { class: 'miner', title: `${m.first} ${m.clan} · mining ${d.dwarves[m.id].skills.mining} · ${fmt(d.dwarves[m.id].rate || 0)} ore/h` },
-        img(S.dwarfSprite(m, 'stand', 0), 'icon'), h('span', { class: 'small' }, m.first), h('span', { class: 'small dim' }, fmt(d.dwarves[m.id].rate || 0) + '/h')))));
+        img(S.portrait(m), 'icon'), h('span', { class: 'small' }, m.first), h('span', { class: 'small dim' }, fmt(d.dwarves[m.id].rate || 0) + '/h')))));
       card.append(costBtn('Improve shafts to level ' + (ls.level + 1), dl.upgrade, { type: 'upgradeLayer', layer: i }));
     } else if (dl.discovered) {
       card.append(h('p', { class: 'small muted' }, layer.note));

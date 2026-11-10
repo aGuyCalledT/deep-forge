@@ -2,13 +2,13 @@
 import { G, F, D, byId, fmt, stock, contextResources } from './data.js';
 import * as S from './sprites.js';
 import { text, sign } from './pixfont.js';
-import { drawRoom, RH } from './hold.js';
+import { drawRoom, RH, TOOL_OF } from './hold.js';
 
 const fitScale = (w) => (w < 560 ? 2 : Math.max(3, Math.min(4, Math.floor(w / 220))));
 
 // ------------------------------------------------------------------ mines
 
-const TOP = 46, LH = 76;
+const TOP = 46, LH = 100;
 const parts = [];
 
 export const minesScreen = {
@@ -32,7 +32,7 @@ export const minesScreen = {
         const hh = Math.min(64, LH - yy);
         ctx.save(); ctx.beginPath(); ctx.rect(x, y + yy, 64, hh); ctx.clip(); S.draw(ctx, 'mine_rock_' + i, x, y + yy); ctx.restore();
       }
-      const tunY = y + LH - 30;
+      const tunY = y + LH - 56;
       if (ls.unlocked) {
         // ore veins in the rock: little crystal clusters in the colours of what is dug here
         const r = S.rand(i * 31 + 7);
@@ -49,13 +49,13 @@ export const minesScreen = {
         const miners = f.dwarves.filter((x) => x.job === 'miner' && x.layer === i && !x.busy);
         const threat = ls.threat ? f.threats.find((th) => String(th.id) === ls.threat) : null;
         const span = w - 70;
-        const feet = tunY + 26;
+        const feet = tunY + 50;
         if (threat) {
           ctx.fillStyle = 'rgba(169,71,60,0.18)'; ctx.fillRect(0, y, w, LH);
           const mx = 40 + span * 0.55 + Math.sin(t * 1.2) * span * 0.25;
           const sp = S.monster(threat.monster, Math.floor(t * 3));
           ctx.drawImage(sp, Math.round(mx), feet - sp.height + 1);
-          miners.slice(0, 6).forEach((m, k) => { S.groundShadow(ctx, 44 + k * 8, feet, 5); ctx.drawImage(S.dwarfSprite(m, 'idle', 0), 34 + k * 8, feet - 31); });
+          miners.slice(0, 6).forEach((m, k) => S.placeDwarf(ctx, S.dwarfSprite(m, 'idle', Math.floor(t * 1.5 + k) % 2, null, { mood: 'angry' }), 44 + k * 14, feet));
           text(ctx, threat.name, w - 4, y + 5, '#f0a85a', 'right');
         } else {
           if (miners.length) {
@@ -66,16 +66,13 @@ export const minesScreen = {
             const base = 50 + ((k * 41 + m.id * 17) % Math.max(1, span - 20));
             const swing = Math.sin(t * 0.33 + m.id) > 0.25;
             const walk = Math.sin(t * 0.33 + m.id) * 12;
-            const spr = swing ? S.dwarfSprite(m, 'mine', Math.floor(t * 2.5 + m.id) % 2) : S.dwarfSprite(m, 'walk', Math.floor(t * 8) % 4);
-            const sx = Math.round(base + (swing ? 0 : walk));
-            S.groundShadow(ctx, sx + 10, feet);
-            if (!swing && Math.cos(t * 0.33 + m.id) < 0) { ctx.save(); ctx.translate(sx + 20, feet - 31); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); }   // walking left
-            else ctx.drawImage(spr, sx, feet - 31);
+            const spr = swing ? S.dwarfSprite(m, 'work', Math.floor(t * 5 + m.id) % 4, 'pick') : S.dwarfSprite(m, 'walk', Math.floor(t * 8) % 4);
+            S.placeDwarf(ctx, spr, base + (swing ? 0 : walk), feet, !swing && Math.cos(t * 0.33 + m.id) < 0);   // walking left: mirrored
             if (swing && Math.random() < 0.08) parts.push({ x: base + 16, y: feet - 12, vx: 8, vy: -6, life: 0.4, c: '#cfd2dc' });
           });
         }
         if (i === 0) f.dwarves.filter((x) => x.job === 'warrior' && x.post === 'mine' && !x.busy).slice(0, 3)
-          .forEach((x, k) => { S.groundShadow(ctx, w - 16 - k * 12, feet); ctx.drawImage(S.dwarfSprite(x, 'idle', Math.floor(t) % 2, 'axe'), w - 26 - k * 12, feet - 31); });
+          .forEach((x, k) => S.placeDwarf(ctx, S.dwarfSprite(x, 'idle', Math.floor(t * 1.5 + k) % 2, 'axe'), w - 16 - k * 16, feet));
         const dl = d.layers[i];
         sign(ctx, layer.name, 34 + (layer.name.length * 4 + 8) / 2, y + 5, '#fbf4e6');
         text(ctx, (ls.level > 1 ? 'SHAFT ' + ls.level + '  ' : '') + Math.round(dl.rate) + ' ORE/H  ' + dl.miners + ' MINERS', 34, y + 15, '#e3c06e');
@@ -154,11 +151,9 @@ export const workshopScreen = {
     const wk = info.worker ? f.dwarves.find((x) => x.id === info.worker) : null;
     if (wk && a.worker) {
       const working = b.job && !b.job.quenching || byId.buildings[b.type].kind === 'continuous';
-      const spr = S.dwarfSprite(wk, working && !f.siege ? 'work' : 'idle', Math.floor(t * (working ? 3 : 1.2)) % 2);
-      const face = b.type === 'smelter' || b.type === 'forge' ? -1 : 1;
-      const sx = r.x + a.worker[0] - 10, sy = r.y + a.worker[1] - 31;
-      S.groundShadow(ctx, r.x + a.worker[0], r.y + a.worker[1]);
-      if (face < 0) { ctx.save(); ctx.translate(sx + 20, sy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, sx, sy);
+      const busy = working && !f.siege;
+      const spr = S.dwarfSprite(wk, busy ? 'work' : 'idle', Math.floor(t * (busy ? 5 : 1.5)) % (busy ? 4 : 2), busy ? TOOL_OF[b.type] : null);
+      S.placeDwarf(ctx, spr, r.x + a.worker[0], r.y + a.worker[1], b.type === 'smelter' || b.type === 'forge');
     }
     sign(ctx, byId.buildings[b.type].name + (b.level > 1 ? ' ' + b.level : ''), r.x + pw / 2, 9, '#e3c06e');
     if (b.type === 'smelter') {
@@ -230,8 +225,10 @@ export function drawLoginArt(c) {
   S.draw(g, 'fire_place_1', 0 + 104, 37 + 44);
   S.draw(g, 'room_forge', 128, 37);
   const pals = [['#e8b090', '#c4622d'], ['#d9a77c', '#e0b04a'], ['#b97f57', '#3b2a20'], ['#f0c8a0', '#9a9a9a'], ['#8d5a3b', '#e8e2d4']];
-  pals.forEach(([skin, beard], i) => {
-    const d = { id: 900 + i, skin, beard, hair: beard, beardStyle: i * 2 % 8, hairStyle: i, hat: [0, 2, 3, 0, 5][i], body: i % 3, accessory: [0, 1, 3, 2, 0][i], job: 'idle' };
-    g.drawImage(S.dwarfSprite(d, ['drink', 'sit', 'idle', 'drink', 'work'][i], i % 2), [40, 56, 76, 90, 160][i], 37 + 58 - 31);
+  const wear = (top, dye, hat) => Object.assign({ top: 'wear:' + top + ':' + dye, legs: 'wear:trousers:brown', feet: 'wear:boots:brown' }, hat ? { hat: 'wear:' + hat } : {});
+  pals.forEach(([skin, hair], i) => {
+    const d = { id: 900 + i, sex: i % 2 ? 'f' : 'm', skin, hair, beardStyle: [0, 0, 3, 0, 2][i], hairStyle: [0, 5, 3, 6, 2][i], body: [0, 0, 3, 2, 1][i], nose: [0, 8, 2, 4, 1][i],
+      brows: i, eyeColor: i + 1, mouth: i % 5, happiness: 80, wear: wear(['shirt_linen', 'dress', 'vest', 'shirt_knit', 'shirt_embroid'][i], ['blue', 'rose', 'green', 'ochre', 'teal'][i], [null, 'flower_crown:rose', null, null, 'miner_helmet:ochre'][i]) };
+    S.placeDwarf(g, S.dwarfSprite(d, ['drink', 'sitTalk', 'talk', 'eat', 'work'][i], i % 2, i === 4 ? 'hammer' : null), [36, 58, 82, 104, 168][i], 37 + 58, i === 4, false);
   });
 }

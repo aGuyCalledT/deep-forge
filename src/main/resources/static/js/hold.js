@@ -103,11 +103,12 @@ function want(g, d, ctx) {
     }
     const r = S.hash('free' + d.id + ':' + sch.k) % 10;
     if (r < 6 && ctx.seats.length) { const s = ctx.seats.shift(); return { f: s.f, x: s.x, pose: s.pose }; }
+    const chat = S.hash('chat' + d.id + sch.k) % 2 ? 'talk' : 'idle';     // half of them stand and chat
     if (r < 8) {
       const cells = [...g.cells.entries()].filter(([, v]) => v.kind === 'hall' || v.kind === 'room');
-      if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + 8, pose: 'idle' }; }
+      if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + 8, pose: chat }; }
     }
-    return { f: -1, x: 120 + (S.hash('stroll' + d.id) % Math.max(40, W() - 260)), pose: 'idle' };
+    return { f: -1, x: 120 + (S.hash('stroll' + d.id) % Math.max(40, W() - 260)), pose: chat };
   };
   if (d.job === 'worker') {
     const r = g.rooms.find((x) => x.b.id === d.building);
@@ -115,7 +116,7 @@ function want(g, d, ctx) {
       const a = S.META.ROOMS[r.b.type] || {};
       const wx = a.worker ? r.x + a.worker[0] : r.x + r.pw / 2;
       const busy = r.b.job || byId.buildings[r.b.type].kind === 'continuous';
-      return { f: r.f, x: wx, pose: busy && !F().siege ? 'work' : 'idle', face: r.b.type === 'smelter' || r.b.type === 'forge' ? -1 : 1 };
+      return { f: r.f, x: wx, pose: busy && !F().siege ? 'work' : 'idle', tool: TOOL_OF[r.b.type], face: r.b.type === 'smelter' || r.b.type === 'forge' ? -1 : 1 };
     }
     return free();
   }
@@ -131,16 +132,19 @@ function want(g, d, ctx) {
   return free();
 }
 
+/** What each workshop's worker holds while working (the same work animation for all). */
+export const TOOL_OF = { forge: 'hammer', smelter: 'shovel', brewery: 'paddle', farm: 'hoe', engraver: 'chisel', jeweler: 'chisel', grindstone: 'hammer' };
+
 function placeCtx(g) {
   const seats = [], beds = [];
   for (const r of g.rooms) {
     const a = S.META.ROOMS[r.b.type];
     if (!a) continue;
     if (r.b.type === 'tavern') {
-      (a.seats || []).forEach(([x], i) => seats.push({ f: r.f, x: r.x + x, pose: i % 2 ? 'drink' : 'sit' }));
+      (a.seats || []).forEach(([x], i) => seats.push({ f: r.f, x: r.x + x, pose: ['sitTalk', 'eat', 'drink', 'sitTalk'][i % 4] }));
       (a.bar || []).forEach(([x]) => seats.push({ f: r.f, x: r.x + x, pose: 'drink' }));
     }
-    if (r.b.type === 'barracks' || r.b.type === 'warehouse') (a.seats || []).forEach(([x]) => seats.push({ f: r.f, x: r.x + x, pose: 'sit' }));
+    if (r.b.type === 'barracks' || r.b.type === 'warehouse') (a.seats || []).forEach(([x], i) => seats.push({ f: r.f, x: r.x + x, pose: i % 2 ? 'sitTalk' : 'sit' }));
     if (r.b.type === 'quarters') (a.beds || []).forEach(([x, y]) => beds.push({ f: r.f, x: r.x + x, y: r.y + y }));
   }
   return { seats, beds, gate: 0, stall: 0, hour: berlinHour() };
@@ -213,8 +217,8 @@ function agentSprite(d, a) {
   const moving = a.mode === 'walk' || a.mode === 'stairs';
   const climbing = a.mode === 'ladder';
   let pose = climbing ? 'climb' : moving ? 'walk' : (a.want && a.want.pose) || 'idle';
-  const fps = pose === 'walk' ? 8 : pose === 'climb' ? 6 : pose === 'work' ? 3 : pose === 'drink' ? 0.4 : 1.2;
-  const n = S.META.DWARF.poses[pose] || 1;
+  const fps = { walk: 8, climb: 5, work: 5, talk: 3, sitTalk: 3, eat: 1.6, drink: 0.5, sleep: 0.7 }[pose] || 1.2;
+  const n = S.FRAMES[pose] || 1;
   const fr = Math.floor(a.frameT * fps) % n;
   return S.dwarfSprite(d, pose, fr, a.want && !moving && !climbing ? a.want.tool : null);
 }
@@ -505,11 +509,8 @@ export const holdScreen = {
       const d = f.dwarves.find((x) => x.id === a.id);
       if (!d) continue;
       const spr = agentSprite(d, a);
-      const sx = Math.round(a.x - 10), sy = Math.round(a.y - 31);
-      S.groundShadow(ctx, a.x, a.y);
-      if (a.face < 0) { ctx.save(); ctx.translate(sx + 20, sy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); }
-      else ctx.drawImage(spr, sx, sy);
-      drawn.push({ id: a.id, sx, sy, spr: a.face < 0 ? flipped(spr) : spr, a });
+      const p = S.placeDwarf(ctx, spr, a.x, a.y, a.face < 0);
+      drawn.push({ id: a.id, sx: p.sx, sy: p.sy, spr: a.face < 0 ? flipped(spr) : spr, a });
     }
     drawParticles(ctx, dt);
   },
@@ -538,7 +539,7 @@ export const holdScreen = {
     for (const [k, v] of G_.cells) {
       if (v.kind !== 'hall') continue;
       const [c, fl] = k.split(',').map(Number);
-      if (['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8] === 'hall_b') out.push({ x: c * CELL + 8, y: ftop(fl) + 27, r: 22, color: '#ffd98e', flicker: 1 });
+      if (['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8] === 'hall_b') out.push({ x: c * CELL + 8, y: ftop(fl) + 14, r: 22, color: '#ffd98e', flicker: 1 });
     }
     for (let fl = 0; fl < plan.floors; fl++) out.push({ x: 16, y: ftop(fl) + 30, r: 16, color: '#ffd98e' });
     const day = daylight(sun().elev);
@@ -556,7 +557,7 @@ export const holdScreen = {
     if (G.build) return buildHit(x, y);
     for (let i = drawn.length - 1; i >= 0; i--) {
       const d = drawn[i];
-      if (x >= d.sx && x < d.sx + 20 && y >= d.sy + 3 && y < d.sy + 32 && opaque(d.spr, x - d.sx, y - d.sy)) return { kind: 'dwarf', id: d.id, sprite: d.spr, sx: d.sx, sy: d.sy };
+      if (x >= d.sx && x < d.sx + d.spr.width && y >= d.sy && y < d.sy + d.spr.height && opaque(d.spr, x - d.sx, y - d.sy)) return { kind: 'dwarf', id: d.id, sprite: d.spr, sx: d.sx, sy: d.sy };
     }
     if (!G_) return null;
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };

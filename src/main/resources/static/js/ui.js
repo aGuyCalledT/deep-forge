@@ -183,7 +183,7 @@ export function dwarfPicker(list, selected, extra, onChange) {
     const on = selected.has(d.id);
     return h('label', { class: 'pick' + (on ? ' on' : '') },
       h('input', { type: 'checkbox', checked: on, onchange: () => { on ? selected.delete(d.id) : selected.add(d.id); onChange(); } }),
-      img(S.dwarfSprite(d, 'stand', 0), 'icon'),
+      img(S.portrait(d), 'icon'),
       h('span', { class: 'grow' }, d.first + ' ' + d.clan),
       extra ? h('span', { class: 'muted small nowrap' }, extra(d)) : null);
   }));

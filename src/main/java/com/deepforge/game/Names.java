@@ -24,8 +24,17 @@ public final class Names {
     static final List<String> ART_NOUN = List.of("Goblet", "Crown", "Hammer", "Lantern", "Idol", "Anvil", "Mask",
             "Chalice", "Key", "Horn", "Seal", "Circlet");
 
+    static final List<String> F_PRE = List.of("Bri", "Dis", "Hil", "Ast", "Sig", "Ing", "Gud", "Thyr", "Ragn", "Mag", "Edd",
+            "Fre", "Hel", "Ka", "Lof", "Nal", "Ola", "Run", "Sol", "Ves", "Yl", "Dag", "Tor", "Ber");
+    static final List<String> F_SUF = List.of("a", "is", "hild", "run", "dis", "ra", "li", "vi", "gerd", "wyn", "eth", "ja",
+            "dri", "una", "borg", "frid", "elle");
+
     public static String first(Rng r) {
         return r.pick(PRE) + r.pick(SUF);
+    }
+
+    public static String first(Rng r, boolean female) {
+        return female ? r.pick(F_PRE) + r.pick(F_SUF) : first(r);
     }
 
     public static String artifact(Rng r) {

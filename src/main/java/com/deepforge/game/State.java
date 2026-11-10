@@ -76,8 +76,13 @@ public final class State {
         public String first;
         public String clan;
         public int age;
-        public String beard;      // colour
+        public String beard;      // colour, always the same as the hair
         public String hair;
+        public String sex = "m";      // m | f
+        public int nose = -1, brows = -1, eyeColor = -1, mouth = -1;
+        public boolean freckles;
+        public Map<String, String> wear = new LinkedHashMap<>();   // slot -> "wear:<cloth>:<dye>"
+        public int looks;             // 2 = the current look (sex, face, clothes as items)
         public String skin;
         public int beardStyle;
         public int hairStyle = -1;    // -1: derive from id (old saves)

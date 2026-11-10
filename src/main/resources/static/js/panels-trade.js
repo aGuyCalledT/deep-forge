@@ -148,7 +148,7 @@ export function renderExplore() {
     const party = e.party.map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
     out.push(h('div', { class: 'card' },
       h('div', { class: 'row between' }, h('h3', null, e.name), h('span', { class: 'nowrap' }, 'back in ', h('b', { 'data-until': e.returnAt }, dur(e.returnAt - t)))),
-      h('div', { class: 'row' }, party.map((x) => h('span', { title: x.first + ' ' + x.clan }, img(S.dwarfSprite(x, 'walk', 0)), h('span', { class: 'small' }, ` ${x.first} `), h('span', { class: 'small nowrap ' + (x.health < 50 ? 'bad-t' : 'muted') }, ico('heart', 'icon xs'), Math.round(x.health))))),
+      h('div', { class: 'row' }, party.map((x) => h('span', { title: x.first + ' ' + x.clan }, img(S.portrait(x, 'walk')), h('span', { class: 'small' }, ` ${x.first} `), h('span', { class: 'small nowrap ' + (x.health < 50 ? 'bad-t' : 'muted') }, ico('heart', 'icon xs'), Math.round(x.health))))),
       h('div', { class: 'stages' }, e.stages.map((s, i) => h('i', { class: s.done ? 'done' : i === e.next && s.kind === 'choice' ? 'choice' : '' }))),
       next && next.kind === 'choice' ? h('div', { class: 'card sub' },
         h('p', null, h('b', null, 'Ahead: '), next.prompt),

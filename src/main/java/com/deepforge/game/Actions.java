@@ -74,6 +74,8 @@ public final class Actions {
             case "bellows" -> bellows(f, a, t);
             case "quench" -> quench(f, a, t, r);
             case "equip" -> equip(f, a);
+            case "wear" -> wear(f, a);
+            case "unwear" -> unwear(f, a);
             case "unequip" -> unequip(f, a);
             case "caravan" -> caravan(f, a, t);
             case "expedition" -> expedition(f, a, t, r);
@@ -137,6 +139,26 @@ public final class Actions {
         if (old != null) add(f, old, 1);
         add(f, item, -1);
         slotSet(d, slot, item);
+    }
+
+    static void wear(Fortress f, Map<String, Object> a) {
+        Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
+        String item = str(a, "item");
+        String[] w = Content.parseWear(item);
+        check(w != null && stock(f, item) > 0, "You don't have that to wear. Check the warehouse.");
+        String slot = Content.CLOTHES.get(w[0]).slot();
+        String old = d.wear.get(slot);
+        if (old != null) add(f, old, 1);
+        add(f, item, -1);
+        d.wear.put(slot, item);
+    }
+
+    static void unwear(Fortress f, Map<String, Object> a) {
+        Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
+        String slot = str(a, "slot");
+        check(Content.WEAR_SLOTS.contains(slot), "Unknown slot.");
+        String old = d.wear.remove(slot);
+        if (old != null) add(f, old, 1);
     }
 
     static void unequip(Fortress f, Map<String, Object> a) {
@@ -313,6 +335,7 @@ public final class Actions {
         int units = 0;
         for (Map.Entry<String, Integer> e : cargo.entrySet()) {
             check(stock(f, e.getKey()) >= e.getValue(), "Not enough " + Content.goodName(e.getKey()) + ".");
+            check(!Content.isWear(e.getKey()), "Clothes aren't traded yet. Keep them for your dwarves.");
             units += e.getValue();
         }
         int cap = caravanCapacity(f) * ms.size();

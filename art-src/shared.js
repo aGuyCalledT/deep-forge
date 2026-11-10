@@ -44,7 +44,7 @@ var FLOOR_Y = 58;           // the walking line: dwarves' feet stand on y = 58
 var ROOMS = {
   tavern:     { w: 8, worker: [22, 58], fire: [104, 40, 14, 10], lights: [[111, 44, 40, "#ffb060"], [64, 14, 34, "#ffd98e"], [30, 14, 26, "#ffd98e"]],
                 seats: [[44, 58], [58, 58], [76, 58], [90, 58], [40, 58]], bar: [[12, 58], [26, 58]] },
-  quarters:   { w: 6, lights: [[48, 14, 30, "#ffd98e"]], beds: [[14, 40], [14, 54], [44, 40], [44, 54], [74, 40], [74, 54]] },
+  quarters:   { w: 6, lights: [[48, 14, 30, "#ffd98e"]], beds: [[25, 51], [25, 29], [73, 51], [73, 29]] },
   warehouse:  { w: 6, lights: [[48, 12, 30, "#ffd98e"]], seats: [[40, 58]] },
   vault:      { w: 4, lights: [[32, 16, 22, "#ffd98e"], [32, 34, 18, "#e3c06e"]] },
   smelter:    { w: 6, worker: [48, 58], fire: [17, 37, 12, 9], chimney: [21, 0], lights: [[23, 42, 42, "#ff8a4a"], [80, 14, 22, "#ffd98e"]], bellows: [34, 46] },

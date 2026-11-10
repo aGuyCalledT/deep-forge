@@ -63,7 +63,7 @@ export function workCard(b) {
   out.append(
     h('div', { class: 'row between' }, h('h3', null, buildingName(b)), h('span', { class: 'muted small' }, 'Level ' + b.level + (info.speed ? ` · speed ×${info.speed.toFixed(2)}` : ''))),
     h('p', { class: 'small muted' }, t.note),
-    h('div', { class: 'row' }, w ? [img(S.dwarfSprite(w, 'stand', 0), 'icon'), h('span', { class: 'grow' }, w.first + ' ' + w.clan, h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`))]
+    h('div', { class: 'row' }, w ? [img(S.portrait(w), 'icon'), h('span', { class: 'grow' }, w.first + ' ' + w.clan, h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`))]
       : h('span', { class: 'grow bad-t' }, 'No worker - nothing happens here.'),
     h('button', { class: 'btn small', onclick: () => assignSheet(b) }, w ? 'Change' : 'Assign')),
     w ? h('p', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, b.job && b.status ? b.status : label) : null);
@@ -189,7 +189,7 @@ function assignSheet(b) {
     return h('div', null, h('h2', null, 'Who works at the ' + buildingName(b).toLowerCase() + '?'),
       h('p', { class: 'small muted' }, `Sorted by ${skill} skill. The current worker becomes idle.`),
       free.map((x) => h('button', { class: 'pick', style: { width: '100%' }, onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, job: 'worker', building: b.id }); closeSheet(); } },
-        img(S.dwarfSprite(x, 'stand', 0)), h('span', { class: 'grow', style: { textAlign: 'left' } }, x.first + ' ' + x.clan, h('br'), h('span', { class: 'small muted' }, (x.job === 'idle' ? 'Idle' : 'now: ' + x.job) + ` · ${skill} ${D().dwarves[x.id].skills[skill]}`)))));
+        img(S.portrait(x)), h('span', { class: 'grow', style: { textAlign: 'left' } }, x.first + ' ' + x.clan, h('br'), h('span', { class: 'small muted' }, (x.job === 'idle' ? 'Idle' : 'now: ' + x.job) + ` · ${skill} ${D().dwarves[x.id].skills[skill]}`)))));
   });
 }
 

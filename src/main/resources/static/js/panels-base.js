@@ -120,7 +120,7 @@ export function dwarfCard(x) {
   const dd = D().dwarves[x.id] || {};
   const top = Object.entries(dd.skills || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const gear = ['tool', 'weapon', 'helm', 'armor'].map((s) => x[s]).filter(Boolean);
-  const portrait = img(S.dwarfSprite(x, 'stand', 0), '');
+  const portrait = img(S.portrait(x), '');
   portrait.style.width = '48px'; portrait.style.height = '58px';
   return h('div', { class: 'card dwarf-card' },
     h('div', null, portrait),
@@ -178,9 +178,25 @@ export function gearSheet(x) {
             : h('p', { class: 'small muted' }, 'Nothing equipped.'),
           items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
             h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, item: k }); refreshSheet(); } }, 'Equip'))));
+      }),
+      h('h3', null, 'Clothes'),
+      h('div', { class: 'row' }, img(S.portrait(me), 'icon xl'), h('p', { class: 'small muted grow' }, 'Spare clothes wait in the warehouse. Making your own comes later.')),
+      WEAR_SLOTS.map(([slot, name]) => {
+        const cur = (me.wear || {})[slot];
+        const spare = Object.entries(f.stock).filter(([k, v]) => v > 0 && k.startsWith('wear:') && byId.clothes[k.split(':')[1]] && byId.clothes[k.split(':')[1]].slot === slot);
+        if (!cur && !spare.length) return null;
+        return h('div', { class: 'card sub' },
+          h('b', null, name),
+          cur ? h('div', { class: 'row' }, goodIcon(cur), h('span', { class: 'grow small' }, goodName(cur)),
+            h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'unwear', dwarf: me.id, slot }); refreshSheet(); } }, 'Take off'))
+            : h('p', { class: 'small muted' }, 'Nothing.'),
+          spare.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
+            h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'wear', dwarf: me.id, item: k }); refreshSheet(); } }, 'Put on'))));
       }));
   });
 }
+
+const WEAR_SLOTS = [['hat', 'Hat'], ['top', 'Shirt or dress'], ['legs', 'Trousers'], ['feet', 'Boots'], ['face', 'Glasses'], ['ears', 'Earrings'], ['apron', 'Apron']];
 
 // ================================================================== war
 
@@ -218,7 +234,7 @@ export function renderWar() {
   out.push(h('h2', null, 'Warriors'));
   if (!warriors.length) out.push(h('p', { class: 'muted' }, 'No warriors. Give dwarves the warrior job in the Dwarves tab. Forge axes, helms and chain mail for them.'));
   out.push(h('div', { class: 'list' }, warriors.map((x) => h('div', { class: 'card sub row' },
-    img(S.dwarfSprite(x, 'stand', 0)), h('span', { class: 'grow' }, h('b', null, fullName(x)), h('br'), h('span', { class: 'small muted' }, jobLabel(x))),
+    img(S.portrait(x)), h('span', { class: 'grow' }, h('b', null, fullName(x)), h('br'), h('span', { class: 'small muted' }, jobLabel(x))),
     h('span', { class: 'gold-t' }, fmt(D().dwarves[x.id].power)),
     !x.busy ? h('button', { class: 'btn small', onclick: () => bus.act({ type: 'assign', dwarf: x.id, job: 'warrior', post: x.post === 'mine' ? 'fortress' : 'mine' }) }, x.post === 'mine' ? 'To gate' : 'To mine') : null,
     !x.busy ? h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear') : null))));
