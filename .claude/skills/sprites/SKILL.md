@@ -1,33 +1,27 @@
 ---
 name: sprites
-description: Pixelgrafik für Deep Forge in sprites.js und scene.js zeichnen oder ändern. Immer benutzen, bevor ein Erz, Barren, Gegenstand, Zwerg, Monster, Raum, eine Kachel oder ein Szenen-Element entsteht oder geändert wird.
+description: Grafik für Deep Forge ändern oder ergänzen. Immer benutzen, bevor ein Raum, Zwerg, Erz, Gegenstand, Monster, Symbol oder Szenen-Element entsteht oder sich ändert. Zeigt, wo die pxl-Quellen liegen, wie das Sprite-Sheet gebaut wird und wie das Spiel es nutzt.
 ---
 
-# Pixelgrafik für Deep Forge
+# Grafik für Deep Forge
 
-Alle Grafik entsteht im Browser aus Code in `src/main/resources/static/js/sprites.js`. Die Szene
-(`scene.js`) setzt sie zusammen. Eigene PNGs im Ordner `sprites/` ersetzen Grafiken mit gleicher Id
-(Liste: `docs/SPRITES.md`).
+Gezeichnet wird mit **pxl**: vorher den Skill `pxl-pixel-art` laden (Repo-Kopie: `.claude/skills/pixel-art/`).
 
-## Bausteine in `sprites.js`
-
-- `cached(id, w, h, draw, outline = true)`: erzeugt einmal, cacht, prüft vorher auf ein eigenes PNG mit dieser Id.
-  Mit `outline` bekommt alles automatisch den Umriss `#0c090e`.
-- `rows(ctx, x, y, zeilen, palette)`: Sprite aus Zeichenzeilen. `.` und Leerzeichen sind durchsichtig.
-- `shade(farbe, f)`: aufhellen (`f > 0`) oder abdunkeln (`f < 0`). `mix(a, b, t)` mischt.
-- `rand(seed)`: fester Zufall, damit Grafik bei jedem Laden gleich aussieht.
-- `lump(...)`: Gesteinsbrocken mit Licht von oben links.
+1. Quelle in `art-src/*.px.js` ändern. Gemeinsame Zahlen (Raum-Anker, Posen, Palette) stehen in
+   `art-src/shared.js`; das Spiel liest sie über `static/art/meta.json`.
+2. Bauen: `node scripts/build-art.mjs --preview` und die Vorschau in `art-src/out/_preview/` ansehen.
+3. Im Spiel prüfen (Playwright, Handy und Desktop, Tag und Nacht).
 
 ## Regeln
 
-- Licht von oben links, harte Kanten, keine Verläufe in Sprites (nur der Himmel hat einen).
-- Metallteile immer aus `byId.metals[...].color` mit `shade` ableiten, damit jede Legierung passt.
-- Größen aus `docs/SPRITES.md` einhalten. Neue Ids dort eintragen.
-- Animation über `frame` (0/1, bei Fackeln 0–2), nie über Zufall pro Bild – der Cache-Schlüssel enthält den Frame.
-- Zwerge: `dwarfSprite(d, pose, frame)`; Bart, Haare, Haut, Helm, Rüstung und Werkzeug kommen aus dem Zwerg.
-- In der Szene Text nur mit `text()` (3×5-Pixelschrift). Großbuchstaben, Ziffern, `/ : . - + ! ? % '`.
+- Warm und freundlich, abgerundet, keine kastigen Rahmen. Räume sind Höhlen mit Gewölbe (`carve()` in `rooms.px.js`).
+- Farben nur aus der Palette in `shared.js`. Umfärbbare Teile nutzen die Platzhalter aus `SWAP`.
+- Kein Rauschen als Füller; jede Markierung hat einen Grund.
+- Neue Raum-Möbel mit Licht oder Feuer: Anker in `ROOMS` (`shared.js`) eintragen, damit Licht und Animation stimmen.
+- Zwergen-Teile sind 16 × 24, alle an derselben Stelle; Hüte 3 px höher (Leinwand 16 × 27).
 
-## Prüfen
+## Im Spiel
 
-Nach jeder Änderung im Browser ansehen, bei Tag und Nacht (Uhrzeit des Rechners) und in Handy- und Desktopbreite.
-Screenshot mit Playwright (`deviceScaleFactor: 2`), Szene über `#scene-wrap` scrollen, um die Mine zu sehen.
+- `sprites.js`: lädt das Sheet, `draw(ctx, name, x, y)`, `sprite(name)`, Umfärben (`bar`, `item`), `dwarfSprite(d, pose, frame, tool)`.
+- `hold.js`: Festung (Plan, Räume, Zwerge, Licht), `views.js`: Minen, Werkstatt, Login-Bild.
+- `canvas.js`: Kamera, Licht-Durchgang, Hover-Umriss. Text im Canvas nur mit `pixfont.js`.

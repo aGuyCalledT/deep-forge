@@ -4,7 +4,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 
 ## Werkzeuge
 
-- **Grafik:** Vor jedem neuen oder geänderten Sprite, Raum, Monster oder Szenen-Element den Skill `sprites` laden.
+- **Grafik:** Vor jedem neuen oder geänderten Sprite, Raum, Monster oder Szenen-Element die Skills `sprites` und
+  `pxl-pixel-art` laden. Grafik entsteht in `art-src/` und wird mit `node scripts/build-art.mjs` gebaut.
 - **Oberfläche:** Vor Arbeit an Panels, Layout oder CSS den Skill `impeccable:impeccable` laden, falls vorhanden.
   Der Abschnitt „Design“ unten geht vor.
 - Fehlt ein Skill, das dem Nutzer sagen.
@@ -36,9 +37,15 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/View.java` | was der Client sieht (Spielstand + abgeleitete Zahlen) |
 | `game/GameService.java` | Laden, Weiterrechnen, Speichern, Minuten-Takt für alle Festungen |
 | `auth/` | Name + Passwort (BCrypt), Token-Sitzungen, Einladungscode, Admins |
-| `static/js/scene.js` | Canvas-Screens: Festung (Oberfläche + Hallen), Minen, eine Werkstatt groß (`G.screen`, `G.ws`) |
-| `static/js/halls.js` | Werkstatt-Räume aus Code: `hall()` zeichnet, `anchors()` sagt, wo Feuer, Dampf, Funken und Arbeiter hingehören |
-| `static/js/sprites.js` | Pixelgrafik aus Code + eigene PNGs |
+| `game/Layouts.java` | Grundriss: Räume, Gänge, Treppen auf einem Raster (40 × 8 Zellen, Schacht links) |
+| `game/Cheats.java` | Test-Hilfen (Ressourcen, Zwerge, Aussehen, Zeit überspringen), nur Admins oder `CHEATS=true` |
+| `art-src/` | Grafik-Quellen für pxl, `shared.js` mit Raum-Ankern und Palette; Ergebnis in `static/art/` |
+| `static/js/canvas.js` | Kamera (ziehen, Mausrad, Pinch), Licht, Hover-Umriss, Klicks |
+| `static/js/hold.js` | Festung: Himmel und Sonne über Essen, Plan, Räume, Zwerge mit Wegen und 12-Minuten-Zyklus, Bau-Modus, grüne Pfeile |
+| `static/js/views.js` | Minen-Screen, Werkstatt-Screen, Login-Bild |
+| `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen, Cheat-Werkzeuge |
+| `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
+| `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall und Zwerge um, setzt Zwerge aus Teilen zusammen |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); Formulare laufen in Bottom-Sheets (`openSheet`) |
 | `static/js/audio.js` | Sounds, Hintergrund-Schleifen, Musik (Stimmung je Tab); Zuordnung in `docs/AUDIO.md` |
 | `static/js/data.js` → `contextResources()` | welche Vorräte jeder Tab in der Übersicht zeigt (Seitenleiste am Desktop, aufklappbar am Handy) |
@@ -56,8 +63,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   optional Bauplan). Pixel-Art in `sprites.js` → `item()`. Wenn ausrüstbar: Wirkung in `Rules.power`/`toolBonus`.
 - **Neues Gebäude:** `building(...)` in `Content.java`. Werkstatt (`queue`): Rezepte in `Recipes.java`
   (`BY_BUILDING`, `validate`, `inputs`, `start`) und Bestell-Sheet in `panels-work.js`. Passiv: Wirkung in
-  `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raum in `halls.js` (`WALLS`, `anchors`, `hall`), Breite in `ROOM_W` und
-  Reihenfolge in `HALL_ORDER` (`scene.js`), Vorräte für den Tab in `contextResources()`.
+  `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raum in `art-src/rooms.px.js`, Anker in `art-src/shared.js` (`ROOMS`),
+  Breite in `Layouts.ROOM_CELLS`, Vorräte für den Tab in `contextResources()`, Pfeil-Logik in `hold.js` (`hasInputs`).
 - **Neue Eigenschaft:** `trait(...)` in `Content.java`, Wirkung in `Rules.workSpeed`, `Rules.power`,
   `Sim.happinessTarget` oder `Expeditions`.
 - **Neues Expeditions-Ereignis:** in `Expeditions.choice()` (Text + Optionen) und `applyChoice()` (Wirkung).
@@ -71,9 +78,12 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 
 ## Design
 
-- Pixel-Look: eckige Rahmen, harte Schatten (`0 4px 0 var(--line)`), kein weicher Glow.
-- Schriften: Silkscreen nur für Überschriften und kurze Anzeigen, Poppins für alles Lesbare.
-  In der Canvas-Szene die 3×5-Pixelschrift `text()` aus `scene.js`.
+- **Warm und freundlich**, nicht kastig: abgerundete Ecken (`--r` 12 px), weiche Schatten (`--shadow`), warme
+  Tavernen-Farben (Braun, Creme, Honiggold, Salbeigrün, Rosé). Keine harten Block-Schatten mehr.
+- Schriften: Pixelify Sans für Überschriften, Tabs und kurze Anzeigen, Poppins für alles Lesbare.
+  Im Canvas die 3×5-Pixelschrift aus `pixfont.js` (`text`, `sign`).
+- Im Spiel klicken statt Menüs: Räume und Zwerge öffnen ihr Fenster direkt (`popups.js`), Hover zeigt einen
+  grünen Umriss, stillstehende Werkstätten mit Material bekommen einen grünen Pfeil.
 - Farben aus den CSS-Variablen in `style.css`.
 - Immer in Handybreite (390 px) prüfen: kein horizontales Scrollen, Knöpfe mindestens 40 px hoch.
 - Breite Bildschirme nutzen den Platz: ab 900 px Szene und Panel nebeneinander, ab 1240 px dazu die Seitenleiste
@@ -84,8 +94,9 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 ## Testen
 
 - **Backend:** `mvn test` (Simulation über eine Woche, Markt, Karawane, Schmiede, Legierung, Expedition, Überfall, API).
-- **IntelliJ:** Startkonfigurationen in `.run/` („Deep Forge“ startet das Spiel mit H2 und liefert das Frontend
-  direkt aus `src/main/resources/static/`, „Deep Forge tests“ führt alle Tests aus).
+- **IntelliJ:** Startkonfigurationen in `.run/` („Deep Forge“ startet das Spiel mit H2, Cheats an und liefert das
+  Frontend direkt aus `src/main/resources/static/`, „Deep Forge tests“ führt alle Tests aus).
+- **Grafik:** `node scripts/build-art.mjs --preview`, Vorschauen in `art-src/out/_preview/` ansehen.
 - **JS-Syntax:** `for f in src/main/resources/static/js/*.js; do node --check "$f"; done`
 - **Im Browser:** `mvn -DskipTests package && java -jar target/deep-forge.jar` (H2 in `./data`), dann Playwright gegen
   `http://localhost:8080`: registrieren, alle Tabs öffnen, Screenshots am Handy (iPhone 13) und Desktop ansehen,

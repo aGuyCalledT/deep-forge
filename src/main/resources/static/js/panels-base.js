@@ -4,10 +4,11 @@ import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, sectio
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
 import { openAudioSheet } from './panels-audio.js';
+import { cheatsSection } from './popups.js';
 
 // ================================================================== fortress
 
-const EFFECT = {
+export const EFFECT = {
   warehouse: () => `Holds ${fmt(D().capacity)} goods`,
   lift: () => `Carries ${fmt(D().liftCap)} ore per hour`,
   quarters: () => `${D().beds} beds for ${D().pop} dwarves`,
@@ -115,7 +116,7 @@ export function renderDwarves() {
   ];
 }
 
-function dwarfCard(x) {
+export function dwarfCard(x) {
   const dd = D().dwarves[x.id] || {};
   const top = Object.entries(dd.skills || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const gear = ['tool', 'weapon', 'helm', 'armor'].map((s) => x[s]).filter(Boolean);
@@ -271,6 +272,7 @@ export function renderMore() {
       h('button', { class: 'btn small danger', onclick: async () => { try { await api.post('/auth/logout'); } catch { /* ignore */ } setToken(null); location.reload(); } }, 'Log out')),
     h('p', { class: 'small muted' }, `Logged in as ${G.me ? G.me.name : ''}.`))));
 
+  if (G.state.cheats) out.push(...section('Cheats', cheatsSection()));
   if (G.me && G.me.admin) {
     const who = h('input', { placeholder: 'Player name' }), pw = h('input', { placeholder: 'New password (8+ characters)', type: 'text' });
     out.push(...section('Admin', h('div', { class: 'card' }, h('p', { class: 'small muted' }, 'Reset a forgotten password.'), who, pw,

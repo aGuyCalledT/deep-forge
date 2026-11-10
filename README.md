@@ -30,6 +30,8 @@ Open `http://localhost:8080` and found a hold. Saves go to `./data` (H2). Change
 browser reload, Java changes need a restart. **Deep Forge tests** runs all tests.
 Alternative: create a Maven run configuration with the goal `spring-boot:run` (Run → Edit Configurations → + → Maven).
 
+Art: `node scripts/build-art.mjs` renders `art-src/*.px.js` with pxl into `static/art/` (see docs/SPRITES.md).
+
 Command line:
 
 ```bash
@@ -37,4 +39,4 @@ mvn test
 mvn -DskipTests package && java -jar target/deep-forge.jar
 ```
 
-Fonts: Silkscreen and Poppins (SIL Open Font License), see `src/main/resources/static/fonts/`.
+Fonts: Pixelify Sans and Poppins (SIL Open Font License), see `src/main/resources/static/fonts/`.

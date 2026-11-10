@@ -1,0 +1,135 @@
+package com.deepforge.game;
+
+import com.deepforge.game.State.*;
+
+import java.util.*;
+
+/**
+ * The hold's floor plan. A grid of COLS x FLOORS cells (16 x 64 art pixels each).
+ * The mine shaft fills columns 0-1 on every floor and links all floors with a ladder.
+ */
+public final class Layouts {
+    private Layouts() {}
+
+    public static final int COLS = 40;
+    public static final int FLOORS = 8;
+    public static final int SHAFT = 2;   // shaft width in columns
+    public static final Map<String, Integer> ROOM_CELLS = new LinkedHashMap<>();
+    public static final List<String> ORDER = List.of("tavern", "quarters", "warehouse", "vault", "smelter", "forge",
+            "grindstone", "engraver", "jeweler", "farm", "brewery", "barracks");
+
+    static {
+        ROOM_CELLS.put("tavern", 8);
+        ROOM_CELLS.put("quarters", 6);
+        ROOM_CELLS.put("warehouse", 6);
+        ROOM_CELLS.put("vault", 4);
+        ROOM_CELLS.put("smelter", 6);
+        ROOM_CELLS.put("forge", 6);
+        ROOM_CELLS.put("grindstone", 4);
+        ROOM_CELLS.put("engraver", 4);
+        ROOM_CELLS.put("jeweler", 5);
+        ROOM_CELLS.put("farm", 6);
+        ROOM_CELLS.put("brewery", 5);
+        ROOM_CELLS.put("barracks", 6);
+    }
+
+    public static boolean hasRoom(Building b) {
+        return b.level > 0 && ROOM_CELLS.containsKey(b.type);
+    }
+
+    static String key(int c, int f) {
+        return c + "," + f;
+    }
+
+    /** Make sure every room has a place. Old saves get the default plan. */
+    public static Layout ensure(Fortress f) {
+        if (f.layout == null) f.layout = new Layout();
+        Layout l = f.layout;
+        l.rooms.keySet().removeIf(id -> {
+            Building b = Rules.building(f, id);
+            return b == null || !hasRoom(b);
+        });
+        List<Building> todo = new ArrayList<>();
+        for (Building b : f.buildings) if (hasRoom(b) && !l.rooms.containsKey(b.id)) todo.add(b);
+        todo.sort(Comparator.comparingInt((Building b) -> ORDER.indexOf(b.type)).thenComparing(b -> b.id));
+        for (Building b : todo) {
+            int[] spot = freeSpot(f, ROOM_CELLS.get(b.type));
+            if (spot != null) l.rooms.put(b.id, spot);
+        }
+        return l;
+    }
+
+    /** First place on the plan where a room of this width fits, top floor first, left to right. */
+    static int[] freeSpot(Fortress f, int w) {
+        for (int fl = 0; fl < FLOORS; fl++)
+            for (int c = SHAFT; c + w <= COLS; c++)
+                if (fits(f, null, c, fl, w)) return new int[]{c, fl};
+        return null;
+    }
+
+    /** What occupies a cell: "shaft", "room:<id>", "hall", "stair", or null. */
+    public static String at(Fortress f, int c, int fl, String ignoreRoom) {
+        if (c < SHAFT) return "shaft";
+        Layout l = f.layout;
+        for (Map.Entry<String, int[]> e : l.rooms.entrySet()) {
+            if (e.getKey().equals(ignoreRoom)) continue;
+            Building b = Rules.building(f, e.getKey());
+            if (b == null) continue;
+            int[] p = e.getValue();
+            if (p[1] == fl && c >= p[0] && c < p[0] + ROOM_CELLS.get(b.type)) return "room:" + b.id;
+        }
+        if (l.stairs.contains(key(c, fl)) || l.stairs.contains(key(c - 1, fl))
+                || l.stairs.contains(key(c, fl - 1)) || l.stairs.contains(key(c - 1, fl - 1))) return "stair";
+        if (l.halls.contains(key(c, fl))) return "hall";
+        return null;
+    }
+
+    static boolean fits(Fortress f, String room, int c, int fl, int w) {
+        if (c < SHAFT || c + w > COLS || fl < 0 || fl >= FLOORS) return false;
+        for (int x = c; x < c + w; x++) {
+            String o = at(f, x, fl, room);
+            if (o != null && !o.equals("hall")) return false;
+        }
+        return true;
+    }
+
+    public static void moveRoom(Fortress f, String id, int c, int fl) {
+        ensure(f);
+        Building b = Rules.building(f, id);
+        Actions.check(b != null && hasRoom(b), "That room can't be moved.");
+        int w = ROOM_CELLS.get(b.type);
+        Actions.check(fits(f, id, c, fl, w), "There is no room for it there.");
+        for (int x = c; x < c + w; x++) f.layout.halls.remove(key(x, fl));
+        f.layout.rooms.put(id, new int[]{c, fl});
+    }
+
+    public static void dig(Fortress f, int c, int fl) {
+        ensure(f);
+        Actions.check(c >= SHAFT && c < COLS && fl >= 0 && fl < FLOORS, "You can't dig there.");
+        Actions.check(at(f, c, fl, null) == null, "Something is already there.");
+        f.layout.halls.add(key(c, fl));
+    }
+
+    public static void stairs(Fortress f, int c, int fl) {
+        ensure(f);
+        Actions.check(c >= SHAFT && c + 1 < COLS && fl >= 0 && fl + 1 < FLOORS, "Stairs need two floors and two columns.");
+        for (int x = c; x < c + 2; x++)
+            for (int y = fl; y < fl + 2; y++) {
+                String o = at(f, x, y, null);
+                Actions.check(o == null || o.equals("hall"), "Something is in the way of the stairs.");
+            }
+        for (int x = c; x < c + 2; x++) for (int y = fl; y < fl + 2; y++) f.layout.halls.remove(key(x, y));
+        f.layout.stairs.add(key(c, fl));
+    }
+
+    /** Fill a hallway cell or stairs back in. */
+    public static void fill(Fortress f, int c, int fl) {
+        ensure(f);
+        Layout l = f.layout;
+        if (l.halls.remove(key(c, fl))) return;
+        for (int dx = 0; dx <= 1; dx++)
+            for (int dy = 0; dy <= 1; dy++)
+                if (l.stairs.remove(key(c - dx, fl - dy))) return;
+        throw new Actions.GameException("Only hallways and stairs can be filled in.");
+    }
+}

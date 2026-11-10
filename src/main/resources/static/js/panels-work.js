@@ -1,9 +1,8 @@
 // Workshops: queues, the bellows and the quench.
 import { G, F, D, byId, fmt, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName } from './ui.js';
-import { hall } from './halls.js';
 import * as A from './audio.js';
-import { HALL_ORDER } from './scene.js';
+const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
 import { upgradeBtn, jobSheet } from './panels-base.js';
 import { api } from './api.js';
@@ -50,13 +49,13 @@ export function renderWork() {
       const [st, label] = wsState(x);
       return h('button', { class: 'ws-tab' + (x.id === G.ws ? ' on' : ''), role: 'tab', 'aria-selected': String(x.id === G.ws), title: label,
         onclick: () => { G.ws = x.id; bus.render(); if (!window.matchMedia('(min-width: 900px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' }); } },
-        img(hall(x.type, 40, 26), 'thumb'), h('span', { class: 'nm' }, buildingName(x)), h('i', { class: 'dot ' + st }));
+        img(S.room(x.type), 'thumb'), h('span', { class: 'nm' }, buildingName(x)), h('i', { class: 'dot ' + st }));
     })),
     b ? workCard(b) : h('p', { class: 'muted' }, 'No workshops yet. Build one in the Hold tab.'),
   ];
 }
 
-function workCard(b) {
+export function workCard(b) {
   const f = F(), t = byId.buildings[b.type], info = D().buildings[b.id] || {};
   const w = info.worker ? f.dwarves.find((x) => x.id === info.worker) : null;
   const [st, label] = wsState(b);

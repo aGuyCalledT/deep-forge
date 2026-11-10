@@ -83,6 +83,10 @@ public final class Actions {
             case "breakSiege" -> breakSiege(f, a, t, r);
             case "tradition" -> tradition(f, a);
             case "rename" -> rename(f, a);
+            case "moveRoom" -> Layouts.moveRoom(f, str(a, "building"), num(a, "col", -1), num(a, "floor", -1));
+            case "dig" -> Layouts.dig(f, num(a, "col", -1), num(a, "floor", -1));
+            case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
+            case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
             default -> throw new GameException("Unknown action: " + type);
         }
     }
@@ -179,6 +183,7 @@ public final class Actions {
         b.type = type;
         b.level = 1;
         f.buildings.add(b);
+        Layouts.ensure(f);
         log(f, "info", "Built a new " + bt.name().toLowerCase() + ".");
     }
 
@@ -190,6 +195,7 @@ public final class Actions {
         check(canPay(f, c), "Not enough coins or materials.");
         pay(f, c);
         b.level++;
+        Layouts.ensure(f);
         fortressXp(f, 5 * b.level);
         log(f, "info", Content.BUILDINGS.get(b.type).name() + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."));
     }

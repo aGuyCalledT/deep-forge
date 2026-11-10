@@ -8,6 +8,9 @@ import java.util.*;
 public final class Factory {
     private Factory() {}
 
+    public static final int BEARD_STYLES = 8, HAIR_STYLES = 6, HATS = 6, BODIES = 3, ACCESSORIES = 5;
+    static final List<String> OUTFITS = List.of("#6f8fb8", "#7aa08a", "#b87a6a", "#9a86b8", "#c2a46a", "#6aa0a8", "#b8869a", "#8a9a6a");
+
     public static Fortress newFortress(long userId, String owner, double now, long seed) {
         Fortress f = new Fortress();
         f.userId = userId;
@@ -60,6 +63,7 @@ public final class Factory {
         f.nextRaidAt = now + 48 * Rules.H;
         f.nextMigrantsAt = now + 8 * Rules.H;
         Expeditions.refreshOffers(f, r, now);
+        Layouts.ensure(f);
         f.rng = r.s;
         Rules.log(f, now, "good", "Seven dwarves have claimed a mountain. Welcome to " + f.name + "!");
         Rules.log(f, now, "info", "Your miners dig copper and tin. Smelt ore into bars, forge goods and send merchants to the cities.");
@@ -75,7 +79,12 @@ public final class Factory {
         d.beard = r.pick(Names.BEARDS);
         d.hair = r.chance(0.7) ? d.beard : r.pick(Names.BEARDS);
         d.skin = r.pick(Names.SKINS);
-        d.beardStyle = r.nextInt(4);
+        d.beardStyle = r.nextInt(BEARD_STYLES);
+        d.hairStyle = r.nextInt(HAIR_STYLES);
+        d.hat = r.chance(0.55) ? 0 : 1 + r.nextInt(HATS - 1);
+        d.body = r.nextInt(BODIES);
+        d.outfit = r.pick(OUTFITS);
+        d.accessory = r.chance(0.6) ? 0 : 1 + r.nextInt(ACCESSORIES - 1);
         List<String> pool = new ArrayList<>(Content.TRAITS.keySet());
         while (d.traits.size() < 2) {
             String t = r.pick(pool);

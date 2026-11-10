@@ -55,26 +55,31 @@ public class GameService {
         }
     }
 
-    public Map<String, Object> state(long uid, String owner) {
+    public Map<String, Object> state(long uid, String owner, boolean cheats) {
         double now = now();
         synchronized (lock(uid)) {
             Fortress f = load(uid, owner, now);
             Sim.advance(f, now, market);
             save(f);
-            return View.of(f, now);
+            return View.of(f, now, cheats);
         }
     }
 
-    public Map<String, Object> act(long uid, String owner, Map<String, Object> action) {
+    public Map<String, Object> act(long uid, String owner, Map<String, Object> action, boolean cheats) {
         double now = now();
         synchronized (lock(uid)) {
             Fortress f = load(uid, owner, now);
             Sim.advance(f, now, market);
             Rng r = new Rng(f.rng);
-            Actions.apply(f, action, now, r);
+            if (String.valueOf(action.get("type")).startsWith("cheat")) {
+                if (!cheats) throw new Actions.GameException("Cheats are off on this server.");
+                f = Cheats.apply(f, action, now, market, om, r);
+            } else {
+                Actions.apply(f, action, now, r);
+            }
             f.rng = r.s;
             save(f);
-            return View.of(f, now);
+            return View.of(f, now, cheats);
         }
     }
 

@@ -9,6 +9,8 @@
       <env name="SPRING_WEB_RESOURCES_STATIC_LOCATIONS" value="file:$PROJECT_DIR$/src/main/resources/static/,classpath:/static/" />
       <!-- A player called "admin" may reset passwords (More tab). -->
       <env name="ADMINS" value="admin" />
+      <!-- Test helpers for everyone: resources, dwarves, looks, skip time (More tab). -->
+      <env name="CHEATS" value="true" />
     </envs>
     <method v="2">
       <option name="Make" enabled="true" />

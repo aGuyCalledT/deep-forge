@@ -7,3 +7,4 @@ sprites/**/*.png
 !sprites/README.md
 .idea/
 *.iml
+art-src/out/
