@@ -28,6 +28,7 @@ Java 21 · Spring Boot 3 · PostgreSQL (H2 for local runs) · plain HTML/CSS/JS 
 **IntelliJ:** open the repo folder, let Maven import, then pick **Deep Forge** in the run menu and press Run.
 Open `http://localhost:8080` and found a hold. Saves go to `./data` (H2). Changes to JS and CSS show up after a
 browser reload, Java changes need a restart. **Deep Forge tests** runs all tests.
+If **Deep Forge** does not start (e.g. module not found), use **Deep Forge (Maven)**: it runs `mvn spring-boot:run`.
 
 Command line:
 
