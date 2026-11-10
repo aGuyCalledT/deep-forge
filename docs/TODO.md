@@ -47,6 +47,7 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
   Zwerg und eigener Bestellung; der Raum wird breiter.
 - [x] **Räume sehen nach Ausbau anders aus:** drei Stufen (ausgehöhlt, eingerichtet, prächtig), je zwei Varianten,
   Spinnweben, Risse, andersfarbige Steine.
+- [x] Köpfe im Profil: Schädel, flaches Gesicht, Brauenwulst, Kinn und Nacken statt Kugel; Haare und Hüte folgen der Form.
 - [ ] Ab Gebäudestufe 4 ändert sich das Aussehen nicht mehr; eine vierte Stufe wäre möglich.
 - [ ] Maschinen einzeln einem Zwerg zuweisen (jetzt: Reihenfolge nach Zwergen-ID) und einzeln abbauen.
 - [ ] Werkstatt-Bild am Handy: Räume mit 4–5 Maschinen werden kleiner als ×2 gezeigt (krumme Pixel); besser seitlich wischen.

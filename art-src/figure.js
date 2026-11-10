@@ -433,7 +433,8 @@ var Figure = (function () {
     // ears
     if (view === "side") { earAt(hx - rx * 0.15, hy + 1.5, 1); }
     else for (const sg of [-1, 1]) earAt(hx + sg * (rx + 0.3), hy + 1.5, sg);
-    F.ellipse(hx, hy, rx, ry, "skin");
+    if (view === "side") sideHead();
+    else F.ellipse(hx, hy, rx, ry, "skin");
     const headPart = F.part;
     if (cr.skinTex === "cracks") F.each(headPart, (x, y, k) => { if ((x * 3 + y * 5) % 11 === 0) F.texK(k, -1); });
     if (cr.skinTex === "warts") F.each(headPart, (x, y, k) => { if ((x * 7 + y * 3) % 17 === 0) F.texK(k, 1); });
@@ -501,6 +502,34 @@ var Figure = (function () {
     return { w: cw, h: ch, ax: Math.round(cx + 0.5), ay: sole + 1, data: img.data };
 
     // ======================================================== helpers (hoisted)
+
+    /** The head from the side is no ball: a round skull with a tucked-in nape, a flat face with a brow ridge,
+     *  a little dip under the eye, a chin, and a jaw that turns back towards the neck. */
+    // outlines of the head from the side, in units of rx, from the crown (v = -1) to the chin (v = 1)
+    function headSpan(y, grow = 0) {
+      const R = ry + 0.45 + grow, v = (y - hy) / R;
+      if (v < -1 || v > 1) return null;
+      const FRONT = fem
+        ? [[-1, 0.3], [-0.86, 0.6], [-0.6, 0.76], [-0.2, 0.8], [0.45, 0.8], [0.7, 0.7], [0.88, 0.48], [1, 0.15]]
+        : [[-1, 0.3], [-0.86, 0.62], [-0.6, 0.77], [-0.2, 0.8], [0.5, 0.8], [0.74, 0.83], [0.9, 0.7], [1, 0.4]];
+      const BACK = [[-1, 0.4], [-0.86, 0.8], [-0.5, 0.96], [-0.05, 0.92], [0.35, 0.72], [0.7, 0.4], [1, 0.3]];
+      let front = profile(FRONT, v) * (rx + 0.4) + grow, back = profile(BACK, v) * (rx + 0.4) + grow;
+      if (!fem && !grow && y === Math.round(eyeY - 2)) front += 0.8;                   // brow ridge
+      return [hx - back, hx + front];
+    }
+
+    /** The head from the side is no ball: a round skull with a tucked-in nape, a flat face with a brow ridge
+     *  and a chin, and a jaw that turns back towards the neck. */
+    function sideHead() { F.rows(hy - ry - 0.45, hy + ry + 0.45, (y) => headSpan(y), "skin"); }
+
+    /** Hair, hoods and helmets from the side: the head outline grown by `grow`, raised by `lift`. */
+    function sideShell(grow, lift, m, clip) {
+      for (let y = Math.floor(hy - ry - grow - lift - 1); y <= Math.ceil(hy + ry + grow); y++) {
+        const sp = headSpan(y + lift, grow);
+        if (!sp) continue;
+        for (let x = Math.round(sp[0]); x <= Math.round(sp[1]); x++) if (!clip || clip(x, y)) F.set(x, y, m);
+      }
+    }
 
     function earAt(x, y, sg) {
       if (cr.ears === "pointy") { F.line(x, y, x + sg * 3.5, y - 2.5, 2, "skin"); }
@@ -708,9 +737,11 @@ var Figure = (function () {
         if (view !== "back") { for (const sg of view === "side" ? [-1] : [-1, 1]) F.ellipse(hx + sg * (rx - 0.6), hy, 1, 2, "hair"); F.next(); }
         return;
       }
-      F.ellipse(hx, hy - 0.6, rx + 0.7, ry + 0.5, "hair", (x, y) => {
+      if (view === "side") {
+        // from the side the hair follows the head, so the silhouette keeps its skull and nape
+        sideShell(0.8, 0.6, "hair", (x, y) => x < hx + rx * 0.2 ? y <= hy + 1.5 + (fem ? 2 : 0) : y <= forehead + (hs === "fringe" && (x & 1) ? 1 : 0));
+      } else F.ellipse(hx, hy - 0.6, rx + 0.7, ry + 0.5, "hair", (x, y) => {
         if (view === "back") return y <= hy + ry * 0.45;
-        if (view === "side") { if (x < hx + rx * 0.2) return y <= hy + 1.5 + (fem ? 2 : 0); return y <= forehead + (hs === "fringe" && (x & 1) ? 1 : 0); }
         const ax = Math.abs(x - hx) / rx;
         if (ax > 0.82) return y <= hy + (fem ? 3 : 1);
         if (ax > 0.6) return y <= forehead + 2;
@@ -773,10 +804,8 @@ var Figure = (function () {
       const side = view === "side";
       const domeClip = (x, y) => y <= band;
       if (look === "hood") {
-        F.ellipse(hx - (side ? 1 : 0), hy + 0.3, rx + 1.4, ry + 1.3, "hat", (x, y) => {
-          if (side) return !(x > hx + rx * 0.05 && y > forehead - 1) || y > hy + ry * 0.7;
-          return !(Math.abs(x - hx) < rx * 0.72 && y > forehead - 1);
-        });
+        if (side) sideShell(1.4, -0.3, "hat", (x, y) => !(x > hx + rx * 0.05 && y > forehead - 1) || y > hy + ry * 0.7);
+        else F.ellipse(hx, hy + 0.3, rx + 1.4, ry + 1.3, "hat", (x, y) => !(Math.abs(x - hx) < rx * 0.72 && y > forehead - 1));
         F.each(F.part, (x, y, k) => { if (y === forehead - 1 || (side ? x === Math.round(hx + rx * 0.05) : Math.abs(Math.abs(x - hx) - rx * 0.72) < 0.6)) F.texK(k, 1); });
         F.next();
         return;
@@ -789,7 +818,8 @@ var Figure = (function () {
         F.next();
         return;
       }
-      F.ellipse(hx, hy - 0.8, rx + 1, ry + 0.8, mat, domeClip);
+      if (side) sideShell(1, 0.8, mat, domeClip);
+      else F.ellipse(hx, hy - 0.8, rx + 1, ry + 0.8, mat, domeClip);
       const dome = F.part;
       if (look === "beanie") F.each(dome, (x, y, k) => { if (y >= band - 1) F.texK(k, (x & 1) ? 1 : -1); else if ((x + y) % 4 === 0) F.texK(k, -1); });
       if (look === "miner") F.each(dome, (x, y, k) => { if (y === band) F.texK(k, -1); });

@@ -4387,7 +4387,7 @@
    "frame": {
     "x": 346,
     "y": 1098,
-    "w": 20,
+    "w": 19,
     "h": 28
    },
    "rotated": false,
@@ -4395,19 +4395,19 @@
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 20,
+    "w": 19,
     "h": 28
    },
    "sourceSize": {
-    "w": 20,
+    "w": 19,
     "h": 28
    }
   },
   "mon_goblin_scouts_1": {
    "frame": {
-    "x": 367,
+    "x": 366,
     "y": 1098,
-    "w": 19,
+    "w": 18,
     "h": 28
    },
    "rotated": false,
@@ -4415,17 +4415,17 @@
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 19,
+    "w": 18,
     "h": 28
    },
    "sourceSize": {
-    "w": 19,
+    "w": 18,
     "h": 28
    }
   },
   "mon_rock_troll_0": {
    "frame": {
-    "x": 387,
+    "x": 385,
     "y": 1098,
     "w": 36,
     "h": 42
