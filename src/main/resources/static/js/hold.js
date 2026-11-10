@@ -394,6 +394,46 @@ function hexA(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
+// ------------------------------------------------------------------ strangers in the valley
+
+// The merchant at the stall and travellers on the road. Not dwarves of the hold: their looks are fixed here.
+const NPCS = [
+  { id: 'merchant', body: 6, skin: '#e2b08a', hair: '#c4622d', eye: '#3f8a56', hairStyle: 'bun', nose: 2, tall: true,
+    wear: { top: { look: 'dress', color: '#7d5a8a' }, apron: { color: '#e7dbc5' }, hat: { look: 'bandana', color: '#d9704a' }, feet: { color: '#4f3a37' } } },
+  { id: 'pilgrim', body: 2, skin: '#f0c8a0', hair: '#9a9a9a', eye: '#7d8ba0', hairStyle: 'short', beard: 'long', tall: true, tool: 'sack',
+    wear: { top: { look: 'linen', color: '#8a7a5a' }, legs: { look: 'plain', color: '#4b3f4f' }, hat: { look: 'hood', color: '#5e6e4a' }, feet: { color: '#3a2a26' } } },
+  { id: 'bard', body: 7, skin: '#d9a77c', hair: '#e0b04a', eye: '#7a4a2a', hairStyle: 'long', nose: 1, tall: true,
+    wear: { top: { look: 'embroid', color: '#466e98' }, legs: { look: 'plain', color: '#653f27' }, hat: { look: 'pointy', color: '#a9473c' }, feet: { color: '#4f3a37' } } },
+  { id: 'peddler', body: 1, skin: '#d9a77c', hair: '#7a3b1e', eye: '#5b7fc0', hairStyle: 'short', beard: 'chops', tool: 'sack',
+    wear: { top: { look: 'vest', color: '#5e8f73' }, legs: { look: 'patched', color: '#6e5246' }, hat: { look: 'bandana', color: '#3f6659' }, feet: { color: '#3a2a26' } } },
+];
+
+/** Where the strangers are now: the merchant behind the stall by day, travellers walking the road and resting. */
+function drawStrangers(ctx, t, which) {
+  const day = daylight(sun().elev) > 0.3;
+  const placed = [];
+  if (which === 'stall') {   // by day the merchant stands at the side of her stall
+    if (day) placed.push({ n: NPCS[0], x: SURFACE.stall - 4, pose: Math.floor(t / 3) % 4 === 0 ? 'talk' : 'idle', face: 1 });
+  }
+  // travellers: a slow walk along the road, a rest by the signpost, then back; each on its own clock
+  const road0 = -VW + 10, road1 = SURFACE.gate - 20;
+  NPCS.slice(1).forEach((n, i) => {
+    if (which === 'stall') return;
+    const period = 140 + i * 37, k = ((t + i * 61) % period) / period;
+    if (!day && i > 0) return;               // at night only the pilgrim is out
+    let x, pose = 'walk', face = 1;
+    if (k < 0.4) x = road0 + (road1 - road0) * (k / 0.4);
+    else if (k < 0.55) { x = road1; pose = 'idle'; face = -1; }
+    else if (k < 0.95) { x = road1 - (road1 - road0) * ((k - 0.55) / 0.4); face = -1; }
+    else { x = road0; pose = 'idle'; }
+    placed.push({ n, x: Math.round(x + i * 14), pose, face });
+  });
+  for (const p of placed) {
+    const spr = S.npcSprite(p.n, p.pose, Math.floor(t * (p.pose === 'walk' ? 6 : 2)));
+    S.placeDwarf(ctx, spr, p.x, GRASS, p.face < 0);
+  }
+}
+
 // ------------------------------------------------------------------ the mountain
 
 const FACE_TOP = GROUND - 116;   // the cliff over the gate
@@ -421,6 +461,7 @@ function drawSurface(ctx, t) {
   onGrass(ctx, 'tree_1', -700);
   onGrass(ctx, 'tent', SURFACE.tent);
   onGrass(ctx, 'stall', SURFACE.stall);
+  drawStrangers(ctx, t, 'stall');
   onGrass(ctx, 'tree_0', -350);
   onGrass(ctx, 'signpost', SURFACE.sign);
   onGrass(ctx, 'winch', SURFACE.winch);
@@ -669,6 +710,7 @@ export const holdScreen = {
     drawSky(ctx, t, view);
     drawSurface(ctx, t);
     drawUnderground(ctx, t, view, G_);
+    drawStrangers(ctx, t, 'road');
     drawn.length = 0;
     const f = F();
     const list = [...agents.values()].filter((a) => !a.hidden && a.mode !== 'door').sort((a, b) => a.y - b.y);
