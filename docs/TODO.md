@@ -30,6 +30,13 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 
 ## Neu aufgefallen
 
+- [x] **Zwerge neu gezeichnet** im Stil der Vorlagen: großer Kopf, Augen mit Glanz, rote Wangen, weiche farbige
+      Umrisse, Vorder- und Seitenansicht.
+- [x] **Mehr Tiefe im Hintergrund:** runde Felssteine, Schatten des Felsens in Räumen und Gängen, beleuchtete Kanten,
+      nach unten dunkleres Gestein, Wurzeln, Parallaxe mit Bergen und Wald, Schatten unter Zwergen.
+- [ ] Rückansicht der Zwerge (z. B. beim Klettern), Werkzeuge in der Hand etwas größer.
+- [ ] Die Steine im Fels wiederholen sich alle 32 px sichtbar; eine zweite, passende Kachel würde helfen.
+
 - [ ] Gänge per Ziehen am Stück graben (jetzt: Klick pro Zelle).
 - [ ] Zwerge liegen beim Schlafen noch sitzend auf dem Bett; eine Liege-Pose wäre schöner.
 - [ ] Raum-Bau kostet nichts, Gänge und Treppen auch nicht. Kosten (Stein) einführen?

@@ -59,9 +59,9 @@ export function lookSheet(d) {
   openSheet(() => {
     const preview = { ...d, ...st, id: 'preview' + d.id, beardStyle: st.beardStyle, helm: null };
     const big = document.createElement('canvas');
-    big.width = 18 * 5; big.height = 29 * 5; big.className = 'dwarf-preview';
+    big.width = 20 * 5; big.height = 32 * 5; big.className = 'dwarf-preview';
     const g = big.getContext('2d'); g.imageSmoothingEnabled = false;
-    g.drawImage(S.dwarfSprite(preview, 'idle', 0), 0, 0, 18 * 5, 29 * 5);
+    g.drawImage(S.dwarfSprite(preview, 'idle', 0), 0, 0, 20 * 5, 32 * 5);
     const sel = (k) => h('label', null, k === 'beardStyle' ? 'Beard' : k === 'hairStyle' ? 'Hair' : k[0].toUpperCase() + k.slice(1),
       h('select', { onchange: (e) => { st[k] = +e.target.value; refreshSheet(); } }, LOOK_NAMES[k].map((n, i) => h('option', { value: i, selected: st[k] === i }, n))));
     const col = (k, label) => h('label', { class: 'color' }, label, h('input', { type: 'color', value: st[k], oninput: (e) => { st[k] = e.target.value; refreshSheet(); } }));

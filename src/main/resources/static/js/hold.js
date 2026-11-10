@@ -267,8 +267,40 @@ function drawSky(ctx, t, view) {
     let hgt = 10;
     for (let x = 0; x < w; x += 2) { hgt += (r() - 0.5) * 2.2 * amp; hgt = Math.max(4, Math.min(26, hgt)); ctx.fillRect(x, base - hgt, 2, GRASS - base + hgt); }
   };
-  hill(S.mix('#7a9ab8', '#2a2f55', 1 - day), GRASS - 18, 1, 13);
+  // parallax: far layers slide slower than the world when the camera pans
+  const x0 = Math.floor(view.x) - 2, x1 = Math.ceil(view.x + view.w) + 2;
+  const ridge = (u, seed, s) => Math.sin(u / (31 * s) + seed) * 0.5 + Math.sin(u / (13 * s) + seed * 2.3) * 0.3 + Math.sin(u / (5.3 * s) + seed * 4.1) * 0.12;
+  const layer = (k, fn) => { const off = view.x * k; for (let x = x0 - (x0 & 1); x < x1; x += 2) fn(x, x - off); };
+  // far mountains with snow caps, then a haze band, then wooded hills, then the near meadow
+  const far = S.mix('#a8b6d4', '#2a2d58', 1 - day), farLit = S.mix('#c6d0e6', '#3a3e6e', 1 - day), snow = S.mix('#f4f6fb', '#6a6f9e', 1 - day);
+  layer(0.8, (x, u) => {
+    const hgt = Math.round(30 + ridge(u, 1.7, 1.4) * 22 + Math.abs(Math.sin(u / 9 + 0.6)) * 6);
+    const peak = GRASS - 4 - hgt;
+    ctx.fillStyle = far; ctx.fillRect(x, peak, 2, hgt + 4);
+    const slope = ridge(u + 2, 1.7, 1.4) - ridge(u - 2, 1.7, 1.4);
+    if (slope < 0) { ctx.fillStyle = farLit; ctx.fillRect(x, peak, 2, Math.min(10, hgt)); }   // sunny west faces
+    if (hgt > 40) { ctx.fillStyle = snow; ctx.fillRect(x, peak, 2, Math.round((hgt - 40) * 0.6) + 1); }
+  });
+  const haze = ctx.createLinearGradient(0, GRASS - 40, 0, GRASS);
+  haze.addColorStop(0, hexA(sky.bottom, 0)); haze.addColorStop(1, hexA(sky.bottom, 0.75));
+  ctx.fillStyle = haze; ctx.fillRect(x0, GRASS - 40, x1 - x0, 40);
+  const wood = S.mix('#7fa48c', '#26365a', 1 - day), pine = S.mix('#5f8a72', '#1f2c4c', 1 - day);
+  layer(0.5, (x, u) => {
+    const hgt = Math.round(12 + ridge(u, 4.2, 0.8) * 7);
+    ctx.fillStyle = wood; ctx.fillRect(x, GRASS - 2 - hgt, 2, hgt + 2);
+    const n = Math.floor(u / 6);
+    if (S.hash('pine' + n) % 3 === 0 && ((u % 6) + 6) % 6 < 2) {
+      const th = 6 + (S.hash('p' + n) % 5);
+      ctx.fillStyle = pine;
+      for (let j = 0; j < th; j++) { const hw = Math.floor(j / 2.2); ctx.fillRect(x + 1 - hw, GRASS - 2 - hgt - th + j, hw * 2 + 1, 1); }
+    }
+  });
   hill(S.mix('#5e8a6a', '#22304a', 1 - day), GRASS - 6, 1.4, 29);
+}
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1, 7), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
 function drawSurface(ctx, t) {
@@ -315,13 +347,86 @@ function drawSurface(ctx, t) {
   }
 }
 
+// ------------------------------------------------------------------ depth: the rock face and the shadows it casts
+// The rock is the front plane; rooms, halls and the shaft are cut into it. Light comes from the top left, so the rock
+// throws a soft shadow down and right into every opening, and the lower and right lips of each opening catch light.
+// Both layers only change with the plan, so they are drawn once into canvases and cached.
+
+let depth = { key: '', rock: null, shadow: null, lips: null };
+
+function depthLayers(g) {
+  const w = W(), h = H() - SURF;
+  const key = [w, h, [...g.cells.keys()].sort().join(';'), g.stairs.map((s) => s.c + ',' + s.f).join(';')].join('|');
+  if (depth.key === key) return depth;
+  // rock: tiles, gentle strata, roots near the top, darker and cooler with depth
+  const rock = S.mk(w, h), rc = rock.getContext('2d');
+  for (let y = 0; y < h; y += 32) for (let x = 0; x < w; x += 32) S.draw(rc, 'rock', x, y);
+  const r = S.rand(77);
+  for (let y = 0, i = 0; y < h; i++) {
+    const bh = 20 + Math.floor(r() * 30);
+    rc.fillStyle = i % 2 ? 'rgba(255,214,170,0.05)' : 'rgba(40,26,52,0.08)';
+    rc.fillRect(0, y, w, bh);
+    y += bh;
+  }
+  for (let i = 0; i < w / 34; i++) {           // roots from the soil
+    let x = 6 + r() * (w - 12), y = 0;
+    const len = 10 + r() * 26;
+    rc.fillStyle = '#4a3530';
+    for (let k = 0; k < len; k++) { rc.fillRect(Math.round(x), y, 1, 1); y++; x += (r() - 0.5) * 1.4; if (k > 4 && r() < 0.08) rc.fillRect(Math.round(x) + (r() < 0.5 ? -1 : 1), y, 1, 2); }
+  }
+  const fade = rc.createLinearGradient(0, 0, 0, h);
+  fade.addColorStop(0, 'rgba(20,12,30,0)'); fade.addColorStop(0.35, 'rgba(20,12,30,0.18)'); fade.addColorStop(1, 'rgba(14,10,30,0.5)');
+  rc.fillStyle = fade; rc.fillRect(0, 0, w, h);
+  const top = rc.createLinearGradient(0, 0, 0, 10);
+  top.addColorStop(0, 'rgba(29,20,32,0.55)'); top.addColorStop(1, 'rgba(29,20,32,0)');
+  rc.fillStyle = top; rc.fillRect(0, 0, w, 10);
+
+  // where the rock is cut away
+  const hole = S.mk(w, h), hc = hole.getContext('2d');
+  for (let fl = 0; fl < plan.floors; fl++) { hc.fillStyle = '#000'; hc.fillRect(2, fl * RH, 28, RH); }
+  for (const [k, v] of g.cells) {
+    if (v.kind !== 'hall') continue;
+    const [c, fl] = k.split(',').map(Number);
+    S.draw(hc, 'hall_a', c * CELL, fl * RH);
+  }
+  for (const s of g.stairs) S.draw(hc, 'stairs', s.c * CELL, s.f * RH);
+  for (const rm of g.rooms) S.draw(hc, 'room_' + rm.b.type, rm.x, rm.y - SURF);
+  hc.globalCompositeOperation = 'destination-out';
+  for (const [k, v] of g.cells) {
+    if (v.kind !== 'hall') continue;
+    const [c, fl] = k.split(',').map(Number);
+    if (!walkable(g, c - 1, fl)) S.draw(hc, 'hall_cap_l', c * CELL, fl * RH);
+    if (!walkable(g, c + 1, fl)) S.draw(hc, 'hall_cap_r', c * CELL + 10, fl * RH);
+  }
+  const solid = S.mk(w, h), sc = solid.getContext('2d');
+  sc.fillRect(0, 0, w, h); sc.globalCompositeOperation = 'destination-out'; sc.drawImage(hole, 0, 0);
+
+  // shadow: the rock shifted down-right in steps, kept only inside the openings
+  const shadow = S.mk(w, h), shc = shadow.getContext('2d');
+  [[1, 1, 0.5], [1, 2, 0.4], [2, 3, 0.3], [2, 4, 0.25], [3, 6, 0.2], [4, 8, 0.14]].forEach(([dx, dy, a]) => { shc.globalAlpha = a; shc.drawImage(solid, dx, dy); shc.fillRect(0, 0, w, dy); });
+  shc.globalAlpha = 1;
+  shc.globalCompositeOperation = 'destination-in'; shc.drawImage(hole, 0, 0);
+  shc.globalCompositeOperation = 'source-in'; shc.fillStyle = '#150c1e'; shc.fillRect(0, 0, w, h);
+
+  // lips: the rock just below and right of an opening is lit, just above and left is in shade
+  const lips = S.mk(w, h), lc = lips.getContext('2d');
+  const edge = (dx, dy, color) => {
+    const e = S.mk(w, h), ec = e.getContext('2d');
+    ec.drawImage(hole, dx, dy); ec.globalCompositeOperation = 'destination-in'; ec.drawImage(solid, 0, 0);
+    ec.globalCompositeOperation = 'source-in'; ec.fillStyle = color; ec.fillRect(0, 0, w, h);
+    lc.drawImage(e, 0, 0);
+  };
+  edge(0, 1, 'rgba(232,190,140,0.55)'); edge(1, 0, 'rgba(232,190,140,0.3)');
+  edge(0, -1, 'rgba(18,10,24,0.6)'); edge(-1, 0, 'rgba(18,10,24,0.45)');
+  edge(0, -2, 'rgba(18,10,24,0.25)'); edge(-2, 0, 'rgba(18,10,24,0.2)');
+  depth = { key, rock, shadow, lips };
+  return depth;
+}
+
 function drawUnderground(ctx, t, view, g) {
-  const w = W(), h = H();
-  const y0 = Math.max(SURF, Math.floor(view.y / 32) * 32), y1 = Math.min(h, view.y + view.h + 32);
-  for (let y = SURF + Math.floor((y0 - SURF) / 32) * 32; y < y1; y += 32)
-    for (let x = Math.max(0, Math.floor(view.x / 32) * 32); x < Math.min(w, view.x + view.w + 32); x += 32) S.draw(ctx, 'rock', x, y);
-  // soft dark rim under the soil
-  ctx.fillStyle = 'rgba(29,27,44,0.35)'; ctx.fillRect(0, SURF, w, 3);
+  const dl = depthLayers(g);
+  ctx.drawImage(dl.rock, 0, SURF);
+  ctx.drawImage(dl.lips, 0, SURF);
   for (let fl = 0; fl < plan.floors; fl++) S.draw(ctx, 'shaft', 0, ftop(fl));
   // hallways with rounded ends where they meet rock
   for (const [k, v] of g.cells) {
@@ -334,6 +439,7 @@ function drawUnderground(ctx, t, view, g) {
   }
   for (const s of g.stairs) S.draw(ctx, 'stairs', s.c * CELL, ftop(s.f));
   for (const r of g.rooms) drawRoom(ctx, t, r);
+  ctx.drawImage(dl.shadow, 0, SURF);
 }
 
 /** A room and everything that moves in it (fire, wheels, smoke). Also used by the workshop screen. */
@@ -399,8 +505,9 @@ export const holdScreen = {
       const d = f.dwarves.find((x) => x.id === a.id);
       if (!d) continue;
       const spr = agentSprite(d, a);
-      const sx = Math.round(a.x - 9), sy = Math.round(a.y - 28);
-      if (a.face < 0) { ctx.save(); ctx.translate(sx + 18, sy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); }
+      const sx = Math.round(a.x - 10), sy = Math.round(a.y - 31);
+      S.groundShadow(ctx, a.x, a.y);
+      if (a.face < 0) { ctx.save(); ctx.translate(sx + 20, sy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); }
       else ctx.drawImage(spr, sx, sy);
       drawn.push({ id: a.id, sx, sy, spr: a.face < 0 ? flipped(spr) : spr, a });
     }
@@ -449,7 +556,7 @@ export const holdScreen = {
     if (G.build) return buildHit(x, y);
     for (let i = drawn.length - 1; i >= 0; i--) {
       const d = drawn[i];
-      if (x >= d.sx && x < d.sx + 18 && y >= d.sy + 3 && y < d.sy + 29 && opaque(d.spr, x - d.sx, y - d.sy)) return { kind: 'dwarf', id: d.id, sprite: d.spr, sx: d.sx, sy: d.sy };
+      if (x >= d.sx && x < d.sx + 20 && y >= d.sy + 3 && y < d.sy + 32 && opaque(d.spr, x - d.sx, y - d.sy)) return { kind: 'dwarf', id: d.id, sprite: d.spr, sx: d.sx, sy: d.sy };
     }
     if (!G_) return null;
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };

@@ -59,7 +59,7 @@ var ROOMS = {
 
 // Dwarf frames are 18x26 (16x24 + outline). Feet at y = 25. Hand anchor for tools, head bob per frame.
 var DWARF = {
-  w: 18, h: 26, feet: 25,
+  w: 18, h: 26, feet: 25,          // one part before its outline; the game stacks them on a 20 x 32 canvas (feet outline on the bottom row)
   poses: { idle: 2, walk: 4, work: 2, mine: 2, sit: 1, drink: 2, climb: 2, sleep: 1 },
   bob: { idle: [0, 1], walk: [0, 1, 0, 1], work: [0, 1], mine: [0, 1], sit: [3], drink: [3, 3], climb: [0, 1], sleep: [5] },
 };

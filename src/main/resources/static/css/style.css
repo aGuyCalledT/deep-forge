@@ -41,7 +41,7 @@ h2 { font-size: 21px; margin: 22px 0 10px; color: var(--gold); text-wrap: balanc
 h3 { font-size: 16px; margin: 14px 0 6px; color: var(--ink); }
 p { margin: 6px 0; }
 a { color: var(--gold); text-underline-offset: 3px; }
-canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+canvas, img { image-rendering: pixelated; image-rendering: crisp-edges; }
 input, select, button { font: inherit; color: inherit; }
 ::selection { background: #a86a3a; color: var(--ink); }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
@@ -329,7 +329,7 @@ td.num, th.num { text-align: right; }
 
 /* looks editor and cheats */
 .look-grid { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: start; }
-.dwarf-preview { width: 90px; height: 145px; background: radial-gradient(circle at 50% 70%, #5a4547, #3a2d30); border-radius: 14px; }
+.dwarf-preview { width: 100px; height: 160px; background: radial-gradient(circle at 50% 70%, #5a4547, #3a2d30); border-radius: 14px; }
 .look-grid select { min-width: 110px; }
 label.color { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .cheats { background: linear-gradient(180deg, #3f3a2c, #37322a); }
