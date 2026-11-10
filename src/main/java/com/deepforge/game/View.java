@@ -81,6 +81,10 @@ public final class View {
             List<Integer> wids = new ArrayList<>();
             for (Dwarf x : workers(f, b)) wids.add(x.id);
             m.put("workers", wids);
+            List<Integer> seatIds = new ArrayList<>();
+            for (Dwarf x : seats(f, b)) seatIds.add(x == null ? null : x.id);
+            m.put("seats", seatIds);
+            if (isWorkshop(b) && machines(b) < maxMachines(b)) m.put("machineCost", machineCost(b));
             List<Integer> waiting = new ArrayList<>();
             for (Dwarf x : assigned(f, b)) if (!wids.contains(x.id)) waiting.add(x.id);
             m.put("waiting", waiting);

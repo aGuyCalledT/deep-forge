@@ -64,11 +64,33 @@ public final class Rules {
         return ws.isEmpty() ? null : ws.get(0);
     }
 
-    /** Dwarves at their machines, machine 1 first. Workers beyond the number of machines wait. */
+    /** Dwarves at their machines, machine 1 first (empty machines are skipped). Workers beyond the machines wait. */
     public static List<Dwarf> workers(Fortress f, Building b) {
         List<Dwarf> out = new ArrayList<>();
-        for (Dwarf d : assigned(f, b)) if (d.busy == null && out.size() < machines(b)) out.add(d);
+        for (Dwarf d : seats(f, b)) if (d != null) out.add(d);
         return out;
+    }
+
+    /**
+     * Who sits at which machine (null = free). A dwarf with a chosen machine gets it if nobody with a lower id
+     * claimed it first; everyone else takes the first free machine in id order. Away dwarves leave their seat empty.
+     */
+    public static Dwarf[] seats(Fortress f, Building b) {
+        Dwarf[] out = new Dwarf[machines(b)];
+        List<Dwarf> rest = new ArrayList<>();
+        for (Dwarf d : assigned(f, b)) {
+            if (d.busy != null) continue;
+            if (d.machine >= 0 && d.machine < out.length && out[d.machine] == null) out[d.machine] = d;
+            else rest.add(d);
+        }
+        for (Dwarf d : rest)
+            for (int i = 0; i < out.length; i++) if (out[i] == null) { out[i] = d; break; }
+        return out;
+    }
+
+    /** What another machine costs when it is put back after being taken out. */
+    public static Cost machineCost(Building b) {
+        return new Cost(60 * b.level, Map.of("stone", 15 * b.level));
     }
 
     /** Everyone assigned to the building, in a stable order (by id). */

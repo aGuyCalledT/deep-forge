@@ -100,6 +100,7 @@ public final class State {
         public String job = "idle";   // idle | miner | worker | warrior | merchant
         public int layer;             // miner: layer index
         public String building;       // worker: building id
+        public int machine = -1;      // worker: which machine (0-based); -1 = the first free one
         public String post = "fortress"; // warrior: fortress | mine
         public String busy;           // caravan:<id> | expedition:<id>
         public String weapon;
@@ -120,6 +121,7 @@ public final class State {
         public double acc;        // continuous production accumulator
         public String status;     // human readable why idle
         public int machines = 1;  // workstations in the room; each one needs its own worker
+        public boolean machinesByHand;   // the player took a machine out: the hold no longer adds them back on its own
         public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
     }
 

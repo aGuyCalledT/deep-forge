@@ -176,7 +176,7 @@ function want(g, d, ctx) {
     const r = g.rooms.find((x) => x.b.id === d.building);
     if (r && !sch.off) {
       const info = D().buildings[r.b.id] || {};
-      const i = (info.workers || [info.worker]).indexOf(d.id);
+      const i = (info.seats || info.workers || [info.worker]).indexOf(d.id);
       if (i >= 0) {
         const m = S.machineAt(r.b, i), a = m.a || {};
         const wx = a.worker ? r.x + m.x + a.worker[0] : r.x + r.pw / 2;
@@ -582,7 +582,7 @@ export function drawRoom(ctx, t, r) {
   ctx.drawImage(S.roomImage(b), r.x, r.y);
   const f = F(), info = D().buildings[b.id] || {};
   const continuous = byId.buildings[b.type].kind === 'continuous';
-  const workers = info.workers || (info.worker ? [info.worker] : []);
+  const workers = info.seats || info.workers || (info.worker ? [info.worker] : []);
   const fr = Math.floor(t * 8) % 4;
   const n = S.META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
   for (let i = 0; i < n; i++) {
@@ -610,7 +610,7 @@ export function roomLights(r) {
   const b = r.b, out = [];
   const info = D().buildings[b.id] || {};
   const continuous = byId.buildings[b.type].kind === 'continuous';
-  const workers = info.workers || (info.worker ? [info.worker] : []);
+  const workers = info.seats || info.workers || (info.worker ? [info.worker] : []);
   const heat = b.type === 'smelter' && G.heat ? G.heat(b.id) / 100 : 0;
   const n = S.META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
   for (let i = 0; i < n; i++) {

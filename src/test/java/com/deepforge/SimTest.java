@@ -257,6 +257,44 @@ class SimTest {
     }
 
     @Test
+    void machinesAreAssignedAndRemovedOneByOne() {
+        Fortress f = fresh(45);
+        Market m = Market.inMemory(45, T0);
+        f.coins = 100000;
+        f.stock.put("stone", 5000);
+        f.stock.put("bar:copper", 500);
+        f.stock.put("bar:bronze", 500);
+        Building forge = Rules.building(f, "forge-1");
+        while (forge.level < 3) { act(f, m, T0, "type", "upgrade", "building", forge.id); }
+        assertEquals(3, Rules.machines(forge));
+        List<Dwarf> ds = f.dwarves.stream().filter(d -> d.busy == null).limit(3).toList();
+        for (Dwarf d : ds) act(f, m, T0, "type", "assign", "dwarf", d.id, "job", "idle");
+        // put the first dwarf at machine 3, the second at machine 1
+        act(f, m, T0, "type", "assign", "dwarf", ds.get(0).id, "job", "worker", "building", forge.id, "machine", 2);
+        act(f, m, T0, "type", "assign", "dwarf", ds.get(1).id, "job", "worker", "building", forge.id, "machine", 0);
+        Dwarf[] seats = Rules.seats(f, forge);
+        assertSame(ds.get(1), seats[0]);
+        assertNull(seats[1]);
+        assertSame(ds.get(0), seats[2]);
+        // swapping: the dwarf at 3 moves to 1, the one at 1 takes 3
+        act(f, m, T0, "type", "assign", "dwarf", ds.get(0).id, "job", "worker", "building", forge.id, "machine", 0);
+        seats = Rules.seats(f, forge);
+        assertSame(ds.get(0), seats[0]);
+        assertSame(ds.get(1), seats[2]);
+        // take out machine 1: its dwarf rests, the one at 3 is now at 2, the room is narrower
+        int w = Layouts.width(forge);
+        act(f, m, T0, "type", "removeMachine", "building", forge.id, "machine", 0);
+        assertEquals(2, Rules.machines(forge));
+        assertEquals("idle", ds.get(0).job);
+        assertSame(ds.get(1), Rules.seats(f, forge)[1]);
+        assertEquals(w - Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
+        // and put it back
+        act(f, m, T0, "type", "addMachine", "building", forge.id);
+        assertEquals(3, Rules.machines(forge));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "addMachine", "building", forge.id));
+    }
+
+    @Test
     void buildingInTheHoldCosts() {
         Fortress f = fresh(44);
         Market m = Market.inMemory(44, T0);

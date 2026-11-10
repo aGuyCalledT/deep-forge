@@ -123,7 +123,7 @@ public final class Layouts {
         }
         // workshops from before rooms grew with their level: let them catch up where there is space
         for (Building b : f.buildings)
-            while (hasRoom(b) && l.rooms.containsKey(b.id) && Rules.machines(b) < Rules.maxMachines(b) && canGrow(f, b)) {
+            while (hasRoom(b) && !b.machinesByHand && l.rooms.containsKey(b.id) && Rules.machines(b) < Rules.maxMachines(b) && canGrow(f, b)) {
                 grow(f, b);
                 b.machines = Rules.machines(b) + 1;
             }

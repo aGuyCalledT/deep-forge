@@ -206,10 +206,12 @@ public final class Sim {
             }
             // every machine runs its own job from the shared queue; machine 1 is b.job, the others live in b.more
             String status = null;
-            for (int i = 0; i < ws.size(); i++) {
-                Dwarf w = ws.get(i);
+            Dwarf[] seats = seats(f, b);
+            for (int i = 0; i < seats.length; i++) {
+                Dwarf w = seats[i];
+                if (w == null) continue;
                 onMachine(b, i, () -> queue(f, b, w, dt, r, t));
-                if (i == 0) status = b.status;
+                if (status == null) status = b.status;
             }
             b.status = status;
         }

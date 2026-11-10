@@ -4,7 +4,7 @@ import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast,
 import * as A from './audio.js';
 const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
-import { upgradeBtn } from './panels-base.js';
+import { upgradeBtn, costBtn } from './panels-base.js';
 import { jobOf } from './hold.js';
 import { api } from './api.js';
 
@@ -94,17 +94,18 @@ export function workCard(b) {
   return out;
 }
 
-/** One row per machine: who works there and what it makes. Plus the button for another machine. */
+/** One row per machine: who works there and what it makes. Each machine can get its own dwarf or be taken out. */
 function machinesBlock(b) {
   const f = F(), t = byId.buildings[b.type], bi = D().buildings[b.id] || {};
-  const n = bi.machines || 1, ids = bi.workers || [];
+  const n = bi.machines || 1, seats = bi.seats || bi.workers || [];
   const rows = [];
   for (let i = 0; i < n; i++) {
-    const w = ids[i] != null ? f.dwarves.find((x) => x.id === ids[i]) : null;
+    const w = seats[i] != null ? f.dwarves.find((x) => x.id === seats[i]) : null;
     const j = jobOf(b, i);
     const what = !w ? h('span', { class: 'small bad-t' }, 'Nobody here')
       : j ? (j.quenching ? h('span', { class: 'small gold-t' }, 'Quench now!') : h('span', { class: 'small muted' }, (bi.jobNames || [])[i] || 'Working'))
         : h('span', { class: 'small muted' }, t.kind === 'continuous' ? 'Working' : 'Waiting for an order');
+    const busyJob = j && t.kind !== 'continuous';
     rows.push(h('div', { class: 'machine' + (w ? '' : ' empty') },
       h('span', { class: 'machine-no' }, String(i + 1)),
       w ? img(S.portrait(w), 'icon') : h('span', { class: 'machine-seat' }, ico('dwarf')),
@@ -112,13 +113,18 @@ function machinesBlock(b) {
         h('div', null, w ? w.first + ' ' + w.clan : 'Free machine', w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
         what,
         j && !j.quenching ? h('div', { class: 'bar thin' }, h('i', { 'data-job': b.id, 'data-machine': i })) : null),
-      w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free')
-        : h('button', { class: 'btn small', onclick: () => assignSheet(b) }, 'Assign')));
+      h('div', { class: 'machine-btns' },
+        h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
+        w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
+        n > 1 ? h('button', { class: 'btn small ghost', disabled: !!busyJob, title: busyJob ? 'Wait until this machine is done.' : 'Take this machine out. The room gets narrower.',
+          onclick: () => { if (confirm('Take machine ' + (i + 1) + ' out? ' + (w ? w.first + ' will rest. ' : '') + 'Putting it back costs coins and stone.')) bus.act({ type: 'removeMachine', building: b.id, machine: i }); } }, 'Remove') : null)));
   }
   const waiting = (bi.waiting || []).map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
   return h('div', { class: 'machines' },
-    h('div', { class: 'row between' }, h('h3', null, 'Machines', info('One dwarf per machine. Upgrade the workshop for another machine (up to 5).')), h('span', { class: 'small muted' }, `${ids.length} of ${n} staffed`)),
+    h('div', { class: 'row between' }, h('h3', null, 'Machines', info('One dwarf per machine. Upgrade the workshop for another machine (up to 5). Pick who works where, or take a machine out to make the room narrower.')),
+      h('span', { class: 'small muted' }, `${seats.filter((x) => x != null).length} of ${n} staffed`)),
     rows,
+    bi.machineCost ? costBtn('Put back a machine', bi.machineCost, { type: 'addMachine', building: b.id }, bi.canGrow === false ? 'No floor has space for a wider room. Dig out more of the hold.' : null) : null,
     waiting.length ? h('p', { class: 'small warn-t' }, waiting.map((x) => x.first).join(', ') + ' waiting for a free machine. Upgrade the workshop or give them other work.') : null);
 }
 
@@ -213,15 +219,18 @@ export function animateWork() {
 
 // ------------------------------------------------------------------ sheets
 
-function assignSheet(b) {
+function assignSheet(b, machine = -1) {
   openSheet(() => {
     const f = F(), skill = byId.buildings[b.type].skill;
+    const multi = (b.machines || 1) > 1, seats = (D().buildings[b.id] || {}).seats || [];
     const free = f.dwarves.filter((x) => !x.busy).sort((a, c) => (D().dwarves[c.id].skills[skill] || 0) - (D().dwarves[a.id].skills[skill] || 0));
-    return h('div', null, h('h2', null, 'Who works at the ' + buildingName(b).toLowerCase() + '?'),
-      h('p', { class: 'small muted' }, `Sorted by ${skill} skill. ` + ((b.machines || 1) > 1
-        ? `Each of the ${b.machines} machines takes one dwarf.` : 'The current worker becomes idle.')),
-      free.filter((x) => !(x.job === 'worker' && x.building === b.id)).map((x) => h('button', { class: 'pick', style: { width: '100%' }, onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, job: 'worker', building: b.id }); closeSheet(); } },
-        img(S.portrait(x)), h('span', { class: 'grow', style: { textAlign: 'left' } }, x.first + ' ' + x.clan, h('br'), h('span', { class: 'small muted' }, (x.job === 'idle' ? 'Idle' : 'now: ' + x.job) + ` · ${skill} ${D().dwarves[x.id].skills[skill]}`)))));
+    // for one machine of several: dwarves of this workshop can swap places, so they stay in the list
+    const pickable = free.filter((x) => (multi && machine >= 0) ? seats[machine] !== x.id : !(x.job === 'worker' && x.building === b.id));
+    return h('div', null, h('h2', null, multi && machine >= 0 ? `Who works at machine ${machine + 1}?` : 'Who works at the ' + buildingName(b).toLowerCase() + '?'),
+      h('p', { class: 'small muted' }, `Sorted by ${skill} skill. ` + (multi
+        ? (machine >= 0 ? 'Whoever works there now rests, or swaps places with a dwarf from another machine here.' : `Each of the ${b.machines} machines takes one dwarf.`) : 'The current worker becomes idle.')),
+      pickable.map((x) => h('button', { class: 'pick', style: { width: '100%' }, onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, job: 'worker', building: b.id, machine: multi ? machine : -1 }); closeSheet(); } },
+        img(S.portrait(x)), h('span', { class: 'grow', style: { textAlign: 'left' } }, x.first + ' ' + x.clan, h('br'), h('span', { class: 'small muted' }, (x.job === 'idle' ? 'Idle' : x.job === 'worker' && x.building === b.id && seats.indexOf(x.id) >= 0 ? 'at machine ' + (seats.indexOf(x.id) + 1) : 'now: ' + x.job) + ` · ${skill} ${D().dwarves[x.id].skills[skill]}`)))));
   });
 }
 

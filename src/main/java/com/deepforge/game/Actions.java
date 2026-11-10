@@ -90,6 +90,8 @@ public final class Actions {
             case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
             case "door" -> Layouts.door(f, num(a, "col", -1), num(a, "floor", -1));
+            case "removeMachine" -> removeMachine(f, a);
+            case "addMachine" -> addMachine(f, a);
             case "digMany" -> Layouts.digMany(f, cells(a));
             case "fillMany" -> Layouts.fillMany(f, cells(a));
             default -> throw new GameException("Unknown action: " + type);
@@ -133,19 +135,78 @@ public final class Actions {
                 check(b != null && b.level > 0, "No such building.");
                 String kind = Content.BUILDINGS.get(b.type).kind();
                 check(!kind.equals("passive"), "Nobody works there.");
-                if (!(d.job.equals("worker") && b.id.equals(d.building))) {
+                int m = num(a, "machine", -1);
+                check(m < machines(b), "That machine does not exist.");
+                boolean here = d.job.equals("worker") && b.id.equals(d.building);
+                if (m >= 0) {
+                    // a chosen machine: pin everyone where they sit, then the one sitting there swaps with the
+                    // newcomer (if the newcomer already had a machine here) or rests
+                    Dwarf[] now = seats(f, b);
+                    int old = -1;
+                    for (int k = 0; k < now.length; k++) if (now[k] != null) { now[k].machine = k; if (now[k] == d) old = k; }
+                    Dwarf o = now[m];
+                    if (o != null && o != d) {
+                        if (old >= 0) o.machine = old;
+                        else { o.job = "idle"; o.machine = -1; }
+                    }
+                    d.machine = m;
+                } else if (!here) {
                     List<Dwarf> at = assigned(f, b);
                     if (at.size() >= machines(b)) {
                         // all machines taken: with one machine the newcomer takes over, otherwise say what to do
                         check(machines(b) == 1, "All " + machines(b) + " machines are taken. Add a machine or free a worker first.");
                         for (Dwarf o : at) o.job = "idle";
                     }
+                    d.machine = -1;
                 }
                 d.job = "worker";
                 d.building = b.id;
             }
             default -> throw new GameException("Unknown job.");
         }
+    }
+
+    /** Take one machine out of a workshop: its dwarf rests, the room gets narrower, the space becomes hallway. */
+    static void removeMachine(Fortress f, Map<String, Object> a) {
+        Building b = building(f, str(a, "building"));
+        check(b != null && isWorkshop(b), "No such workshop.");
+        int i = num(a, "machine", -1);
+        check(machines(b) > 1, "A workshop keeps at least one machine.");
+        check(i >= 0 && i < machines(b), "That machine does not exist.");
+        Job j = i == 0 ? b.job : (i - 1 < b.more.size() ? b.more.get(i - 1) : null);
+        check(j == null, "Machine " + (i + 1) + " is still working. Wait until it is done, or take out another one.");
+        Layouts.ensure(f);
+        int[] p = f.layout.rooms.get(b.id);
+        int w = Layouts.width(b), extra = Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
+        Dwarf[] seats = seats(f, b);
+        for (int k = 0; k < seats.length; k++) if (seats[k] != null) seats[k].machine = k;   // keep the others in place
+        for (Dwarf d : assigned(f, b)) {
+            if (d.machine == i) { d.job = "idle"; d.machine = -1; }
+            else if (d.machine > i) d.machine--;
+        }
+        if (i == 0) b.job = b.more.isEmpty() ? null : b.more.remove(0);
+        else if (i - 1 < b.more.size()) b.more.remove(i - 1);
+        b.machines = machines(b) - 1;
+        b.machinesByHand = true;
+        if (p != null) for (int x = p[0] + w - extra; x < p[0] + w; x++) f.layout.halls.add(Layouts.key(x, p[1]));
+        log(f, "info", "A machine was taken out of the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
+    }
+
+    /** Put a machine back that was taken out (up to one per level, at most 5). */
+    static void addMachine(Fortress f, Map<String, Object> a) {
+        Building b = building(f, str(a, "building"));
+        check(b != null && isWorkshop(b), "No such workshop.");
+        check(machines(b) < maxMachines(b), "Upgrade the workshop for another machine.");
+        Cost c = machineCost(b);
+        check(canPay(f, c), "Not enough coins or stone for another machine.");
+        Layouts.ensure(f);
+        int[] spot = Layouts.spaceToGrow(f, b);
+        check(spot != null, "No floor has space for a wider " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ". Dig out more of the hold.");
+        pay(f, c);
+        Layouts.place(f, b.id, spot[0], spot[1], false);
+        Layouts.grow(f, b);
+        b.machines = machines(b) + 1;
+        log(f, "info", "A new machine stands in the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
     }
 
     static void equip(Fortress f, Map<String, Object> a) {
@@ -338,8 +399,7 @@ public final class Actions {
         check(b != null, "Nothing to quench right now.");
         int i = Math.max(0, num(a, "machine", 0));
         check(i < machines(b), "Nothing to quench right now.");
-        List<Dwarf> ws = workers(f, b);
-        Dwarf w = i < ws.size() ? ws.get(i) : null;
+        Dwarf w = seats(f, b)[i];
         Sim.onMachine(b, i, () -> quenchJob(f, b, w, t, r));
     }
 
