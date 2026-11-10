@@ -2,12 +2,29 @@
 
 // ---------------------------------------------------------------- rock around the rooms (warm, cut by hand)
 sprite("rock", { w: 32, h: 32 }, (c) => {
-  c.rect(0, 0, 32, 32, ")");
-  // irregular stone courses: every mark is a joint between blocks
-  const rows = [[0, 9, ")"], [9, 8, "["], [17, 9, ")"], [26, 6, "["]];
-  for (const [y, h, col] of rows) c.rect(0, y, 32, h, col);
-  const joints = [[0, [6, 19, 27]], [9, [2, 13, 24]], [17, [8, 17, 29]], [26, [4, 15, 22]]];
-  for (const [y, xs] of joints) { c.hline(0, y, 32, "("); for (const x of xs) c.vline(x, y, 9, "("); for (const x of xs) c.hline(x + 1, y + 1, 4, "]"); }
+  // rounded stones set in dark crevices, lit from the top left; wraps on all sides so it tiles
+  c.rect(0, 0, 32, 32, "(");
+  const px = (x, y, k) => c.px(((x % 32) + 32) % 32, ((y % 32) + 32) % 32, k);
+  // rows: [y, height, [[x, width, dark?], ...]]
+  const rows = [
+    [0, 8, [[1, 9, 0], [11, 7, 1], [19, 13, 0]]],
+    [8, 9, [[5, 11, 1], [17, 8, 0], [26, 11, 0]]],
+    [17, 7, [[0, 6, 0], [7, 12, 0], [20, 9, 1], [30, 2, 0]]],
+    [24, 8, [[3, 8, 0], [12, 6, 1], [19, 12, 0]]],
+  ];
+  for (const [y0, h, stones] of rows) for (const [x0, w0, dark] of stones) {
+    const w = w0 - 1, hh = h - 1;   // one pixel crevice right and below
+    const fill = dark ? ")" : "[", lit = dark ? "[" : "]", shade = dark ? "(" : ")";
+    for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) {
+      const corner = (i === 0 || i === w - 1) && (j === 0 || j === hh - 1);
+      if (corner) continue;                                  // rounded corners
+      let k = fill;
+      if (j === 0 || (i === 0 && j < hh - 2)) k = lit;       // light on the top and left
+      if (j === hh - 1 || (i === w - 1 && j > 1)) k = shade; // shade on the bottom and right
+      px(x0 + i, y0 + j, k);
+    }
+    if (!dark && w > 6) { px(x0 + 2, y0 + 1, "{"); px(x0 + 3, y0 + 1, "{"); }   // a glint on the big stones
+  }
 });
 sprite("rock_dark", { base: "rock", swap: { "]": "[", "[": ")", ")": "(" } });
 

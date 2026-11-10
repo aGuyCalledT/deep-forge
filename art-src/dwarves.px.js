@@ -1,99 +1,161 @@
-// Dwarves, built from parts that the game stacks and recolours: body (3 builds x poses), beard, hair,
-// hat, accessory, tool. Every part is 16x24 before the outline, so they line up when stacked.
-// Facing right. Feet on the bottom row. Head parts are drawn at head height 0; the game moves them
-// down by DWARF.bob[pose][frame].
+// Dwarves, drawn pixel by pixel and stacked from parts by the game: body (3 builds x poses), beard, hair,
+// hat, accessory, tool. Two views: front (idle, sit, drink, sleep) and side, facing right (walk, work, mine, climb).
+// Every part is 18 x 26 before the outline (hats 18 x 30, drawn 4 px higher), so they line up when stacked.
+// Head parts are drawn at head height 0; the game moves them down by DWARF.bob[pose][frame].
+// Colour placeholders (recoloured per dwarf): skin a A i, beard r R t, hair d D E, tunic T L K, metal m M x X.
 
-const DW = 16, DH = 24;
+const DW = 18, DH = 26;
 
-// body builds: torso x range, leg length
-const BUILDS = [
-  { x0: 3, x1: 12, lift: 0 },   // stout
-  { x0: 4, x1: 11, lift: 1 },   // tall (head and torso one pixel higher)
-  { x0: 2, x1: 13, lift: 0 },   // round
+/** Draw rows of keys at (x, y). "." = nothing. */
+function grid(c, x, y, rows) {
+  rows.forEach((row, j) => { for (let i = 0; i < row.length; i++) if (row[i] !== "." && row[i] !== " ") c.px(x + i, y + j, row[i]); });
+}
+/** Mirror the left half (cols 0..8) onto the right (cols 9..17). */
+function mirrorRows(half) { return half.map((r) => r + [...r].reverse().join("")); }
+
+// ------------------------------------------------------------------ heads
+
+// Front: big round head, eyes with a shine, bulb nose, rosy cheeks. Brows come with the hair part.
+const HEAD_FRONT = mirrorRows([
+  ".....aAAA",
+  "...aAAiiA",
+  "..aAAiiAA",
+  "..aAiAAAA",
+  ".aAAAAAAA",
+  ".aAAAAAAA",
+  "aAAAeeAAA",
+  "aAAAeeAAi",
+  ".aAAAAAAi",
+  "..aPPAAAA",
+  "..aAAAAaa",
+  "...aAAAAa",
+  "....aaaaa",
+]);
+const HEAD_FRONT_SLEEP = HEAD_FRONT.map((r, j) => (j === 6 ? r.replace(/ee/g, "AA") : j === 7 ? r.replace(/ee/g, "aa") : r));
+
+// Side, facing right: the nose leads.
+const HEAD_SIDE = [
+  "......aAAAA.......",
+  "....aAAAiiAA......",
+  "...aAAiiAAAAA.....",
+  "...aAiAAAAAAAA....",
+  "..aAAAAAAAAAAA....",
+  "..aAAAAAAAAAAAA...",
+  "..aAaaAAAAAeeAA...",
+  "..aAaAAAAAAeeAAi..",
+  "..aAAAAAAAAAAAAii.",
+  "...aAAAAAAAPPAAAAi",
+  "...aAAAAAAAAAAaaa.",
+  "....aAAAAAAAAAA...",
+  ".....aaaaaaaaa....",
 ];
 
-function drawHead(c, dy, eyes = "open") {
-  // round, slightly too big head (cute), light from the top left
-  c.rect(3, 2 + dy, 10, 9, "A");
-  c.rect(4, 1 + dy, 8, 1, "A");
-  c.rect(4, 2 + dy, 4, 2, "i");
-  c.rect(12, 3 + dy, 1, 7, "a");
-  c.rect(3, 9 + dy, 10, 2, "a");
-  c.px(2, 6 + dy, "a"); c.px(2, 7 + dy, "A");     // ear
-  // big round nose
-  c.rect(10, 6 + dy, 3, 3, "A");
-  c.px(13, 7 + dy, "A");
-  c.px(10, 6 + dy, "i"); c.px(11, 6 + dy, "i");
-  c.rect(10, 8 + dy, 4, 1, "a");
-  if (eyes === "open") {
-    c.rect(7, 4 + dy, 1, 2, "e"); c.rect(10, 4 + dy, 1, 2, "e");
-    c.px(7, 4 + dy, "C"); c.px(10, 4 + dy, "C");  // shine
-  } else {
-    c.rect(6, 5 + dy, 2, 1, "a"); c.rect(9, 5 + dy, 2, 1, "a");
+function head(c, view, dy, sleep) {
+  const rows = view === "front" ? (sleep ? HEAD_FRONT_SLEEP : HEAD_FRONT) : HEAD_SIDE;
+  grid(c, 0, dy, rows);
+  if (view === "front" && !sleep) { c.px(4, 6 + dy, "C"); c.px(12, 6 + dy, "C"); }   // shine in both eyes
+  if (view === "side") c.px(11, 6 + dy, "C");
+}
+
+// ------------------------------------------------------------------ bodies
+
+// builds: half width of the torso and belly roundness
+const BUILDS = [
+  { w: 7, belly: 0, legs: 2 },   // stout
+  { w: 6, belly: 0, legs: 3 },   // tall
+  { w: 8, belly: 1, legs: 2 },   // round
+];
+
+function torsoFront(c, b, y0) {
+  // tunic with soft folds; light from the top left
+  const cx = 9, top = y0, h = 8;
+  for (let j = 0; j < h; j++) {
+    const w = b.w + (b.belly && j >= 2 && j <= 5 ? 1 : 0) - (j === 0 ? 1 : 0);
+    for (let i = -w; i < w; i++) {
+      const x = cx + i;
+      let k = "L";
+      if (i === -w) k = "K"; else if (i >= w - 2) k = "T";
+      if (j === 0 && i < -w + 3) k = "K";
+      c.px(x, top + j, k);
+    }
   }
-  c.px(5, 7 + dy, "P"); c.px(6, 7 + dy, "9");      // rosy cheek
+  // belt with a gold buckle
+  const by = top + 5, bw = b.w + b.belly;
+  for (let i = -bw; i < bw; i++) c.px(cx + i, by, "%");
+  c.rect(cx - 1, by, 2, 1, "j"); c.px(cx - 1, by, "8");
+  // tunic hem
+  for (let i = -bw; i < bw; i++) c.px(cx + i, top + h - 1, i % 3 === 0 ? "T" : "L");
+  // arms hang at the sides, hands peek out
+  c.rect(cx - bw - 2, top + 1, 2, 5, "L"); c.px(cx - bw - 2, top + 1, "K");
+  c.rect(cx + bw, top + 1, 2, 5, "T");
+  c.rect(cx - bw - 2, top + 6, 2, 2, "A"); c.px(cx - bw - 2, top + 6, "i");
+  c.rect(cx + bw, top + 6, 2, 2, "a");
 }
 
-function drawTorso(c, b, dy) {
-  const y0 = 11 + dy - b.lift;
-  c.rect(b.x0, y0, b.x1 - b.x0 + 1, 8, "L");
-  c.rect(b.x0, y0, 1, 8, "K");
-  c.rect(b.x1, y0, 1, 8, "T");
-  c.rect(b.x0, y0 + 7, b.x1 - b.x0 + 1, 1, "T");
-  c.rect(b.x0, y0 + 5, b.x1 - b.x0 + 1, 1, "%");  // belt
-  c.rect(7, y0 + 5, 2, 1, "j");                   // buckle
-  c.px(7, y0 + 2, "K");                           // stitching
-  c.px(8, y0 + 3, "K");
+function legsFront(c, b, y0, seated) {
+  if (seated) {
+    // sitting: boots point at us
+    c.rect(4, y0, 4, 2, "l"); c.rect(10, y0, 4, 2, "I");
+    c.rect(4, y0 + 2, 4, 2, "S"); c.rect(10, y0 + 2, 4, 2, "S"); c.px(4, y0 + 2, "%"); c.px(10, y0 + 2, "%");
+    return;
+  }
+  for (let j = 0; j < b.legs; j++) { c.rect(5, y0 + j, 3, 1, "l"); c.rect(10, y0 + j, 3, 1, "I"); }
+  const by = y0 + b.legs;
+  c.rect(4, by, 4, 3, "S"); c.rect(10, by, 4, 3, "S");
+  c.hline(4, by, 3, "%"); c.hline(10, by, 3, "%");       // boot highlight
+  c.hline(4, by + 2, 4, "w"); c.hline(10, by + 2, 4, "w"); // sole
 }
 
-function drawLegs(c, b, pose) {
-  // pose: "stand" | [front dx, back dx] for walking
-  const y = 19 - b.lift;
-  if (pose === "stand") {
-    c.rect(5, y, 2, 3 + b.lift, "l"); c.rect(9, y, 2, 3 + b.lift, "I");
-    c.rect(4, 22, 3, 2, "S"); c.rect(9, 22, 3, 2, "S");
-    c.px(6, 22, "%"); c.px(11, 22, "%");
-  } else {
-    const [fd, bd] = pose;
-    c.rect(5 + bd, y, 2, 3 + b.lift, "l"); c.rect(9 + fd, y, 2, 3 + b.lift, "I");
-    c.rect(4 + bd, 22, 3, 2, "S"); c.rect(9 + fd, 22, 3, 2, "S");
-    c.px(11 + fd, 22, "%");
+function torsoSide(c, b, y0, armY) {
+  const x0 = 5, w = 8 + b.belly;
+  for (let j = 0; j < 8; j++) for (let i = 0; i < w; i++) {
+    let k = "L";
+    if (i === 0) k = "T"; else if (i >= w - 2) k = "K";
+    if (b.belly && j >= 2 && j <= 5 && i === w - 1) k = "K";
+    c.px(x0 + i, y0 + j, k);
+  }
+  if (b.belly) for (let j = 2; j <= 5; j++) c.px(x0 + w, y0 + j, "K");
+  c.hline(x0, y0 + 5, w, "%"); c.px(x0 + w - 2, y0 + 5, "j");
+  // the near arm: armY = hand height (relative), or null
+  if (armY !== null) {
+    const ax = x0 + 3;
+    const top = Math.min(y0 + 1, y0 + armY), bot = Math.max(y0 + 1, y0 + armY);
+    c.rect(ax, top, 2, bot - top + 1, "T"); c.vline(ax + 1, top, bot - top + 1, "L");
+    c.rect(ax, y0 + armY, 2, 2, "A"); c.px(ax + 1, y0 + armY, "i");
   }
 }
 
-function drawSeated(c, b) {
-  c.rect(5, 19, 7, 2, "l"); c.rect(9, 19, 4, 2, "I");
-  c.rect(11, 21, 3, 3, "S"); c.rect(6, 21, 3, 3, "S");
+function legsSide(c, b, y0, step) {
+  // step: [front leg dx, back leg dx]
+  const [fd, bd] = step;
+  for (let j = 0; j < b.legs; j++) { c.rect(6 + bd, y0 + j, 3, 1, "l"); c.rect(9 + fd, y0 + j, 3, 1, "I"); }
+  const by = y0 + b.legs;
+  c.rect(5 + bd, by, 4, 3, "S"); c.rect(9 + fd, by, 5, 3, "S");
+  c.hline(9 + fd, by, 4, "%"); c.hline(5 + bd, by, 3, "%");
+  c.hline(5 + bd, by + 2, 4, "w"); c.hline(9 + fd, by + 2, 5, "w");
 }
 
-function arm(c, x, y, len, col = "L") {
-  c.rect(x, y, 2, len, col);
-  c.rect(x, y + len, 2, 2, "A");
-}
+const VIEW = { idle: "front", sit: "front", drink: "front", sleep: "front", walk: "side", work: "side", mine: "side", climb: "side" };
 
-function body(name, b, pose, frame) {
+function body(name, b, pose, f) {
   sprite(name, { w: DW, h: DH, outline: "k" }, (c) => {
-    const dy = DWARF.bob[pose][frame];
+    const dy = DWARF.bob[pose][f];
+    const view = VIEW[pose];
     const seated = pose === "sit" || pose === "drink" || pose === "sleep";
-    if (seated) {
-      drawSeated(c, b);
-      drawTorso(c, b, 3);
-      drawHead(c, dy - b.lift, pose === "sleep" ? "closed" : "open");
-      if (pose === "drink" && frame === 0) arm(c, 11, 11, 2, "T");      // mug to the mouth
-      else arm(c, b.x1, 15, 2, "T");
+    const lift = b.legs - 2;            // tall dwarves stand a pixel higher
+    const ty = 13 - lift + (seated ? 3 : 0);
+    if (view === "front") {
+      legsFront(c, b, seated ? 22 : 21 - lift, seated);
+      torsoFront(c, b, ty);
+      head(c, "front", dy - lift, pose === "sleep");
+      if (pose === "drink" && f === 0) { c.rect(11, ty - 2, 2, 3, "T"); c.rect(11, ty - 3, 2, 1, "A"); }   // mug arm up
       return;
     }
-    if (pose === "walk") drawLegs(c, b, [[1, -1], [0, 0], [-1, 1], [0, 0]][frame]);
-    else if (pose === "climb") drawLegs(c, b, frame ? [0, 1] : [1, 0]);
-    else drawLegs(c, b, "stand");
-    drawTorso(c, b, 0);
-    drawHead(c, dy - b.lift);
-    const ay = 12 - b.lift;
-    if (pose === "work") frame === 0 ? arm(c, b.x1, ay - 5, 3, "T") : arm(c, b.x1, ay, 3, "T");
-    else if (pose === "mine") frame === 0 ? arm(c, b.x1 - 1, ay - 6, 4, "T") : arm(c, b.x1, ay + 1, 3, "T");
-    else if (pose === "climb") { arm(c, b.x0 - 1, ay - 4 + frame, 3, "K"); arm(c, b.x1, ay - 3 - frame, 3, "T"); }
-    else if (pose === "walk") arm(c, b.x1, ay + (frame % 2), 3, "T");
-    else arm(c, b.x1, ay + 1, 3, "T");
+    const steps = { walk: [[2, -1], [0, 0], [-1, 2], [0, 0]], climb: [[1, 0], [0, 1]] };
+    legsSide(c, b, 21 - lift, (steps[pose] || [[0, 0]])[f] || [0, 0]);
+    const arm = pose === "work" ? (f ? 4 : -4) : pose === "mine" ? (f ? 5 : -5) : pose === "climb" ? -4 - f : pose === "walk" ? [4, 5, 6, 5][f] : 5;
+    torsoSide(c, b, ty, arm);
+    head(c, "side", dy - lift);
   });
 }
 
@@ -102,73 +164,142 @@ BUILDS.forEach((b, i) => {
     for (let f = 0; f < n; f++) body(`dw_body${i}_${pose}_${f}`, b, pose, f);
 });
 
-// ---- beards (r dark, R mid, t light). Drawn at head height 0.
-const BEARDS = [
-  (c) => { c.rect(4, 8, 9, 3, "R"); c.rect(5, 11, 7, 2, "R"); c.rect(4, 8, 2, 2, "t"); c.rect(6, 12, 5, 1, "r"); },
-  (c) => { c.rect(4, 8, 9, 4, "R"); c.rect(5, 12, 7, 3, "R"); c.rect(6, 15, 5, 2, "R"); c.rect(7, 17, 3, 1, "r");
-           c.rect(5, 9, 1, 4, "t"); c.px(8, 13, "r"); c.px(9, 15, "r"); },
-  (c) => { c.rect(4, 8, 9, 4, "R"); c.rect(5, 12, 3, 3, "R"); c.rect(9, 12, 3, 3, "R"); c.rect(5, 15, 2, 1, "r"); c.rect(10, 15, 2, 1, "r");
-           c.rect(5, 9, 1, 3, "t"); },
-  (c) => { c.rect(4, 8, 9, 4, "R"); c.rect(7, 12, 3, 6, "R"); c.px(7, 13, "t"); c.px(8, 15, "t"); c.px(9, 17, "t");
-           c.rect(7, 14, 3, 1, "o"); c.rect(7, 17, 3, 1, "j"); c.px(8, 18, "R"); },
-  (c) => { c.rect(3, 8, 11, 5, "R"); c.rect(4, 13, 9, 2, "R"); c.rect(3, 8, 2, 3, "t"); c.rect(5, 9, 2, 1, "t"); c.rect(5, 14, 7, 1, "r"); c.px(13, 10, "r"); },
-  (c) => { c.rect(6, 8, 7, 1, "R"); c.px(5, 9, "R"); c.px(13, 9, "R"); c.px(6, 8, "t"); c.rect(6, 10, 6, 1, "r"); },
-  (c) => { c.rect(6, 8, 7, 1, "R"); c.rect(8, 10, 3, 2, "R"); c.px(9, 12, "R"); c.px(9, 13, "r"); },
-  (c) => { c.rect(4, 8, 9, 4, "R"); c.rect(5, 12, 7, 4, "R"); c.rect(6, 16, 5, 3, "R"); c.rect(7, 19, 3, 2, "R"); c.px(8, 21, "r");
-           c.rect(5, 9, 1, 6, "t"); c.px(7, 14, "t"); c.px(9, 17, "r"); c.px(8, 12, "r"); },
-];
-BEARDS.forEach((fn, i) => sprite(`dw_beard_${i}`, { w: DW, h: DH, outline: "k" }, (c) => {
-  fn(c);
-  // mustache on top for the full styles
-  if (i !== 5 && i !== 6) { c.rect(6, 8, 6, 1, "R"); c.px(6, 8, "t"); c.px(9, 9, "r"); }
-}));
+// ------------------------------------------------------------------ beards (r dark, R mid, t light)
+// Strands run downwards; a moustache sits under the nose.
 
-// ---- hair (d dark, D mid, E light)
-const HAIRS = [
-  () => {},                                                                  // bald
-  (c) => { c.rect(4, 1, 8, 2, "D"); c.rect(3, 2, 2, 4, "D"); c.rect(5, 1, 3, 1, "E"); },
-  (c) => { c.rect(4, 1, 8, 2, "D"); c.px(5, 0, "D"); c.px(8, 0, "E"); c.px(10, 0, "D"); c.rect(3, 2, 2, 5, "d"); c.px(6, 1, "E"); },
-  (c) => { c.rect(4, 1, 8, 2, "D"); c.rect(2, 2, 3, 10, "D"); c.rect(2, 3, 1, 8, "d"); c.px(5, 1, "E"); c.px(3, 2, "E"); },
-  (c) => { c.rect(4, 1, 8, 2, "D"); c.rect(6, 0, 4, 1, "D"); c.rect(7, 0, 2, 1, "E"); c.rect(3, 2, 2, 3, "d"); },
-  (c) => { c.rect(4, 1, 8, 2, "D"); c.rect(2, 4, 2, 7, "D"); c.px(2, 6, "o"); c.px(2, 9, "o"); c.px(5, 1, "E"); c.rect(3, 2, 1, 2, "d"); },
-];
-HAIRS.forEach((fn, i) => sprite(`dw_hair_${i}`, { w: DW, h: DH, outline: i ? "k" : undefined }, (c) => fn(c)));
-
-// ---- hats (own colours, not recoloured)
-const HATS = [
-  () => {},
-  (c) => { c.rect(3, 0, 10, 4, "G"); c.rect(2, 2, 2, 7, "G"); c.rect(4, 0, 4, 1, "h"); c.rect(12, 3, 1, 2, "g"); c.px(3, 3, "h"); },   // hood
-  (c) => { c.rect(3, 0, 10, 3, "O"); c.rect(2, 3, 12, 1, "o"); c.rect(4, 0, 4, 1, "j"); c.rect(11, 1, 2, 2, "Y"); c.px(12, 1, "0"); }, // miner helmet + lamp
-  (c) => { c.rect(4, 0, 8, 3, "p"); c.rect(3, 3, 10, 1, "P"); c.rect(5, 0, 3, 1, "P"); c.rect(7, -1, 2, 1, "9"); c.px(8, -2, "9"); }, // beanie + pompom
-  (c) => { c.rect(4, 1, 8, 2, "B"); c.rect(6, -1, 4, 2, "B"); c.rect(8, -3, 3, 2, "B"); c.px(11, -3, "n"); c.rect(3, 3, 10, 1, "b"); c.px(5, 1, "n"); }, // felt cap
-  (c) => { c.rect(4, 0, 8, 3, "5"); c.rect(3, 3, 10, 1, "4"); c.rect(5, 0, 3, 1, "6"); c.rect(1, -1, 2, 3, "c"); c.px(1, -2, "C"); c.rect(13, -1, 2, 3, "c"); c.px(14, -2, "C"); c.rect(7, 3, 2, 2, "4"); }, // horned helm
-];
-HATS.forEach((fn, i) => sprite(`dw_hat_${i}`, { w: DW, h: DH + 3, outline: i ? "k" : undefined }, (c) => {
-  // hats may stick out above the head: drawn 3 px lower on a taller canvas, the game offsets by -3
-  const s = { rect: (x, y, w, h, k) => c.rect(x, y + 3, w, h, k), px: (x, y, k) => c.px(x, y + 3, k) };
-  fn(s);
-}));
-
-// ---- accessories
-const ACCS = [
-  () => {},
-  (c) => { c.rect(12, 9, 3, 1, "v"); c.rect(14, 7, 2, 2, "W"); c.px(14, 7, "V"); },                          // pipe
-  (c) => { c.rect(6, 4, 2, 2, "o"); c.rect(9, 4, 2, 2, "o"); c.px(8, 4, "o"); c.px(7, 5, "N"); c.px(10, 5, "N"); }, // glasses
-  (c) => { c.px(5, 11, "P"); c.px(4, 12, "P"); c.px(6, 12, "P"); c.px(5, 13, "P"); c.px(5, 12, "j"); },     // flower in the beard
-  (c) => { c.px(3, 8, "j"); },                                                                                // earring
-];
-ACCS.forEach((fn, i) => sprite(`dw_acc_${i}`, { w: DW, h: DH, outline: i ? "k" : undefined }, (c) => fn(c)));
-
-// ---- tools in hand, per pose frame (metal placeholders m..X recolour with the tool's metal)
-function pickaxe(c, up) {
-  if (up) { c.line(11, 0, 15, 8, "v"); c.rect(8, 0, 6, 1, "M"); c.px(7, 1, "M"); c.px(14, 1, "M"); c.px(9, 0, "X"); }
-  else { c.line(12, 12, 15, 18, "v"); c.rect(13, 18, 3, 1, "M"); c.px(15, 19, "M"); c.px(15, 20, "m"); c.px(12, 17, "x"); }
+function strands(c, x0, x1, y0, y1, seed) {
+  for (let x = x0; x <= x1; x++) if ((x + seed) % 3 === 0) c.vline(x, y0 + ((x + seed) % 2), y1 - y0 - ((x * 7 + seed) % 3), "r");
+  for (let x = x0 + 1; x <= x1; x += 4) c.px(x, y0 + 1, "t");
 }
-sprite("dw_tool_mine_0", { w: DW, h: DH, outline: "k" }, (c) => pickaxe(c, true));
-sprite("dw_tool_mine_1", { w: DW, h: DH, outline: "k" }, (c) => pickaxe(c, false));
-sprite("dw_tool_work_0", { w: DW, h: DH, outline: "k" }, (c) => { c.vline(14, 2, 6, "v"); c.rect(13, 1, 3, 2, "5"); c.px(13, 1, "6"); });
-sprite("dw_tool_work_1", { w: DW, h: DH, outline: "k" }, (c) => { c.hline(13, 16, 3, "v"); c.rect(15, 14, 1, 4, "5"); c.px(15, 14, "6"); });
-sprite("dw_tool_drink_0", { w: DW, h: DH, outline: "k" }, (c) => { c.rect(12, 10, 3, 3, "u"); c.rect(12, 9, 3, 1, "C"); c.px(15, 11, "u"); });
-sprite("dw_tool_drink_1", { w: DW, h: DH, outline: "k" }, (c) => { c.rect(13, 16, 3, 3, "u"); c.rect(13, 15, 3, 1, "C"); });
-sprite("dw_tool_axe", { w: DW, h: DH, outline: "k" }, (c) => { c.vline(14, 6, 12, "v"); c.rect(14, 5, 2, 4, "M"); c.px(15, 5, "X"); c.px(13, 6, "x"); });
-sprite("dw_tool_sack", { w: DW, h: DH, outline: "k" }, (c) => { c.rect(12, 14, 4, 5, "u"); c.rect(13, 13, 2, 1, "V"); c.px(13, 16, "j"); });
+
+function beardShape(c, rows, y) { grid(c, 0, y, rows); }
+
+const BEARDS_FRONT = [
+  // 0 full and round
+  (c) => { beardShape(c, mirrorRows(["...RRRRRR", "..RRRRRRR", "..RRRRRRR", "..RRRRRRR", "...RRRRRR", "....RRRRR", ".....rrrr"]), 10); strands(c, 3, 14, 11, 16, 0); },
+  // 1 long to the belt
+  (c) => { beardShape(c, mirrorRows(["...RRRRRR", "..RRRRRRR", "..RRRRRRR", "..RRRRRRR", "...RRRRRR", "...RRRRRR", "....RRRRR", "....RRRRR", ".....RRRR", "......rrr"]), 10); strands(c, 3, 14, 11, 19, 1); },
+  // 2 forked
+  (c) => { beardShape(c, mirrorRows(["...RRRRRR", "..RRRRRRR", "..RRRRRRR", "..RRRRRRR", "...RRRRR.", "...RRRR..", "....RRR..", "....rr..."]), 10); strands(c, 3, 14, 11, 16, 2); },
+  // 3 braided with gold beads
+  (c) => { beardShape(c, mirrorRows(["...RRRRRR", "..RRRRRRR", "..RRRRRRR", "...RRRRRR", "......RRR", "......RRR", "......ooo", "......RRR", "......jjj", ".......RR"]), 10); strands(c, 3, 14, 11, 13, 0); },
+  // 4 huge and fluffy
+  (c) => { beardShape(c, mirrorRows(["..RRRRRRR", ".RRRRRRRR", "RRRRRRRRR", "RRRRRRRRR", ".RRRRRRRR", ".RRRRRRRR", "..RRRRRRR", "...rRRRRR", ".....rrrr"]), 9); strands(c, 1, 16, 10, 17, 1); for (const x of [2, 5, 12, 15]) c.px(x, 11, "t"); },
+  // 5 big moustache only
+  (c) => { beardShape(c, mirrorRows([".......RR", "...tRRRRR", "..RRRRRrr", "..rr....."]), 9); },
+  // 6 short goatee
+  (c) => { beardShape(c, mirrorRows(["....RRRRR", ".......RR", ".......RR", "........r"]), 10); },
+  // 7 wizard-long to the knees
+  (c) => { beardShape(c, mirrorRows(["...RRRRRR", "..RRRRRRR", "..RRRRRRR", "..RRRRRRR", "...RRRRRR", "...RRRRRR", "...RRRRRR", "....RRRRR", "....RRRRR", ".....RRRR", ".....RRRR", "......RRR", ".......rr"]), 10); strands(c, 3, 14, 11, 21, 2); },
+];
+
+const BEARDS_SIDE = [
+  (c) => { grid(c, 7, 10, ["....RRRRRR.", "..RRRRRRRRR", ".RRRRRRRRRR", ".RRRRRRRRR.", "..RRRRRRR..", "...RRRRR...", "....rrr...."]); strands(c, 8, 16, 11, 16, 0); },
+  (c) => { grid(c, 7, 10, ["....RRRRRR.", "..RRRRRRRRR", ".RRRRRRRRRR", ".RRRRRRRRR.", ".RRRRRRRRR.", "..RRRRRRRR.", "..RRRRRRR..", "...RRRRRR..", "....RRRR...", ".....rr...."]); strands(c, 8, 16, 11, 19, 1); },
+  (c) => { grid(c, 7, 10, ["....RRRRRR.", "..RRRRRRRRR", ".RRRRRRRRRR", ".RRRRRRRRR.", "..RRR..RRR.", "..RR....RR.", "..rr....rr."]); strands(c, 8, 16, 11, 14, 2); },
+  (c) => { grid(c, 7, 10, ["....RRRRRR.", "..RRRRRRRRR", ".RRRRRRRRRR", "..RRRRRRRR.", "......RRR..", "......ooo..", "......RRR..", "......jjj..", ".......R..."]); strands(c, 8, 16, 11, 13, 0); },
+  (c) => { grid(c, 6, 9, ["...RRRRRRRR.", ".RRRRRRRRRRR", "RRRRRRRRRRRR", "RRRRRRRRRRRR", ".RRRRRRRRRR.", ".RRRRRRRRRR.", "..RRRRRRRR..", "....rrrrr..."]); strands(c, 7, 17, 10, 16, 1); },
+  (c) => { grid(c, 11, 9, ["...RRR", "tRRRRR", "RRRRrr", "rr...."]); },
+  (c) => { grid(c, 12, 10, ["RRRR.", "..RR.", "..RR.", "...r."]); },
+  (c) => { grid(c, 7, 10, ["....RRRRRR.", "..RRRRRRRRR", ".RRRRRRRRRR", ".RRRRRRRRR.", ".RRRRRRRRR.", "..RRRRRRRR.", "..RRRRRRRR.", "...RRRRRRR.", "...RRRRRR..", "....RRRRR..", "....RRRR...", ".....RR....", ".....rr...."]); strands(c, 8, 16, 11, 21, 2); },
+];
+
+// a moustache over every full beard
+function moustache(c, view) {
+  if (view === "front") grid(c, 0, 9, mirrorRows(["....RRRtR", "...RRRRRR", "...r....."]));
+  else grid(c, 11, 9, ["..RRRR.", "RRRRRRt", "r....r."]);
+}
+
+for (const view of ["front", "side"]) {
+  const list = view === "front" ? BEARDS_FRONT : BEARDS_SIDE;
+  list.forEach((fn, i) => sprite(`dw_beard_${view}_${i}`, { w: DW, h: DH, outline: "k" }, (c) => {
+    fn(c);
+    if (i !== 5 && i !== 6) moustache(c, view);
+  }));
+}
+
+// ------------------------------------------------------------------ hair (d dark, D mid, E light) and brows
+
+const HAIR = {
+  front: [
+    (c) => { c.rect(5, 0, 8, 1, "i"); },   // bald: a shiny scalp
+    (c) => grid(c, 0, 0, mirrorRows(["....DDDDD", "..DDDDEED", "..DDEEDDD", ".DDDDDDDD", ".DD......", ".D......."])),
+    (c) => grid(c, 0, -1, mirrorRows([".....D..D", "...DDDDDD", "..DDEEDED", ".DDDEDDDD", ".DDDDDDDD", "DDD......", ".D......."])),
+    (c) => grid(c, 0, 0, mirrorRows(["....DDDDD", "..DDEEEDD", ".DDEDDDDD", ".DDDDDDDD", "DDD......", "DD.......", "DD.......", "DD.......", "DD.......", "Dd.......", "d........"])),
+    (c) => { grid(c, 0, 0, mirrorRows(["....DDDDD", "..DDDEEDD", ".DDDDDDDD", ".DD......"])); grid(c, 6, -3, [".DDDD.", "DDEEDD", "DDDDDd", ".dddd."]); },
+    (c) => grid(c, 0, 0, mirrorRows(["....DDDDD", "..DDDEEDD", ".DDDDDDDD", ".DD......", ".D.......", "DD.......", "Do.......", "DD.......", "Do.......", ".D......."])),
+  ],
+  side: [
+    (c) => { c.rect(6, 0, 6, 1, "i"); },
+    (c) => grid(c, 2, 0, ["...DDDDDD...", ".DDDDEEDDD..", "DDDDDDEDDDD.", "DDDDDDD.....", "DDDD........", "DD.........."]),
+    (c) => grid(c, 2, -1, ["...D.D..D...", ".DDDDDDDDD..", "DDDDEEDEDDD.", "DDDDDDDDDD..", "DDDDD.......", "DD.........."]),
+    (c) => grid(c, 1, 0, ["....DDDDDD...", "..DDDDDEEDD..", ".DDDDDDDEDDD.", "DDDDDDDD.....", "DDDDD........", "DDDD.........", "DDD..........", "DDD..........", "DDd..........", "Dd...........", "d............"]),
+    (c) => { grid(c, 2, 0, ["...DDDDDD...", ".DDDDDEEDD..", "DDDDDDDDDDD.", "DDDD........"]); grid(c, 1, -2, [".DDD.", "DDEDD", "DDDDd", ".ddd."]); },
+    (c) => grid(c, 2, 0, ["...DDDDDD...", ".DDDDDEEDD..", "DDDDDDDDDDD.", "DDDD........", "DDD.........", ".DD.........", ".Do.........", ".DD.........", ".D.........."]),
+  ],
+};
+// bushy brows go with every hair style (also bald ones), drawn in the hair colour
+function brows(c, view) {
+  if (view === "front") { grid(c, 3, 4, ["dDDd"]); grid(c, 11, 4, ["dDDd"]); }
+  else grid(c, 10, 4, ["dDDd"]);
+}
+for (const view of ["front", "side"]) HAIR[view].forEach((fn, i) => sprite(`dw_hair_${view}_${i}`, { w: DW, h: DH, outline: "k" }, (c) => { fn(c); brows(c, view); }));
+
+// ------------------------------------------------------------------ hats (own colours). Canvas 18 x 30, the game draws it 4 px higher.
+
+function hatCanvas(fn) { return (c) => fn({ grid: (x, y, rows) => grid(c, x, y + 4, rows) }); }
+
+const HATS = {
+  front: [
+    () => {},
+    (h) => h.grid(0, -1, mirrorRows(["....GGGGG", "..GGhhGGG", ".GGhGGGGG", ".GGGGGGGG", "GGG......", "GG.......", "GG.......", "Gg......."])),                     // hood
+    (h) => h.grid(0, -2, mirrorRows(["....OOOOO", "..OOjjOOO", ".OOjOOOOO", ".OOOOOOYY", "ooooooo0Y", "ooooooooo"])),                                        // miner helmet + lamp
+    (h) => h.grid(0, -4, mirrorRows([".......99", "......999", "....ppppp", "..ppPPppp", ".pppPpppp", ".PPPPPPPP", ".PpPpPpPp"])),                                // beanie + pompom
+    (h) => h.grid(0, -6, [".........BBn......", "........BBBB......", ".......BBBnB......", "......BBBBBBB.....", "....BBBBnBBBBB....", "..bbbbbbbbbbbbbb..", ".bbbbbbbbbbbbbbbb."]),   // pointy felt cap
+    (h) => { h.grid(0, -2, mirrorRows(["....55555", "..5566555", ".55655555", ".55555555", "444444444"])); h.grid(0, -6, mirrorRows(["C........", "cC.......", "cc.......", ".cc......", "..cc....."])); }, // horned helm
+  ],
+  side: [
+    () => {},
+    (h) => h.grid(1, -1, ["....GGGGGG...", "..GGGhhGGGG..", ".GGGhGGGGGGG.", "GGGGGGGGGGGG.", "GGGG.........", "GGG..........", "GGG..........", "Gg..........."]),
+    (h) => h.grid(2, -2, ["...OOOOOO...", ".OOOjjOOOOO.", "OOOjOOOOOOYY", "ooooooooooY0", "oooooooooooo"]),
+    (h) => h.grid(2, -4, ["..99........", ".999........", "..ppppppp...", ".ppPPppppp..", "pppPpppppp..", "PPPPPPPPPP..", "PpPpPpPpPp.."]),
+    (h) => h.grid(1, -6, [".BBn.........", "..BBBB.......", "...BBBnB.....", "....BBBBBB...", "...BBBBnBBBB.", "bbbbbbbbbbbbbb", ".bbbbbbbbbbbb."]),
+    (h) => { h.grid(2, -2, ["...555555...", ".55566555...", "5556555555..", "5555555555..", "44444444444."]); h.grid(2, -6, ["C.....", "cC....", "cc....", ".cc...", "..cc.."]); },
+  ],
+};
+for (const view of ["front", "side"]) HATS[view].forEach((fn, i) => sprite(`dw_hat_${view}_${i}`, { w: DW, h: DH + 4, outline: i ? "k" : undefined }, hatCanvas(fn)));
+
+// ------------------------------------------------------------------ accessories
+
+const ACCS = {
+  front: [
+    () => {},
+    (c) => grid(c, 11, 11, ["vvvV", "...W", "...W"]),                                             // pipe
+    (c) => grid(c, 3, 5, ["oooo..oooo", "oNNo..oNNo", "oooooooooo"].map((r) => r.padEnd(12, "."))), // glasses
+    (c) => grid(c, 4, 12, [".P.", "PjP", ".P.", ".h."]),                                             // flower in the beard
+    (c) => grid(c, 1, 8, ["j", "8"]),                                                               // earring
+  ],
+  side: [
+    () => {},
+    (c) => grid(c, 15, 10, ["vvV", "..W", "..W"]),
+    (c) => grid(c, 10, 5, ["ooooo", "oNNoo", "ooooo"]),
+    (c) => grid(c, 10, 12, [".P.", "PjP", ".P.", ".h."]),
+    (c) => grid(c, 5, 8, ["j", "8"]),
+  ],
+};
+for (const view of ["front", "side"]) ACCS[view].forEach((fn, i) => sprite(`dw_acc_${view}_${i}`, { w: DW, h: DH, outline: i ? "k" : undefined }, (c) => fn(c)));
+
+// ------------------------------------------------------------------ tools in hand (side view, near hand), metal placeholders recolour
+
+function pick(c, up) {
+  if (up) { c.line(9, 4, 15, 0, "v"); c.line(10, 5, 16, 1, "W"); grid(c, 12, 0, ["xMMMm", "M...M"]); }
+  else { c.line(9, 18, 15, 22, "v"); c.line(9, 19, 15, 23, "W"); grid(c, 13, 20, ["Mx", "MM", ".m"]); }
+}
+sprite("dw_tool_mine_0", { w: DW, h: DH, outline: "k" }, (c) => pick(c, true));
+sprite("dw_tool_mine_1", { w: DW, h: DH, outline: "k" }, (c) => pick(c, false));
+sprite("dw_tool_work_0", { w: DW, h: DH, outline: "k" }, (c) => { c.vline(9, 3, 7, "v"); grid(c, 8, 1, ["566", "555"]); });
+sprite("dw_tool_work_1", { w: DW, h: DH, outline: "k" }, (c) => { c.hline(10, 19, 5, "v"); grid(c, 14, 17, ["56", "55", "55"]); });
+sprite("dw_tool_drink_0", { w: DW, h: DH, outline: "k" }, (c) => grid(c, 10, 11, ["CCCC", "uuuuV", "uyyuV", "uuuu."]));
+sprite("dw_tool_drink_1", { w: DW, h: DH, outline: "k" }, (c) => grid(c, 14, 18, ["CCC", "uuuV", "uyuV", "uuu."]));
+sprite("dw_tool_axe", { w: DW, h: DH, outline: "k" }, (c) => { c.vline(15, 9, 13, "v"); grid(c, 15, 7, ["xMM", "XMM", "MMm", ".m."]); });
+sprite("dw_tool_sack", { w: DW, h: DH, outline: "k" }, (c) => grid(c, 13, 16, [".VV.", "uuuu", "uujuu", "uuuuu", ".uuu."]));

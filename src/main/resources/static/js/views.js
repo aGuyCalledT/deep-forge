@@ -55,7 +55,7 @@ export const minesScreen = {
           const mx = 40 + span * 0.55 + Math.sin(t * 1.2) * span * 0.25;
           const sp = S.monster(threat.monster, Math.floor(t * 3));
           ctx.drawImage(sp, Math.round(mx), feet - sp.height + 1);
-          miners.slice(0, 6).forEach((m, k) => ctx.drawImage(S.dwarfSprite(m, 'idle', 0), 34 + k * 8, feet - 28));
+          miners.slice(0, 6).forEach((m, k) => { S.groundShadow(ctx, 44 + k * 8, feet, 5); ctx.drawImage(S.dwarfSprite(m, 'idle', 0), 34 + k * 8, feet - 31); });
           text(ctx, threat.name, w - 4, y + 5, '#f0a85a', 'right');
         } else {
           if (miners.length) {
@@ -67,12 +67,15 @@ export const minesScreen = {
             const swing = Math.sin(t * 0.33 + m.id) > 0.25;
             const walk = Math.sin(t * 0.33 + m.id) * 12;
             const spr = swing ? S.dwarfSprite(m, 'mine', Math.floor(t * 2.5 + m.id) % 2) : S.dwarfSprite(m, 'walk', Math.floor(t * 8) % 4);
-            ctx.drawImage(spr, Math.round(base + (swing ? 0 : walk)), feet - 28);
+            const sx = Math.round(base + (swing ? 0 : walk));
+            S.groundShadow(ctx, sx + 10, feet);
+            if (!swing && Math.cos(t * 0.33 + m.id) < 0) { ctx.save(); ctx.translate(sx + 20, feet - 31); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); }   // walking left
+            else ctx.drawImage(spr, sx, feet - 31);
             if (swing && Math.random() < 0.08) parts.push({ x: base + 16, y: feet - 12, vx: 8, vy: -6, life: 0.4, c: '#cfd2dc' });
           });
         }
         if (i === 0) f.dwarves.filter((x) => x.job === 'warrior' && x.post === 'mine' && !x.busy).slice(0, 3)
-          .forEach((x, k) => ctx.drawImage(S.dwarfSprite(x, 'idle', Math.floor(t) % 2, 'axe'), w - 26 - k * 12, feet - 28));
+          .forEach((x, k) => { S.groundShadow(ctx, w - 16 - k * 12, feet); ctx.drawImage(S.dwarfSprite(x, 'idle', Math.floor(t) % 2, 'axe'), w - 26 - k * 12, feet - 31); });
         const dl = d.layers[i];
         sign(ctx, layer.name, 34 + (layer.name.length * 4 + 8) / 2, y + 5, '#fbf4e6');
         text(ctx, (ls.level > 1 ? 'SHAFT ' + ls.level + '  ' : '') + Math.round(dl.rate) + ' ORE/H  ' + dl.miners + ' MINERS', 34, y + 15, '#e3c06e');
@@ -153,8 +156,9 @@ export const workshopScreen = {
       const working = b.job && !b.job.quenching || byId.buildings[b.type].kind === 'continuous';
       const spr = S.dwarfSprite(wk, working && !f.siege ? 'work' : 'idle', Math.floor(t * (working ? 3 : 1.2)) % 2);
       const face = b.type === 'smelter' || b.type === 'forge' ? -1 : 1;
-      const sx = r.x + a.worker[0] - 9, sy = r.y + a.worker[1] - 28;
-      if (face < 0) { ctx.save(); ctx.translate(sx + 18, sy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, sx, sy);
+      const sx = r.x + a.worker[0] - 10, sy = r.y + a.worker[1] - 31;
+      S.groundShadow(ctx, r.x + a.worker[0], r.y + a.worker[1]);
+      if (face < 0) { ctx.save(); ctx.translate(sx + 20, sy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, sx, sy);
     }
     sign(ctx, byId.buildings[b.type].name + (b.level > 1 ? ' ' + b.level : ''), r.x + pw / 2, 9, '#e3c06e');
     if (b.type === 'smelter') {
@@ -228,6 +232,6 @@ export function drawLoginArt(c) {
   const pals = [['#e8b090', '#c4622d'], ['#d9a77c', '#e0b04a'], ['#b97f57', '#3b2a20'], ['#f0c8a0', '#9a9a9a'], ['#8d5a3b', '#e8e2d4']];
   pals.forEach(([skin, beard], i) => {
     const d = { id: 900 + i, skin, beard, hair: beard, beardStyle: i * 2 % 8, hairStyle: i, hat: [0, 2, 3, 0, 5][i], body: i % 3, accessory: [0, 1, 3, 2, 0][i], job: 'idle' };
-    g.drawImage(S.dwarfSprite(d, ['drink', 'sit', 'idle', 'drink', 'work'][i], i % 2), [40, 56, 76, 90, 160][i], 37 + 58 - 28);
+    g.drawImage(S.dwarfSprite(d, ['drink', 'sit', 'idle', 'drink', 'work'][i], i % 2), [40, 56, 76, 90, 160][i], 37 + 58 - 31);
   });
 }

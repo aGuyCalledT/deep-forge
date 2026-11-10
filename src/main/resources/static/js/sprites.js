@@ -204,9 +204,43 @@ export function look(d) {
   };
 }
 
+/** Front view for standing and sitting, side view (facing right) for moving and working. */
+const VIEW = { idle: 'front', sit: 'front', drink: 'front', sleep: 'front', walk: 'side', work: 'side', mine: 'side', climb: 'side' };
+export const DWARF_W = 20, DWARF_H = 32;   // the feet's outline is the bottom row, the middle is x 10
+
+/**
+ * Soft outlines: every outline pixel takes a dark tone of the colour it borders, so a ginger beard gets a
+ * deep brown edge and a blue tunic a deep blue one. Edges facing empty space stay a little darker.
+ */
+function softOutline(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data, src = new Uint8ClampedArray(d);
+  const [kr, kg, kb] = rgb(META.PAL.k);
+  const isK = (i) => src[i + 3] && Math.abs(src[i] - kr) + Math.abs(src[i + 1] - kg) + Math.abs(src[i + 2] - kb) < 6;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (!isK(i)) continue;
+    let r = 0, g = 0, b = 0, n = 0, open = 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const X = x + dx, Y = y + dy;
+      if (X < 0 || Y < 0 || X >= w || Y >= h) { open++; continue; }
+      const j = (Y * w + X) * 4;
+      if (!src[j + 3]) { open++; continue; }
+      if (isK(j)) continue;
+      r += src[j]; g += src[j + 1]; b += src[j + 2]; n++;
+    }
+    if (!n) continue;
+    const f = open ? 0.34 : 0.5;          // outer edge darker, inner lines between parts lighter
+    d[i] = Math.round(kr + (r / n - kr) * f); d[i + 1] = Math.round(kg + (g / n - kg) * f); d[i + 2] = Math.round(kb + (b / n - kb) * f);
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 /**
  * A finished dwarf frame: body, beard, hair or hat, accessory, tool, all recoloured.
- * Returns a canvas 18 x 29 with the feet on the bottom row.
+ * Returns a canvas DWARF_W x DWARF_H; draw it at (feetX - 10, feetY - 31).
  */
 export function dwarfSprite(d, pose = 'idle', frame = 0, tool = null) {
   if (pose === 'stand') pose = 'idle';
@@ -220,25 +254,26 @@ export function dwarfSprite(d, pose = 'idle', frame = 0, tool = null) {
   const outfit = d.armor ? byId.metals[d.armor.split(':')[2]].color : (JOB_OUTFIT[d.job] && !d.outfit ? JOB_OUTFIT[d.job] : L.outfit);
   const key = ['dw', d.id, pose, frame, tool, L.body, L.beard, L.hair, L.hat, L.acc, outfit, L.skin, L.beardC, L.hairC, hatMetal, toolMetal].join('|');
   if (cache.has(key)) return cache.get(key);
-  const c = mk(18, 29);
+  const c = mk(DWARF_W, DWARF_H);
   const ctx = c.getContext('2d');
   if (overrides.has('dwarf')) { ctx.drawImage(overrides.get('dwarf'), 0, 0); cache.set(key, c); return c; }
-  const bob = META.DWARF.bob[pose][frame];
+  const v = VIEW[pose] || 'front';
   const lift = L.body === 1 ? 1 : 0;
-  draw(ctx, `dw_body${L.body}_${pose}_${frame}`, 0, 3);
-  draw(ctx, `dw_beard_${L.beard}`, 0, 3 + bob - lift + (pose === 'sit' || pose === 'drink' || pose === 'sleep' ? 0 : 0));
+  const head = 4 + META.DWARF.bob[pose][frame] - lift;   // parts are drawn at y 4, hats 4 px higher
+  draw(ctx, `dw_body${L.body}_${pose}_${frame}`, 0, 4);
+  draw(ctx, `dw_beard_${v}_${L.beard}`, 0, head);
   const hat = hatMetal ? 5 : L.hat;
-  if (!hat) draw(ctx, `dw_hair_${L.hair}`, 0, 3 + bob - lift);
-  else if (L.hair === 3 || L.hair === 5) draw(ctx, `dw_hair_${L.hair}`, 0, 3 + bob - lift);   // long hair shows under hats
-  if (hat) draw(ctx, `dw_hat_${hat}`, 0, bob - lift);
-  if (L.acc) draw(ctx, `dw_acc_${L.acc}`, 0, 3 + bob - lift);
+  if (!hat || L.hair === 3 || L.hair === 5) draw(ctx, `dw_hair_${v}_${L.hair}`, 0, head);   // long hair shows under hats
+  if (hat) draw(ctx, `dw_hat_${v}_${hat}`, 0, head - 4);
+  if (L.acc) draw(ctx, `dw_acc_${v}_${L.acc}`, 0, head);
   const t = tool || (pose === 'mine' ? 'mine' : pose === 'work' ? 'work' : pose === 'drink' ? 'drink' : null);
-  if (t === 'mine' || t === 'work' || t === 'drink') draw(ctx, `dw_tool_${t}_${frame}`, 0, 3);
-  else if (t === 'axe') draw(ctx, 'dw_tool_axe', 0, 3);
-  else if (t === 'sack') draw(ctx, 'dw_tool_sack', 0, 3);
+  if (t === 'mine' || t === 'work' || t === 'drink') draw(ctx, `dw_tool_${t}_${frame}`, 0, 4);
+  else if (t === 'axe') draw(ctx, 'dw_tool_axe', 0, 4);
+  else if (t === 'sack') draw(ctx, 'dw_tool_sack', 0, 4);
   const map = { ...swapMap('skin', L.skin), ...swapMap('beard', L.beardC), ...swapMap('hair', L.hairC), ...swapMap('tunic', outfit) };
   Object.assign(map, swapMap('metal', byId.metals[toolMetal] ? byId.metals[toolMetal].color : '#8c8c8c'));
   recolor(c, map);
+  softOutline(c);
   cache.set(key, c);
   return c;
 }
@@ -249,3 +284,13 @@ export function monster(id, frame = 0) { return sprite(`mon_${id}_${frame % 2}`)
 export function wagon(frame = 0) { return sprite(`wagon_${frame % 2}`); }
 export function torch(frame) { return sprite(`torch_${((frame % 3) + 3) % 3}`); }
 export function room(type) { return sprite('room_' + type); }
+
+/** A soft pixel shadow on the ground under feet at (x, y): two rows, darker in the middle. */
+export function groundShadow(ctx, x, y, half = 6) {
+  x = Math.round(x); y = Math.round(y);
+  ctx.fillStyle = 'rgba(16,10,22,0.22)';
+  ctx.fillRect(x - half, y - 1, half * 2, 2);
+  ctx.fillRect(x - half + 2, y - 2, half * 2 - 4, 1);
+  ctx.fillStyle = 'rgba(16,10,22,0.2)';
+  ctx.fillRect(x - half + 2, y - 1, half * 2 - 4, 2);
+}

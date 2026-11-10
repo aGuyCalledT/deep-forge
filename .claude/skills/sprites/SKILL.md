@@ -18,7 +18,9 @@ Gezeichnet wird mit **pxl**: vorher den Skill `pxl-pixel-art` laden (Repo-Kopie:
 - Farben nur aus der Palette in `shared.js`. Umfärbbare Teile nutzen die Platzhalter aus `SWAP`.
 - Kein Rauschen als Füller; jede Markierung hat einen Grund.
 - Neue Raum-Möbel mit Licht oder Feuer: Anker in `ROOMS` (`shared.js`) eintragen, damit Licht und Animation stimmen.
-- Zwergen-Teile sind 16 × 24, alle an derselben Stelle; Hüte 3 px höher (Leinwand 16 × 27).
+- Zwergen-Teile sind 18 × 26 (+ Umriss), alle an derselben Stelle; Hüte 4 px höher (Leinwand 18 × 30). Zwei Ansichten
+  (`front`, `side`), siehe `VIEW` in `dwarves.px.js` und `sprites.js`. Fertiger Zwerg 20 × 32, gezeichnet bei (Füße x − 10, Füße y − 31).
+- Tiefe (Fels-Schatten, Kanten, Parallaxe) entsteht im Spiel, nicht im Sheet: `depthLayers` und `drawSky` in `hold.js`.
 
 ## Im Spiel
 
