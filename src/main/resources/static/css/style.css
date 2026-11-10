@@ -245,6 +245,15 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
 @media (min-width: 700px) {
   .sheet.pop .sheet-body { position: fixed; bottom: auto; width: 380px; max-height: min(78vh, 640px); border-radius: 18px; box-shadow: 0 12px 34px rgba(14, 8, 10, 0.55); }
 }
+/* phones: the pop-over folds down to a strip while you look around the hold; the grip opens it again */
+.sheet-grip { display: none; }
+@media (max-width: 699px) {
+  .sheet.pop .sheet-body { max-height: 42vh; transition: max-height 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+  .sheet.pop .sheet-grip { display: block; position: sticky; top: -14px; z-index: 2; width: calc(100% + 28px); height: 24px; margin: -14px -14px 2px; padding: 0; border: 0; background: linear-gradient(180deg, #45363a 70%, rgba(69, 54, 58, 0)); cursor: pointer; }
+  .sheet.pop .sheet-grip::before { content: ""; display: block; width: 44px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: var(--dim); }
+  .sheet.pop.peek .sheet-body { max-height: 84px; overflow: hidden; }
+  .sheet.pop.peek .sheet-grip::before { background: var(--gold); }
+}
 .sheet.pop .room-pic { display: none; }
 .sheet.pop h2 { font-size: 18px; margin: 2px 44px 4px 0; }
 .sheet.pop .card { background: none; box-shadow: none; padding: 0; margin: 0; }

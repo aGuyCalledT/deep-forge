@@ -71,7 +71,7 @@ function fitScale() {
 }
 
 function down(e) {
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* a pointer the browser no longer tracks */ }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) {
     drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: 0, t: performance.now() };
