@@ -76,6 +76,9 @@ public final class View {
             if (w != null && skill != null) m.put("speed", round(workSpeed(f, w, skill) * buildingMult(b)));
             m.put("heat", round(heatAt(b, now)));
             if (b.job != null) m.put("jobName", Sim.jobName(b.job));
+            Map<Integer, Object> q = new LinkedHashMap<>();
+            for (QueueEntry e : b.queue) q.put(e.id, Recipes.missing(f, e));
+            m.put("missing", q);
             bs.put(b.id, m);
         }
         d.put("buildings", bs);

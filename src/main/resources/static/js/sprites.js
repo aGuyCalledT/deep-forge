@@ -16,6 +16,7 @@ export async function loadOverrides(ids) {
 }
 
 export function hasOverride(id) { return overrides.has(id); }
+export function overrideImage(id) { return overrides.get(id); }
 
 // ------------------------------------------------------------------ helpers
 
@@ -371,6 +372,15 @@ export function icon(name) {
       heart: ['.rr..rr.', 'rrrrrrrr', 'rrrrrrrr', '.rrrrrr.', '..rrrr..', '...rr...'],
       mood: ['..aaaa..', '.aaaaaa.', 'aa.aa.aa', 'aaaaaaaa', 'a.aaaa.a', 'aa....aa', '.aaaaaa.', '..aaaa..'],
       box: ['.dddddddddd.', 'dhhhhhhhhhhd', 'dhdddddddhhd', 'dhhhhhhhhhhd', 'dhhhhaahhhhd', 'dhhhhhhhhhhd', 'dddddddddddd'],
+      mines: ['..dddddd..', '.d......d.', 'd...hh...d', '....hh....', '....hh....', '....hh....', '....hh....', '....hh....'],
+      close: ['c......c', '.c....c.', '..c..c..', '...cc...', '...cc...', '..c..c..', '.c....c.', 'c......c'],
+      up: ['...cc...', '..cccc..', '.cccccc.', 'cccccccc', '...cc...', '...cc...', '...cc...'],
+      down: ['...cc...', '...cc...', '...cc...', 'cccccccc', '.cccccc.', '..cccc..', '...cc...'],
+      trend_up: ['...g...', '..ggg..', '.ggggg.', 'ggggggg'],
+      trend_down: ['rrrrrrr', '.rrrrr.', '..rrr..', '...r...'],
+      plus: ['...cc...', '...cc...', 'cccccccc', 'cccccccc', '...cc...', '...cc...'],
+      minus: ['cccccccc', 'cccccccc'],
+      lock: ['..ddd..', '.d...d.', '.d...d.', 'aaaaaaa', 'aaabaaa', 'aaabaaa', 'aaaaaaa'],
       dwarf: ['...dddd...', '..dddddd..', '..cccccc..', '..c.cc.c..', '.eeeeeeee.', '.eeeeeeee.', '..eeeeee..', '...eeee...'],
     }[name] || ['aa', 'aa'];
     const ox = Math.floor((14 - art[0].length) / 2), oy = Math.floor((14 - art.length) / 2);

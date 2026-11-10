@@ -1,6 +1,8 @@
 // Workshops: queues, the bellows and the quench.
 import { G, F, D, byId, fmt, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast } from './ui.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName } from './ui.js';
+import { hall } from './halls.js';
+import { HALL_ORDER } from './scene.js';
 import * as S from './sprites.js';
 import { upgradeBtn, jobSheet } from './panels-base.js';
 import { api } from './api.js';
@@ -19,43 +21,74 @@ export function orderLabel(e) {
   }
 }
 
+export function workshops() {
+  return F().buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive')
+    .sort((a, b) => HALL_ORDER.indexOf(a.type) - HALL_ORDER.indexOf(b.type) || a.id.localeCompare(b.id));
+}
+
+function wsState(b) {
+  const info = D().buildings[b.id] || {};
+  if (F().siege) return ['bad', 'Besieged'];
+  if (!info.worker) return ['bad', 'No worker'];
+  if (b.job && b.job.quenching) return ['hot', 'Quench now!'];
+  if (byId.buildings[b.type].kind === 'continuous' || b.job) return ['ok', 'Working'];
+  if (!b.queue.length) return ['warn', 'Queue empty'];
+  const miss = info.missing || {};
+  if (b.queue.some((e) => !Object.keys(miss[e.id] || {}).length)) return ['ok', 'Starting the next order'];
+  return ['warn', 'Waiting for materials'];
+}
+
 export function renderWork() {
   const f = F();
-  const list = f.buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive');
-  const focus = G.focus && list.find((b) => b.id === G.focus);
-  const sorted = focus ? [focus, ...list.filter((b) => b !== focus)] : list;
+  const list = workshops();
+  if (!list.find((b) => b.id === G.ws) && list.length) G.ws = list[0].id;
+  const b = list.find((x) => x.id === G.ws);
   return [
     f.siege ? h('div', { class: 'card bad' }, 'The workshops are shut while raiders besiege the gate. See the War tab.') : null,
-    h('p', { class: 'small muted' }, 'Each workshop needs one dwarf. Queue orders and they work through them on their own - also while you are away. If an order lacks materials, the next one is tried.'),
-    sorted.map(workCard),
+    h('div', { class: 'ws-tabs', role: 'tablist', 'aria-label': 'Workshops' }, list.map((x) => {
+      const [st, label] = wsState(x);
+      return h('button', { class: 'ws-tab' + (x.id === G.ws ? ' on' : ''), role: 'tab', 'aria-selected': String(x.id === G.ws), title: label,
+        onclick: () => { G.ws = x.id; bus.render(); if (!window.matchMedia('(min-width: 900px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+        img(hall(x.type, 40, 26), 'thumb'), h('span', { class: 'nm' }, buildingName(x)), h('i', { class: 'dot ' + st }));
+    })),
+    b ? workCard(b) : h('p', { class: 'muted' }, 'No workshops yet. Build one in the Hold tab.'),
   ];
 }
 
 function workCard(b) {
   const f = F(), t = byId.buildings[b.type], info = D().buildings[b.id] || {};
   const w = info.worker ? f.dwarves.find((x) => x.id === info.worker) : null;
-  const out = h('div', { class: 'card' + (G.focus === b.id ? ' good' : '') });
+  const [st, label] = wsState(b);
+  const out = h('div', { class: 'card ws-card' });
   out.append(
-    h('div', { class: 'row between' }, h('h3', null, img(S.room(b.type, 44, 28), 'icon'), ' ', buildingName(b)), h('span', { class: 'muted small' }, 'Level ' + b.level + (info.speed ? ` · speed ×${info.speed.toFixed(2)}` : ''))),
+    h('div', { class: 'row between' }, h('h3', null, buildingName(b)), h('span', { class: 'muted small' }, 'Level ' + b.level + (info.speed ? ` · speed ×${info.speed.toFixed(2)}` : ''))),
+    h('p', { class: 'small muted' }, t.note),
     h('div', { class: 'row' }, w ? [img(S.dwarfSprite(w, 'stand', 0), 'icon'), h('span', { class: 'grow' }, w.first + ' ' + w.clan, h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`))]
-      : h('span', { class: 'grow bad-t' }, 'No worker'),
+      : h('span', { class: 'grow bad-t' }, 'No worker - nothing happens here.'),
     h('button', { class: 'btn small', onclick: () => assignSheet(b) }, w ? 'Change' : 'Assign')),
-    h('p', { class: 'small muted' }, b.status || ''));
+    w ? h('p', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, b.job && b.status ? b.status : label) : null);
 
   if (t.kind === 'continuous') {
-    out.append(h('p', { class: 'small' }, b.type === 'farm' ? `About ${fmt(5 * (info.speed || 0))} mushrooms per hour.` : `About ${fmt(5 * (info.speed || 0))} ale per hour from half as many mushrooms.`));
-  } else {
-    if (b.job) out.append(jobBlock(b));
-    if (b.type === 'smelter') out.append(bellows(b));
-    out.append(h('div', { class: 'list', style: { marginTop: '8px' } }, b.queue.map((e, i) => h('div', { class: 'row card sub', style: { margin: 0, padding: '4px 8px' } },
-      h('span', { class: 'grow small' }, orderLabel(e)),
-      i > 0 ? h('button', { class: 'btn small ghost', title: 'Move up', onclick: () => bus.act({ type: 'queueMove', building: b.id, entry: e.id, dir: -1 }) }, '↑') : null,
-      h('button', { class: 'btn small ghost', title: 'Remove', onclick: () => bus.act({ type: 'queueRemove', building: b.id, entry: e.id }) }, '✕')))));
-    out.append(h('div', { class: 'row', style: { marginTop: '8px' } },
-      h('button', { class: 'btn small primary', disabled: b.queue.length >= 10, onclick: () => orderSheet(b) }, '+ Add order'), upgradeBtn(b)));
+    out.append(h('p', { class: 'small' }, b.type === 'farm' ? `About ${fmt(5 * (info.speed || 0))} mushrooms per hour.` : `About ${fmt(5 * (info.speed || 0))} ale per hour from half as many mushrooms.`),
+      h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(b)));
     return out;
   }
-  out.append(h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(b)));
+  if (b.job) out.append(jobBlock(b));
+  if (b.type === 'smelter') out.append(bellows(b));
+  out.append(h('h3', null, 'Orders'));
+  if (!b.queue.length) out.append(h('p', { class: 'small muted' }, 'No orders. Add one and the worker keeps at it, even while you are away.'));
+  out.append(h('div', { class: 'list' }, b.queue.map((e, i) => {
+    const miss = Object.entries((info.missing || {})[e.id] || {});
+    return h('div', { class: 'queue-item' + (miss.length ? ' blocked' : '') },
+      h('div', { class: 'grow' }, h('div', { class: 'small' }, orderLabel(e)),
+        miss.length ? h('div', { class: 'small bad-t' }, 'Waiting for ', miss.map(([k, v]) => k.startsWith('item:') && k.split(':').length <= 3 ? missingName(k) : `${fmt(v)} more ${missingName(k)}`).join(', '))
+          : h('div', { class: 'small good-t' }, 'Ready')),
+      i > 0 ? h('button', { class: 'btn small ghost', 'aria-label': 'Move up', title: 'Move up', onclick: () => bus.act({ type: 'queueMove', building: b.id, entry: e.id, dir: -1 }) }, ico('up')) : null,
+      h('button', { class: 'btn small ghost', 'aria-label': 'Remove order', title: 'Remove', onclick: () => bus.act({ type: 'queueRemove', building: b.id, entry: e.id }) }, ico('close')));
+  })));
+  out.append(h('p', { class: 'small dim' }, 'If an order lacks materials, the worker tries the next one.'));
+  out.append(h('div', { class: 'row', style: { marginTop: '8px' } },
+    h('button', { class: 'btn primary', disabled: b.queue.length >= 10, onclick: () => orderSheet(b) }, ico('plus'), 'Add order'), upgradeBtn(b)));
   return out;
 }
 
@@ -72,23 +105,25 @@ function jobBlock(b) {
 
 let pending = 0, timer = null, localHeat = {};
 
+/** One pump of the bellows: heat shows at once, taps go to the server in small batches. */
+export function pump(id) {
+  localHeat[id] = { v: Math.min(100, currentHeat(id) + 7), t: Date.now() / 1000 };
+  pending++;
+  if (navigator.vibrate) navigator.vibrate(8);
+  if (!timer) timer = setTimeout(async () => {
+    const taps = pending; pending = 0; timer = null;
+    try { await bus.act({ type: 'bellows', building: id, taps }, true); } catch { /* shown by act */ }
+  }, 700);
+}
+
 function bellows(b) {
   const heat = D().buildings[b.id].heat || 0;
   const hb = bar(heat / 100, 'heat');
   hb.querySelector('i').dataset.heat = b.id;
-  const pump = async () => {
-    localHeat[b.id] = { v: Math.min(100, currentHeat(b.id) + 7), t: Date.now() / 1000 };
-    pending++;
-    if (navigator.vibrate) navigator.vibrate(8);
-    if (!timer) timer = setTimeout(async () => {
-      const taps = pending; pending = 0; timer = null;
-      try { await bus.act({ type: 'bellows', building: b.id, taps }, true); } catch { /* shown by act */ }
-    }, 700);
-  };
   return h('div', { style: { marginTop: '8px' } },
-    h('div', { class: 'row between small' }, h('span', null, 'Heat'), h('span', { class: 'muted' }, 'More heat = faster smelting (up to ×2)')),
+    h('div', { class: 'row between small' }, h('span', null, 'Heat'), h('span', { class: 'muted' }, 'More heat = faster smelting (up to ×2). Tap the furnace or this button.')),
     hb,
-    h('button', { class: 'btn big primary', style: { marginTop: '6px' }, onpointerdown: (e) => { e.preventDefault(); pump(); } }, 'Pump the bellows'));
+    h('button', { class: 'btn big primary', style: { marginTop: '6px' }, onpointerdown: (e) => { e.preventDefault(); pump(b.id); } }, 'Pump the bellows'));
 }
 
 export function currentHeat(id) {
@@ -200,7 +235,7 @@ function orderSheet(b) {
       if (st.itype) {
         const t = byId.items[st.itype];
         parts.push(h('p', { class: 'small' }, `${t.bars} bars each. ${t.note}`));
-        const metals = G.data.metals.filter((m) => fits(t, m));
+        const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
         for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
         if (!metals.length) parts.push(h('p', { class: 'muted' }, 'No metal fits.'));
       }
@@ -219,11 +254,33 @@ function orderSheet(b) {
         }
       }
     }
+    const ins = orderInputs(st);
+    if (ins) {
+      const can = Math.min(...Object.entries(ins).map(([k, v]) => Math.floor(stock(k) / v)));
+      parts.push(h('div', { class: 'card sub', style: { marginTop: '10px' } },
+        h('div', { class: 'small muted' }, 'Each one needs'), inputChips(ins),
+        h('div', { class: 'small ' + (can > 0 ? 'good-t' : 'bad-t') }, can > 0 ? `You have enough for ${fmt(can)}.` : 'You have not got enough yet - the order waits until you do.')));
+    }
     parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c ? ' primary' : ''), onclick: () => { st.count = c; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
     const ready = st.recipe === 'cutgem' || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
     parts.push(h('button', { class: 'btn big primary', style: { marginTop: '12px' }, disabled: !ready, onclick: send }, 'Add to queue'));
     return h('div', null, parts);
   });
+}
+
+function orderInputs(st) {
+  if (st.recipe === 'smelt' && st.mat) return { [st.mat]: 2, coal: 1 };
+  if (st.recipe === 'alloy' && st.mat) {
+    const a = byId.alloys[st.mat], o = {};
+    for (const [k, v] of Object.entries(a.inputs)) o['bar:' + k] = v;
+    o.coal = 1;
+    if (a.flux) o.limestone = 1;
+    return o;
+  }
+  if (st.recipe === 'craft' && st.itype && st.mat) return { ['bar:' + st.mat]: byId.items[st.itype].bars, coal: 1 };
+  if (st.recipe === 'cutgem') return { rough_gem: 1 };
+  if (st.recipe === 'setgem' && st.itype) return { cut_gem: 1 };
+  return null;
 }
 
 function fits(t, m) {

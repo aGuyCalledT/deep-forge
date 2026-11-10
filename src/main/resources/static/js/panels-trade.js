@@ -1,6 +1,6 @@
 // Trade (caravans, cities, prices) and expeditions.
 import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstimate, marketKey, stock, baseValue, isItem } from './data.js';
-import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker } from './ui.js';
+import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico } from './ui.js';
 import * as S from './sprites.js';
 import { api } from './api.js';
 
@@ -15,7 +15,7 @@ function trend(k) {
   const hist = G.market && G.market.history[marketKey(k)];
   if (!hist || hist.length < 4) return '';
   const a = hist[hist.length - 1], b = hist[Math.max(0, hist.length - 7)];
-  return a > b * 1.04 ? '▲' : a < b * 0.96 ? '▼' : '';
+  return a > b * 1.04 ? ico('trend_up', 'icon xs') : a < b * 0.96 ? ico('trend_down', 'icon xs') : '';
 }
 
 // ================================================================== trade
@@ -105,7 +105,7 @@ function caravanSheet() {
       h('p', { class: 'small ' + (guardPower >= bandit ? 'good-t' : 'warn-t') }, `${Math.round(city.danger * 100)}% chance of bandits on each leg (strength ~${fmt(bandit)}). Your caravan: ${fmt(guardPower)}.`),
       h('h3', null, `Cargo ${units} / ${cap}`),
       goods.map((k) => h('div', { class: 'row', style: { margin: '3px 0' } }, goodIcon(k),
-        h('span', { class: 'grow small' }, goodName(k), h('br'), h('span', { class: 'muted' }, `have ${fmt(f2.stock[k])} · ~${sellPrice(st.city, k).toFixed(1)} each ${trend(k)}`)),
+        h('span', { class: 'grow small' }, goodName(k), h('br'), h('span', { class: 'muted' }, `have ${fmt(f2.stock[k])} · ~${sellPrice(st.city, k).toFixed(1)} each `, trend(k))),
         h('input', { type: 'number', min: 0, max: f2.stock[k], value: st.cargo[k] || '', placeholder: '0', onchange: (e) => setQ(k, e.target.value) }),
         h('button', { class: 'btn small ghost', onclick: () => setQ(k, Math.min(f2.stock[k], (st.cargo[k] || 0) + Math.max(0, cap - units))) }, 'Max'))),
       f2.artifacts.length ? [h('h3', null, 'Artifacts'), f2.artifacts.map((a) => h('label', { class: 'pick' + (st.arts.has(a.id) ? ' on' : '') },
@@ -117,7 +117,7 @@ function caravanSheet() {
         h('span', { class: 'small muted' }, `~${buyPrice(st.city, st.buyKey).toFixed(1)} each`),
         h('button', { class: 'btn small', onclick: () => { st.buy[st.buyKey] = (st.buy[st.buyKey] || 0) + 10; refreshSheet(); } }, '+10')),
       Object.entries(st.buy).map(([k, v]) => h('div', { class: 'row small' }, goodIcon(k, 'icon s'), h('span', { class: 'grow' }, `${v} ${goodName(k)}`),
-        h('button', { class: 'btn small ghost', onclick: () => { delete st.buy[k]; refreshSheet(); } }, '✕'))),
+        h('button', { class: 'btn small ghost', 'aria-label': 'Remove', onclick: () => { delete st.buy[k]; refreshSheet(); } }, ico('close')))),
       h('label', null, 'Coins to take for buying (max)', h('input', { type: 'number', min: 0, max: Math.floor(f2.coins), value: st.budget || '', placeholder: '0',
         onchange: (e) => { st.budget = Math.max(0, Math.min(Math.floor(f2.coins), Math.floor(+e.target.value || 0))); refreshSheet(); } })),
       h('div', { class: 'card sub' },
@@ -148,7 +148,7 @@ export function renderExplore() {
     const party = e.party.map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
     out.push(h('div', { class: 'card' },
       h('div', { class: 'row between' }, h('h3', null, e.name), h('span', { class: 'nowrap' }, 'back in ', h('b', { 'data-until': e.returnAt }, dur(e.returnAt - t)))),
-      h('div', { class: 'row' }, party.map((x) => h('span', { title: x.first + ' ' + x.clan }, img(S.dwarfSprite(x, 'walk', 0)), h('span', { class: 'small' }, ` ${x.first} `), h('span', { class: 'small ' + (x.health < 50 ? 'bad-t' : 'muted') }, Math.round(x.health) + '♥')))),
+      h('div', { class: 'row' }, party.map((x) => h('span', { title: x.first + ' ' + x.clan }, img(S.dwarfSprite(x, 'walk', 0)), h('span', { class: 'small' }, ` ${x.first} `), h('span', { class: 'small nowrap ' + (x.health < 50 ? 'bad-t' : 'muted') }, ico('heart', 'icon xs'), Math.round(x.health))))),
       h('div', { class: 'stages' }, e.stages.map((s, i) => h('i', { class: s.done ? 'done' : i === e.next && s.kind === 'choice' ? 'choice' : '' }))),
       next && next.kind === 'choice' ? h('div', { class: 'card sub' },
         h('p', null, h('b', null, 'Ahead: '), next.prompt),
@@ -174,7 +174,7 @@ export function renderExplore() {
   if (done.length) {
     out.push(h('h2', null, 'Reports'));
     for (const e of done.slice().reverse()) out.push(h('div', { class: 'card ' + (e.state === 'lost' ? 'bad' : 'sub') },
-      h('div', { class: 'row between' }, h('h3', null, e.name), h('button', { class: 'btn small ghost', onclick: () => bus.act({ type: 'dismissExpedition', id: e.id }) }, '✕')),
+      h('div', { class: 'row between' }, h('h3', null, e.name), h('button', { class: 'btn small ghost', 'aria-label': 'Dismiss report', onclick: () => bus.act({ type: 'dismissExpedition', id: e.id }) }, ico('close'))),
       e.log.map((l) => h('div', { class: 'log-line' }, l))));
   }
   return out;
@@ -192,7 +192,7 @@ function expeditionSheet(o) {
     return h('div', null, h('h2', null, o.name), skulls(o.danger), h('p', { class: 'small' }, o.desc),
       h('p', { class: 'small muted' }, `${o.hours} hours. The first dwarf you pick leads and decides when you don't.`),
       h('h3', null, `Party ${st.party.size} / ${d.partyMax}`),
-      dwarfPicker(free, st.party, (x) => `power ${fmt(d.dwarves[x.id].power)} · ${Math.round(x.health)}♥ · ${x.job}`, () => {
+      dwarfPicker(free, st.party, (x) => `power ${fmt(d.dwarves[x.id].power)} · health ${Math.round(x.health)} · ${x.job}`, () => {
         if (st.party.size > d.partyMax) st.party.delete([...st.party].pop());
         refreshSheet();
       }),
