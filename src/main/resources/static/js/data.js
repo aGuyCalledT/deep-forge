@@ -150,3 +150,40 @@ export function canPay(c) {
 }
 
 export function stock(k) { return F().stock[k] || 0; }
+
+// ------------------------------------------------------------------ resource overview per tab
+
+function have(keys) { return keys.filter((k) => stock(k) > 0); }
+function stockKeys(pred) { return Object.keys(F().stock).filter((k) => F().stock[k] > 0 && pred(k)).sort((a, b) => baseValue(b) * F().stock[b] - baseValue(a) * F().stock[a]); }
+
+/** Which stores to show for the current tab (and workshop). */
+export function contextResources() {
+  if (!G.state) return [];
+  const f = F();
+  const bars = stockKeys(isBar), ores = stockKeys((k) => !!byId.ores[k]);
+  const items = (pred) => stockKeys((k) => isItem(k) && pred(parseItem(k)));
+  const prov = { title: 'Provisions', keys: ['food', 'ale'] };
+  const mats = { title: 'Materials', keys: ['coal', 'limestone', 'stone'] };
+  switch (G.tab) {
+    case 'mines': {
+      const layerOres = [];
+      for (const l of f.layers) if (l.unlocked) for (const k of Object.keys(G.data.layers[l.index].weights)) if (!layerOres.includes(k)) layerOres.push(k);
+      return [{ title: 'Dug from the mine', keys: layerOres }, { title: 'Other ore in store', keys: ores.filter((k) => !layerOres.includes(k)), empty: 'None.' }];
+    }
+    case 'work': {
+      const b = f.buildings.find((x) => x.id === G.ws);
+      const t = b ? b.type : 'smelter';
+      if (t === 'smelter') return [{ title: 'Ore', keys: ores, empty: 'No ore. Mine some!' }, { title: 'Fuel and flux', keys: ['coal', 'limestone'] }, { title: 'Bars', keys: bars, empty: 'No bars yet.' }];
+      if (t === 'forge') return [{ title: 'Bars', keys: bars, empty: 'No bars. Smelt some ore first.' }, { title: 'Fuel', keys: ['coal'] }, { title: 'Forged goods', keys: items(() => true).slice(0, 12), empty: 'Nothing forged yet.' }];
+      if (t === 'grindstone') return [{ title: 'Can be sharpened', keys: items((p) => byId.items[p.type].mods.includes('s') && !p.mods.includes('s')), empty: 'No axes or pickaxes to sharpen.' }];
+      if (t === 'engraver') return [{ title: 'Can be engraved', keys: items((p) => byId.items[p.type].mods.includes('e') && !p.mods.includes('e')).slice(0, 14), empty: 'Nothing to engrave.' }];
+      if (t === 'jeweler') return [{ title: 'Gems', keys: ['rough_gem', 'cut_gem'] }, { title: 'Can take a gem', keys: items((p) => byId.items[p.type].mods.includes('g') && !p.mods.includes('g')).slice(0, 12), empty: 'No rings, crowns or goblets.' }];
+      return [prov];
+    }
+    case 'trade': return [{ title: 'Your goods', keys: ['coins', ...stockKeys((k) => k !== 'food' && k !== 'ale').slice(0, 16)] }, prov];
+    case 'explore': return [prov, { title: 'Gear in store', keys: items((p) => !!byId.items[p.type].slot).slice(0, 10), empty: 'No gear. Forge axes, helms and mail.' }];
+    case 'war': return [{ title: 'Weapons and armor in store', keys: items((p) => ['weapon', 'helm', 'armor'].includes(byId.items[p.type].slot)), empty: 'No weapons or armor. Forge some at the forge.' }];
+    case 'dwarves': return [prov, { title: 'Tools and gear', keys: items((p) => !!byId.items[p.type].slot).slice(0, 10), empty: 'No gear in store.' }];
+    default: return [{ title: 'Bars', keys: bars, empty: 'No bars yet.' }, mats, prov, { title: 'Goods', keys: items(() => true).slice(0, 8), empty: 'Nothing forged yet.' }];
+  }
+}

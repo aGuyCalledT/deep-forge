@@ -1,6 +1,6 @@
 // Fortress overview, dwarves, war and "more" panels.
 import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast } from './ui.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico } from './ui.js';
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
 
@@ -26,39 +26,15 @@ export function renderFortress() {
     bar(f.xp / d.xpNeed), h('p', { class: 'small muted' }, `${fmt(f.xp)} / ${fmt(d.xpNeed)} xp to the next level.`
       + (d.traditionPoints > 0 ? ` You have ${d.traditionPoints} tradition point(s) to spend (More tab).` : ''))));
 
-  // storage & lift
-  const mineTotal = d.layers.reduce((s, l) => s + l.rate, 0);
-  out.push(...section('Storage and lift',
+  // storage
+  out.push(...section('Storage',
     h('div', { class: 'card' + (f.storageFull ? ' bad' : '') },
       h('div', { class: 'row between' }, h('span', null, 'Warehouse'), h('span', { class: f.storageFull ? 'bad-t' : '' }, `${fmt(d.used)} / ${fmt(d.capacity)}`)),
       bar(d.used / d.capacity),
-      h('div', { class: 'row between', style: { marginTop: '8px' } }, h('span', null, 'Mine lift'),
-        h('span', { class: f.liftLimited ? 'warn-t' : '' }, `${fmt(Math.min(mineTotal, d.liftCap))} of ${fmt(mineTotal)} ore/h carried`)),
-      bar(Math.min(1, mineTotal / d.liftCap), ''),
       f.storageFull ? h('p', { class: 'bad-t small' }, 'Full! Mining has stopped. Smelt, sell or upgrade the warehouse.') : null,
-      f.liftLimited ? h('p', { class: 'warn-t small' }, 'The lift is the bottleneck. Upgrade it or move miners elsewhere.') : null,
-      h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('warehouse')), upgradeBtn(building('lift'))))));
-
-  // mine
-  out.push(h('h2', null, 'The mine'));
-  G.data.layers.forEach((layer, i) => {
-    const ls = f.layers[i], dl = d.layers[i];
-    const ores = Object.keys(layer.weights).filter((k) => k !== 'stone');
-    const th = ls.threat ? f.threats.find((x) => String(x.id) === ls.threat) : null;
-    out.push(h('div', { class: 'card' + (th ? ' bad' : '') },
-      h('div', { class: 'row between' }, h('h3', null, layer.name), ls.unlocked ? h('span', { class: 'muted' }, 'Shaft level ' + ls.level) : null),
-      h('div', { class: 'row' }, ores.map((k) => h('span', { title: goodName(k) }, goodIcon(k)))),
-      h('p', { class: 'small muted' }, layer.note),
-      ls.unlocked ? [
-        h('p', null, `${dl.miners} miner(s) · `, h('b', { class: 'gold-t' }, fmt(dl.rate) + ' ore/h'),
-          th ? h('span', { class: 'bad-t' }, ` · Blocked by ${th.name.toLowerCase()}!`) : null),
-        h('div', { class: 'row' },
-          h('button', { class: 'btn small', onclick: () => bus.go('dwarves') }, 'Assign miners'),
-          costBtn('Improve shafts', dl.upgrade, { type: 'upgradeLayer', layer: i })),
-      ] : dl.discovered
-        ? costBtn('Open the ' + layer.name, dl.unlock, { type: 'unlockLayer', layer: i }, !f.layers[i - 1].unlocked ? 'Open the layer above first' : null)
-        : h('p', { class: 'warn-t small' }, 'Nobody knows the way down. Send an expedition to scout it.')));
-  });
+      h('p', { class: 'small muted' }, 'Ore, stone, bars and goods. Mushrooms and ale have their own larder.'),
+      h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('warehouse'))),
+      h('button', { class: 'btn small ghost', style: { marginTop: '8px' }, onclick: () => bus.go('mines') }, ico('mines'), 'To the mines'))));
 
   // stockpile
   out.push(h('h2', null, 'Stockpile'));
@@ -106,9 +82,11 @@ export function upgradeBtn(b) {
 }
 
 export function costBtn(label, cost, action, blocked) {
-  const ok = !blocked && canPay(cost);
-  return h('button', { class: 'btn small' + (ok ? ' good' : ''), disabled: !ok, title: blocked || '', onclick: () => bus.act(action) },
-    h('span', null, label, h('br'), h('span', { class: 'small', style: { fontWeight: 400 } }, blocked || costText(cost))));
+  const miss = missingText(cost);
+  const ok = !blocked && !miss;
+  return h('div', { class: 'cost-action' },
+    h('button', { class: 'btn small' + (ok ? ' good' : ''), disabled: !ok, title: blocked || miss || '', onclick: () => bus.act(action) }, label),
+    blocked ? h('span', { class: 'small warn-t' }, blocked) : costChips(cost));
 }
 
 // ================================================================== dwarves
@@ -130,7 +108,7 @@ export function renderDwarves() {
       h('p', { class: 'small muted' }, 'Happy dwarves work up to 40% faster. Miserable ones may leave. Food, ale, beds, the tavern and fine goblets in stock all help.')),
     h('div', { class: 'row', style: { marginBottom: '10px' } }, jobs.map((j) =>
       h('button', { class: 'btn small' + (dwarfFilter === j ? ' primary' : ''), onclick: () => { dwarfFilter = j; bus.render(); } }, j))),
-    h('div', { class: 'list' }, list.map(dwarfCard)),
+    h('div', { class: 'list dwarves-grid' }, list.map(dwarfCard)),
     f.memorials.length ? [h('h2', null, 'In memory'), h('div', { class: 'card sub' }, f.memorials.slice().reverse().slice(0, 10).map((m) =>
       h('p', { class: 'small' }, h('b', null, m.name), ' — ', m.cause, h('span', { class: 'dim' }, ' · ' + ago(m.t)))))] : null,
   ];
@@ -270,8 +248,8 @@ export function renderMore() {
     G.data.traditions.map((t) => {
       const r = f.traditions[t.id] || 0;
       return h('div', { class: 'row', style: { margin: '6px 0' } },
-        h('span', { class: 'grow' }, h('b', null, t.name), ' ', h('span', { class: 'gold-t' }, '■'.repeat(r) + '□'.repeat(t.maxRank - r)), h('br'), h('span', { class: 'small muted' }, t.note)),
-        h('button', { class: 'btn small good', disabled: d.traditionPoints <= 0 || r >= t.maxRank, onclick: () => bus.act({ type: 'tradition', id: t.id }) }, '+'));
+        h('span', { class: 'grow' }, h('b', null, t.name), ' ', h('span', { class: 'pips', 'aria-label': `rank ${r} of ${t.maxRank}` }, Array.from({ length: t.maxRank }, (_, i) => h('i', { class: i < r ? 'on' : '' }))), h('br'), h('span', { class: 'small muted' }, t.note)),
+        h('button', { class: 'btn small good', 'aria-label': 'Add a rank to ' + t.name, disabled: d.traditionPoints <= 0 || r >= t.maxRank, onclick: () => bus.act({ type: 'tradition', id: t.id }) }, ico('plus')));
     }))));
 
   const players = h('div', { class: 'card scroll-x' }, h('p', { class: 'muted' }, 'Loading...'));

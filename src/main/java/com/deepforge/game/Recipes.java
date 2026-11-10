@@ -102,6 +102,21 @@ public final class Recipes {
         return best;
     }
 
+    /**
+     * What is missing for one more job of this entry: goods key -> amount short.
+     * For workshop jobs on items the key is "item:<type>" (or "item:<type>:<metal>") with amount 1.
+     */
+    public static Map<String, Integer> missing(Fortress f, QueueEntry e) {
+        Map<String, Integer> m = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> x : inputs(f, e).entrySet()) {
+            int short_ = x.getValue() - stock(f, x.getKey());
+            if (short_ > 0) m.put(x.getKey(), short_);
+        }
+        if (MOD_OF.containsKey(e.recipe) && findItem(f, e) == null)
+            m.put("item:" + e.itype + (e.mat == null ? "" : ":" + e.mat), 1);
+        return m;
+    }
+
     /** Start a job if materials are there. Takes the inputs. */
     public static Job start(Fortress f, Building b, QueueEntry e) {
         if (validate(f, b, e) != null) return null;

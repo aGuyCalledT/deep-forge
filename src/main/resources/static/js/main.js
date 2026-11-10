@@ -1,15 +1,17 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
-import { G, F, D, indexData, byId, fmt, dur, now } from './data.js';
-import { h, img, bus, toast, sheetOpen } from './ui.js';
+import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
+import { h, img, bus, toast, storesView } from './ui.js';
 import * as S from './sprites.js';
 import { initScene, reveal, drawLoginArt } from './scene.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
-import { renderWork, animateWork } from './panels-work.js';
+import { renderWork, animateWork, pump, currentHeat } from './panels-work.js';
+import { renderMines } from './panels-mines.js';
 import { renderTrade, renderExplore, loadMarket } from './panels-trade.js';
 
 const TABS = [
   ['fortress', 'Hold', renderFortress],
+  ['mines', 'Mines', renderMines],
   ['dwarves', 'Dwarves', renderDwarves],
   ['work', 'Work', renderWork],
   ['trade', 'Trade', renderTrade],
@@ -17,7 +19,7 @@ const TABS = [
   ['war', 'War', renderWar],
   ['more', 'More', renderMore],
 ];
-const ICON = { fortress: 'fortress', dwarves: 'dwarves', work: 'work', trade: 'trade', explore: 'explore', war: 'war', more: 'more' };
+const ICON = { mines: 'mines', fortress: 'fortress', dwarves: 'dwarves', work: 'work', trade: 'trade', explore: 'explore', war: 'war', more: 'more' };
 
 const $ = (id) => document.getElementById(id);
 
@@ -95,6 +97,7 @@ function alerts() {
 
 function renderAlerts() {
   const list = alerts();
+  renderSide(list);
   $('alerts').replaceChildren(...list.slice(0, 3).map(([k, tab, text]) =>
     h('div', { class: 'alert ' + k, onclick: () => go(tab) }, img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), text)));
   const hot = new Set(list.filter(([k]) => k !== 'warn').map(([, tab]) => tab));
@@ -105,6 +108,21 @@ function renderAlerts() {
   });
 }
 
+// ------------------------------------------------------------------ desktop sidebar
+
+function renderSide(list = alerts()) {
+  const side = $('side');
+  if (!side || !G.state) return;
+  const f = F();
+  side.replaceChildren(
+    h('section', { class: 'side-block' }, h('h3', null, 'Stores'), storesView(false)),
+    h('section', { class: 'side-block' }, h('h3', null, 'Needs attention'),
+      list.length ? list.map(([k, tab, text]) => h('button', { class: 'alert ' + k, onclick: () => go(tab) }, img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), h('span', null, text)))
+        : h('p', { class: 'small dim' }, 'All is well in the hold.')),
+    h('section', { class: 'side-block' }, h('h3', null, 'Chronicle'),
+      f.log.slice(-8).reverse().map((l) => h('div', { class: 'log-line ' + l.kind }, h('span', { class: 't' }, ago(l.t)), l.text))));
+}
+
 // ------------------------------------------------------------------ tabs & panel
 
 function buildTabs() {
@@ -112,14 +130,17 @@ function buildTabs() {
     img(S.icon(ICON[id]), ''), label)));
 }
 
+const SCREEN = { mines: 'mines', work: 'workshop' };
+
 function go(tab) {
   G.tab = tab;
-  if (tab !== 'work') G.focus = null;
+  G.screen = SCREEN[tab] || 'hold';
+  if (tab !== 'mines') G.focus = null;
   if (tab === 'trade') loadMarket(true);
   render();
   const p = $('panel');
   if (window.matchMedia('(min-width: 900px)').matches) p.scrollTop = 0;
-  else window.scrollTo({ top: $('panel').offsetTop - 60, behavior: 'smooth' });
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function render() {
@@ -128,20 +149,35 @@ function render() {
   const tab = TABS.find((x) => x[0] === G.tab) || TABS[0];
   const p = $('panel');
   const y = window.scrollY, py = p.scrollTop;
-  p.replaceChildren(h('h2', { style: { marginTop: 0 } }, tab[1] === 'Hold' ? 'Your hold' : tab[1]), ...[tab[2]()].flat(3).filter(Boolean));
+  const stores = storesView(false);
+  const body = [tab[2]()].flat(3).filter(Boolean);
+  const box = stores ? h('details', { class: 'panel-stores', open: G.storesOpen !== false, ontoggle: (e) => { G.storesOpen = e.target.open; } }, h('summary', null, 'Stores'), stores) : null;
+  // the workshop picker stays on top, the stores follow it
+  const at = body.findIndex((n) => n.classList && n.classList.contains('ws-tabs'));
+  if (box) body.splice(at >= 0 ? at + 1 : 0, 0, box);
+  p.replaceChildren(h('h2', { style: { marginTop: 0 } }, tab[1] === 'Hold' ? 'Your hold' : tab[1]), ...body);
+  renderSide();
   window.scrollTo(0, y);
   p.scrollTop = py;
 }
 
 function onPick(q) {
+  if (q.kind === 'bellows') return pump(q.id);
+  if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id });
   if (q.kind === 'building') {
     const b = F().buildings.find((x) => x.id === q.id);
-    if (b && byId.buildings[b.type].kind !== 'passive') { G.focus = b.id; go('work'); return; }
-    go('fortress');
-  } else if (q.kind === 'layer') {
+    if (q.id === 'lift') return go('mines');
+    if (b && byId.buildings[b.type].kind !== 'passive') { G.ws = b.id; return go('work'); }
+    return go('fortress');
+  }
+  if (q.kind === 'layer') {
     G.focus = 'layer:' + q.id;
-    go('fortress');
-  } else if (q.kind === 'tab') go(q.id);
+    go('mines');
+    const el = document.getElementById('layer-' + q.id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+  if (q.kind === 'tab') go(q.id);
 }
 
 // ------------------------------------------------------------------ timers
@@ -200,5 +236,7 @@ async function boot() {
   }
 }
 
+G.screen = 'hold';
+G.heat = currentHeat;
 window.__deepforge = { G, go, reveal };
 boot();

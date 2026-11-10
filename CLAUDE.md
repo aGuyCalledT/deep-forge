@@ -36,9 +36,11 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/View.java` | was der Client sieht (Spielstand + abgeleitete Zahlen) |
 | `game/GameService.java` | Laden, Weiterrechnen, Speichern, Minuten-Takt für alle Festungen |
 | `auth/` | Name + Passwort (BCrypt), Token-Sitzungen, Einladungscode, Admins |
-| `static/js/scene.js` | Festungs-Querschnitt im Canvas |
+| `static/js/scene.js` | Canvas-Screens: Festung (Oberfläche + Hallen), Minen, eine Werkstatt groß (`G.screen`, `G.ws`) |
+| `static/js/halls.js` | Werkstatt-Räume aus Code: `hall()` zeichnet, `anchors()` sagt, wo Feuer, Dampf, Funken und Arbeiter hingehören |
 | `static/js/sprites.js` | Pixelgrafik aus Code + eigene PNGs |
-| `static/js/panels-*.js` | die Tabs; Formulare laufen in Bottom-Sheets (`openSheet`) |
+| `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); Formulare laufen in Bottom-Sheets (`openSheet`) |
+| `static/js/data.js` → `contextResources()` | welche Vorräte jeder Tab in der Übersicht zeigt (Seitenleiste am Desktop, aufklappbar am Handy) |
 
 ## Rezepte
 
@@ -49,8 +51,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   optional Bauplan). Pixel-Art in `sprites.js` → `item()`. Wenn ausrüstbar: Wirkung in `Rules.power`/`toolBonus`.
 - **Neues Gebäude:** `building(...)` in `Content.java`. Werkstatt (`queue`): Rezepte in `Recipes.java`
   (`BY_BUILDING`, `validate`, `inputs`, `start`) und Bestell-Sheet in `panels-work.js`. Passiv: Wirkung in
-  `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raumbild in `sprites.js` → `room()`, Reihenfolge in
-  `HALL_ORDER` (`scene.js`).
+  `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raum in `halls.js` (`WALLS`, `anchors`, `hall`), Breite in `ROOM_W` und
+  Reihenfolge in `HALL_ORDER` (`scene.js`), Vorräte für den Tab in `contextResources()`.
 - **Neue Eigenschaft:** `trait(...)` in `Content.java`, Wirkung in `Rules.workSpeed`, `Rules.power`,
   `Sim.happinessTarget` oder `Expeditions`.
 - **Neues Expeditions-Ereignis:** in `Expeditions.choice()` (Text + Optionen) und `applyChoice()` (Wirkung).
@@ -65,6 +67,10 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   In der Canvas-Szene die 3×5-Pixelschrift `text()` aus `scene.js`.
 - Farben aus den CSS-Variablen in `style.css`.
 - Immer in Handybreite (390 px) prüfen: kein horizontales Scrollen, Knöpfe mindestens 40 px hoch.
+- Breite Bildschirme nutzen den Platz: ab 900 px Szene und Panel nebeneinander, ab 1240 px dazu die Seitenleiste
+  mit Vorräten, Hinweisen und Chronik.
+- Kosten immer mit `costChips`/`costBtn` zeigen: jede Zutat mit Symbol, fehlende rot als „habe/brauche“.
+- Keine Unicode-Zeichen als Symbole (☠ ♥ ✕): gezeichnete Icons über `ico()` aus `ui.js`.
 
 ## Testen
 

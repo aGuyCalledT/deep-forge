@@ -16,7 +16,8 @@ Nach dem Hinzufügen reicht ein Neuladen der Seite. Dateien werden 5 Minuten gec
 | `item/<typ>` | 16×16 | `pickaxe`, `axe`, `helm`, `mail`, `chain`, `goblet`, `ring`, `crown` – ersetzt den Typ für alle Metalle |
 | `dwarf` | 14×17 | ersetzt **alle** Zwerge (ohne Bart- und Rüstungsfarben) |
 | `monster/<id>/<frame>` | 20×16 | `giant_rat`, `cave_crawler`, `cave_spider`, `goblin_scouts`, `rock_troll`, `magma_crab`, `blind_ogre`, `crystal_golem`, `deep_wyrm`; Frame `0` und `1` |
-| `room/<gebäude>` | 44×28 (Draußen: 22×16) | Raum in der Festung: `tavern`, `quarters`, `warehouse`, `vault`, `smelter`, `forge`, `grindstone`, `engraver`, `jeweler`, `farm`, `brewery`, `barracks`, `trading_post`, `expedition_hall` |
+| `hall/<gebäude>` | beliebig, wird so gezeichnet wie geliefert | Ganze Werkstatt (Wand, Boden, Möbel) in der Festung und im Werkstatt-Screen. Feuer, Rauch, Funken und Zwerge kommen trotzdem darüber. Gebäude: `tavern`, `quarters`, `warehouse`, `vault`, `smelter`, `forge`, `grindstone`, `engraver`, `jeweler`, `farm`, `brewery`, `barracks` |
+| `room/<gebäude>` | 44×28 (Draußen: 22×16) | Kleines Vorschaubild; draußen Handelsposten und Expeditionszelt: `tavern`, `quarters`, `warehouse`, `vault`, `smelter`, `forge`, `grindstone`, `engraver`, `jeweler`, `farm`, `brewery`, `barracks`, `trading_post`, `expedition_hall` |
 | `tile/layer<n>` | 48×48, kachelbar | Gestein der Schicht 0–4 |
 | `prop/wagon/<frame>` | 20×13 | Karawane |
 | `prop/torch/<frame>` | 5×8 | Fackel, Frames 0–2 |
