@@ -30,15 +30,42 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 
 ## Neu aufgefallen
 
+- [ ] **Ergebnis-Meldungen zum Abholen:** Wenn etwas Wartendes fertig ist (Expeditionen, Händler/Karawanen), gibt es
+      eine Benachrichtigung und im jeweiligen Menü eine Übersicht, was passiert ist und welche Beute mitkam. Sie bleibt,
+      bis man sie anklickt: ein „Einsammeln“-Knopf mit befriedigender Animation und Sound.
+
 - [x] **Zwerge neu gezeichnet** im Stil der Vorlagen: großer Kopf, Augen mit Glanz, rote Wangen, weiche farbige
       Umrisse, Vorder- und Seitenansicht.
 - [x] **Mehr Tiefe im Hintergrund:** runde Felssteine, Schatten des Felsens in Räumen und Gängen, beleuchtete Kanten,
       nach unten dunkleres Gestein, Wurzeln, Parallaxe mit Bergen und Wald, Schatten unter Zwergen.
-- [ ] Rückansicht der Zwerge (z. B. beim Klettern), Werkzeuge in der Hand etwas größer.
+- [x] Rückansicht der Zwerge beim Klettern, Werkzeuge in der Hand.
+- [x] **Größere Welt:** Raster-Zelle 24 × 96 statt 16 × 64, alle Räume, Gänge, Treppen, Schacht und die Oberfläche neu
+  in Zwergengröße, Treppen werden die Stufen entlang gegangen, Raster 48 statt 40 Spalten.
+- [ ] Kleidung selbst herstellen (Schneiderei/Weberei) und mit Karawanen handeln.
+- [ ] NPCs an der Oberfläche (Händlerin am Stand, Reisende) mit `Figure.person`.
+- [x] **Maschinen:** jede Werkstatt lässt sich um Maschinen erweitern (bis Stufe + 1, höchstens 5), jede mit eigenem
+  Zwerg und eigener Bestellung; der Raum wird breiter.
+- [x] **Räume sehen nach Ausbau anders aus:** drei Stufen (ausgehöhlt, eingerichtet, prächtig), je zwei Varianten,
+  Spinnweben, Risse, andersfarbige Steine.
+- [x] Köpfe im Profil: Schädel, flaches Gesicht, Brauenwulst, Kinn und Nacken statt Kugel; Haare und Hüte folgen der Form.
+- [ ] Ab Gebäudestufe 4 ändert sich das Aussehen nicht mehr; eine vierte Stufe wäre möglich.
+- [ ] Maschinen einzeln einem Zwerg zuweisen (jetzt: Reihenfolge nach Zwergen-ID) und einzeln abbauen.
+- [x] **Festung als einziger Screen:** keine Werkstatt-Screens mehr, Werkstätten wachsen beim Ausbau (eine Maschine pro
+  Stufe, höchstens 5) und ziehen um, wenn kein Platz ist. Blasebalg und Abschreckfass direkt in der Festung anklicken.
+- [x] **Kleine Menüs:** Szene im Vollbild, Tabs öffnen eine Schublade, Fenster öffnen sich neben dem angeklickten Raum
+  oder Zwerg, Erklärungen hinter Info-Knöpfen (abschaltbar unter More), Hinweise als Chips auf der Szene.
+- [x] **Hintertüren:** jeder Raum hat eine Tür zum Treppenhaus dahinter, Türen lassen sich in Gänge setzen (Bau-Werkzeug
+  „Door“). Türen verbinden sich mit Türen der Etage darüber/darunter, deren Raum sich überschneidet; Zwerge nehmen
+  lieber Türen als Seitenwände.
+- [x] Treppe passt zum Gang: gleiche Bretterwand, Deckenbalken entlang der Schräge, Pfosten an beiden Öffnungen, Laterne.
+- [x] Alle Räume eine Zelle breiter: rechts ein freier Streifen für die Hintertür (Haken mit Umhang, Laufspur am Boden),
+  damit die Tür nie vor Möbeln steht. Alte Spielstände: Räume, die dadurch überlappen, suchen sich einen neuen Platz.
+- [ ] Am Handy überdeckt das Fenster die untere Hälfte der Szene; der Raum wird darüber gezeigt, aber Zwerge darunter
+  sind dann verdeckt.
 - [ ] Die Steine im Fels wiederholen sich alle 32 px sichtbar; eine zweite, passende Kachel würde helfen.
 
 - [ ] Gänge per Ziehen am Stück graben (jetzt: Klick pro Zelle).
-- [ ] Zwerge liegen beim Schlafen noch sitzend auf dem Bett; eine Liege-Pose wäre schöner.
+- [x] Zwerge liegen beim Schlafen jetzt richtig im Bett (Liege-Pose).
 - [ ] Raum-Bau kostet nichts, Gänge und Treppen auch nicht. Kosten (Stein) einführen?
 
 ## Aus früheren Runden

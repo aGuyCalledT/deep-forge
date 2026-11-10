@@ -60,10 +60,40 @@ public final class Rules {
     }
 
     public static Dwarf worker(Fortress f, Building b) {
-        for (Dwarf d : f.dwarves)
-            if (d.job.equals("worker") && b.id.equals(d.building) && d.busy == null) return d;
-        return null;
+        List<Dwarf> ws = workers(f, b);
+        return ws.isEmpty() ? null : ws.get(0);
     }
+
+    /** Dwarves at their machines, machine 1 first. Workers beyond the number of machines wait. */
+    public static List<Dwarf> workers(Fortress f, Building b) {
+        List<Dwarf> out = new ArrayList<>();
+        for (Dwarf d : assigned(f, b)) if (d.busy == null && out.size() < machines(b)) out.add(d);
+        return out;
+    }
+
+    /** Everyone assigned to the building, in a stable order (by id). */
+    public static List<Dwarf> assigned(Fortress f, Building b) {
+        List<Dwarf> out = new ArrayList<>();
+        for (Dwarf d : f.dwarves) if (d.job.equals("worker") && b.id.equals(d.building)) out.add(d);
+        out.sort(Comparator.comparingInt((Dwarf d) -> d.id));
+        return out;
+    }
+
+    public static int machines(Building b) {
+        return Math.max(1, b.machines);
+    }
+
+    /** Workshops (queue and continuous kinds) get one machine per level, at most 5: the room grows with every upgrade. */
+    public static int maxMachines(Building b) {
+        if (!isWorkshop(b)) return 1;
+        return Math.max(1, Math.min(MAX_MACHINES, b.level));
+    }
+
+    public static boolean isWorkshop(Building b) {
+        return !Content.BUILDINGS.get(b.type).kind().equals("passive");
+    }
+
+    public static final int MAX_MACHINES = 5;
 
     public static String fullName(Dwarf d) {
         return d.first + " " + d.clan;

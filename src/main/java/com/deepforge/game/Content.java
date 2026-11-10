@@ -390,6 +390,7 @@ public final class Content {
 
     /** Base value of one unit (before market index and city demand). */
     public static double baseValue(String key) {
+        if (isWear(key)) { String[] w = parseWear(key); return w == null ? 0 : CLOTHES.get(w[0]).value(); }
         if (isItem(key)) {
             String[] p = parseItem(key);
             ItemType t = ITEMS.get(p[0]);
@@ -405,6 +406,11 @@ public final class Content {
     }
 
     public static String goodName(String key) {
+        if (isWear(key)) {
+            String[] w = parseWear(key);
+            if (w == null) return key;
+            return Character.toUpperCase(w[1].charAt(0)) + w[1].substring(1) + " " + CLOTHES.get(w[0]).name().toLowerCase();
+        }
         if (isItem(key)) {
             String[] p = parseItem(key);
             StringBuilder sb = new StringBuilder();
@@ -451,6 +457,53 @@ public final class Content {
         return "bar:steel";
     }
 
+    // ------------------------------------------------------------------ clothes
+    // Worn in slots, kept in the warehouse as "wear:<cloth>:<dye>". They can't be made yet (see docs/TODO.md).
+
+    public record Cloth(String id, String name, String slot, String look, double value) {}
+    public static final Map<String, Cloth> CLOTHES = new LinkedHashMap<>();
+    public static final Map<String, String> DYES = new LinkedHashMap<>();
+    public static final List<String> WEAR_SLOTS = List.of("hat", "top", "legs", "feet", "face", "ears", "apron");
+
+    static {
+        for (Cloth c : List.of(
+                new Cloth("shirt_linen", "Linen shirt", "top", "linen", 6),
+                new Cloth("shirt_knit", "Knitted jumper", "top", "knit", 8),
+                new Cloth("shirt_embroid", "Embroidered tunic", "top", "embroid", 12),
+                new Cloth("shirt_patched", "Patched shirt", "top", "patched", 3),
+                new Cloth("vest", "Leather vest", "top", "vest", 10),
+                new Cloth("dress", "Dress", "top", "dress", 10),
+                new Cloth("trousers", "Trousers", "legs", "seam", 5),
+                new Cloth("trousers_patched", "Patched trousers", "legs", "patch", 3),
+                new Cloth("trousers_rolled", "Rolled-up trousers", "legs", "cuff", 5),
+                new Cloth("boots", "Boots", "feet", "boots", 6),
+                new Cloth("hood", "Hood", "hat", "hood", 5),
+                new Cloth("miner_helmet", "Miner's helmet", "hat", "miner", 9),
+                new Cloth("beanie", "Beanie", "hat", "beanie", 4),
+                new Cloth("felt_cap", "Felt cap", "hat", "pointy", 5),
+                new Cloth("flower_crown", "Flower crown", "hat", "flower", 3),
+                new Cloth("bandana", "Bandana", "hat", "bandana", 3),
+                new Cloth("glasses", "Glasses", "face", "glasses", 14),
+                new Cloth("earrings", "Earrings", "ears", "earrings", 16),
+                new Cloth("apron", "Apron", "apron", "apron", 5)))
+            CLOTHES.put(c.id(), c);
+        String[][] dyes = { {"blue", "#5f84bb"}, {"green", "#6f9a72"}, {"rose", "#c76a86"}, {"ochre", "#c99a3e"}, {"brown", "#8a6046"},
+            {"grey", "#8a8a94"}, {"violet", "#8a6ab8"}, {"red", "#b8483e"}, {"cream", "#e8dcc0"}, {"teal", "#4f9aa0"}, {"black", "#3e383e"} };
+        for (String[] d : dyes) DYES.put(d[0], d[1]);
+    }
+
+    public static boolean isWear(String key) { return key != null && key.startsWith("wear:"); }
+
+    /** "wear:shirt_knit:blue" -> ["shirt_knit", "blue"], or null if it is not a valid piece of clothing. */
+    public static String[] parseWear(String key) {
+        if (!isWear(key)) return null;
+        String[] p = key.split(":");
+        if (p.length != 3 || !CLOTHES.containsKey(p[1]) || !DYES.containsKey(p[2])) return null;
+        return new String[]{p[1], p[2]};
+    }
+
+    public static String wearKey(String cloth, String dye) { return "wear:" + cloth + ":" + dye; }
+
     public static Map<String, Object> asData() {
         Map<String, Object> d = new LinkedHashMap<>();
         d.put("metals", METALS.values());
@@ -473,14 +526,21 @@ public final class Content {
         plan.put("floors", Layouts.FLOORS);
         plan.put("shaft", Layouts.SHAFT);
         plan.put("rooms", Layouts.ROOM_CELLS);
+        plan.put("machineCells", Layouts.MACHINE_CELLS);
+        plan.put("maxMachines", Rules.MAX_MACHINES);
         d.put("plan", plan);
         Map<String, Object> looks = new LinkedHashMap<>();
         looks.put("beardStyles", Factory.BEARD_STYLES);
         looks.put("hairStyles", Factory.HAIR_STYLES);
-        looks.put("hats", Factory.HATS);
         looks.put("bodies", Factory.BODIES);
-        looks.put("accessories", Factory.ACCESSORIES);
+        looks.put("noses", Factory.NOSES);
+        looks.put("brows", Factory.BROWS);
+        looks.put("mouths", Factory.MOUTHS);
+        looks.put("eyes", Factory.EYES);
         d.put("looks", looks);
+        d.put("clothes", CLOTHES.values());
+        d.put("dyes", DYES);
+        d.put("wearSlots", WEAR_SLOTS);
         return d;
     }
 }

@@ -31,6 +31,8 @@ und hier.
 | Lift | `80 × 1,35^(Stufe−1)` Erz/h |
 | Lager | `500 × 1,4^(Stufe−1)` (Pilze und Bier zählen nicht) |
 | Gebäudestufe | `+25 %` Tempo pro Stufe |
+| Maschinen | jede Werkstatt hat `min(5, Stufe)` Maschinen, jede braucht einen eigenen Zwerg und arbeitet ihre eigene Bestellung ab (gemeinsame Warteschlange, gemeinsame Hitze im Schmelzofen) |
+| Maschine | kommt mit jedem Ausbau dazu (keine eigenen Kosten); der Raum wird um `MACHINE_CELLS` Zellen breiter. Ist rechts kein Platz, rückt er nach links oder zieht an die nächste freie Stelle (gleiche Etage zuerst) |
 | Schmelzen | 180 s × Hitzefaktor des Metalls, Blasebalg bis ×2 (+7 Hitze pro Tipp, −4 pro Sekunde) |
 | Legierung | 120 s × Hitzefaktor × max(1, Ausbeute/2) |
 | Schmieden | 100 s × Barren × √Hitzefaktor |

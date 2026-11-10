@@ -8,8 +8,18 @@ import java.util.*;
 public final class Factory {
     private Factory() {}
 
-    public static final int BEARD_STYLES = 8, HAIR_STYLES = 6, HATS = 6, BODIES = 3, ACCESSORIES = 5;
-    static final List<String> OUTFITS = List.of("#6f8fb8", "#7aa08a", "#b87a6a", "#9a86b8", "#c2a46a", "#6aa0a8", "#b8869a", "#8a9a6a");
+    // look counts; the names and drawings live in art-src/figure.js (Figure.HAIR_STYLES etc.)
+    public static final int BEARD_STYLES = 8, HAIR_STYLES = 10, BODIES = 5, NOSES = 9, BROWS = 7, MOUTHS = 5, EYES = 7;
+    // hair styles: 0 short, 1 fringe, 2 bald, 3 topknot, 4 long, 5 wavy, 6 braids, 7 bun, 8 pigtails, 9 mohawk
+    static final int[] MEN_HAIR = {0, 0, 1, 2, 2, 3, 4, 9};
+    static final int[] WOMEN_HAIR = {1, 4, 5, 5, 6, 6, 7, 8, 0};
+    // noses: 0 bulb, 1 potato, 2 long, 3 broad, 4 button, 5 pointy, 6 hooked, 7 snub, 8 tiny
+    static final int[] WOMEN_NOSES = {2, 4, 5, 6, 7, 8, 8};
+    static final List<String> TOPS = List.of("shirt_linen", "shirt_linen", "shirt_knit", "shirt_embroid", "shirt_patched", "vest");
+    static final List<String> LEGS = List.of("trousers", "trousers", "trousers_patched", "trousers_rolled");
+    static final List<String> HATS = List.of("hood", "miner_helmet", "beanie", "felt_cap", "flower_crown", "bandana");
+    static final List<String> SHIRT_DYES = List.of("blue", "green", "rose", "ochre", "violet", "red", "cream", "teal", "grey");
+    static final List<String> TROUSER_DYES = List.of("brown", "brown", "grey", "black", "green", "blue");
 
     public static Fortress newFortress(long userId, String owner, double now, long seed) {
         Fortress f = new Fortress();
@@ -25,6 +35,8 @@ public final class Factory {
         f.stock.put("coal", 30);
         f.stock.put("stone", 40);
         f.stock.put("native_copper", 10);
+        Rng spare = new Rng(seed ^ 0x5eedL);
+        for (int i = 0; i < 3; i++) Rules.add(f, Content.wearKey(spare.pick(List.of("shirt_knit", "dress", "beanie", "trousers_rolled", "apron", "vest")), spare.pick(SHIRT_DYES)), 1);
         for (Content.BuildingType t : Content.BUILDINGS.values()) {
             if (t.multi() && t.startLevel() == 0) continue; // workshops are built later
             Building b = new Building();
@@ -73,18 +85,19 @@ public final class Factory {
     public static Dwarf newDwarf(Fortress f, Rng r, double now, String mainSkill) {
         Dwarf d = new Dwarf();
         d.id = f.nextId++;
-        d.first = Names.first(r);
+        boolean female = r.chance(0.45);
+        d.sex = female ? "f" : "m";
+        d.first = Names.first(r, female);
         d.clan = r.pick(Names.CLAN);
         d.age = 30 + r.nextInt(150);
-        d.beard = r.pick(Names.BEARDS);
-        d.hair = r.chance(0.7) ? d.beard : r.pick(Names.BEARDS);
+        d.hair = r.pick(Names.BEARDS);
+        d.beard = d.hair;
         d.skin = r.pick(Names.SKINS);
-        d.beardStyle = r.nextInt(BEARD_STYLES);
-        d.hairStyle = r.nextInt(HAIR_STYLES);
-        d.hat = r.chance(0.55) ? 0 : 1 + r.nextInt(HATS - 1);
         d.body = r.nextInt(BODIES);
-        d.outfit = r.pick(OUTFITS);
-        d.accessory = r.chance(0.6) ? 0 : 1 + r.nextInt(ACCESSORIES - 1);
+        d.beardStyle = r.nextInt(BEARD_STYLES);
+        d.hairStyle = female ? WOMEN_HAIR[r.nextInt(WOMEN_HAIR.length)] : MEN_HAIR[r.nextInt(MEN_HAIR.length)];
+        face(d, r);
+        dress(d, r, true);
         List<String> pool = new ArrayList<>(Content.TRAITS.keySet());
         while (d.traits.size() < 2) {
             String t = r.pick(pool);
@@ -99,5 +112,48 @@ public final class Factory {
         d.happiness = 60;
         d.arrived = now;
         return d;
+    }
+
+    static void face(Dwarf d, Rng r) {
+        boolean female = "f".equals(d.sex);
+        d.nose = female ? WOMEN_NOSES[r.nextInt(WOMEN_NOSES.length)] : r.nextInt(NOSES);
+        d.brows = r.nextInt(BROWS);
+        d.eyeColor = r.nextInt(EYES);
+        d.mouth = r.nextInt(MOUTHS);
+        d.freckles = r.chance(0.2);
+        d.looks = 2;
+    }
+
+    /** A first outfit: top, trousers, boots, sometimes a hat, glasses or earrings. */
+    static void dress(Dwarf d, Rng r, boolean extras) {
+        boolean female = "f".equals(d.sex);
+        d.wear.putIfAbsent("top", Content.wearKey(female && r.chance(0.35) ? "dress" : r.pick(TOPS), r.pick(SHIRT_DYES)));
+        d.wear.putIfAbsent("legs", Content.wearKey(r.pick(LEGS), r.pick(TROUSER_DYES)));
+        d.wear.putIfAbsent("feet", Content.wearKey("boots", r.chance(0.7) ? "brown" : "black"));
+        if (!extras) return;
+        if (r.chance(0.35)) d.wear.put("hat", Content.wearKey(r.pick(HATS), r.pick(SHIRT_DYES)));
+        if (r.chance(0.12)) d.wear.put("face", Content.wearKey("glasses", r.chance(0.5) ? "black" : "ochre"));
+        if (r.chance(female ? 0.45 : 0.1)) d.wear.put("ears", Content.wearKey("earrings", "ochre"));
+    }
+
+    /** Old saves: give every dwarf a face, beard in the hair colour and clothes as items. Safe to call on every load. */
+    public static void upgrade(Fortress f) {
+        for (Dwarf d : f.dwarves) {
+            if (d.looks >= 2) continue;
+            Rng r = new Rng(d.id * 7919L + f.userId * 31L + 17);
+            if (d.sex == null) d.sex = "m";
+            if (d.beard != null) d.hair = d.beard; else d.beard = d.hair;
+            if (d.body < 0 || d.body >= BODIES) d.body = r.nextInt(BODIES);
+            int[] oldHair = {2, 0, 9, 4, 3, 5};          // bald, short, spiky, long, topknot, long with beads
+            d.hairStyle = d.hairStyle >= 0 && d.hairStyle < oldHair.length ? oldHair[d.hairStyle] : MEN_HAIR[r.nextInt(MEN_HAIR.length)];
+            int[] oldBeard = {0, 4, 3, 2, 1, 7, 5, 4};      // full, long, forked, braided, huge, moustache, goatee, wizard
+            d.beardStyle = d.beardStyle >= 0 && d.beardStyle < oldBeard.length ? oldBeard[d.beardStyle] : r.nextInt(BEARD_STYLES);
+            String[] oldHats = {null, "hood", "miner_helmet", "beanie", "felt_cap", null};
+            if (d.hat > 0 && d.hat < oldHats.length && oldHats[d.hat] != null) d.wear.put("hat", Content.wearKey(oldHats[d.hat], r.pick(SHIRT_DYES)));
+            if (d.accessory == 2) d.wear.put("face", Content.wearKey("glasses", "black"));
+            if (d.accessory == 4) d.wear.put("ears", Content.wearKey("earrings", "ochre"));
+            dress(d, r, false);
+            face(d, r);
+        }
     }
 }

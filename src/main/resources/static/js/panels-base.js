@@ -1,6 +1,6 @@
 // Fortress overview, dwarves, war and "more" panels.
 import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico } from './ui.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp } from './ui.js';
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
 import { openAudioSheet } from './panels-audio.js';
@@ -27,6 +27,13 @@ export function renderFortress() {
     h('div', { class: 'row between' }, h('h3', null, f.name), h('span', { class: 'gold-t pix' }, 'Level ' + f.level)),
     bar(f.xp / d.xpNeed), h('p', { class: 'small muted' }, `${fmt(f.xp)} / ${fmt(d.xpNeed)} xp to the next level.`
       + (d.traditionPoints > 0 ? ` You have ${d.traditionPoints} tradition point(s) to spend (More tab).` : ''))));
+  const alerts = bus.alerts ? bus.alerts() : [];
+  if (alerts.length) out.push(h('div', { class: 'card sub' }, h('h3', { style: { marginTop: 0 } }, 'Needs attention'),
+    alerts.map(([k, tab, text, room]) => h('button', { class: 'alert ' + k, style: { margin: '4px 0', width: '100%' }, onclick: () => (room ? bus.showRoom(room) : bus.go(tab)) },
+      img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), h('span', { style: { whiteSpace: 'normal' } }, text)))));
+  out.push(h('div', { class: 'card sub' }, h('h3', { style: { marginTop: 0 } }, 'Latest news'),
+    f.log.slice(-5).reverse().map((l) => h('div', { class: 'log-line ' + l.kind }, h('span', { class: 't' }, ago(l.t)), l.text)),
+    h('button', { class: 'btn small ghost', onclick: () => bus.go('more') }, 'Whole chronicle')));
 
   // storage
   out.push(...section('Storage',
@@ -34,7 +41,7 @@ export function renderFortress() {
       h('div', { class: 'row between' }, h('span', null, 'Warehouse'), h('span', { class: f.storageFull ? 'bad-t' : '' }, `${fmt(d.used)} / ${fmt(d.capacity)}`)),
       bar(d.used / d.capacity),
       f.storageFull ? h('p', { class: 'bad-t small' }, 'Full! Mining has stopped. Smelt, sell or upgrade the warehouse.') : null,
-      h('p', { class: 'small muted' }, 'Ore, stone, bars and goods. Mushrooms and ale have their own larder.'),
+      info('Ore, stone, bars and goods. Mushrooms and ale have their own larder.'),
       h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('warehouse'))),
       h('button', { class: 'btn small ghost', style: { marginTop: '8px' }, onclick: () => bus.go('mines') }, ico('mines'), 'To the mines'))));
 
@@ -62,16 +69,16 @@ export function renderFortress() {
     if (t.kind !== 'passive' || b.type === 'warehouse' || b.type === 'lift') continue;
     out.push(h('div', { class: 'card' },
       h('div', { class: 'row between' }, h('h3', null, t.name), h('span', { class: 'muted' }, b.level ? 'Level ' + b.level : 'Not built')),
-      h('p', { class: 'small muted' }, t.note), h('p', { class: 'small' }, EFFECT[b.type] ? EFFECT[b.type](b) : ''),
+      h('p', { class: 'small' }, EFFECT[b.type] ? EFFECT[b.type](b) : '', info(t.note)),
       upgradeBtn(b)));
   }
   out.push(h('h2', null, 'Build workshops'));
-  out.push(h('div', { class: 'card' }, h('p', { class: 'small muted' }, 'Every workshop needs a dwarf. More workshops of the same kind cost more.'),
+  out.push(h('div', { class: 'card' }, info('Every workshop needs a dwarf. More workshops of the same kind cost more. A new workshop is put in the first free spot of your hold; move it in build mode.'),
     Object.entries(d.buildCosts).map(([type, c]) => {
       const t = byId.buildings[type];
       const have = f.buildings.filter((b) => b.type === type).length;
       return h('div', { class: 'row', style: { margin: '6px 0' } },
-        h('span', { class: 'grow' }, h('b', null, t.name), have ? h('span', { class: 'muted' }, ` (you have ${have})`) : null, h('br'), h('span', { class: 'small muted' }, t.note)),
+        h('span', { class: 'grow' }, h('b', null, t.name), have ? h('span', { class: 'muted' }, ` (you have ${have})`) : null, info(t.note)),
         costBtn('Build', c, { type: 'build', building: type }));
     })));
   return out;
@@ -79,8 +86,10 @@ export function renderFortress() {
 
 export function upgradeBtn(b) {
   if (!b) return null;
-  const c = D().buildings[b.id].upgrade;
-  return costBtn(b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`, c, { type: 'upgrade', building: b.id });
+  const info = D().buildings[b.id], c = info.upgrade;
+  const label = b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`;
+  if (info.canGrow === false) return costBtn(label, c, null, 'It gets wider when upgraded, but no floor has space for it. Dig out more of the hold.');
+  return costBtn(info.canGrow ? label + ', +1 machine' : label, c, { type: 'upgrade', building: b.id });
 }
 
 export function costBtn(label, cost, action, blocked) {
@@ -107,7 +116,7 @@ export function renderDwarves() {
         h('span', null, img(S.icon('mood'), 'icon s'), ` ${Math.round(avg)}% happy`)),
       idle ? h('p', { class: 'warn-t small' }, `${idle} dwarf(s) idle. Idle dwarves sit in the tavern.`) : null,
       d.pop > d.beds ? h('p', { class: 'bad-t small' }, 'Not enough beds! Upgrade the quarters.') : null,
-      h('p', { class: 'small muted' }, 'Happy dwarves work up to 40% faster. Miserable ones may leave. Food, ale, beds, the tavern and fine goblets in stock all help.')),
+      info('Happy dwarves work up to 40% faster. Miserable ones may leave. Food, ale, beds, the tavern and fine goblets in stock all help.')),
     h('div', { class: 'row', style: { marginBottom: '10px' } }, jobs.map((j) =>
       h('button', { class: 'btn small' + (dwarfFilter === j ? ' primary' : ''), onclick: () => { dwarfFilter = j; bus.render(); } }, j))),
     h('div', { class: 'list dwarves-grid' }, list.map(dwarfCard)),
@@ -120,7 +129,7 @@ export function dwarfCard(x) {
   const dd = D().dwarves[x.id] || {};
   const top = Object.entries(dd.skills || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const gear = ['tool', 'weapon', 'helm', 'armor'].map((s) => x[s]).filter(Boolean);
-  const portrait = img(S.dwarfSprite(x, 'stand', 0), '');
+  const portrait = img(S.portrait(x), '');
   portrait.style.width = '48px'; portrait.style.height = '58px';
   return h('div', { class: 'card dwarf-card' },
     h('div', null, portrait),
@@ -178,9 +187,25 @@ export function gearSheet(x) {
             : h('p', { class: 'small muted' }, 'Nothing equipped.'),
           items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
             h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, item: k }); refreshSheet(); } }, 'Equip'))));
+      }),
+      h('h3', null, 'Clothes'),
+      h('div', { class: 'row' }, img(S.portrait(me), 'icon xl'), h('p', { class: 'small muted grow' }, 'Spare clothes wait in the warehouse. Making your own comes later.')),
+      WEAR_SLOTS.map(([slot, name]) => {
+        const cur = (me.wear || {})[slot];
+        const spare = Object.entries(f.stock).filter(([k, v]) => v > 0 && k.startsWith('wear:') && byId.clothes[k.split(':')[1]] && byId.clothes[k.split(':')[1]].slot === slot);
+        if (!cur && !spare.length) return null;
+        return h('div', { class: 'card sub' },
+          h('b', null, name),
+          cur ? h('div', { class: 'row' }, goodIcon(cur), h('span', { class: 'grow small' }, goodName(cur)),
+            h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'unwear', dwarf: me.id, slot }); refreshSheet(); } }, 'Take off'))
+            : h('p', { class: 'small muted' }, 'Nothing.'),
+          spare.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
+            h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'wear', dwarf: me.id, item: k }); refreshSheet(); } }, 'Put on'))));
       }));
   });
 }
+
+const WEAR_SLOTS = [['hat', 'Hat'], ['top', 'Shirt or dress'], ['legs', 'Trousers'], ['feet', 'Boots'], ['face', 'Glasses'], ['ears', 'Earrings'], ['apron', 'Apron']];
 
 // ================================================================== war
 
@@ -218,7 +243,7 @@ export function renderWar() {
   out.push(h('h2', null, 'Warriors'));
   if (!warriors.length) out.push(h('p', { class: 'muted' }, 'No warriors. Give dwarves the warrior job in the Dwarves tab. Forge axes, helms and chain mail for them.'));
   out.push(h('div', { class: 'list' }, warriors.map((x) => h('div', { class: 'card sub row' },
-    img(S.dwarfSprite(x, 'stand', 0)), h('span', { class: 'grow' }, h('b', null, fullName(x)), h('br'), h('span', { class: 'small muted' }, jobLabel(x))),
+    img(S.portrait(x)), h('span', { class: 'grow' }, h('b', null, fullName(x)), h('br'), h('span', { class: 'small muted' }, jobLabel(x))),
     h('span', { class: 'gold-t' }, fmt(D().dwarves[x.id].power)),
     !x.busy ? h('button', { class: 'btn small', onclick: () => bus.act({ type: 'assign', dwarf: x.id, job: 'warrior', post: x.post === 'mine' ? 'fortress' : 'mine' }) }, x.post === 'mine' ? 'To gate' : 'To mine') : null,
     !x.busy ? h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear') : null))));
@@ -266,6 +291,8 @@ export function renderMore() {
 
   const name = h('input', { value: f.name, maxLength: 32 });
   out.push(...section('Settings', h('div', { class: 'card' },
+    h('label', { class: 'pick' }, h('input', { type: 'checkbox', checked: helpOn(), onchange: (e) => { setHelp(e.target.checked); bus.render(); } }),
+      h('span', { class: 'grow' }, 'Show help buttons', h('br'), h('span', { class: 'small muted' }, 'Small round buttons that explain things.'))),
     h('label', null, 'Name of your hold', name),
     h('div', { class: 'row' }, h('button', { class: 'btn small', onclick: () => bus.act({ type: 'rename', name: name.value }) }, 'Rename'),
       h('button', { class: 'btn small', onclick: openAudioSheet }, ico('note'), 'Music and sound'),

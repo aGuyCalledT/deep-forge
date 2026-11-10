@@ -55,16 +55,44 @@ export function bar(frac, cls = '') {
 // ------------------------------------------------------------------ sheet
 
 const sheetEl = () => document.getElementById('sheet');
-let sheetRender = null;
+let sheetRender = null, sheetAnchor = null;
 
-export function openSheet(render) {
+/**
+ * Open a window. With an anchor ({x, y} in page pixels, e.g. where the player clicked) it is a small
+ * pop-over next to that point and the scene stays visible and clickable; without one it is the
+ * bottom sheet (phone) or a centred dialog (desktop).
+ */
+let sheetBack = null;   // a pop-over that a bigger sheet replaced: it comes back when that one closes
+export function openSheet(render, anchor = null) {
+  sheetBack = !anchor && sheetAnchor && sheetRender ? { render: sheetRender, anchor: sheetAnchor } : anchor ? null : sheetBack;
   sheetRender = render;
-  if (sheetEl().hidden) A.sfx('open');
+  sheetAnchor = anchor;
+  const el = sheetEl();
+  if (el.hidden) A.sfx('open');
+  el.classList.toggle('pop', !!anchor);
   const c = document.getElementById('sheet-content');
   c.replaceChildren(render());
-  sheetEl().hidden = false;
+  el.hidden = false;
+  place();
   const first = c.querySelector('input, select, button');
-  if (first && window.matchMedia('(min-width: 900px)').matches) first.focus();
+  if (first && !anchor && window.matchMedia('(min-width: 900px)').matches) first.focus();
+}
+
+/** Put a pop-over beside its anchor, inside the window. Phones get a short sheet at the bottom. */
+function place() {
+  const body = sheetEl().querySelector('.sheet-body');
+  body.style.left = body.style.top = '';
+  if (!sheetAnchor || !window.matchMedia('(min-width: 700px)').matches) return;
+  const W = window.innerWidth, H = window.innerHeight, r = body.getBoundingClientRect();
+  const a = sheetAnchor.rect || { x: sheetAnchor.x, y: sheetAnchor.y, w: 0, h: 0 };
+  const gap = 14, room = (x) => x >= 12 && x + r.width <= W - 12;
+  // beside the thing (right, then left); if neither fits, next to the click
+  let x = a.x + a.w + gap;
+  if (!room(x)) x = a.x - gap - r.width;
+  if (!room(x)) x = sheetAnchor.x + gap;
+  x = Math.max(12, Math.min(W - r.width - 12, x));
+  const y = Math.max(12, Math.min(H - r.height - 12, (a.h ? a.y : sheetAnchor.y - 60)));
+  body.style.left = x + 'px'; body.style.top = y + 'px';
 }
 
 /** Re-draw the open sheet (after its own inputs change). */
@@ -74,20 +102,43 @@ export function refreshSheet() {
   const y = c.parentElement.scrollTop;
   c.replaceChildren(sheetRender());
   c.parentElement.scrollTop = y;
+  if (sheetAnchor) place();
 }
 
 export function closeSheet() {
+  if (sheetBack) { const k = sheetBack; sheetBack = null; openSheet(k.render, k.anchor); return; }
   if (!sheetEl().hidden) A.sfx('close');
   sheetEl().hidden = true;
   sheetRender = null;
+  sheetAnchor = null;
 }
 
 export function sheetOpen() { return !sheetEl().hidden; }
+export function popOpen() { return !sheetEl().hidden && !!sheetAnchor; }
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-close]')) closeSheet();
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetOpen()) { closeSheet(); e.preventDefault(); } });
+// a pop-over closes when you press somewhere else, except on the scene (the scene decides itself)
+document.addEventListener('pointerdown', (e) => {
+  if (popOpen() && !e.target.closest('.sheet-body, #scene')) closeSheet();
+});
+
+// ------------------------------------------------------------------ help
+
+const HELP_KEY = 'deepforge.help';
+export function helpOn() { try { return localStorage.getItem(HELP_KEY) !== 'off'; } catch { return true; } }
+export function setHelp(on) { try { localStorage.setItem(HELP_KEY, on ? 'on' : 'off'); } catch { /* fine */ } }
+
+/** A small "i" button that shows an explanation when pressed. Nothing at all when help is off. */
+export function info(text) {
+  if (!helpOn() || !text) return null;
+  const tip = h('span', { class: 'info-tip', role: 'note', hidden: true }, text);
+  const btn = h('button', { class: 'info', type: 'button', 'aria-label': 'Explain', title: 'Explain',
+    onclick: (e) => { e.stopPropagation(); tip.hidden = !tip.hidden; btn.setAttribute('aria-expanded', String(!tip.hidden)); } }, ico('info'));
+  return h('span', { class: 'info-wrap' }, btn, tip);
+}
 
 // ------------------------------------------------------------------ toasts
 
@@ -183,7 +234,7 @@ export function dwarfPicker(list, selected, extra, onChange) {
     const on = selected.has(d.id);
     return h('label', { class: 'pick' + (on ? ' on' : '') },
       h('input', { type: 'checkbox', checked: on, onchange: () => { on ? selected.delete(d.id) : selected.add(d.id); onChange(); } }),
-      img(S.dwarfSprite(d, 'stand', 0), 'icon'),
+      img(S.portrait(d), 'icon'),
       h('span', { class: 'grow' }, d.first + ' ' + d.clan),
       extra ? h('span', { class: 'muted small nowrap' }, extra(d)) : null);
   }));

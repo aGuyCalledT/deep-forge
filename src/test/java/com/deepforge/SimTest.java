@@ -166,6 +166,76 @@ class SimTest {
     }
 
     @Test
+    void upgradingAWorkshopAddsAMachineForASecondSmith() {
+        Fortress f = fresh(12);
+        Market m = Market.inMemory(12, T0);
+        f.stock.put("bar:copper", 30);
+        f.stock.put("coal", 50);
+        act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
+        Building forge = f.buildings.stream().filter(x -> x.id.equals("forge-1")).findFirst().orElseThrow();
+        assertEquals(1, Rules.maxMachines(forge));
+        Rules.Cost c = Rules.upgradeCost(forge);
+        f.coins += c.coins() + 10;
+        c.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
+        Dwarf a = f.dwarves.get(0), b = f.dwarves.get(1), x = f.dwarves.get(2);
+        act(f, m, T0, "type", "assign", "dwarf", a.id, "job", "worker", "building", "forge-1");
+        act(f, m, T0, "type", "upgrade", "building", "forge-1");
+        assertEquals(2, forge.machines);
+        assertEquals(Layouts.ROOM_CELLS.get("forge") + Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
+        // the room grew over the cells to its right: nothing else may stand there
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 27, "floor", 5));
+        act(f, m, T0, "type", "assign", "dwarf", b.id, "job", "worker", "building", "forge-1");
+        assertEquals(2, Rules.workers(f, forge).size());
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "assign", "dwarf", x.id, "job", "worker", "building", "forge-1"));
+        act(f, m, T0, "type", "queueAdd", "building", "forge-1", "recipe", "craft", "itype", "goblet", "mat", "copper", "count", 6);
+        Sim.advance(f, T0 + 60, m);
+        assertNotNull(forge.job);
+        assertNotNull(forge.more.get(0));
+        Sim.advance(f, T0 + 3 * 3600, m);
+        int goblets = 0;
+        for (Map.Entry<String, Integer> e : f.stock.entrySet())
+            if (e.getKey().startsWith("item:goblet:copper")) goblets += e.getValue();
+        assertEquals(6, goblets);
+    }
+
+    @Test
+    void roomsThatOverlapAfterGettingWiderFindANewPlace() {
+        Fortress f = fresh(12);
+        Layouts.ensure(f);
+        // an old save: the forge placed right where the (now wider) smelter ends
+        Building smelter = f.buildings.stream().filter(x -> x.type.equals("smelter")).findFirst().orElseThrow();
+        int[] s = f.layout.rooms.get(smelter.id);
+        f.layout.rooms.put("forge-1", new int[]{s[0] + Layouts.width(smelter) - 1, s[1]});
+        Layouts.ensure(f);
+        assertArrayEquals(s, f.layout.rooms.get(smelter.id), "the earlier room stays");
+        for (String id : f.layout.rooms.keySet()) {
+            Building b = Rules.building(f, id);
+            int[] p = f.layout.rooms.get(id);
+            for (int x = p[0]; x < p[0] + Layouts.width(b); x++) assertEquals("room:" + id, Layouts.at(f, x, p[1], null));
+        }
+    }
+
+    @Test
+    void aWorkshopWithoutSpaceMovesWhenUpgraded() {
+        Fortress f = fresh(12);
+        Market m = Market.inMemory(12, T0);
+        Layouts.ensure(f);
+        Building smelter = f.buildings.stream().filter(x -> x.type.equals("smelter")).findFirst().orElseThrow();
+        int[] before = f.layout.rooms.get(smelter.id).clone();
+        assertFalse(Layouts.canGrow(f, smelter), "the start plan packs the workshops side by side");
+        Rules.Cost c = Rules.upgradeCost(smelter);
+        f.coins += c.coins() + 10;
+        c.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
+        act(f, m, T0, "type", "upgrade", "building", smelter.id);
+        assertEquals(2, smelter.machines);
+        int[] after = f.layout.rooms.get(smelter.id);
+        assertFalse(before[0] == after[0] && before[1] == after[1]);
+        // nothing overlaps it
+        for (int x = after[0]; x < after[0] + Layouts.width(smelter); x++)
+            assertEquals("room:" + smelter.id, Layouts.at(f, x, after[1], null));
+    }
+
+    @Test
     void roomsHallsAndStairsCanBePlaced() {
         Fortress f = fresh(42);
         Market m = Market.inMemory(42, T0);
@@ -179,6 +249,11 @@ class SimTest {
         act(f, m, T0, "type", "fill", "col", 13, "floor", 7);
         assertTrue(f.layout.stairs.isEmpty());
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 0, "floor", 1));
+        act(f, m, T0, "type", "door", "col", 10, "floor", 6);
+        assertTrue(f.layout.doors.contains("10,6"));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "door", "col", 30, "floor", 7));
+        act(f, m, T0, "type", "fill", "col", 10, "floor", 6);
+        assertFalse(f.layout.doors.contains("10,6"));
     }
 
     @Test
@@ -189,6 +264,43 @@ class SimTest {
         f.stock.put("stone", 500);
         act(f, m, T0, "type", "build", "building", "grindstone");
         assertTrue(f.layout.rooms.containsKey("grindstone-1"));
+    }
+
+    @Test
+    void dwarvesWearClothesFromTheStore() {
+        Fortress f = fresh(45);
+        Market m = Market.inMemory(45, T0);
+        Dwarf d = f.dwarves.get(0);
+        assertNotNull(d.wear.get("top"), "every dwarf starts dressed");
+        assertEquals(d.hair, d.beard, "the beard matches the hair");
+        String hat = Content.wearKey("beanie", "red");
+        f.stock.put(hat, 1);
+        act(f, m, T0, "type", "wear", "dwarf", d.id, "item", hat);
+        assertEquals(hat, d.wear.get("hat"));
+        assertEquals(0, f.stock.getOrDefault(hat, 0));
+        String oldTop = d.wear.get("top");
+        String dress = Content.wearKey("dress", "teal");
+        f.stock.put(dress, 1);
+        act(f, m, T0, "type", "wear", "dwarf", d.id, "item", dress);
+        assertEquals(1, f.stock.getOrDefault(oldTop, 0), "the old top goes back to the store");
+        act(f, m, T0, "type", "unwear", "dwarf", d.id, "slot", "hat");
+        assertNull(d.wear.get("hat"));
+        assertEquals(1, f.stock.getOrDefault(hat, 0));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "wear", "dwarf", d.id, "item", "wear:crown:gold"));
+    }
+
+    @Test
+    void oldDwarvesGetTheNewLook() {
+        Fortress f = fresh(46);
+        Dwarf d = f.dwarves.get(0);
+        d.looks = 0; d.sex = null; d.wear.clear(); d.beard = "#c4622d"; d.hair = "#9a9a9a"; d.hairStyle = 0; d.hat = 2; d.accessory = 2;
+        Factory.upgrade(f);
+        assertEquals("m", d.sex);
+        assertEquals("#c4622d", d.hair);
+        assertEquals(2, d.hairStyle, "old bald stays bald");
+        assertTrue(d.wear.get("hat").startsWith("wear:miner_helmet:"));
+        assertTrue(d.wear.containsKey("face") && d.wear.containsKey("top") && d.wear.containsKey("feet"));
+        assertTrue(d.nose >= 0 && d.brows >= 0 && d.eyeColor >= 0);
     }
 
     @Test

@@ -74,6 +74,8 @@ public final class Actions {
             case "bellows" -> bellows(f, a, t);
             case "quench" -> quench(f, a, t, r);
             case "equip" -> equip(f, a);
+            case "wear" -> wear(f, a);
+            case "unwear" -> unwear(f, a);
             case "unequip" -> unequip(f, a);
             case "caravan" -> caravan(f, a, t);
             case "expedition" -> expedition(f, a, t, r);
@@ -87,6 +89,7 @@ public final class Actions {
             case "dig" -> Layouts.dig(f, num(a, "col", -1), num(a, "floor", -1));
             case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
+            case "door" -> Layouts.door(f, num(a, "col", -1), num(a, "floor", -1));
             default -> throw new GameException("Unknown action: " + type);
         }
     }
@@ -116,10 +119,14 @@ public final class Actions {
                 check(b != null && b.level > 0, "No such building.");
                 String kind = Content.BUILDINGS.get(b.type).kind();
                 check(!kind.equals("passive"), "Nobody works there.");
-                Dwarf old = worker(f, b);
-                if (old != null && old != d) old.job = "idle";
-                for (Dwarf o : f.dwarves)
-                    if (o != d && o.job.equals("worker") && b.id.equals(o.building)) o.job = "idle";
+                if (!(d.job.equals("worker") && b.id.equals(d.building))) {
+                    List<Dwarf> at = assigned(f, b);
+                    if (at.size() >= machines(b)) {
+                        // all machines taken: with one machine the newcomer takes over, otherwise say what to do
+                        check(machines(b) == 1, "All " + machines(b) + " machines are taken. Add a machine or free a worker first.");
+                        for (Dwarf o : at) o.job = "idle";
+                    }
+                }
                 d.job = "worker";
                 d.building = b.id;
             }
@@ -137,6 +144,26 @@ public final class Actions {
         if (old != null) add(f, old, 1);
         add(f, item, -1);
         slotSet(d, slot, item);
+    }
+
+    static void wear(Fortress f, Map<String, Object> a) {
+        Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
+        String item = str(a, "item");
+        String[] w = Content.parseWear(item);
+        check(w != null && stock(f, item) > 0, "You don't have that to wear. Check the warehouse.");
+        String slot = Content.CLOTHES.get(w[0]).slot();
+        String old = d.wear.get(slot);
+        if (old != null) add(f, old, 1);
+        add(f, item, -1);
+        d.wear.put(slot, item);
+    }
+
+    static void unwear(Fortress f, Map<String, Object> a) {
+        Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
+        String slot = str(a, "slot");
+        check(Content.WEAR_SLOTS.contains(slot), "Unknown slot.");
+        String old = d.wear.remove(slot);
+        if (old != null) add(f, old, 1);
     }
 
     static void unequip(Fortress f, Map<String, Object> a) {
@@ -193,11 +220,27 @@ public final class Actions {
         check(b.level < 30, "Already at the highest level.");
         Cost c = upgradeCost(b);
         check(canPay(f, c), "Not enough coins or materials.");
+        Layouts.ensure(f);
+        boolean grows = isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
+        String name = Content.BUILDINGS.get(b.type).name();
+        int[] spot = grows ? Layouts.spaceToGrow(f, b) : null;
+        check(!grows || spot != null, "The " + name.toLowerCase() + " gets wider when upgraded, but no floor has space for it. "
+                + "Dig out more of the hold or move rooms closer together.");
         pay(f, c);
+        boolean moved = false;
+        if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
+            int[] p = f.layout.rooms.get(b.id);
+            moved = p[1] != spot[1] || Math.abs(p[0] - spot[0]) > Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
+            Layouts.moveRoom(f, b.id, spot[0], spot[1]);
+            Layouts.grow(f, b);
+            b.machines = machines(b) + 1;
+        }
         b.level++;
         Layouts.ensure(f);
         fortressXp(f, 5 * b.level);
-        log(f, "info", Content.BUILDINGS.get(b.type).name() + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."));
+        log(f, "info", name + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
+                + (moved ? " It needed more space, so it moved to floor " + (f.layout.rooms.get(b.id)[1] + 1) + "." : "")
+                + (grows ? " A new machine stands in it: put another dwarf to work there." : "")));
     }
 
     static void upgradeLayer(Fortress f, Map<String, Object> a) {
@@ -278,12 +321,20 @@ public final class Actions {
 
     static void quench(Fortress f, Map<String, Object> a, double t, Rng r) {
         Building b = building(f, str(a, "building"));
-        check(b != null && b.job != null && b.job.quenching, "Nothing to quench right now.");
+        check(b != null, "Nothing to quench right now.");
+        int i = Math.max(0, num(a, "machine", 0));
+        check(i < machines(b), "Nothing to quench right now.");
+        List<Dwarf> ws = workers(f, b);
+        Dwarf w = i < ws.size() ? ws.get(i) : null;
+        Sim.onMachine(b, i, () -> quenchJob(f, b, w, t, r));
+    }
+
+    static void quenchJob(Fortress f, Building b, Dwarf w, double t, Rng r) {
+        check(b.job != null && b.job.quenching, "Nothing to quench right now.");
         Content.Metal m = Content.METALS.get(b.job.mat);
         double since = t - b.job.quenchStart;
         // generous: half a second of grace on both sides for network lag
         boolean perfect = since >= m.qStart() - 0.5 && since <= m.qStart() + m.qWidth() + 0.5;
-        Dwarf w = worker(f, b);
         String item = Content.ITEMS.get(b.job.itype).name().toLowerCase();
         Sim.finishQuench(f, b, w, perfect ? 18 : 0, r, t);
         log(f, t, perfect ? "good" : "info", perfect
@@ -313,6 +364,7 @@ public final class Actions {
         int units = 0;
         for (Map.Entry<String, Integer> e : cargo.entrySet()) {
             check(stock(f, e.getKey()) >= e.getValue(), "Not enough " + Content.goodName(e.getKey()) + ".");
+            check(!Content.isWear(e.getKey()), "Clothes aren't traded yet. Keep them for your dwarves.");
             units += e.getValue();
         }
         int cap = caravanCapacity(f) * ms.size();

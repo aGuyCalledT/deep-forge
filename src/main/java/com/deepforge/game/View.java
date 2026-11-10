@@ -78,8 +78,26 @@ public final class View {
             m.put("upgrade", upgradeCost(b));
             Dwarf w = worker(f, b);
             m.put("worker", w == null ? null : w.id);
+            List<Integer> wids = new ArrayList<>();
+            for (Dwarf x : workers(f, b)) wids.add(x.id);
+            m.put("workers", wids);
+            List<Integer> waiting = new ArrayList<>();
+            for (Dwarf x : assigned(f, b)) if (!wids.contains(x.id)) waiting.add(x.id);
+            m.put("waiting", waiting);
+            m.put("machines", machines(b));
+            m.put("maxMachines", maxMachines(b));
+            m.put("cells", Layouts.hasRoom(b) ? Layouts.width(b) : 0);
+            if (isWorkshop(b) && machines(b) < MAX_MACHINES)
+                m.put("canGrow", Layouts.hasRoom(b) && f.layout.rooms.containsKey(b.id) && Layouts.spaceToGrow(f, b) != null);
+            List<String> jobNames = new ArrayList<>();
+            jobNames.add(b.job == null ? null : Sim.jobName(b.job));
+            for (int i = 1; i < machines(b); i++) { Job j = i - 1 < b.more.size() ? b.more.get(i - 1) : null; jobNames.add(j == null ? null : Sim.jobName(j)); }
+            m.put("jobNames", jobNames);
             String skill = Content.BUILDINGS.get(b.type).skill();
             if (w != null && skill != null) m.put("speed", round(workSpeed(f, w, skill) * buildingMult(b)));
+            List<Double> speeds = new ArrayList<>();
+            if (skill != null) for (Dwarf x : workers(f, b)) speeds.add(round(workSpeed(f, x, skill) * buildingMult(b)));
+            m.put("speeds", speeds);
             m.put("heat", round(heatAt(b, now)));
             if (b.job != null) m.put("jobName", Sim.jobName(b.job));
             Map<Integer, Object> q = new LinkedHashMap<>();
@@ -102,10 +120,11 @@ public final class View {
         }
         double grow = 0, brew = 0;
         for (Building b : f.buildings) {
-            Dwarf w = worker(f, b);
-            if (w == null || f.siege != null) continue;
-            if (b.type.equals("farm")) grow += 5 * workSpeed(f, w, "farming") * buildingMult(b);
-            if (b.type.equals("brewery")) brew += 5 * workSpeed(f, w, "farming") * buildingMult(b);
+            if (f.siege != null) continue;
+            for (Dwarf w : workers(f, b)) {
+                if (b.type.equals("farm")) grow += 5 * workSpeed(f, w, "farming") * buildingMult(b);
+                if (b.type.equals("brewery")) brew += 5 * workSpeed(f, w, "farming") * buildingMult(b);
+            }
         }
         d.put("foodPerHour", round(grow - eat - brew / 2));
         d.put("alePerHour", round(brew - drink));

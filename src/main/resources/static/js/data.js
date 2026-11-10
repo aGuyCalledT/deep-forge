@@ -12,7 +12,7 @@ export const G = {
 export const byId = {};
 
 export function indexData(d) {
-  for (const k of ['metals', 'ores', 'raws', 'items', 'mods', 'monsters', 'buildings', 'traits', 'cities', 'traditions']) {
+  for (const k of ['metals', 'ores', 'raws', 'items', 'mods', 'monsters', 'buildings', 'traits', 'cities', 'traditions', 'clothes']) {
     byId[k] = {};
     for (const x of d[k]) byId[k][x.id || x.code] = x;
   }
@@ -34,6 +34,10 @@ export function goodName(k) {
     const q = G.data.qualities[p.q].name;
     const mods = [...p.mods].map((c) => byId.mods[c].name.toLowerCase()).join(' ');
     return `${q} ${mods ? mods + ' ' : ''}${byId.metals[p.metal].name.toLowerCase()} ${byId.items[p.type].name.toLowerCase()}`;
+  }
+  if (k.startsWith('wear:')) {
+    const p = k.split(':'), c = byId.clothes && byId.clothes[p[1]];
+    return c ? p[2][0].toUpperCase() + p[2].slice(1) + ' ' + c.name.toLowerCase() : k;
   }
   if (isBar(k)) return byId.metals[k.slice(4)].name + ' bar';
   if (byId.ores[k]) return byId.ores[k].name;
@@ -183,7 +187,7 @@ export function contextResources() {
     case 'trade': return [{ title: 'Your goods', keys: ['coins', ...stockKeys((k) => k !== 'food' && k !== 'ale').slice(0, 16)] }, prov];
     case 'explore': return [prov, { title: 'Gear in store', keys: items((p) => !!byId.items[p.type].slot).slice(0, 10), empty: 'No gear. Forge axes, helms and mail.' }];
     case 'war': return [{ title: 'Weapons and armor in store', keys: items((p) => ['weapon', 'helm', 'armor'].includes(byId.items[p.type].slot)), empty: 'No weapons or armor. Forge some at the forge.' }];
-    case 'dwarves': return [prov, { title: 'Tools and gear', keys: items((p) => !!byId.items[p.type].slot).slice(0, 10), empty: 'No gear in store.' }];
+    case 'dwarves': return [prov, { title: 'Tools and gear', keys: items((p) => !!byId.items[p.type].slot).slice(0, 10), empty: 'No gear in store.' }, { title: 'Clothes', keys: stockKeys((k) => k.startsWith('wear:')).slice(0, 12), empty: 'No spare clothes.' }];
     default: return [{ title: 'Bars', keys: bars, empty: 'No bars yet.' }, mats, prov, { title: 'Goods', keys: items(() => true).slice(0, 8), empty: 'Nothing forged yet.' }];
   }
 }

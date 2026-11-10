@@ -58,6 +58,7 @@ public final class State {
         public Map<String, int[]> rooms = new TreeMap<>();  // building id -> [col, floor]
         public Set<String> halls = new TreeSet<>();         // "col,floor"
         public Set<String> stairs = new TreeSet<>();        // "col,floor": 2 wide, from floor down to floor + 1
+        public Set<String> doors = new TreeSet<>();         // "col,floor": a door in a hallway to the stairwell behind
     }
 
     public static class Stats {
@@ -76,8 +77,13 @@ public final class State {
         public String first;
         public String clan;
         public int age;
-        public String beard;      // colour
+        public String beard;      // colour, always the same as the hair
         public String hair;
+        public String sex = "m";      // m | f
+        public int nose = -1, brows = -1, eyeColor = -1, mouth = -1;
+        public boolean freckles;
+        public Map<String, String> wear = new LinkedHashMap<>();   // slot -> "wear:<cloth>:<dye>"
+        public int looks;             // 2 = the current look (sex, face, clothes as items)
         public String skin;
         public int beardStyle;
         public int hairStyle = -1;    // -1: derive from id (old saves)
@@ -113,6 +119,8 @@ public final class State {
         public double heatT;
         public double acc;        // continuous production accumulator
         public String status;     // human readable why idle
+        public int machines = 1;  // workstations in the room; each one needs its own worker
+        public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
     }
 
     public static class QueueEntry {

@@ -2,7 +2,8 @@
 // Some colours in the art are placeholders that are swapped at runtime: metal (per metal), skin, beard,
 // hair and tunic (per dwarf). A PNG in the sprites folder with a sheet name (e.g. sprites/room_forge.png)
 // replaces that sprite. See docs/SPRITES.md.
-import { byId } from './data.js';
+import { byId, G } from './data.js';
+import Figure from './figure.js';
 
 let sheet = null;          // HTMLImageElement
 let frames = {};           // name -> {x, y, w, h}
@@ -179,6 +180,7 @@ export function item(type, metal, q = 1, mods = '') {
 }
 
 export function good(key) {
+  if (key.startsWith('wear:')) return wearIcon(key);
   if (key.startsWith('item:')) {
     const p = key.split(':');
     return item(p[1], p[2], +p[3], p[4] || '');
@@ -188,93 +190,114 @@ export function good(key) {
   return raw(key);
 }
 
-// ------------------------------------------------------------------ dwarves
+// ------------------------------------------------------------------ dwarves (drawn by Figure from their looks)
 
-const OUTFITS = ['#6f8fb8', '#7aa08a', '#b87a6a', '#9a86b8', '#c2a46a', '#6aa0a8', '#b8869a', '#8a9a6a'];
-const JOB_OUTFIT = { warrior: '#8a8fa0' };
+export const FRAMES = Figure.FRAMES;
 
-/** Look of a dwarf, with old saves (no style fields) derived from the id. */
+const pickI = (v, n, h, salt) => (v != null && v >= 0 ? v : (h >>> salt) % n) % n;
+
+/** Look of a dwarf; anything missing (old saves) is derived from the id. */
 export function look(d) {
   const h = hash('dwarf' + d.id);
-  const pick = (v, n, salt) => (v != null && v >= 0 ? v : (h >>> salt) % n);
   return {
-    body: pick(d.body, 3, 1), beard: (d.beardStyle ?? 0) % 8, hair: pick(d.hairStyle, 6, 4), hat: pick(d.hat, 6, 7) * ((h >>> 11) % 2),
-    acc: pick(d.accessory, 5, 13), outfit: d.outfit || OUTFITS[(h >>> 17) % OUTFITS.length],
-    skin: d.skin || '#e8b090', beardC: d.beard || '#8a5a2b', hairC: d.hair || d.beard || '#6a4a2a',
+    sex: d.sex === 'f' ? 'f' : 'm',
+    body: pickI(d.body, 5, h, 1), hairStyle: pickI(d.hairStyle, 10, h, 3), beard: pickI(d.beardStyle, 8, h, 5),
+    nose: pickI(d.nose, 9, h, 7), brows: pickI(d.brows, 7, h, 9), eye: pickI(d.eyeColor, 7, h, 11), mouth: pickI(d.mouth, 5, h, 13),
+    freckles: !!d.freckles, skin: d.skin || '#e8b090', hair: d.hair || d.beard || '#8a5a2b',
   };
 }
 
-/** Front view for standing and sitting, side view (facing right) for moving and working. */
-const VIEW = { idle: 'front', sit: 'front', drink: 'front', sleep: 'front', walk: 'side', work: 'side', mine: 'side', climb: 'side' };
-export const DWARF_W = 20, DWARF_H = 32;   // the feet's outline is the bottom row, the middle is x 10
+/** "wear:shirt_knit:blue" -> {cloth, color, dye}, or null. */
+export function parseWear(key) {
+  if (!key || !key.startsWith('wear:')) return null;
+  const p = key.split(':');
+  const cloth = byId.clothes && byId.clothes[p[1]], color = G.data.dyes && G.data.dyes[p[2]];
+  return cloth && color ? { cloth, color, dye: p[2] } : null;
+}
 
-/**
- * Soft outlines: every outline pixel takes a dark tone of the colour it borders, so a ginger beard gets a
- * deep brown edge and a blue tunic a deep blue one. Edges facing empty space stay a little darker.
- */
-function softOutline(canvas) {
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data, src = new Uint8ClampedArray(d);
-  const [kr, kg, kb] = rgb(META.PAL.k);
-  const isK = (i) => src[i + 3] && Math.abs(src[i] - kr) + Math.abs(src[i + 1] - kg) + Math.abs(src[i + 2] - kb) < 6;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = (y * w + x) * 4;
-    if (!isK(i)) continue;
-    let r = 0, g = 0, b = 0, n = 0, open = 0;
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const X = x + dx, Y = y + dy;
-      if (X < 0 || Y < 0 || X >= w || Y >= h) { open++; continue; }
-      const j = (Y * w + X) * 4;
-      if (!src[j + 3]) { open++; continue; }
-      if (isK(j)) continue;
-      r += src[j]; g += src[j + 1]; b += src[j + 2]; n++;
-    }
-    if (!n) continue;
-    const f = open ? 0.34 : 0.5;          // outer edge darker, inner lines between parts lighter
-    d[i] = Math.round(kr + (r / n - kr) * f); d[i + 1] = Math.round(kg + (g / n - kg) * f); d[i + 2] = Math.round(kb + (b / n - kb) * f);
-  }
-  ctx.putImageData(img, 0, 0);
+function wearSpec(d) {
+  const out = {};
+  for (const [slot, key] of Object.entries(d.wear || {})) { const w = parseWear(key); if (w) out[slot] = { look: w.cloth.look, color: w.color }; }
+  if (!out.top) out.top = { look: 'plain', color: d.outfit || '#7a8a9a' };
+  if (!out.legs) out.legs = { look: 'seam', color: '#6a5047' };
+  if (!out.feet) out.feet = { color: '#5c3c30' };
+  return out;
+}
+
+const metalOf = (key) => { if (!key) return null; const m = byId.metals[key.split(':')[2]]; return m ? m.color : null; };
+export const mood = (d) => (d.happiness >= 65 ? 'happy' : d.happiness < 35 ? 'angry' : 'neutral');
+
+function toCanvas(img) {
+  const c = mk(img.w, img.h), g = c.getContext('2d'), id = g.createImageData(img.w, img.h);
+  img.data.forEach((col, k) => {
+    if (!col) return;
+    const n = parseInt(col.slice(1), 16);
+    id.data[k * 4] = n >> 16; id.data[k * 4 + 1] = (n >> 8) & 255; id.data[k * 4 + 2] = n & 255; id.data[k * 4 + 3] = 255;
+  });
+  g.putImageData(id, 0, 0);
+  return c;
 }
 
 /**
- * A finished dwarf frame: body, beard, hair or hat, accessory, tool, all recoloured.
- * Returns a canvas DWARF_W x DWARF_H; draw it at (feetX - 10, feetY - 31).
+ * A finished dwarf frame. Poses: idle, talk, walk, work (mining, smithing and every other job: the tool changes),
+ * sit, sitTalk, eat, drink, sleep (lying down), climb. The face follows the dwarf's mood.
+ * The canvas has .ax/.ay: the point on the ground between the feet. Draw with placeDwarf().
  */
-export function dwarfSprite(d, pose = 'idle', frame = 0, tool = null) {
+export function dwarfSprite(d, pose = 'idle', frame = 0, tool = null, opts = {}) {
   if (pose === 'stand') pose = 'idle';
-  if (pose === 'swing') pose = 'mine';
-  if (pose === 'hammer') pose = 'work';
-  const n = META.DWARF.poses[pose] || 1;
-  frame = frame % n;
-  const L = look(d);
-  const hatMetal = d.helm ? d.helm.split(':')[2] : '';
-  const toolMetal = tool === 'axe' ? (d.weapon ? d.weapon.split(':')[2] : 'iron') : (d.tool ? d.tool.split(':')[2] : 'iron');
-  const outfit = d.armor ? byId.metals[d.armor.split(':')[2]].color : (JOB_OUTFIT[d.job] && !d.outfit ? JOB_OUTFIT[d.job] : L.outfit);
-  const key = ['dw', d.id, pose, frame, tool, L.body, L.beard, L.hair, L.hat, L.acc, outfit, L.skin, L.beardC, L.hairC, hatMetal, toolMetal].join('|');
+  if (pose === 'mine' || pose === 'swing') { pose = 'work'; tool = tool || 'pick'; }
+  if (pose === 'hammer') { pose = 'work'; tool = tool || 'hammer'; }
+  frame = frame % (FRAMES[pose] || 1);
+  const L = look(d), w = wearSpec(d), md = opts.mood || mood(d);
+  const toolMetal = tool === 'axe' ? metalOf(d.weapon) : metalOf(d.tool);
+  const key = ['dw', d.id, pose, frame, tool, md, JSON.stringify(L), JSON.stringify(w), d.armor, d.helm, toolMetal].join('|');
   if (cache.has(key)) return cache.get(key);
-  const c = mk(DWARF_W, DWARF_H);
-  const ctx = c.getContext('2d');
-  if (overrides.has('dwarf')) { ctx.drawImage(overrides.get('dwarf'), 0, 0); cache.set(key, c); return c; }
-  const v = VIEW[pose] || 'front';
-  const lift = L.body === 1 ? 1 : 0;
-  const head = 4 + META.DWARF.bob[pose][frame] - lift;   // parts are drawn at y 4, hats 4 px higher
-  draw(ctx, `dw_body${L.body}_${pose}_${frame}`, 0, 4);
-  draw(ctx, `dw_beard_${v}_${L.beard}`, 0, head);
-  const hat = hatMetal ? 5 : L.hat;
-  if (!hat || L.hair === 3 || L.hair === 5) draw(ctx, `dw_hair_${v}_${L.hair}`, 0, head);   // long hair shows under hats
-  if (hat) draw(ctx, `dw_hat_${v}_${hat}`, 0, head - 4);
-  if (L.acc) draw(ctx, `dw_acc_${v}_${L.acc}`, 0, head);
-  const t = tool || (pose === 'mine' ? 'mine' : pose === 'work' ? 'work' : pose === 'drink' ? 'drink' : null);
-  if (t === 'mine' || t === 'work' || t === 'drink') draw(ctx, `dw_tool_${t}_${frame}`, 0, 4);
-  else if (t === 'axe') draw(ctx, 'dw_tool_axe', 0, 4);
-  else if (t === 'sack') draw(ctx, 'dw_tool_sack', 0, 4);
-  const map = { ...swapMap('skin', L.skin), ...swapMap('beard', L.beardC), ...swapMap('hair', L.hairC), ...swapMap('tunic', outfit) };
-  Object.assign(map, swapMap('metal', byId.metals[toolMetal] ? byId.metals[toolMetal].color : '#8c8c8c'));
-  recolor(c, map);
-  softOutline(c);
+  let c;
+  if (overrides.has('dwarf')) { const o = overrides.get('dwarf'); c = mk(o.width, o.height); c.getContext('2d').drawImage(o, 0, 0); c.ax = o.width >> 1; c.ay = o.height - 1; }
+  else {
+    const img = Figure.person({
+      body: (L.sex === 'f' ? 5 : 0) + L.body, skin: L.skin, hair: L.hair, eye: Figure.EYES[L.eye],
+      hairStyle: Figure.HAIR_STYLES[L.hairStyle], beard: L.sex === 'm' ? Figure.BEARDS[L.beard] : null,
+      nose: Figure.NOSES[L.nose], brows: Figure.BROWS[L.brows], mouth: Figure.MOUTHS[L.mouth], freckles: L.freckles,
+      wear: w, armor: metalOf(d.armor), helm: metalOf(d.helm), pose, frame, mood: md,
+      tool: tool ? { kind: tool, carry: true } : null, toolMetal: toolMetal || '#9a9aa6', blink: d.id,
+    });
+    c = toCanvas(img); c.ax = img.ax; c.ay = img.ay;
+  }
   cache.set(key, c);
+  return c;
+}
+
+/** Draw a dwarf sprite with its feet at (x, y), with a ground shadow; returns where it went (for hit tests). */
+export function placeDwarf(ctx, spr, x, y, flip = false, shadow = true) {
+  const sx = Math.round(x - (flip ? spr.width - spr.ax : spr.ax)), sy = Math.round(y - spr.ay);
+  if (shadow && spr.height > spr.width) groundShadow(ctx, x, y);
+  if (flip) { ctx.save(); ctx.translate(sx + spr.width, sy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); }
+  else ctx.drawImage(spr, sx, sy);
+  return { sx, sy };
+}
+
+/** Just the dwarf, trimmed: for portraits in panels. */
+export function portrait(d, pose = 'idle') {
+  const key = 'pt|' + d.id + '|' + pose + '|' + JSON.stringify(look(d)) + JSON.stringify(d.wear || {}) + d.armor + d.helm + mood(d);
+  if (cache.has(key)) return cache.get(key);
+  const s = dwarfSprite(d, pose, 0);
+  const g = s.getContext('2d'), id = g.getImageData(0, 0, s.width, s.height).data;
+  let x0 = s.width, y0 = s.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) if (id[(y * s.width + x) * 4 + 3]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const side = Math.max(x1 - x0 + 1, y1 - y0 + 1);
+  const c = mk(side, side);
+  c.getContext('2d').drawImage(s, x0, y0, x1 - x0 + 1, y1 - y0 + 1, Math.floor((side - (x1 - x0 + 1)) / 2), side - (y1 - y0 + 1), x1 - x0 + 1, y1 - y0 + 1);
+  cache.set(key, c);
+  return c;
+}
+
+/** Icon for a piece of clothing in the store. */
+export function wearIcon(key) {
+  if (cache.has('wi:' + key)) return cache.get('wi:' + key);
+  const w = parseWear(key);
+  const c = w ? toCanvas(Figure.icon(w.cloth.look, w.color, w.cloth.slot)) : mk(16, 16);
+  cache.set('wi:' + key, c);
   return c;
 }
 
@@ -283,7 +306,71 @@ export function dwarfSprite(d, pose = 'idle', frame = 0, tool = null) {
 export function monster(id, frame = 0) { return sprite(`mon_${id}_${frame % 2}`); }
 export function wagon(frame = 0) { return sprite(`wagon_${frame % 2}`); }
 export function torch(frame) { return sprite(`torch_${((frame % 3) + 3) % 3}`); }
-export function room(type) { return sprite('room_' + type); }
+
+// ------------------------------------------------------------------ rooms
+
+
+/** Look tier of a room: 0 dug out, 1 settled, 2 grand (ROOM_TIERS gives the level each one starts at). */
+export function roomTier(b) {
+  const t = META.ROOM_TIERS || [1, 2, 3], lv = b.level || 1;
+  let k = 0; for (let i = 0; i < t.length; i++) if (lv >= t[i]) k = i;
+  return k;
+}
+export function roomVariant(b, i = 0) { return hash((b.id || b.type) + ':' + i) % (META.ROOM_VARIANTS || 1); }
+
+/** Width in pixels of a room with all its machines. */
+export function roomWidth(b) {
+  const R = META.ROOMS[b.type], bay = META.BAYS[b.type];
+  return (R.w + (bay ? (Math.max(1, b.machines || 1) - 1) * bay.w : 0)) * META.CELL;
+}
+
+/** Pixel x of machine i inside the room, plus that machine's anchors (BAYS for i >= 1, ROOMS for i = 0). */
+export function machineAt(b, i) {
+  if (i === 0) return { x: 0, a: META.ROOMS[b.type] };
+  return { x: (META.ROOMS[b.type].w + (i - 1) * META.BAYS[b.type].w) * META.CELL, a: META.BAYS[b.type] };
+}
+
+/** Rooms are carved caves, not boxes: a round vault on top, soft rounded lower corners, a dark rim. */
+function carve(c) {
+  const g = c.getContext('2d'), w = c.width, H = c.height, R = 24, r2 = 6;
+  const id = g.getImageData(0, 0, w, H), d = id.data;
+  const set = (x, y, rim) => { const k = (y * w + x) * 4; if (rim) { d[k] = 0x1f; d[k + 1] = 0x1c; d[k + 2] = 0x28; d[k + 3] = 255; } else d[k + 3] = 0; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < w; x++) {
+    let edge = false;
+    if (y < R && (x < R || x >= w - R)) {
+      const cx = x < R ? R : w - R - 1, dd = Math.hypot(x - cx, y - R);
+      if (dd > R) { set(x, y, false); continue; }
+      edge = dd > R - 1.6;
+    }
+    if (y >= H - r2 && (x < r2 || x >= w - r2)) {
+      const cx = x < r2 ? r2 : w - r2 - 1, dd = Math.hypot(x - cx, y - (H - r2 - 1));
+      if (dd > r2) { set(x, y, false); continue; }
+    }
+    if (edge || (y >= R && (x === 0 || x === w - 1)) || (y === 0 && x >= R && x < w - R)) set(x, y, true);
+  }
+  g.putImageData(id, 0, 0);
+}
+
+/** The finished picture of a room: base room of its tier and variant, one bay per extra machine, a cobweb or two, carved. */
+export function roomImage(b) {
+  if (overrides.has('room_' + b.type)) return sprite('room_' + b.type);
+  const T = roomTier(b), n = META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
+  const key = 'r:' + b.type + ':' + T + ':' + n + ':' + (b.id || '');
+  if (cache.has(key)) return cache.get(key);
+  const c = mk(roomWidth(b), META.ROOM_H), g = c.getContext('2d');
+  const base = 'room_' + b.type + '_' + T + '_' + roomVariant(b);
+  draw(g, frames[base] ? base : 'room_' + b.type + '_1_0', 0, 0);
+  for (let i = 1; i < n; i++) draw(g, 'bay_' + b.type + '_' + T + '_' + roomVariant(b, i), machineAt(b, i).x, 0);
+  // a cobweb that only this room has, in a corner the base art leaves free
+  const h = hash(b.id || b.type);
+  if (n > 1 || h % 3 === 0) draw(g, 'deco_web_' + (h % 3), c.width - 30 - (h % 5) * 2, 8 + (h % 2) * 2, true);
+  carve(c);
+  cache.set(key, c);
+  return c;
+}
+
+/** Room picture for cards and sheets: a building, or just a type (shown settled, one machine). */
+export function room(b) { return roomImage(typeof b === 'string' ? { type: b, level: 2, id: b } : b); }
 
 /** A soft pixel shadow on the ground under feet at (x, y): two rows, darker in the middle. */
 export function groundShadow(ctx, x, y, half = 6) {

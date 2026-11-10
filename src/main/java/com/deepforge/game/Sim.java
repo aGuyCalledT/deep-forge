@@ -195,13 +195,37 @@ public final class Sim {
                 b.status = "Besieged! The raiders hold the gate.";
                 continue;
             }
-            Dwarf w = worker(f, b);
-            if (w == null) {
+            List<Dwarf> ws = workers(f, b);
+            if (ws.isEmpty()) {
                 b.status = "No worker assigned";
                 continue;
             }
-            if (type.kind().equals("continuous")) continuous(f, b, w, dt);
-            else queue(f, b, w, dt, r, t);
+            if (type.kind().equals("continuous")) {
+                for (Dwarf w : ws) continuous(f, b, w, dt);
+                continue;
+            }
+            // every machine runs its own job from the shared queue; machine 1 is b.job, the others live in b.more
+            String status = null;
+            for (int i = 0; i < ws.size(); i++) {
+                Dwarf w = ws.get(i);
+                onMachine(b, i, () -> queue(f, b, w, dt, r, t));
+                if (i == 0) status = b.status;
+            }
+            b.status = status;
+        }
+    }
+
+    /** Run code with machine i's job in b.job, so all job code works the same for every machine. */
+    public static void onMachine(Building b, int i, Runnable run) {
+        if (i == 0) { run.run(); return; }
+        while (b.more.size() < i) b.more.add(null);
+        Job main = b.job;
+        b.job = b.more.get(i - 1);
+        try {
+            run.run();
+        } finally {
+            b.more.set(i - 1, b.job);
+            b.job = main;
         }
     }
 

@@ -26,6 +26,7 @@ public final class Cheats {
                 if (key.equals("coins")) f.coins = Math.max(0, f.coins + n);
                 else {
                     check(Content.baseValue(key) > 0 || Content.RAWS.containsKey(key), "Unknown good: " + key);
+                    check(!Content.isWear(key) || n > 0 || Rules.stock(f, key) + n >= 0, "Not that many in store.");
                     Rules.add(f, key, n);
                 }
                 Rules.log(f, now, "info", "[cheat] " + (n > 0 ? "+" : "") + n + " " + (key.equals("coins") ? "coins" : Content.goodName(key)));
@@ -36,6 +37,7 @@ public final class Cheats {
                 for (String k : List.of("food", "ale")) Rules.add(f, k, 200);
                 for (String m : List.of("copper", "tin", "iron", "bronze", "steel", "silver", "gold")) Rules.add(f, "bar:" + m, 40);
                 Rules.add(f, "rough_gem", 10);
+                for (String c : Content.CLOTHES.keySet()) Rules.add(f, Content.wearKey(c, new ArrayList<>(Content.DYES.keySet()).get(Math.floorMod(c.hashCode(), Content.DYES.size()))), 1);
                 Rules.log(f, now, "info", "[cheat] A cart full of supplies arrived.");
             }
             case "cheatDwarves" -> {
@@ -48,15 +50,17 @@ public final class Cheats {
                 check(d != null, "No such dwarf.");
                 if (a.containsKey("first")) d.first = name(str(a, "first"));
                 if (a.containsKey("clan")) d.clan = name(str(a, "clan"));
-                if (a.containsKey("beard")) d.beard = color(str(a, "beard"));
-                if (a.containsKey("hair")) d.hair = color(str(a, "hair"));
+                if (a.containsKey("hair")) { d.hair = color(str(a, "hair")); d.beard = d.hair; }   // the beard always matches the hair
                 if (a.containsKey("skin")) d.skin = color(str(a, "skin"));
-                if (a.containsKey("outfit")) d.outfit = color(str(a, "outfit"));
+                if (a.containsKey("sex")) d.sex = "f".equals(str(a, "sex")) ? "f" : "m";
                 if (a.containsKey("beardStyle")) d.beardStyle = range(num(a, "beardStyle", 0), Factory.BEARD_STYLES);
                 if (a.containsKey("hairStyle")) d.hairStyle = range(num(a, "hairStyle", 0), Factory.HAIR_STYLES);
-                if (a.containsKey("hat")) d.hat = range(num(a, "hat", 0), Factory.HATS);
                 if (a.containsKey("body")) d.body = range(num(a, "body", 0), Factory.BODIES);
-                if (a.containsKey("accessory")) d.accessory = range(num(a, "accessory", 0), Factory.ACCESSORIES);
+                if (a.containsKey("nose")) d.nose = range(num(a, "nose", 0), Factory.NOSES);
+                if (a.containsKey("brows")) d.brows = range(num(a, "brows", 0), Factory.BROWS);
+                if (a.containsKey("eyeColor")) d.eyeColor = range(num(a, "eyeColor", 0), Factory.EYES);
+                if (a.containsKey("mouth")) d.mouth = range(num(a, "mouth", 0), Factory.MOUTHS);
+                if (a.containsKey("freckles")) d.freckles = Boolean.TRUE.equals(a.get("freckles"));
                 if (a.containsKey("traits")) {
                     List<String> t = new ArrayList<>();
                     if (a.get("traits") instanceof List<?> l) for (Object o : l) if (Content.TRAITS.containsKey(String.valueOf(o))) t.add(String.valueOf(o));
