@@ -28,52 +28,59 @@ sprite("rock", { w: 32, h: 32 }, (c) => {
 });
 sprite("rock_dark", { base: "rock", swap: { "]": "[", "[": ")", ")": "(" } });
 
-// ---------------------------------------------------------------- hallway: a timbered tunnel, 16 x 64, tall enough for a dwarf in a hat
+// ---------------------------------------------------------------- hallway: a timbered tunnel, 24 x 96, as tall as the rooms' walls
 function hall(name, extra) {
-  sprite(name, { w: 16, h: 64 }, (c) => {
-    c.rect(0, 8, 16, 50, "W");                                   // back wall
-    for (let x = 0; x < 16; x += 8) { c.vline(x, 8, 50, "w"); c.vline(x + 1, 8, 50, "v"); }
-    c.rect(0, 6, 16, 3, "V"); c.hline(0, 6, 16, "u"); c.hline(0, 9, 16, "w");      // lintel
-    c.rect(0, 58, 16, 6, "W"); c.hline(0, 58, 16, "V"); c.hline(0, 59, 16, "v");   // floor
-    c.px(5, 61, "w"); c.px(12, 61, "w");
+  sprite(name, { w: 24, h: 96 }, (c) => {
+    c.rect(0, 10, 24, 80, "W");                                  // back wall
+    for (let x = 0; x < 24; x += 12) { c.vline(x, 10, 80, "w"); c.vline(x + 1, 10, 80, "v"); c.px(x + 5, 30, "w"); c.px(x + 8, 62, "w"); }
+    c.rect(0, 7, 24, 4, "V"); c.hline(0, 7, 24, "u"); c.hline(0, 11, 24, "w");       // lintel
+    c.rect(0, 90, 24, 6, "W"); c.hline(0, 90, 24, "V"); c.hline(0, 91, 24, "v");     // floor
+    c.px(7, 93, "w"); c.px(18, 93, "w");
     if (extra) extra(c);
   });
 }
 hall("hall_a");
-hall("hall_b", (c) => { c.rect(6, 11, 4, 1, "2"); c.rect(6, 12, 4, 4, "y"); c.rect(7, 13, 2, 2, "Y"); c.vline(6, 12, 4, "2"); c.vline(9, 12, 4, "2"); });   // lamp
-hall("hall_c", (c) => { c.rect(3, 50, 9, 8, "V"); c.box(3, 50, 9, 8, "v"); c.hline(4, 51, 7, "u"); });                                            // crate
-hall("hall_d", (c) => { c.rect(4, 32, 8, 6, "u"); c.box(4, 32, 8, 6, "v"); c.hline(5, 34, 6, "W"); c.px(8, 30, "4"); c.px(8, 31, "4"); });         // notice
-hall("hall_e", (c) => { c.vline(2, 8, 50, "v"); c.vline(13, 8, 50, "v"); c.rect(1, 8, 3, 3, "V"); c.rect(12, 8, 3, 3, "V"); });                  // posts
+hall("hall_b", (c) => {                                          // lamp
+  c.vline(12, 11, 4, "4"); c.rect(9, 15, 7, 1, "2"); c.rect(9, 16, 7, 7, "y"); c.rect(10, 17, 5, 5, "Y"); c.rect(11, 18, 3, 3, "0");
+  c.vline(9, 16, 7, "2"); c.vline(15, 16, 7, "2"); c.rect(10, 23, 5, 1, "2");
+});
+hall("hall_c", (c) => { c.rect(4, 76, 14, 14, "V"); c.box(4, 76, 14, 14, "v"); c.box(5, 77, 12, 12, "u"); c.line(6, 78, 15, 87, "v"); });                   // crate
+hall("hall_d", (c) => { c.rect(5, 46, 13, 10, "u"); c.box(5, 46, 13, 10, "v"); c.hline(7, 49, 9, "W"); c.hline(7, 52, 6, "W"); c.px(11, 44, "4"); c.px(11, 45, "4"); });   // notice
+hall("hall_e", (c) => { for (const x of [2, 19]) { c.rect(x, 11, 3, 79, "v"); c.vline(x, 11, 79, "V"); } c.rect(1, 11, 5, 4, "V"); c.rect(18, 11, 5, 4, "V"); });   // posts
 
 // rounded tunnel ends (placed by the game where a hallway meets rock)
-sprite("hall_cap_l", { w: 6, h: 64 }, (c) => { for (let y = 6; y < 64; y++) { const d = y < 16 ? Math.round((16 - y) * 0.6) : 0; c.hline(0, y, Math.min(6, 2 + d), "("); } });
+sprite("hall_cap_l", { w: 8, h: 96 }, (c) => { for (let y = 7; y < 96; y++) { const d = y < 22 ? Math.round((22 - y) * 0.55) : 0; c.hline(0, y, Math.min(8, 2 + d), "("); } });
 sprite("hall_cap_r", { base: "hall_cap_l", flip: "x" });
 
-// ---------------------------------------------------------------- stairs: 32 wide, two floors (128) tall, going down to the right
-sprite("stairs", { w: 32, h: 128 }, (c) => {
-  c.poly([0, 6, 32, 68, 32, 128, 0, 128, 0, 58], "_");
-  // the cut in the rock, tall enough for a dwarf
-  c.poly([0, 8, 12, 8, 32, 68, 32, 122, 20, 122, 0, 58], "W");
-  for (let i = 0; i < 16; i++) {
-    const x = Math.round(i * 2), y = 58 + Math.round(i * 4);
-    c.rect(x, y, 4, 2, "V"); c.hline(x, y, 4, "u"); c.px(x + 3, y + 1, "v");
+// ---------------------------------------------------------------- stairs: 48 wide, two floors (192) tall, going down to the right
+sprite("stairs", { w: 48, h: 192 }, (c) => {
+  c.poly([0, 7, 48, 100, 48, 192, 0, 192, 0, 90], "_");
+  // the cut in the rock, tall enough for a dwarf in a hat
+  c.poly([0, 10, 16, 10, 48, 100, 48, 186, 30, 186, 0, 90], "W");
+  for (let x = 4; x < 48; x += 12) c.line(x, 14 + x * 1.9, x, 80 + x * 1.9, "w");
+  for (let i = 0; i < 24; i++) {
+    const x = i * 2, y = 90 + i * 4;
+    c.rect(x, y, 5, 2, "V"); c.hline(x, y, 5, "u"); c.px(x + 4, y + 1, "v");
   }
   // railing
-  c.line(4, 44, 34, 108, "v"); for (let i = 0; i < 5; i++) c.vline(6 + i * 6, 48 + i * 12, 10, "W");
+  c.line(4, 64, 50, 156, "v"); c.line(4, 65, 50, 157, "V");
+  for (let i = 0; i < 6; i++) c.vline(8 + i * 8, 70 + i * 16, 14, "W");
 });
 
-// ---------------------------------------------------------------- mine shaft with ladder: 32 x 64
-sprite("shaft", { w: 32, h: 64 }, (c) => {
-  c.rect(0, 0, 32, 64, "(");
-  c.rect(2, 0, 28, 64, "s");
-  c.vline(2, 0, 64, "w"); c.vline(29, 0, 64, "w");
-  c.vline(8, 0, 64, "v"); c.vline(23, 0, 64, "v");               // ladder rails
-  for (let y = 4; y < 64; y += 8) { c.hline(9, y, 14, "V"); c.hline(9, y + 1, 14, "W"); }
-  c.rect(2, 58, 28, 6, "W"); c.hline(2, 58, 28, "V");            // landing
-  c.rect(0, 20, 3, 3, "V"); c.rect(29, 20, 3, 3, "V");
+// ---------------------------------------------------------------- mine shaft with ladder: 48 x 96
+sprite("shaft", { w: 48, h: 96 }, (c) => {
+  c.rect(0, 0, 48, 96, "(");
+  c.rect(3, 0, 42, 96, "s");
+  c.vline(3, 0, 96, "w"); c.vline(44, 0, 96, "w");
+  c.vline(13, 0, 96, "v"); c.vline(34, 0, 96, "v"); c.vline(14, 0, 96, "W"); c.vline(35, 0, 96, "W");   // ladder rails
+  for (let y = 4; y < 96; y += 9) { c.hline(15, y, 19, "V"); c.hline(15, y + 1, 19, "W"); }
+  c.rect(3, 90, 42, 6, "W"); c.hline(3, 90, 42, "V"); c.hline(3, 91, 42, "v");   // landing
+  c.rect(0, 30, 4, 4, "V"); c.rect(44, 30, 4, 4, "V");
+  // a rope and a bucket on the side
+  c.vline(40, 0, 60, "u"); c.rect(38, 60, 6, 6, "v"); c.hline(38, 60, 6, "V");
 });
 
-// ---------------------------------------------------------------- surface
+// ---------------------------------------------------------------- surface (sized for the 33 px dwarves)
 sprite("door", { w: 26, h: 30, outline: "k" }, (c) => {
   c.rect(0, 6, 26, 24, "4"); c.ellipse(13, 7, 13, 7, "4");      // stone arch
   c.ellipse(13, 9, 9, 6, "W"); c.rect(4, 9, 18, 21, "W");
@@ -82,62 +89,90 @@ sprite("door", { w: 26, h: 30, outline: "k" }, (c) => {
   for (let i = 0; i < 6; i++) { const a = Math.PI + (i / 5) * Math.PI; c.px(Math.round(13 + Math.cos(a) * 12), Math.round(7 + Math.sin(a) * 6), "5"); }
 });
 
-sprite("stall", { w: 46, h: 34, outline: "k" }, (c) => {
-  // striped awning
-  for (let x = 0; x < 46; x += 6) { c.rect(x, 0, 3, 8, "f"); c.rect(x + 3, 0, 3, 8, "C"); }
-  for (let x = 0; x < 46; x += 6) { c.px(x + 1, 8, "f"); c.px(x + 4, 8, "C"); }
-  c.vline(2, 8, 26, "v"); c.vline(43, 8, 26, "v");
-  c.rect(1, 22, 44, 4, "V"); c.hline(1, 22, 44, "u"); c.rect(3, 26, 40, 8, "W");
+sprite("stall", { w: 70, h: 52, outline: "k" }, (c) => {
+  // scalloped striped awning
+  for (let x = 0; x < 70; x += 10) { c.rect(x, 0, 5, 12, "f"); c.rect(x + 5, 0, 5, 12, "C"); c.hline(x + 5, 0, 5, "c"); }
+  for (let x = 0; x < 70; x += 10) { c.ellipse(x + 2, 12, 2, 1, "f"); c.ellipse(x + 7, 12, 2, 1, "C"); }
+  c.hline(0, 0, 70, "F");
+  for (const x of [3, 64]) { c.rect(x, 13, 3, 39, "v"); c.vline(x, 13, 39, "V"); }
+  // counter with planks
+  c.rect(1, 34, 68, 5, "V"); c.hline(1, 34, 68, "u"); c.hline(1, 38, 68, "W");
+  c.rect(4, 39, 62, 13, "W"); for (let x = 4; x < 66; x += 9) c.vline(x, 39, 13, "w"); c.hline(4, 45, 62, "v");
   // goods on the counter
-  c.ellipse(10, 20, 3, 2, "F"); c.ellipse(16, 20, 3, 2, "y"); c.rect(24, 18, 5, 4, "6"); c.rect(32, 17, 6, 5, "j"); c.px(34, 18, "8");
-  c.rect(18, 10, 11, 6, "u"); c.box(18, 10, 11, 6, "V"); c.circ(23, 13, 2, "O"); c.px(23, 13, "j");   // a coin on the sign
+  c.ellipse(13, 31, 4, 3, "F"); c.px(12, 29, "y"); c.ellipse(21, 31, 4, 3, "y"); c.px(20, 29, "Y");
+  c.rect(30, 27, 8, 7, "6"); c.hline(30, 27, 8, "7"); c.rect(43, 26, 9, 8, "j"); c.hline(43, 26, 9, "8"); c.px(46, 28, "8");
+  c.rect(56, 28, 6, 6, "h"); c.rect(57, 26, 4, 2, "G");
+  // a sign with a coin
+  c.rect(26, 15, 18, 9, "u"); c.box(26, 15, 18, 9, "V"); c.vline(30, 13, 2, "v"); c.vline(40, 13, 2, "v");
+  c.circ(35, 19, 3, "O"); c.circ(35, 19, 2, "j"); c.px(34, 18, "8");
 });
 
-sprite("tent", { w: 40, h: 30, outline: "k" }, (c) => {
-  c.poly([20, 0, 40, 30, 0, 30], "U");
-  c.poly([20, 0, 30, 30, 20, 30], "u");
-  c.poly([20, 10, 26, 30, 14, 30], "W");
-  c.line(20, 0, 20, -3, "v");
-  c.rect(20, -4, 6, 4, "B");                                     // little flag
-  c.px(34, 28, "V"); c.px(6, 28, "V");
+sprite("tent", { w: 60, h: 46, outline: "k" }, (c) => {
+  c.poly([30, 2, 60, 46, 0, 46], "U");
+  c.poly([30, 2, 45, 46, 30, 46], "u");
+  for (let i = 0; i < 5; i++) c.line(30, 2, 6 + i * 12, 46, "u");
+  c.poly([30, 16, 39, 46, 21, 46], "W"); c.line(30, 16, 39, 46, "v");
+  c.line(30, 16, 23, 34, "U"); c.line(23, 34, 21, 46, "U");                  // the flap pulled back
+  c.vline(30, -4, 6, "v");
+  c.rect(31, -5, 9, 5, "B"); c.hline(31, -5, 9, "n");                        // little flag
+  c.px(54, 44, "V"); c.px(6, 44, "V"); c.line(56, 44, 60, 40, "u"); c.line(4, 44, 0, 40, "u");
 });
 
-sprite("palisade", { w: 48, h: 28, outline: "k" }, (c) => {
-  for (let x = 0; x < 48; x += 6) { c.rect(x, 4, 5, 24, "v"); c.vline(x, 4, 24, "V"); c.poly([x, 4, x + 2.5, 0, x + 5, 4], "v"); }
-  c.rect(0, 14, 48, 2, "W"); c.rect(0, 22, 48, 2, "W");
+sprite("palisade", { w: 72, h: 42, outline: "k" }, (c) => {
+  for (let x = 0; x < 72; x += 9) {
+    c.rect(x, 6, 8, 36, "v"); c.vline(x, 6, 36, "V"); c.vline(x + 1, 6, 36, "V"); c.vline(x + 7, 6, 36, "W");
+    c.poly([x, 6, x + 4, 0, x + 8, 6], "v"); c.px(x + 3, 2, "V");
+    c.px(x + 4, 14 + (x % 3) * 6, "W");
+  }
+  c.rect(0, 20, 72, 3, "W"); c.hline(0, 20, 72, "v"); c.rect(0, 33, 72, 3, "W"); c.hline(0, 33, 72, "v");
 });
 
-sprite("stonewall", { w: 56, h: 40, outline: "k" }, (c) => {
-  c.rect(0, 6, 56, 34, "4");
-  for (let x = 0; x < 56; x += 8) c.rect(x, 0, 5, 7, "4");
-  for (let y = 10; y < 40; y += 6) { c.hline(0, y, 56, "3"); for (let x = (y / 6) % 2 ? 0 : 6; x < 56; x += 12) c.vline(x, y, 6, "3"); }
-  c.hline(0, 6, 56, "5");
-  c.ellipse(28, 26, 9, 8, "W"); c.rect(19, 26, 19, 14, "W"); for (let x = 21; x < 37; x += 4) c.vline(x, 20, 20, "v");
-  c.rect(26, 30, 4, 1, "j");
+sprite("stonewall", { w: 84, h: 60, outline: "k" }, (c) => {
+  c.rect(0, 9, 84, 51, "4");
+  for (let x = 0; x < 84; x += 12) { c.rect(x, 0, 8, 10, "4"); c.hline(x, 0, 8, "5"); }
+  for (let y = 14, r = 0; y < 60; y += 8, r++) { c.hline(0, y, 84, "3"); for (let x = r % 2 ? 0 : 8; x < 84; x += 16) { c.vline(x, y, 8, "3"); c.hline(x + 1, y + 1, 6, "5"); } }
+  c.hline(0, 9, 84, "5");
+  c.ellipse(42, 38, 13, 11, "W"); c.rect(29, 38, 27, 22, "W"); for (let x = 32; x < 54; x += 5) c.vline(x, 30, 30, "v");
+  c.rect(39, 44, 6, 2, "j");
 });
 
-for (let i = 0; i < 2; i++) sprite("tree_" + i, { w: 30, h: 40, outline: "k" }, (c) => {
-  c.rect(13, 24, 4, 16, "~"); c.vline(13, 24, 16, "^");
-  const blobs = i ? [[15, 12, 11], [8, 18, 7], [22, 18, 7], [15, 5, 7]] : [[15, 14, 12], [9, 8, 7], [21, 9, 7]];
+for (let i = 0; i < 2; i++) sprite("tree_" + i, { w: 44, h: 62, outline: "k" }, (c) => {
+  c.rect(19, 36, 7, 26, "~"); c.vline(19, 36, 26, "^"); c.vline(24, 40, 20, "w");
+  c.line(19, 61, 14, 61, "~"); c.line(26, 61, 31, 61, "~");                 // roots
+  c.line(22, 44, 30, 34, "~");                                               // a branch
+  const blobs = i ? [[22, 19, 16], [11, 27, 10], [33, 27, 10], [22, 8, 10]] : [[22, 21, 18], [13, 12, 10], [31, 13, 10]];
   for (const [x, y, r] of blobs) c.circ(x, y, r, ">");
-  for (const [x, y, r] of blobs) c.circ(x - 2, y - 2, Math.max(1, r - 4), "=");
-  c.px(9, 6, "+"); c.px(18, 10, "+"); c.px(12, 16, "+");
-  if (i) { c.px(20, 15, "P"); c.px(10, 20, "P"); c.px(16, 8, "9"); }    // blossoms
+  for (const [x, y, r] of blobs) c.circ(x + 2, y + 3, Math.max(1, r - 5), "<");
+  for (const [x, y, r] of blobs) c.circ(x - 3, y - 3, Math.max(1, r - 6), "=");
+  for (const [x, y] of [[13, 9], [27, 15], [18, 24], [33, 23], [9, 26]]) { c.px(x, y, "+"); c.px(x + 1, y, "+"); }
+  if (i) for (const [x, y, k] of [[30, 22, "P"], [14, 30, "P"], [24, 11, "9"], [36, 30, "9"], [18, 16, "P"]]) { c.px(x, y, k); c.px(x + 1, y - 1, "9"); }    // blossoms
 });
-sprite("bush", { w: 16, h: 10, outline: "k" }, (c) => { c.ellipse(8, 6, 8, 4, ">"); c.ellipse(6, 4, 4, 2, "="); c.px(11, 4, "P"); c.px(4, 6, "9"); });
-sprite("flowers", { w: 9, h: 6 }, (c) => { c.vline(1, 2, 4, "<"); c.vline(4, 1, 5, "<"); c.vline(7, 3, 3, "<"); c.px(1, 1, "P"); c.px(4, 0, "j"); c.px(7, 2, "9"); });
-sprite("signpost", { w: 16, h: 18, outline: "k" }, (c) => {
-  c.vline(7, 4, 14, "~"); c.poly([1, 3, 12, 3, 15, 5.5, 12, 8, 1, 8], "^"); c.hline(1, 3, 11, "@");
-  c.line(4, 7, 7, 4, "w"); c.rect(6, 4, 3, 1, "6");     // a little pickaxe painted on it
+sprite("bush", { w: 24, h: 14, outline: "k" }, (c) => {
+  c.ellipse(12, 8, 12, 6, ">"); c.ellipse(13, 10, 9, 3, "<"); c.ellipse(9, 6, 6, 3, "="); c.px(7, 4, "+");
+  c.px(16, 5, "P"); c.px(17, 6, "9"); c.px(5, 9, "9"); c.px(19, 9, "P");
+});
+sprite("flowers", { w: 12, h: 9 }, (c) => {
+  c.vline(1, 3, 6, "<"); c.vline(5, 1, 8, "<"); c.vline(9, 4, 5, "<"); c.px(4, 5, "="); c.px(8, 6, "=");
+  c.px(1, 2, "P"); c.px(0, 2, "9"); c.px(5, 0, "j"); c.px(6, 0, "8"); c.px(9, 3, "9"); c.px(10, 3, "P");
+});
+sprite("signpost", { w: 24, h: 28, outline: "k" }, (c) => {
+  c.rect(10, 6, 3, 22, "~"); c.vline(10, 6, 22, "^");
+  c.poly([1, 4, 18, 4, 23, 8, 18, 12, 1, 12], "^"); c.hline(1, 4, 17, "@"); c.hline(1, 12, 17, "~");
+  c.line(6, 10, 10, 6, "w"); c.rect(8, 5, 5, 2, "6");      // a little pickaxe painted on it
+  c.poly([22, 15, 6, 15, 2, 18, 6, 21, 22, 21], "^"); c.hline(6, 15, 16, "@");   // and a second sign the other way
+  c.px(12, 18, "W"); c.px(15, 18, "W");
 });
 
-anim("wagon", { w: 34, h: 20, outline: "k", frames: 2, fps: 4 }, (c) => {
-  c.ellipse(14, 6, 13, 6, "C"); c.rect(1, 6, 26, 2, "C"); c.ellipse(14, 6, 11, 4, "c");   // canvas top
-  c.rect(1, 8, 26, 6, "V"); c.hline(1, 8, 26, "u"); c.vline(9, 8, 6, "v"); c.vline(19, 8, 6, "v");
+anim("wagon", { w: 50, h: 30, outline: "k", frames: 2, fps: 4 }, (c) => {
+  c.ellipse(20, 9, 19, 9, "C"); c.rect(1, 9, 38, 3, "C"); c.ellipse(20, 9, 16, 6, "c");   // canvas top
+  for (const x of [8, 20, 32]) c.vline(x, 2, 9, "u");
+  c.rect(1, 12, 38, 9, "V"); c.hline(1, 12, 38, "u"); c.vline(13, 12, 9, "v"); c.vline(27, 12, 9, "v"); c.hline(1, 20, 38, "W");
   const f = c.frame;
-  for (const x of [6, 22]) { c.circ(x, 15, 4, "W"); c.ring(x, 15, 4, "w"); c.px(x + (f ? 2 : -2), 15, "u"); c.px(x, 15 + (f ? 2 : -2), "u"); }
+  for (const x of [9, 31]) { c.circ(x, 23, 6, "W"); c.ring(x, 23, 6, "w"); c.ring(x, 23, 3, "v"); c.line(x - 4, 23 + (f ? 3 : -3), x + 4, 23 - (f ? 3 : -3), "u"); c.px(x, 23, "u"); }
   // a pony, of course
-  c.rect(27, 6, 6, 6, "~"); c.rect(30, 2, 3, 5, "~"); c.px(32, 3, "e"); c.vline(28, 12, 4 + f, "^"); c.vline(32, 12, 5 - f, "^"); c.px(29, 5, "w");
+  c.rect(39, 9, 9, 9, "~"); c.rect(44, 3, 5, 7, "~"); c.px(47, 5, "e"); c.rect(43, 2, 2, 6, "w"); c.px(48, 8, "^");
+  c.vline(40, 18, 6 + f, "^"); c.vline(46, 18, 7 - f, "^"); c.vline(41, 18, 5, "~"); c.px(38, 10, "w"); c.line(38, 10, 36, 15, "w");
+  c.line(39, 13, 34, 14, "v");    // the shaft
 });
 
 anim("torch", { w: 6, h: 11, frames: 3, fps: 8 }, (c) => {
@@ -184,10 +219,13 @@ sprite("lift", { w: 26, h: 22, outline: "k" }, (c) => {
   c.rect(4, 12, 18, 8, "V"); c.ellipse(13, 12, 8, 3, "5"); c.px(10, 11, "F"); c.px(15, 11, "j"); c.px(13, 10, "n");
   c.vline(13, -4, 4, "6");
 });
-sprite("winch", { w: 30, h: 30, outline: "k" }, (c) => {
-  c.line(2, 30, 13, 2, "v", 2); c.line(28, 30, 17, 2, "v", 2); c.rect(10, 0, 10, 3, "V");
-  c.circ(15, 10, 7, "4"); c.ring(15, 10, 7, "2"); c.circ(15, 10, 2, "6");
-  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; c.line(15, 10, Math.round(15 + Math.cos(a) * 6), Math.round(10 + Math.sin(a) * 6), "5"); }
+sprite("winch", { w: 44, h: 44, outline: "k" }, (c) => {
+  c.line(3, 44, 19, 2, "v", 3); c.line(41, 44, 25, 2, "v", 3); c.line(4, 44, 20, 2, "V"); c.rect(14, 0, 16, 4, "V"); c.hline(14, 0, 16, "u");
+  c.hline(10, 30, 24, "W");
+  c.circ(22, 14, 10, "4"); c.ring(22, 14, 10, "2"); c.ring(22, 14, 7, "3"); c.circ(22, 14, 3, "6");
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; c.line(22, 14, Math.round(22 + Math.cos(a) * 9), Math.round(14 + Math.sin(a) * 9), "5"); }
+  c.vline(22, 24, 20, "u");      // the rope down the shaft
+  c.line(33, 14, 38, 20, "v"); c.rect(37, 20, 3, 4, "V");   // crank
 });
 sprite("lock_sign", { w: 26, h: 18, outline: "k" }, (c) => {
   c.rect(0, 4, 26, 12, "V"); c.hline(0, 4, 26, "u"); c.vline(4, 16, 2, "v"); c.vline(21, 16, 2, "v");

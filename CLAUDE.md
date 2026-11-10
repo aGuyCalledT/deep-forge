@@ -37,9 +37,9 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/View.java` | was der Client sieht (Spielstand + abgeleitete Zahlen) |
 | `game/GameService.java` | Laden, Weiterrechnen, Speichern, Minuten-Takt für alle Festungen |
 | `auth/` | Name + Passwort (BCrypt), Token-Sitzungen, Einladungscode, Admins |
-| `game/Layouts.java` | Grundriss: Räume, Gänge, Treppen auf einem Raster (40 × 8 Zellen, Schacht links) |
+| `game/Layouts.java` | Grundriss: Räume, Gänge, Treppen auf einem Raster (48 × 8 Zellen à 24 × 96 px, Schacht links) |
 | `game/Cheats.java` | Test-Hilfen (Ressourcen, Zwerge, Aussehen, Zeit überspringen), nur Admins oder `CHEATS=true` |
-| `art-src/` | Grafik-Quellen für pxl, `shared.js` mit Raum-Ankern und Palette; Ergebnis in `static/art/` |
+| `art-src/` | Grafik-Quellen für pxl, `shared.js` mit Raum-Ankern und Palette; Ergebnis in `static/art/`. `figure.js` baut alle Figuren und wird als `static/js/figure.js` ins Spiel kopiert |
 | `static/js/canvas.js` | Kamera (ziehen, Mausrad, Pinch), Licht, Hover-Umriss, Klicks |
 | `static/js/hold.js` | Festung: Himmel und Sonne über Essen, Plan, Räume, Zwerge mit Wegen und 12-Minuten-Zyklus, Bau-Modus, grüne Pfeile |
 | `static/js/views.js` | Minen-Screen, Werkstatt-Screen, Login-Bild |

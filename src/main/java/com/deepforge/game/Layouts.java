@@ -5,13 +5,13 @@ import com.deepforge.game.State.*;
 import java.util.*;
 
 /**
- * The hold's floor plan. A grid of COLS x FLOORS cells (16 x 64 art pixels each).
+ * The hold's floor plan. A grid of COLS x FLOORS cells (24 x 96 art pixels each).
  * The mine shaft fills columns 0-1 on every floor and links all floors with a ladder.
  */
 public final class Layouts {
     private Layouts() {}
 
-    public static final int COLS = 40;
+    public static final int COLS = 48;
     public static final int FLOORS = 8;
     public static final int SHAFT = 2;   // shaft width in columns
     public static final Map<String, Integer> ROOM_CELLS = new LinkedHashMap<>();

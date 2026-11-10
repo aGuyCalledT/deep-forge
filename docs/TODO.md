@@ -38,11 +38,15 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
       Umrisse, Vorder- und Seitenansicht.
 - [x] **Mehr Tiefe im Hintergrund:** runde Felssteine, Schatten des Felsens in Räumen und Gängen, beleuchtete Kanten,
       nach unten dunkleres Gestein, Wurzeln, Parallaxe mit Bergen und Wald, Schatten unter Zwergen.
-- [ ] Rückansicht der Zwerge (z. B. beim Klettern), Werkzeuge in der Hand etwas größer.
+- [x] Rückansicht der Zwerge beim Klettern, Werkzeuge in der Hand.
+- [x] **Größere Welt:** Raster-Zelle 24 × 96 statt 16 × 64, alle Räume, Gänge, Treppen, Schacht und die Oberfläche neu
+  in Zwergengröße, Treppen werden die Stufen entlang gegangen, Raster 48 statt 40 Spalten.
+- [ ] Kleidung selbst herstellen (Schneiderei/Weberei) und mit Karawanen handeln.
+- [ ] NPCs an der Oberfläche (Händlerin am Stand, Reisende) mit `Figure.person`.
 - [ ] Die Steine im Fels wiederholen sich alle 32 px sichtbar; eine zweite, passende Kachel würde helfen.
 
 - [ ] Gänge per Ziehen am Stück graben (jetzt: Klick pro Zelle).
-- [ ] Zwerge liegen beim Schlafen noch sitzend auf dem Bett; eine Liege-Pose wäre schöner.
+- [x] Zwerge liegen beim Schlafen jetzt richtig im Bett (Liege-Pose).
 - [ ] Raum-Bau kostet nichts, Gänge und Treppen auch nicht. Kosten (Stein) einführen?
 
 ## Aus früheren Runden

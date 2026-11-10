@@ -124,7 +124,7 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
 
 /* ---------- login */
 .login { max-width: 460px; margin: 0 auto; padding: 28px 16px 40px; text-align: center; }
-.login-art { width: 100%; aspect-ratio: 256 / 101; border-radius: 18px; box-shadow: var(--shadow); }
+.login-art { width: 100%; aspect-ratio: 336 / 154; border-radius: 18px; box-shadow: var(--shadow); }
 .title { font-size: 40px; color: var(--gold); margin: 18px 0 2px; text-shadow: 0 3px 0 rgba(14, 8, 10, 0.5); }
 .tagline { color: var(--muted); margin-bottom: 18px; }
 .login-card { text-align: left; }

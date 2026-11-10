@@ -5,9 +5,14 @@ import * as S from './sprites.js';
 import { sun, daylight, skyColors, berlinHour } from './sun.js';
 import { text, sign } from './pixfont.js';
 
-export const CELL = 16, RH = 64, SURF = 112;
-const WALK = 58;
-const GRASS = SURF - 10;
+export const CELL = 24, RH = 96, SURF = 140;
+const WALK = 90;
+const GRASS = SURF - 12;
+// the surface: where things stand (left x; they stand on the grass). Clicks, lights and dwarves use the same numbers.
+const SURFACE = { winch: 2, sign: 56, stall: 134, tent: 282, wallW: 96 };
+const STALL_W = 72, TENT_W = 62;
+/** Draw a sprite so its bottom row stands on the grass. */
+function onGrass(ctx, name, x, flip) { const s = S.sprite(name); if (s) S.draw(ctx, name, x, GRASS - s.height + 1, flip); }
 
 let plan = null;   // { cols, floors, shaft, rooms: {type: cells} }
 const particles = [];
@@ -74,7 +79,14 @@ function path(g, from, to) {
   for (let i = 1; i < nodes.length; i++) {
     const a = nodes[i - 1], b = nodes[i];
     const mode = a.f === b.f ? 'walk' : (a.c < plan.shaft && b.c === a.c ? 'ladder' : 'stairs');
-    out.push({ x: b.c * CELL + 8, y: fy(b.f), f: b.f, mode });
+    if (mode === 'stairs') {
+      // follow the steps: in at the top left corner, out at the bottom right (or the other way round)
+      const sc = Math.min(a.c, b.c), top = Math.min(a.f, b.f), down = b.f > a.f;
+      const hi = { x: sc * CELL + 1, y: fy(top), f: top }, lo = { x: sc * CELL + 2 * CELL - 1, y: fy(top + 1), f: top + 1 };
+      const [p0, p1] = down ? [hi, lo] : [lo, hi];
+      out.push({ ...p0, mode: 'walk' }, { ...p1, mode: 'stairs' });
+    }
+    out.push({ x: b.c * CELL + CELL / 2, y: fy(b.f), f: b.f, mode: mode === 'stairs' ? 'walk' : mode });
   }
   void n;
   return out;
@@ -106,9 +118,9 @@ function want(g, d, ctx) {
     const chat = S.hash('chat' + d.id + sch.k) % 2 ? 'talk' : 'idle';     // half of them stand and chat
     if (r < 8) {
       const cells = [...g.cells.entries()].filter(([, v]) => v.kind === 'hall' || v.kind === 'room');
-      if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + 8, pose: chat }; }
+      if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + CELL / 2, pose: chat }; }
     }
-    return { f: -1, x: 120 + (S.hash('stroll' + d.id) % Math.max(40, W() - 260)), pose: chat };
+    return { f: -1, x: 360 + (S.hash('stroll' + d.id) % Math.max(40, W() - 520)), pose: chat };
   };
   if (d.job === 'worker') {
     const r = g.rooms.find((x) => x.b.id === d.building);
@@ -116,7 +128,7 @@ function want(g, d, ctx) {
       const a = S.META.ROOMS[r.b.type] || {};
       const wx = a.worker ? r.x + a.worker[0] : r.x + r.pw / 2;
       const busy = r.b.job || byId.buildings[r.b.type].kind === 'continuous';
-      return { f: r.f, x: wx, pose: busy && !F().siege ? 'work' : 'idle', tool: TOOL_OF[r.b.type], face: r.b.type === 'smelter' || r.b.type === 'forge' ? -1 : 1 };
+      return { f: r.f, x: wx, pose: busy && !F().siege ? 'work' : 'idle', tool: TOOL_OF[r.b.type], face: r.b.type === 'smelter' ? -1 : 1 };
     }
     return free();
   }
@@ -125,9 +137,9 @@ function want(g, d, ctx) {
     if (d.post === 'mine') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 8, hidden: true };
     if (sch.off && !F().raid && !F().siege) return free();
     const i = ctx.gate++;
-    return { f: -1, x: W() - 92 - i * 12, pose: 'idle', tool: 'axe', face: 1 };
+    return { f: -1, x: W() - SURFACE.wallW - 24 - i * 20, pose: 'idle', tool: 'axe', face: 1 };
   }
-  if (d.job === 'merchant') { const i = ctx.stall++; return { f: -1, x: 104 + i * 12, pose: 'idle', tool: 'sack', face: -1 }; }
+  if (d.job === 'merchant') { const i = ctx.stall++; return { f: -1, x: SURFACE.stall - 14 - i * 20, pose: 'idle', tool: 'sack', face: 1 }; }
   void room;
   return free();
 }
@@ -181,7 +193,7 @@ function updateAgents(g, dt) {
         const p = a.hidden && !w.hidden && !w.mines ? null : path(g, from, to);
         if (a.hidden && !w.hidden) {
           // coming back from the mines or a trip: appear at the bottom of the shaft or the right edge
-          if (d.busy) { /* stays hidden */ } else { a.x = 8; a.f = plan.floors - 1; a.y = fy(a.f); a.hidden = false; a.path = path(g, nodeOf(g, a.f, a.x), to) || []; }
+          if (d.busy) { /* stays hidden */ } else { a.x = CELL / 2; a.f = plan.floors - 1; a.y = fy(a.f); a.hidden = false; a.path = path(g, nodeOf(g, a.f, a.x), to) || []; }
         } else a.path = p || [];
         if (!p && !a.hidden) { a.x = w.x; a.f = w.f; a.y = w.feet || fy(w.f); a.path = []; }
         if (w.mines || w.hidden) a.leave = true; else a.leave = false;
@@ -191,7 +203,7 @@ function updateAgents(g, dt) {
     let step = dt;
     while (a.path.length && step > 0) {
       const p = a.path[0];
-      const sp = p.mode === 'ladder' ? 16 : p.mode === 'stairs' ? 18 : 24;
+      const sp = p.mode === 'ladder' ? 22 : p.mode === 'stairs' ? 26 : 34;
       const dx = p.x - a.x, dy = p.y - a.y, dist = Math.hypot(dx, dy);
       const can = sp * step;
       a.mode = p.mode;
@@ -203,7 +215,7 @@ function updateAgents(g, dt) {
       // last few pixels inside the cell to the exact spot
       const tx = a.want.x, ty = a.want.feet || fy(a.want.f);
       const dx = tx - a.x;
-      if (Math.abs(dx) > 0.5) { a.x += Math.sign(dx) * Math.min(Math.abs(dx), 24 * dt); a.face = Math.sign(dx); a.mode = 'walk'; }
+      if (Math.abs(dx) > 0.5) { a.x += Math.sign(dx) * Math.min(Math.abs(dx), 34 * dt); a.face = Math.sign(dx); a.mode = 'walk'; }
       else { a.x = tx; a.mode = null; if (a.want.face) a.face = a.want.face; }
       a.y = ty;
       if (a.leave && !a.mode) a.hidden = true;
@@ -319,35 +331,33 @@ function drawSurface(ctx, t) {
   // path to the market
   ctx.fillStyle = '#b07a4e'; ctx.fillRect(40, GRASS - 1, w - 40, 2);
   // props
-  S.draw(ctx, 'winch', 1, GRASS - 31);
-  S.draw(ctx, 'signpost', 34, GRASS - 18);
-  S.draw(ctx, 'tree_0', 52, GRASS - 40);
-  S.draw(ctx, 'stall', 92, GRASS - 34);
-  S.draw(ctx, 'tree_1', 150, GRASS - 40);
-  S.draw(ctx, 'tent', 196, GRASS - 30);
-  for (const x of [70, 182, 250, 330, 410]) S.draw(ctx, 'flowers', x, GRASS - 6);
-  for (const x of [240, 300, 380]) S.draw(ctx, 'bush', x, GRASS - 10);
-  S.draw(ctx, 'tree_0', 350, GRASS - 40);
-  const wallX = w - 64;
+  onGrass(ctx, 'winch', SURFACE.winch);
+  onGrass(ctx, 'signpost', SURFACE.sign);
+  onGrass(ctx, 'tree_0', 84);
+  onGrass(ctx, 'stall', SURFACE.stall);
+  onGrass(ctx, 'tree_1', 222);
+  onGrass(ctx, 'tent', SURFACE.tent);
+  for (const x of [108, 266, 372, 480, 600, 700]) onGrass(ctx, 'flowers', x);
+  for (const x of [356, 440, 560, 660]) onGrass(ctx, 'bush', x);
+  onGrass(ctx, 'tree_0', 500); onGrass(ctx, 'tree_1', 610, true);
+  const wallX = w - SURFACE.wallW;
   const walls = (f.buildings.find((b) => b.type === 'walls') || { level: 0 }).level;
-  S.draw(ctx, walls ? 'stonewall' : 'palisade', wallX, GRASS - (walls ? 40 : 28));
+  onGrass(ctx, walls ? 'stonewall' : 'palisade', wallX);
   // caravans on the road
   const t0 = now();
   for (const c of f.caravans) {
     const out = c.state === 'outbound';
     const p = out ? (t0 - c.departAt) / (c.arriveAt - c.departAt) : 1 - (t0 - c.arriveAt) / (c.returnAt - c.arriveAt);
-    const x = 140 + Math.max(0, Math.min(1, p)) * (wallX - 160);
-    const spr = S.wagon(Math.floor(t * 4));
-    if (out) S.draw(ctx, 'wagon_' + (Math.floor(t * 4) % 2), x, GRASS - 19); else S.draw(ctx, 'wagon_' + (Math.floor(t * 4) % 2), x, GRASS - 19, true);
-    void spr;
+    const x = 210 + Math.max(0, Math.min(1, p)) * (wallX - 250);
+    onGrass(ctx, 'wagon_' + (Math.floor(t * 4) % 2), x, !out);
   }
   if (f.raid) {
     const p = Math.max(0, Math.min(1, (t0 - f.raid.announcedAt) / (f.raid.arrivesAt - f.raid.announcedAt)));
-    if (p > 0.5) for (let i = 0; i < 3; i++) S.draw(ctx, 'mon_goblin_scouts_' + (Math.floor(t * 3 + i) % 2), w - 8 - (p - 0.5) * 30 + i * 9, GRASS - 22, true);
+    if (p > 0.5) for (let i = 0; i < 3; i++) onGrass(ctx, 'mon_goblin_scouts_' + (Math.floor(t * 3 + i) % 2), w - 12 - (p - 0.5) * 40 + i * 14, true);
   }
   if (f.siege) {
-    for (let i = 0; i < 4; i++) S.draw(ctx, 'mon_goblin_scouts_' + (Math.floor(t * 3 + i) % 2), wallX - 64 + i * 12, GRASS - 22, true);
-    S.draw(ctx, 'fire_place_' + (Math.floor(t * 6) % 4), wallX - 82, GRASS - 10);
+    for (let i = 0; i < 4; i++) onGrass(ctx, 'mon_goblin_scouts_' + (Math.floor(t * 3 + i) % 2), wallX - 90 + i * 18, true);
+    onGrass(ctx, 'fire_place_' + (Math.floor(t * 6) % 4), wallX - 116);
   }
 }
 
@@ -387,7 +397,7 @@ function depthLayers(g) {
 
   // where the rock is cut away
   const hole = S.mk(w, h), hc = hole.getContext('2d');
-  for (let fl = 0; fl < plan.floors; fl++) { hc.fillStyle = '#000'; hc.fillRect(2, fl * RH, 28, RH); }
+  for (let fl = 0; fl < plan.floors; fl++) { hc.fillStyle = '#000'; hc.fillRect(3, fl * RH, plan.shaft * CELL - 6, RH); }
   for (const [k, v] of g.cells) {
     if (v.kind !== 'hall') continue;
     const [c, fl] = k.split(',').map(Number);
@@ -400,7 +410,7 @@ function depthLayers(g) {
     if (v.kind !== 'hall') continue;
     const [c, fl] = k.split(',').map(Number);
     if (!walkable(g, c - 1, fl)) S.draw(hc, 'hall_cap_l', c * CELL, fl * RH);
-    if (!walkable(g, c + 1, fl)) S.draw(hc, 'hall_cap_r', c * CELL + 10, fl * RH);
+    if (!walkable(g, c + 1, fl)) S.draw(hc, 'hall_cap_r', c * CELL + CELL - 8, fl * RH);
   }
   const solid = S.mk(w, h), sc = solid.getContext('2d');
   sc.fillRect(0, 0, w, h); sc.globalCompositeOperation = 'destination-out'; sc.drawImage(hole, 0, 0);
@@ -439,7 +449,7 @@ function drawUnderground(ctx, t, view, g) {
     const variant = ['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8];
     S.draw(ctx, variant, c * CELL, ftop(fl));
     if (!walkable(g, c - 1, fl)) S.draw(ctx, 'hall_cap_l', c * CELL, ftop(fl));
-    if (!walkable(g, c + 1, fl)) S.draw(ctx, 'hall_cap_r', c * CELL + 10, ftop(fl));
+    if (!walkable(g, c + 1, fl)) S.draw(ctx, 'hall_cap_r', c * CELL + CELL - 8, ftop(fl));
   }
   for (const s of g.stairs) S.draw(ctx, 'stairs', s.c * CELL, ftop(s.f));
   for (const r of g.rooms) drawRoom(ctx, t, r);
@@ -457,15 +467,15 @@ export function drawRoom(ctx, t, r) {
   if (b.type === 'smelter' && (working || (G.heat && G.heat(b.id) > 2))) S.draw(ctx, 'fire_furnace_' + fr, r.x + a.fire[0], r.y + a.fire[1]);
   if (b.type === 'forge' && (working || (b.job && b.job.quenching))) S.draw(ctx, 'fire_hearth_' + fr, r.x + a.fire[0], r.y + a.fire[1] - 2);
   if (b.type === 'tavern') S.draw(ctx, 'fire_place_' + (Math.floor(t * 6) % 4), r.x + a.fire[0], r.y + a.fire[1] + 4);
-  if (b.type === 'grindstone' && working) S.draw(ctx, 'wheel_spin_' + fr, r.x + a.wheel[0] - 10, r.y + a.wheel[1] - 10);
+  if (b.type === 'grindstone' && working) S.draw(ctx, 'wheel_spin_' + fr, r.x + a.wheel[0] - 15, r.y + a.wheel[1] - 15);
   // smoke, steam, sparks
-  if (a.chimney && working && Math.random() < 0.25) particles.push({ x: r.x + a.chimney[0] + 2 + Math.random() * 4, y: r.y + 16, vx: (Math.random() - 0.5) * 3, vy: -6, life: 1.6, c: '#9a92a8' });
+  if (a.chimney && working && Math.random() < 0.25) particles.push({ x: r.x + a.chimney[0] - 3 + Math.random() * 6, y: r.y + 22, vx: (Math.random() - 0.5) * 3, vy: -6, life: 1.6, c: '#9a92a8' });
   if (b.type === 'forge' && working && Math.random() < 0.3) for (let k = 0; k < 3; k++) particles.push({ x: r.x + a.anvil[0], y: r.y + a.anvil[1] - 5, vx: (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 14, life: 0.45, c: Math.random() < 0.5 ? '#ffd98e' : '#fff6d6', g: 30 });
-  if (b.job && b.job.quenching && Math.random() < 0.7) particles.push({ x: r.x + a.quench[0] - 3 + Math.random() * 6, y: r.y + 46, vx: (Math.random() - 0.5) * 3, vy: -7, life: 1.2, c: '#e8eef4' });
+  if (b.job && b.job.quenching && Math.random() < 0.7) particles.push({ x: r.x + a.quench[0] - 3 + Math.random() * 6, y: r.y + 72, vx: (Math.random() - 0.5) * 3, vy: -7, life: 1.2, c: '#e8eef4' });
   if (b.type === 'brewery' && working && Math.random() < 0.4) particles.push({ x: r.x + a.steam[0] + Math.random() * 6, y: r.y + a.steam[1], vx: (Math.random() - 0.5) * 2, vy: -5, life: 1.4, c: '#e8eef4' });
-  if (b.type === 'grindstone' && working && Math.random() < 0.5) particles.push({ x: r.x + a.wheel[0] + 9, y: r.y + a.wheel[1] - 2, vx: 10 + Math.random() * 14, vy: -6, life: 0.4, c: '#fff6d6', g: 30 });
-  if (b.type === 'farm' && Math.random() < 0.05) particles.push({ x: r.x + 10 + Math.random() * (r.pw - 20), y: r.y + 50, vx: 0, vy: -3, life: 2, c: '#c6e3b8' });
-  if (b.type === 'jeweler' && Math.random() < 0.06) particles.push({ x: r.x + 52 + Math.random() * 22, y: r.y + 24 + Math.random() * 26, vx: 0, vy: 0, life: 0.5, c: '#ffffff' });
+  if (b.type === 'grindstone' && working && Math.random() < 0.5) particles.push({ x: r.x + a.wheel[0] + 13, y: r.y + a.wheel[1] - 2, vx: 10 + Math.random() * 14, vy: -6, life: 0.4, c: '#fff6d6', g: 30 });
+  if (b.type === 'farm' && Math.random() < 0.05) particles.push({ x: r.x + 10 + Math.random() * (r.pw - 20), y: r.y + 80, vx: 0, vy: -3, life: 2, c: '#c6e3b8' });
+  if (b.type === 'jeweler' && Math.random() < 0.06) particles.push({ x: r.x + 76 + Math.random() * 32, y: r.y + 32 + Math.random() * 50, vx: 0, vy: 0, life: 0.5, c: '#ffffff' });
 }
 
 function drawParticles(ctx, dt) {
@@ -492,8 +502,8 @@ export const holdScreen = {
   size: () => ({ w: W(), h: H() }),
   home(r) {
     // start looking at the top floors, zoomed so rooms read well
-    const zoom = r.width < 560 ? 2 : 3;
-    return { zoom, x: 0, y: SURF - 70 };
+    const zoom = 2;
+    return { zoom, x: 0, y: SURF - 100 };
   },
   draw(ctx, t, view) {
     G_ = grid();
@@ -539,15 +549,15 @@ export const holdScreen = {
     for (const [k, v] of G_.cells) {
       if (v.kind !== 'hall') continue;
       const [c, fl] = k.split(',').map(Number);
-      if (['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8] === 'hall_b') out.push({ x: c * CELL + 8, y: ftop(fl) + 14, r: 22, color: '#ffd98e', flicker: 1 });
+      if (['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8] === 'hall_b') out.push({ x: c * CELL + CELL / 2, y: ftop(fl) + 19, r: 32, color: '#ffd98e', flicker: 1 });
     }
-    for (let fl = 0; fl < plan.floors; fl++) out.push({ x: 16, y: ftop(fl) + 30, r: 16, color: '#ffd98e' });
+    for (let fl = 0; fl < plan.floors; fl++) out.push({ x: plan.shaft * CELL / 2, y: ftop(fl) + 40, r: 24, color: '#ffd98e' });
     const day = daylight(sun().elev);
     if (day < 0.8) {
-      out.push({ x: 104, y: GRASS - 26, r: 30, color: '#ffd98e', power: 0.8 });
-      out.push({ x: 216, y: GRASS - 10, r: 26, color: '#ffb070', power: 0.7 });
-      out.push({ x: 16, y: GRASS - 20, r: 26, color: '#ffd98e', power: 0.8 });
-      if (f.siege) out.push({ x: W() - 136, y: GRASS - 6, r: 40, color: '#ff8a4a', flicker: 3, power: 1.4 });
+      out.push({ x: SURFACE.stall + 36, y: GRASS - 38, r: 44, color: '#ffd98e', power: 0.8 });
+      out.push({ x: SURFACE.tent + 31, y: GRASS - 14, r: 38, color: '#ffb070', power: 0.7 });
+      out.push({ x: SURFACE.winch + 22, y: GRASS - 30, r: 36, color: '#ffd98e', power: 0.8 });
+      if (f.siege) out.push({ x: W() - SURFACE.wallW - 106, y: GRASS - 8, r: 56, color: '#ff8a4a', flicker: 3, power: 1.4 });
     }
     // little lamps on miner helmets
     for (const dw of drawn) { const d = f.dwarves.find((x) => x.id === dw.id); if (d && S.look(d).hat === 2) out.push({ x: dw.sx + (dw.a.face > 0 ? 14 : 4), y: dw.sy + 5, r: 10, color: '#fff0c0' }); }
@@ -562,13 +572,14 @@ export const holdScreen = {
     if (!G_) return null;
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
     const w = W();
-    if (y < SURF && y > GRASS - 40) {
-      if (x >= 92 && x < 138) return { kind: 'tab', id: 'trade', rect: [92, GRASS - 34, 46, 34], round: true };
-      if (x >= 196 && x < 236) return { kind: 'tab', id: 'explore', rect: [196, GRASS - 30, 40, 30], round: true };
-      if (x >= w - 64) return { kind: 'tab', id: 'war', rect: [w - 64, GRASS - 40, 56, 40], round: true };
-      if (x < 32) return { kind: 'tab', id: 'mines', rect: [1, GRASS - 31, 30, 30], round: true };
+    if (y < SURF && y > GRASS - 62) {
+      const X = SURFACE;
+      if (x >= X.stall && x < X.stall + STALL_W && y > GRASS - 54) return { kind: 'tab', id: 'trade', rect: [X.stall, GRASS - 53, STALL_W, 54], round: true };
+      if (x >= X.tent && x < X.tent + TENT_W && y > GRASS - 50) return { kind: 'tab', id: 'explore', rect: [X.tent, GRASS - 48, TENT_W, 49], round: true };
+      if (x >= w - X.wallW) return { kind: 'tab', id: 'war', rect: [w - X.wallW, GRASS - 61, 86, 62], round: true };
+      if (x < X.winch + 46 && y > GRASS - 46) return { kind: 'tab', id: 'mines', rect: [X.winch, GRASS - 45, 46, 46], round: true };
     }
-    if (x < 32 && y >= SURF) return { kind: 'tab', id: 'mines', rect: [0, SURF, 32, H() - SURF] };
+    if (x < plan.shaft * CELL && y >= SURF) return { kind: 'tab', id: 'mines', rect: [0, SURF, plan.shaft * CELL, H() - SURF] };
     return null;
   },
   overlay(ctx, t, hover, mouse) {
