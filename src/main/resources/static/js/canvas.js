@@ -113,7 +113,17 @@ function up(e) {
   const p = toWorld(e);
   const q = screen.hit(p.x, p.y);
   if (screen.click && screen.click(p.x, p.y, q)) return;
-  if (q) onPick(q);
+  onPick(q, anchorOf(q, e));
+}
+
+/** Where on the page the picked thing is, so its window can open beside it. */
+function anchorOf(q, e) {
+  const at = { x: e.clientX, y: e.clientY };
+  if (!q || !screen || !screen.camera) return at;
+  const r = canvas.getBoundingClientRect();
+  const box = q.rect || (q.sprite ? [q.sx, q.sy, q.sprite.width, q.sprite.height] : null);
+  if (!box) return at;
+  return { ...at, rect: { x: r.left + (box[0] - cam.x) * cam.zoom, y: r.top + (box[1] - cam.y) * cam.zoom, w: box[2] * cam.zoom, h: box[3] * cam.zoom } };
 }
 
 function wheel(e) {
@@ -259,9 +269,18 @@ function outline(h, t) {
   }
 }
 
-/** Scroll the hold camera to a world point. */
-export function lookAt(x, y) {
+/** Scroll the hold camera so a world point sits in the middle of the first `width` css pixels. */
+export function lookAt(x, y, width, height) {
   const r = wrap.getBoundingClientRect();
-  cam.x = x - r.width / cam.zoom / 2; cam.y = y - r.height / cam.zoom / 2;
+  if (cam.zoom < 2) cam.zoom = 2;
+  cam.x = x - (width || r.width) / cam.zoom / 2; cam.y = y - (height || r.height) / cam.zoom / 2;
   clamp();
+}
+
+/** World point -> page pixels (hold camera). */
+export function toScreen(x, y, w = 0, h = 0) {
+  const r = canvas.getBoundingClientRect();
+  const p = { x: r.left + (x - cam.x) * cam.zoom, y: r.top + (y - cam.y) * cam.zoom };
+  if (w) p.rect = { x: p.x, y: p.y, w: w * cam.zoom, h: h * cam.zoom };
+  return p;
 }

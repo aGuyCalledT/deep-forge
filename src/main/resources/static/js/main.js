@@ -1,11 +1,11 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
-import { h, img, bus, toast, storesView } from './ui.js';
+import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn } from './ui.js';
 import * as S from './sprites.js';
-import { initCanvas, zoomBy, lookAt, camera } from './canvas.js';
-import { holdScreen, roomCenter } from './hold.js';
-import { minesScreen, workshopScreen, drawLoginArt } from './views.js';
+import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
+import { holdScreen, roomCenter, roomAt, roomRect } from './hold.js';
+import { minesScreen, drawLoginArt } from './views.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
@@ -116,27 +116,41 @@ function ambience() {
   if (!G.state) return;
   const f = F(), wanted = new Set();
   const nowMs = performance.now();
-  if (G.screen === 'workshop') {
-    const b = f.buildings.find((x) => x.id === G.ws);
+  if (G.screen === 'hold') {
+    // the workshop nearest the middle of the view sets the sound, if it is busy
+    const b = roomAt(viewCenter());
     const working = b && (b.job && !b.job.quenching || (byId.buildings[b.type].kind === 'continuous' && D().buildings[b.id] && D().buildings[b.id].worker)) && !f.siege;
-    if (b && working) {
+    if (b && working && camera().zoom >= 2) {
       if (b.type === 'forge') wanted.add('forge');
       if (b.type === 'smelter') wanted.add('furnace');
       if (b.type === 'grindstone') wanted.add('grindstone');
       if (b.type === 'brewery') wanted.add('brewing');
     }
     if (b && b.type === 'farm' && nowMs > nextMoo) { nextMoo = nowMs + 45000 + Math.random() * 90000; if (Math.random() < 0.5) A.sfx('moo'); }
+    if (!wanted.size) wanted.add('tavern');
+    const hr = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Berlin' }).format(new Date()));
+    if (hr >= 21 || hr < 6) wanted.add('night');
   } else if (G.screen === 'mines') {
     wanted.add('mine');
     const digging = f.dwarves.some((d) => d.job === 'miner' && !d.busy && !f.layers[d.layer].threat);
     if (digging && nowMs > nextPick) { nextPick = nowMs + 900 + Math.random() * 2200; A.sfx('pickaxe', { vol: 0.6 + Math.random() * 0.4 }); }
-  } else {
-    wanted.add('tavern');
-    const hr = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Berlin' }).format(new Date()));
-    if (hr >= 21 || hr < 6) wanted.add('night');
   }
   A.setLoops(wanted);
 }
+
+/** World point in the middle of what the player sees of the hold (left of an open drawer). */
+function viewCenter() {
+  const cam = camera(), r = $('scene-wrap').getBoundingClientRect();
+  return { x: cam.x + freeWidth() / 2 / cam.zoom, y: cam.y + r.height / 2 / cam.zoom };
+}
+
+/** Width of the scene not covered by the drawer (desktop) . */
+function freeWidth() {
+  const r = $('scene-wrap').getBoundingClientRect(), p = $('panel');
+  if (p.hidden || !wide()) return r.width;
+  return Math.max(200, p.getBoundingClientRect().left - r.left);
+}
+const wide = () => window.matchMedia('(min-width: 900px)').matches;
 
 function renderAudioBtn() {
   const s = A.state(), btn = $('audio-btn');
@@ -183,22 +197,23 @@ function alerts() {
   if (f.noAle) a.push(['warn', 'work', 'Out of ale. Dwarves are unhappy.']);
   if (f.storageFull) a.push(['warn', 'fortress', 'Warehouse full - mining stopped.']);
   const quench = f.buildings.filter((b) => b.job && b.job.quenching);
-  if (quench.length) a.push(['good', 'work', 'Hot metal ready to quench at the forge!']);
+  if (quench.length) a.push(['good', 'work', 'Hot metal ready to quench at the forge!', quench[0].id]);
   const choices = f.expeditions.filter((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen);
   if (choices.length) a.push(['good', 'explore', `An expedition needs your decision.`]);
   const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
   if (idle) a.push(['warn', 'dwarves', `${idle} idle dwarf(s).`]);
   const empty = f.buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive' && !d.buildings[b.id].worker);
-  if (empty.length && !idle) a.push(['warn', 'work', `${empty.length} workshop(s) without a worker.`]);
+  if (empty.length && !idle) a.push(['warn', 'work', `${empty.length} workshop(s) without a worker.`, empty[0].id]);
   if (d.traditionPoints > 0) a.push(['good', 'more', `${d.traditionPoints} tradition point(s) to spend.`]);
   return a;
 }
 
 function renderAlerts() {
   const list = alerts();
-  renderSide(list);
-  $('alerts').replaceChildren(...list.slice(0, 3).map(([k, tab, text]) =>
-    h('div', { class: 'alert ' + k, onclick: () => go(tab) }, img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), text)));
+  const n = wide() ? 4 : 2;
+  $('alerts').replaceChildren(...list.slice(0, n).map(([k, tab, text, room]) =>
+    h('button', { class: 'alert ' + k, title: text, onclick: () => (room ? showRoom(room) : go(tab, true)) }, img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), h('span', null, text))),
+    list.length > n ? h('button', { class: 'alert', onclick: () => go('fortress', true) }, h('span', null, `+${list.length - n} more`)) : '');
   const hot = new Set(list.filter(([k]) => k !== 'warn').map(([, tab]) => tab));
   document.querySelectorAll('.tab').forEach((el) => {
     const dot = el.querySelector('.dot');
@@ -207,20 +222,7 @@ function renderAlerts() {
   });
 }
 
-// ------------------------------------------------------------------ desktop sidebar
-
-function renderSide(list = alerts()) {
-  const side = $('side');
-  if (!side || !G.state) return;
-  const f = F();
-  side.replaceChildren(
-    h('section', { class: 'side-block' }, h('h3', null, 'Stores'), storesView(false)),
-    h('section', { class: 'side-block' }, h('h3', null, 'Needs attention'),
-      list.length ? list.map(([k, tab, text]) => h('button', { class: 'alert ' + k, onclick: () => go(tab) }, img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), h('span', null, text)))
-        : h('p', { class: 'small dim' }, 'All is well in the hold.')),
-    h('section', { class: 'side-block' }, h('h3', null, 'Chronicle'),
-      f.log.slice(-8).reverse().map((l) => h('div', { class: 'log-line ' + l.kind }, h('span', { class: 't' }, ago(l.t)), l.text))));
-}
+bus.alerts = () => alerts();
 
 // ------------------------------------------------------------------ tabs & panel
 
@@ -229,55 +231,85 @@ function buildTabs() {
     img(S.icon(ICON[id]), ''), label)));
 }
 
-const SCREEN = { mines: 'mines', work: 'workshop' };
-function screenFor(tab) { return SCREEN[tab] || 'hold'; }
 const MOOD = { mines: 'industry', work: 'industry', war: 'industry', trade: 'market' };
 
-function go(tab) {
+/**
+ * Open a tab in the menu drawer. Pressing the open tab again closes the drawer. Only the Mines tab
+ * changes the scene; everything else stays in the hold.
+ */
+function go(tab, keep = false) {
+  if (tab === G.tab && !keep) return closeDrawer();
   if (tab !== G.tab) A.sfx('click');
   A.setMood(MOOD[tab] || 'chill');
   G.tab = tab;
-  G.screen = screenFor(tab);
-  if (G.screen !== 'hold') G.build = null;
-  $('scene-wrap').classList.toggle('scroll', G.screen !== 'hold');
-  renderToolbar();
+  if (tab === 'mines') setScreen('mines');
+  else if (G.screen === 'mines') setScreen('hold');
   if (tab !== 'mines') G.focus = null;
   if (tab === 'trade') loadMarket(true);
+  if (popOpen()) closeSheet();
   render();
-  const p = $('panel');
-  if (window.matchMedia('(min-width: 900px)').matches) p.scrollTop = 0;
-  else window.scrollTo({ top: 0, behavior: 'smooth' });
+  $('panel').scrollTop = 0;
+}
+
+function closeDrawer() {
+  if (!G.tab) return;
+  A.sfx('close');
+  G.tab = null;
+  render();
+}
+
+function setScreen(name) {
+  G.screen = name;
+  if (name !== 'hold') G.build = null;
+  $('scene-wrap').classList.toggle('scroll', name !== 'hold');
+  renderToolbar();
 }
 
 function render() {
   if (!G.state) return;
   document.querySelectorAll('.tab').forEach((el) => el.setAttribute('aria-current', el.dataset.tab === G.tab ? 'page' : 'false'));
-  const tab = TABS.find((x) => x[0] === G.tab) || TABS[0];
   const p = $('panel');
-  const y = window.scrollY, py = p.scrollTop;
+  const tab = TABS.find((x) => x[0] === G.tab);
+  p.hidden = !tab;
+  $('scene-wrap').parentElement.classList.toggle('drawer', !!tab);
+  if (!tab) return;
+  const py = p.scrollTop;
   const stores = storesView(false);
   const body = [tab[2]()].flat(3).filter(Boolean);
-  const box = stores ? h('details', { class: 'panel-stores', open: G.storesOpen !== false, ontoggle: (e) => { G.storesOpen = e.target.open; } }, h('summary', null, 'Stores'), stores) : null;
-  // the workshop picker stays on top, the stores follow it
-  const at = body.findIndex((n) => n.classList && n.classList.contains('ws-tabs'));
-  if (box) body.splice(at >= 0 ? at + 1 : 0, 0, box);
-  p.replaceChildren(h('h2', { style: { marginTop: 0 } }, tab[1] === 'Hold' ? 'Your hold' : tab[1]), ...body);
-  renderSide();
-  window.scrollTo(0, y);
+  const box = stores ? h('details', { class: 'panel-stores', open: G.storesOpen === true, ontoggle: (e) => { G.storesOpen = e.target.open; } }, h('summary', null, 'Stores'), stores) : null;
+  p.replaceChildren(
+    h('div', { class: 'panel-head' }, img(S.icon(ICON[tab[0]]), 'icon'), h('h2', null, tab[1] === 'Hold' ? 'Your hold' : tab[1]),
+      h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer }, ico('close'))),
+    ...(box ? [box] : []), ...body);
   p.scrollTop = py;
 }
 
-function onPick(q) {
+/** Look at a room and open its window next to it. Used by the Work tab and by alerts. */
+function showRoom(id) {
+  const c = roomCenter(id);
+  if (!c) return;
+  if (!wide()) closeDrawer();
+  if (G.screen !== 'hold') setScreen('hold');
+  // leave space for the window: to the right on wide screens, below on phones
+  if (wide()) lookAt(c.x, c.y, Math.max(300, freeWidth() - 400));
+  else { camera().zoom = 2; lookAt(c.x, c.y, null, $('scene-wrap').getBoundingClientRect().height * 0.5); }
+  const b = F().buildings.find((x) => x.id === id);
+  requestAnimationFrame(() => { const r = roomRect(id); if (b && r) openRoomSheet(b, toScreen(r.x, r.y, r.w, r.h)); });
+}
+bus.showRoom = showRoom;
+
+function onPick(q, at) {
+  if (!q) { if (popOpen()) closeSheet(); return; }
   if (q.kind === 'bellows') return pump(q.id);
   if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id, machine: q.machine || 0 });
   if (q.kind === 'room') {
     const b = F().buildings.find((x) => x.id === q.id);
-    if (b) { A.sfx('open'); openRoomSheet(b); }
+    if (b) { A.sfx('open'); openRoomSheet(b, at); }
     return;
   }
   if (q.kind === 'dwarf') {
     const d = F().dwarves.find((x) => x.id === q.id);
-    if (d) openDwarfSheet(d);
+    if (d) openDwarfSheet(d, at);
     return;
   }
   if (q.kind === 'layer') {
@@ -287,12 +319,13 @@ function onPick(q) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
-  if (q.kind === 'tab') go(q.id);
+  if (q.kind === 'tab') go(q.id, true);
 }
 
 // ------------------------------------------------------------------ toolbar over the hold
 
 const TOOLS = [['move', 'hand', 'Move rooms', 'Click a room, then click where it should go.'], ['dig', 'dig', 'Dig hallway', 'Click rock next to a room or hallway to dig a tunnel.'],
+  ['door', 'door', 'Door', 'Click a hallway to put a door in its back wall, or take one out. Dwarves use doors to reach the floors above and below.'],
   ['stairs', 'stairs', 'Stairs', 'Click where the top of the stairs should be. They lead one floor down to the right.'], ['fill', 'fill', 'Fill in', 'Click a hallway or stairs to fill it back in.']];
 
 function renderToolbar() {
@@ -301,7 +334,11 @@ function renderToolbar() {
   const onHold = G.screen === 'hold';
   bar.hidden = !G.state;
   const time = h('span', { class: 'clock', title: 'Time of day in Essen. Day and night follow it.' }, berlinTime() + ' · Essen');
-  if (!onHold) { bar.replaceChildren(time); return; }
+  if (!onHold) {
+    bar.replaceChildren(h('div', { class: 'tool-row' },
+      h('button', { class: 'tool', onclick: () => { if (G.tab === 'mines') go('mines'); else setScreen('hold'); } }, img(S.icon('fortress'), 'icon s'), 'Back to the hold'), time));
+    return;
+  }
   const b = G.build;
   bar.replaceChildren(...[
     h('div', { class: 'tool-row' },
@@ -310,7 +347,7 @@ function renderToolbar() {
       h('button', { class: 'tool' + (b ? ' on' : ''), onclick: () => { G.build = b ? null : { tool: 'move', held: null }; renderToolbar(); } }, img(S.icon('build'), 'icon s'), b ? 'Done' : 'Build'),
       time),
     b ? h('div', { class: 'tool-row' }, TOOLS.map(([id, icon, label]) => h('button', { class: 'tool' + (b.tool === id ? ' on' : ''), onclick: () => { b.tool = id; b.held = null; renderToolbar(); } }, img(S.icon(icon), 'icon s'), label))) : null,
-    b ? h('div', { class: 'tool-hint' }, b.held ? 'Now click where the room should go. Right click or Esc to cancel.' : TOOLS.find((x) => x[0] === b.tool)[3]) : null].filter(Boolean));
+    b && helpOn() ? h('div', { class: 'tool-hint' }, b.held ? 'Now click where the room should go. Right click or Esc to cancel.' : TOOLS.find((x) => x[0] === b.tool)[3]) : null].filter(Boolean));
 }
 
 // ------------------------------------------------------------------ timers
@@ -348,10 +385,13 @@ async function start() {
   setState(await api.get('/state'));
   $('app').hidden = false;
   document.documentElement.style.setProperty('--top-h', document.querySelector('.top').offsetHeight + 'px');
-  initCanvas($('scene'), $('scene-wrap'), { hold: holdScreen, mines: minesScreen, workshop: workshopScreen }, onPick);
+  initCanvas($('scene'), $('scene-wrap'), { hold: holdScreen, mines: minesScreen }, onPick);
   renderToolbar();
   setInterval(() => { if (G.screen !== 'hold' || !G.build) renderToolbar(); }, 30000);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && G.build) { G.build.held = null; renderToolbar(); } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    if (G.build) { G.build.held = null; renderToolbar(); } else closeDrawer();
+  });
   setInterval(poll, 5000);
   setInterval(ambience, 1000);
   $('audio-btn').addEventListener('click', openAudioSheet);
@@ -382,8 +422,9 @@ async function boot() {
 }
 
 G.screen = 'hold';
+G.tab = null;
 G.heat = currentHeat;
 G.act = (a) => bus.act(a).then(() => renderToolbar());
 G.onBuildChange = () => renderToolbar();
-window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera };
+window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom };
 boot();

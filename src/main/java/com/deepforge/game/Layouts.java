@@ -59,6 +59,28 @@ public final class Layouts {
         return fits(f, b.id, p[0], p[1], w + extra);
     }
 
+    /**
+     * Where the room can stand once it has one more machine: where it is (growing right), shifted left,
+     * or else the nearest free spot (same floor first). Null if the hold has no space that wide.
+     */
+    public static int[] spaceToGrow(Fortress f, Building b) {
+        int[] p = f.layout.rooms.get(b.id);
+        if (p == null) return null;
+        int w = width(b) + MACHINE_CELLS.getOrDefault(b.type, 0);
+        if (fits(f, b.id, p[0], p[1], w)) return p;
+        int shift = w - width(b);
+        if (fits(f, b.id, p[0] - shift, p[1], w)) return new int[]{p[0] - shift, p[1]};
+        int[] best = null;
+        int bestD = Integer.MAX_VALUE;
+        for (int fl = 0; fl < FLOORS; fl++)
+            for (int c = SHAFT; c + w <= COLS; c++) {
+                if (!fits(f, b.id, c, fl, w)) continue;
+                int d = Math.abs(fl - p[1]) * 1000 + Math.abs(c - p[0]);
+                if (d < bestD) { bestD = d; best = new int[]{c, fl}; }
+            }
+        return best;
+    }
+
     /** Make room for one more machine: hallway cells under the new bay become part of the room. */
     static void grow(Fortress f, Building b) {
         int[] p = f.layout.rooms.get(b.id);

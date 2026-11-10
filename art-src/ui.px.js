@@ -37,3 +37,6 @@ icon("fill", (c) => { c.rect(1, 6, 12, 7, "]"); c.hline(1, 6, 12, "}"); c.rect(5
 icon("cheat", (c) => { c.poly([7, 0, 9, 5, 14, 5, 10, 8, 12, 13, 7, 10, 2, 13, 4, 8, 0, 5, 5, 5], "j"); c.px(7, 5, "8"); });
 icon("zoom_in", (c) => { c.ring(6, 6, 4, "c"); c.line(9, 9, 13, 13, "c", 2); c.hline(4, 6, 5, "c"); c.vline(6, 4, 5, "c"); });
 icon("zoom_out", (c) => { c.ring(6, 6, 4, "c"); c.line(9, 9, 13, 13, "c", 2); c.hline(4, 6, 5, "c"); });
+icon("info", (c) => { c.circ(7, 7, 6, "n"); c.circ(7, 7, 5, "B"); c.rect(6, 6, 2, 5, "C"); c.rect(6, 3, 2, 2, "C"); c.px(5, 6, "C"); c.hline(5, 10, 4, "C"); });
+icon("menu", (c) => { for (const y of [2, 6, 10]) { c.rect(1, y, 12, 2, "c"); } });
+icon("door", (c) => { c.rect(3, 3, 8, 10, "W"); c.ellipse(7, 4, 4, 3, "W"); c.rect(4, 4, 6, 9, "v"); for (const x of [6, 8]) c.vline(x, 3, 10, "W"); c.px(9, 8, "j"); c.hline(1, 13, 12, "5"); });

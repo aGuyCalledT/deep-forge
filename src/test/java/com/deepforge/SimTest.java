@@ -199,6 +199,26 @@ class SimTest {
     }
 
     @Test
+    void aWorkshopWithoutSpaceMovesWhenUpgraded() {
+        Fortress f = fresh(12);
+        Market m = Market.inMemory(12, T0);
+        Layouts.ensure(f);
+        Building smelter = f.buildings.stream().filter(x -> x.type.equals("smelter")).findFirst().orElseThrow();
+        int[] before = f.layout.rooms.get(smelter.id).clone();
+        assertFalse(Layouts.canGrow(f, smelter), "the start plan packs the workshops side by side");
+        Rules.Cost c = Rules.upgradeCost(smelter);
+        f.coins += c.coins() + 10;
+        c.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
+        act(f, m, T0, "type", "upgrade", "building", smelter.id);
+        assertEquals(2, smelter.machines);
+        int[] after = f.layout.rooms.get(smelter.id);
+        assertFalse(before[0] == after[0] && before[1] == after[1]);
+        // nothing overlaps it
+        for (int x = after[0]; x < after[0] + Layouts.width(smelter); x++)
+            assertEquals("room:" + smelter.id, Layouts.at(f, x, after[1], null));
+    }
+
+    @Test
     void roomsHallsAndStairsCanBePlaced() {
         Fortress f = fresh(42);
         Market m = Market.inMemory(42, T0);

@@ -222,14 +222,24 @@ public final class Actions {
         check(canPay(f, c), "Not enough coins or materials.");
         Layouts.ensure(f);
         boolean grows = isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
-        check(!grows || Layouts.canGrow(f, b), "The " + Content.BUILDINGS.get(b.type).name().toLowerCase()
-                + " grows to the right when upgraded, but something is in the way. Move the room or fill in what is there.");
+        String name = Content.BUILDINGS.get(b.type).name();
+        int[] spot = grows ? Layouts.spaceToGrow(f, b) : null;
+        check(!grows || spot != null, "The " + name.toLowerCase() + " gets wider when upgraded, but no floor has space for it. "
+                + "Dig out more of the hold or move rooms closer together.");
         pay(f, c);
+        boolean moved = false;
+        if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
+            int[] p = f.layout.rooms.get(b.id);
+            moved = p[1] != spot[1] || Math.abs(p[0] - spot[0]) > Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
+            Layouts.moveRoom(f, b.id, spot[0], spot[1]);
+            Layouts.grow(f, b);
+            b.machines = machines(b) + 1;
+        }
         b.level++;
-        if (grows) { Layouts.grow(f, b); b.machines = machines(b) + 1; }
         Layouts.ensure(f);
         fortressXp(f, 5 * b.level);
-        log(f, "info", Content.BUILDINGS.get(b.type).name() + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
+        log(f, "info", name + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
+                + (moved ? " It needed more space, so it moved to floor " + (f.layout.rooms.get(b.id)[1] + 1) + "." : "")
                 + (grows ? " A new machine stands in it: put another dwarf to work there." : "")));
     }
 

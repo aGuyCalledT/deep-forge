@@ -598,7 +598,7 @@ export const holdScreen = {
       if (x >= d.sx && x < d.sx + d.spr.width && y >= d.sy && y < d.sy + d.spr.height && opaque(d.spr, x - d.sx, y - d.sy)) return { kind: 'dwarf', id: d.id, sprite: d.spr, sx: d.sx, sy: d.sy };
     }
     if (!G_) return null;
-    for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
+    for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return machineHit(r, x, y) || { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
     const w = W();
     if (y < SURF && y > GRASS - 62) {
       const X = SURFACE;
@@ -618,6 +618,7 @@ export const holdScreen = {
       const name = byId.buildings[r.b.type].name.split(' ')[0].replace("'s", '');
       sign(ctx, name + (r.b.level > 1 ? ' ' + r.b.level : ''), r.x + r.pw / 2, r.y + 9, G.ws === r.b.id ? '#e3c06e' : '#fbf4e6');
       if (canRun(r.b, idle)) S.draw(ctx, 'arrow_' + (Math.floor(t * 3) % 2), r.x + r.pw / 2 - 5, r.y + 18);
+      machineOverlay(ctx, t, r);
       if (f.siege && byId.buildings[r.b.type].kind !== 'passive') { ctx.fillStyle = 'rgba(169,71,60,0.25)'; ctx.fillRect(r.x, r.y, r.pw, RH); }
     }
     for (const dw of drawn) if (dw.a.want && dw.a.want.sleep && !dw.a.mode) {
@@ -630,6 +631,52 @@ export const holdScreen = {
   dragging() { return false; },
   cancel() { if (G.build) { G.build.held = null; if (G.onBuildChange) G.onBuildChange(); } },
 };
+
+/** The bellows of a smelter and the quench barrel of a forge waiting for it: things you use by clicking. */
+function machineHit(r, x, y) {
+  const b = r.b;
+  if (F().siege) return null;
+  if (b.type === 'smelter') for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
+    const m = S.machineAt(b, i), [fx, , fw] = m.a.fire, x0 = r.x + m.x + fx - 13, ww = fw + (i ? 26 : 43);
+    if (x >= x0 && x < x0 + ww && y >= r.y + 24 && y < r.y + 90) return { kind: 'bellows', id: b.id, rect: [x0, r.y + 24, ww, 66], round: true };
+  }
+  if (b.type === 'forge') for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
+    const job = jobOf(b, i), m = S.machineAt(b, i), q = m.a.quench || m.a.anvil;
+    if (!job || !job.quenching || !q) continue;
+    const qx = r.x + m.x + q[0];
+    if (x >= qx - 10 && x < qx + 10 && y >= r.y + 62 && y < r.y + 92) return { kind: 'quench', id: b.id, machine: i, rect: [qx - 9, r.y + 66, 18, 24], round: true };
+  }
+  return null;
+}
+
+/** Heat gauge beside the furnace, and a blinking QUENCH over a forge with hot metal. */
+function machineOverlay(ctx, t, r) {
+  const b = r.b;
+  if (b.type === 'smelter') {
+    const heat = G.heat ? G.heat(b.id) : 0;
+    const tx = r.x + S.META.ROOMS.smelter.w * CELL - 16, ty = r.y + 26, hh = 44;
+    ctx.fillStyle = '#1d1b2c'; ctx.fillRect(tx - 1, ty - 1, 6, hh + 6);
+    ctx.fillStyle = '#33364a'; ctx.fillRect(tx, ty, 4, hh);
+    const fill = Math.round((heat / 100) * (hh - 2));
+    for (let i = 0; i < fill; i++) { ctx.fillStyle = S.mix('#a9473c', '#ffd98e', i / hh); ctx.fillRect(tx + 1, ty + hh - 1 - i, 2, 1); }
+    ctx.fillStyle = heat > 5 ? '#d9704a' : '#623e45'; ctx.fillRect(tx - 1, ty + hh, 6, 4);
+  }
+  if (b.type === 'forge' && Math.floor(t * 3) % 2) for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
+    const job = jobOf(b, i), m = S.machineAt(b, i), q = m.a.quench || m.a.anvil;
+    if (job && job.quenching && q) sign(ctx, 'QUENCH!', r.x + m.x + q[0], r.y + 54, '#e3c06e');
+  }
+}
+
+/** The workshop or room closest to a world point (for sounds). */
+export function roomAt(p) {
+  const g = G_ || grid();
+  let best = null, bd = 1e9;
+  for (const r of g.rooms) {
+    const d = Math.hypot(r.x + r.pw / 2 - p.x, (r.y + RH / 2 - p.y) * 2);
+    if (d < bd) { bd = d; best = r; }
+  }
+  return best && bd < 160 ? best.b : null;
+}
 
 const flipCache = new WeakMap();
 function flipped(spr) {
@@ -757,6 +804,13 @@ function buildClick(x, y, hit) {
   if (b.tool === 'stairs') G.act({ type: 'stairs', col: cell.c, floor: cell.f });
   if (b.tool === 'fill') G.act({ type: 'fill', col: cell.c, floor: cell.f });
   return true;
+}
+
+/** World rectangle of a room. */
+export function roomRect(id) {
+  const g = G_ || grid();
+  const r = g.rooms.find((q) => q.b.id === id);
+  return r ? { x: r.x, y: r.y, w: r.pw, h: RH } : null;
 }
 
 /** World position of a room (for focusing the camera). */

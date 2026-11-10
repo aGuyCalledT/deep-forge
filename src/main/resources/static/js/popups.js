@@ -1,45 +1,41 @@
 // Windows that open when you click something in the game: a room, a dwarf. Plus the cheat tools.
 import { G, F, D, byId, fmt, goodName, fullName, buildingName, jobLabel } from './data.js';
-import { h, img, openSheet, refreshSheet, closeSheet, bus, ico, toast } from './ui.js';
+import { h, img, openSheet, refreshSheet, closeSheet, bus, ico, toast, info } from './ui.js';
 import * as S from './sprites.js';
 import { workCard } from './panels-work.js';
 import { dwarfCard, EFFECT, upgradeBtn } from './panels-base.js';
 
-export function openRoomSheet(b) {
+export function openRoomSheet(b, at) {
   G.ws = b.id;
   openSheet(() => {
     const cur = F().buildings.find((x) => x.id === b.id) || b;
     const t = byId.buildings[cur.type];
-    const pic = img(S.room(cur), 'room-pic');
-    if (t.kind !== 'passive') return h('div', null, pic, workCard(cur),
-      h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('work'); } }, 'Open the workshop screen'));
+    if (t.kind !== 'passive') return workCard(cur);
     const f = F();
     const extra = [];
     if (cur.type === 'tavern') {
       const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy);
-      extra.push(h('p', { class: 'small muted' }, idle.length ? `${idle.length} idle dwarf(s) here. Dwarves on their break come by too.` : 'Nobody idle. Dwarves drop by on their breaks.'),
-        f.noAle ? h('p', { class: 'small bad-t' }, 'No ale! The tavern is no fun without it. Staff the brewery.') : null);
+      extra.push(h('p', { class: 'small muted' }, idle.length ? `${idle.length} idle dwarf(s) here.` : 'Nobody idle right now.'),
+        f.noAle ? h('p', { class: 'small bad-t' }, 'No ale! Staff the brewery.') : null);
     }
-    if (cur.type === 'quarters') extra.push(h('p', { class: 'small muted' }, 'At night, dwarves who are off work sleep here.'));
     if (cur.type === 'warehouse') extra.push(h('p', { class: 'small' }, `${fmt(D().used)} / ${fmt(D().capacity)} stored.`),
       h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('fortress'); } }, 'See the stockpile'));
     if (cur.type === 'barracks') extra.push(h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('war'); } }, 'Warriors and defence'));
-    return h('div', null, pic,
-      h('div', { class: 'row between' }, h('h2', null, buildingName(cur)), h('span', { class: 'muted' }, 'Level ' + cur.level)),
-      h('p', { class: 'small muted' }, t.note),
+    return h('div', null,
+      h('h2', null, buildingName(cur), info(t.note)), h('p', { class: 'small muted' }, 'Level ' + cur.level),
       EFFECT[cur.type] ? h('p', null, EFFECT[cur.type](cur)) : null,
       ...extra,
       upgradeBtn(cur));
-  });
+  }, at || null);
 }
 
-export function openDwarfSheet(d) {
+export function openDwarfSheet(d, at) {
   openSheet(() => {
     const cur = F().dwarves.find((x) => x.id === d.id);
     if (!cur) return h('p', null, 'This dwarf is gone.');
     return h('div', null, dwarfCard(cur),
       G.state.cheats ? h('button', { class: 'btn small', onclick: () => lookSheet(cur) }, ico('cheat'), 'Change looks (cheat)') : null);
-  });
+  }, at || null);
 }
 
 // ------------------------------------------------------------------ cheats
