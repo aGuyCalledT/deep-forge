@@ -623,7 +623,13 @@ export function roomLights(r) {
     }
   }
   const tier = (S.META.TIER_LIGHTS || {})[b.type] || {};
-  for (const [x, y, rr, col] of tier[S.roomTier(b)] || []) out.push({ x: r.x + x, y: r.y + y, r: rr, color: col, flicker: 1, power: 0.7 });
+  const T = S.roomTier(b);
+  for (const [x, y, rr, col] of tier[T] || (T === 3 ? tier[2] : null) || []) out.push({ x: r.x + x, y: r.y + y, r: rr, color: col, flicker: 1, power: 0.7 });
+  if (T === 3) {   // the crystal lamps of the king's hall (positions as in rooms.px.js, royalTouches and bay)
+    const v = S.roomVariant(b), base = (S.META.ROOMS[b.type].w - 1) * CELL;
+    for (let x = 30 + (v ? 12 : 0); x < base - 10; x += 72) out.push({ x: r.x + x, y: r.y + 30, r: 30, color: '#aacde4', power: 0.8 });
+    for (let i = 1; i < n; i++) { const m = S.machineAt(b, i), bw = S.META.BAYS[b.type].w * CELL; out.push({ x: r.x + m.x + Math.floor(bw / 2) + (S.roomVariant(b, i) ? 8 : -8), y: r.y + 30, r: 26, color: '#aacde4', power: 0.7 }); }
+  }
   return out;
 }
 

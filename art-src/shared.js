@@ -70,9 +70,10 @@ var BAYS = {
   brewery:    { w: 2, worker: [40, 90], face: -1, kettle: [18, 90], steam: [21, 44], lights: [[18, 66, 32, "#ffb070"]] },
 };
 
-// Rooms change their look when they grow: tier 0 at level 1 (dug out), 1 at level 2 (settled), 2 from level 3 (grand).
+// Rooms change their look when they grow: tier 0 at level 1 (dug out), 1 at level 2 (settled), 2 from level 3 (grand),
+// 3 from level 5 (the king's hall: dark stone, gold, glowing runes, crystal lamps).
 // Every tier has two variants; the game picks one per room so no two rooms look the same.
-var ROOM_TIERS = [1, 2, 3];
+var ROOM_TIERS = [1, 2, 3, 5];
 var ROOM_VARIANTS = 2;
 // extra lights per tier (chandeliers, crystal lamps)
 var TIER_LIGHTS = {

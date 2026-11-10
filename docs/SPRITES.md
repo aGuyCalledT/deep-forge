@@ -36,9 +36,10 @@ Alle Namen stehen in `static/art/atlas.json`. Neu laden reicht.
 
 ## Räume: Stufen, Varianten, Maschinen
 
-Jeder Raum gibt es dreimal: `room_<typ>_<stufe>_<variante>`. Stufe 0 „ausgehöhlt“ (Fels, Fackeln, Fässer als Tisch) ab
+Jeden Raum gibt es viermal: `room_<typ>_<stufe>_<variante>`. Stufe 0 „ausgehöhlt“ (Fels, Fackeln, Fässer als Tisch) ab
 Gebäudestufe 1, Stufe 1 „eingerichtet“ (Bretter, Ziegel, Stein, Laternen) ab Stufe 2, Stufe 2 „prächtig“
-(Täfelung, Goldfries, Fliesen, Kronleuchter) ab Stufe 3 (`ROOM_TIERS` in `shared.js`). Je zwei Varianten pro Stufe,
+(Täfelung, Goldfries, Fliesen, Kronleuchter) ab Stufe 3, Stufe 3 „Königshalle“ (dunkler Stein, Goldfries, Runentafeln,
+Marmorboden, Kristall-Lampen; Möbel wie Stufe 2) ab Stufe 5 (`ROOM_TIERS` in `shared.js`). Je zwei Varianten pro Stufe,
 das Spiel wählt sie fest nach der Gebäude-ID, damit zwei Schmieden nicht gleich aussehen.
 
 Werkstätten bekommen pro zusätzlicher Maschine eine Erweiterung `bay_<typ>_<stufe>_<variante>`, die rechts angesetzt
@@ -82,8 +83,12 @@ Posen: `idle talk sit sitTalk eat drink walk work climb sleep`, Stimmung `happy 
 
 ## Tiefe
 
-- Der Fels ist die vordere Ebene: abgerundete Steine mit Licht oben links (`rock`), dazu im Spiel leichte Schichten,
-  Wurzeln unter der Erde und nach unten dunkler, kühler werdendes Gestein (`depthLayers` in `hold.js`).
+- Die Festung liegt in einem Berg: links das Tal (Markt, Zelt, Winde, Mauer, Karawanen), ein Tor (`gate`) mit Tunnel
+  führt auf Etage `ENTRY` (2) zum Schacht, darüber zwei Etagen über dem Talboden. Die Bergform kommt aus `mtop(x)` in
+  `hold.js` (Steilwand am Tor, Hang, Gipfel mit Schnee, Gras und kleine Tannen am Rand).
+- Der Fels ist die vordere Ebene: abgerundete Steine mit Licht oben links in vier Kacheln (`rock`, `rock_b`, `rock_c`,
+  `rock_d`, gleicher Rand, andere Steine innen, gewählt per Hash), dazu leichte Schichten, Wurzeln unter dem Tal und
+  nach unten dunkler, kühler werdendes Gestein (`depthLayers` in `hold.js`).
 - Räume, Gänge, Treppen und Schacht sind hineingeschnitten: der Fels wirft einen weichen Schatten nach rechts unten
   hinein, die untere und rechte Kante jeder Öffnung fängt Licht. Beide Ebenen werden je Grundriss einmal gezeichnet.
 - Am Himmel ziehen Berge (mit Schnee) und bewaldete Hügel beim Verschieben langsamer mit als die Welt (Parallaxe),

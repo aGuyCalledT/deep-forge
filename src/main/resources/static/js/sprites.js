@@ -310,7 +310,7 @@ export function torch(frame) { return sprite(`torch_${((frame % 3) + 3) % 3}`); 
 // ------------------------------------------------------------------ rooms
 
 
-/** Look tier of a room: 0 dug out, 1 settled, 2 grand (ROOM_TIERS gives the level each one starts at). */
+/** Look tier of a room: 0 dug out, 1 settled, 2 grand, 3 king's hall (ROOM_TIERS gives the level each one starts at). */
 export function roomTier(b) {
   const t = META.ROOM_TIERS || [1, 2, 3], lv = b.level || 1;
   let k = 0; for (let i = 0; i < t.length; i++) if (lv >= t[i]) k = i;
