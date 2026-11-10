@@ -20,6 +20,7 @@ export const SFX = {
   fanfare: { file: 'fanfare', vol: 0.5 },
   chime: { file: 'table-chime', vol: 0.5 },
   coins: { file: 'coins', vol: 0.55, fallback: 'chime' },
+  collect: { file: 'collect', vol: 0.6, fallback: 'fanfare' },
   bell: { file: 'bell2', vol: 0.5 },
   alarm: { file: 'bell', vol: 0.6 },
   death: { file: 'death-toll', vol: 0.6, fallback: null },

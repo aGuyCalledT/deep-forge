@@ -33,7 +33,8 @@ Ersatz-Sound oder gar nichts. So kann jeder Platzhalter jetzt schon im Code steh
 | `levelup` | **`level-up`** (fehlt, sonst `fanfare`) | Festungsstufe |
 | `fanfare` | `fanfare` | Meisterwerk, Expedition zurück, neue Schicht |
 | `chime` | `table-chime` | perfektes Abschrecken, Tradition gekauft |
-| `coins` | **`coins`** (fehlt, sonst `table-chime`) | Karawane zurück |
+| `coins` | **`coins`** (fehlt, sonst `table-chime`) | Karawane zurück, Beute eingesammelt |
+| `collect` | **`collect`** (fehlt, sonst `fanfare`) | „Collect“ gedrückt: die Beute fliegt ins Lager |
 | `bell` | `bell2` | Zuwanderer |
 | `alarm` | `bell` | Vorräte leer |
 | `horn` | **`goblin-horn`** (fehlt, sonst `bell`) | Überfall angekündigt |

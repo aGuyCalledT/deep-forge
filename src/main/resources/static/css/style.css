@@ -392,3 +392,20 @@ label.color { display: inline-flex; flex-direction: column; align-items: flex-st
 .ws-row.on { box-shadow: 0 0 0 2px rgba(240, 195, 106, 0.5), var(--shadow-s); }
 .ws-row .thumb { width: 66px; height: 44px; object-fit: contain; image-rendering: pixelated; border-radius: 8px; flex: none; }
 .ws-row .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+/* ---------- loot to collect */
+.report { border: 1px solid rgba(227, 192, 110, 0.35); background: linear-gradient(180deg, rgba(227, 192, 110, 0.12), rgba(227, 192, 110, 0.03)); }
+.report.bad { border-color: rgba(236, 133, 119, 0.35); }
+.report h3 { color: var(--gold); }
+.loot { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.loot-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 999px; background: rgba(255, 240, 220, 0.07); }
+.loot-item .icon { width: 24px; height: 24px; }
+.btn.collect { width: 100%; background: linear-gradient(180deg, #f0c66e, #d9a24a); color: #3a2414; font-weight: 600; }
+.btn.collect.pop { animation: collect-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes collect-pop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.report.collected { animation: report-out 0.6s 0.25s ease-in forwards; }
+@keyframes report-out { to { opacity: 0; transform: translateY(-6px) scale(0.98); } }
+.fly { position: fixed; z-index: 100; pointer-events: none; image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(255, 217, 142, 0.9)); }
+#res.gain { animation: res-gain 0.4s ease-out; }
+@keyframes res-gain { 40% { filter: brightness(1.6) drop-shadow(0 0 6px rgba(255, 217, 142, 0.8)); } }
+@media (prefers-reduced-motion: reduce) { .btn.collect.pop, .report.collected, #res.gain { animation: none; } }

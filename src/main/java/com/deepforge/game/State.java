@@ -25,6 +25,7 @@ public final class State {
         public List<LayerState> layers = new ArrayList<>();
         public List<Caravan> caravans = new ArrayList<>();
         public List<Expedition> expeditions = new ArrayList<>();
+        public List<Report> reports = new ArrayList<>();   // returned caravans and expeditions whose loot waits to be collected
         public List<Offer> offers = new ArrayList<>();
         public double offersAt;
         public List<Threat> threats = new ArrayList<>();
@@ -244,6 +245,21 @@ public final class State {
         public String name;
         public double power;
         public double until;
+    }
+
+    /** What a caravan or expedition brought home. The goods, coins and artifacts are added when the player collects. */
+    public static class Report {
+        public int id;
+        public String kind;                 // caravan | expedition
+        public int ref;                     // caravan or expedition id
+        public String title;
+        public boolean bad;                 // things went wrong (bandits, deaths)
+        public double at;
+        public List<String> lines = new ArrayList<>();
+        public Map<String, Integer> goods = new TreeMap<>();
+        public double coins;
+        public List<Artifact> artifacts = new ArrayList<>();
+        public List<String> extras = new ArrayList<>();   // things that already happened: new dwarves, routes, blueprints
     }
 
     public static class Artifact {

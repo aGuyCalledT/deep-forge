@@ -66,6 +66,11 @@ class SimTest {
         assertEquals("caravan:" + f.caravans.get(0).id, merchant.busy);
         Sim.advance(f, T0 + 2.1 * 3600, m);
         assertTrue(f.caravans.isEmpty(), "caravan should be home after 2 hours");
+        // the coins wait in a report until they are collected
+        assertEquals(1, f.reports.size());
+        assertEquals(before - 50, f.coins, 1e-9);
+        act(f, m, T0 + 2.1 * 3600, "type", "collect", "id", f.reports.get(0).id);
+        assertTrue(f.reports.isEmpty());
         // robbed caravans bring half; a normal one sells 30 bars for ~300 coins
         if (f.log.stream().noneMatch(l -> l.text.contains("Bandits")))
             assertTrue(f.coins > before + 150, "coins " + f.coins + " before " + before);
@@ -122,6 +127,13 @@ class SimTest {
             Expedition e = f.expeditions.get(0);
             assertNotEquals("active", e.state);
             if (f.blueprints.contains("steelmaking")) ok++;
+            // a report waits; collecting it also clears the finished expedition
+            if (e.state.equals("done")) {
+                assertEquals(1, f.reports.size());
+                act(f, m, T0 + 4 * 3600, "type", "collect", "id", -1);
+                assertTrue(f.reports.isEmpty());
+                assertTrue(f.expeditions.isEmpty());
+            }
         }
         assertTrue(ok >= 7, "most cellar runs should succeed, got " + ok);
     }

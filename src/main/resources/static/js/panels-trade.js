@@ -3,6 +3,7 @@ import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstima
 import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico } from './ui.js';
 import * as S from './sprites.js';
 import { api } from './api.js';
+import { reportCards } from './collect.js';
 
 let marketAt = 0;
 
@@ -26,6 +27,7 @@ export function renderTrade() {
   const out = [];
   const merchants = f.dwarves.filter((x) => x.job === 'merchant' && !x.busy);
   const slots = d.caravanSlots - f.caravans.length;
+  out.push(...reportCards('caravan'));
   out.push(h('div', { class: 'card' },
     h('div', { class: 'row between' }, h('h3', null, 'Caravans'), h('span', { class: 'muted' }, `${f.caravans.length} / ${d.caravanSlots} on the road`)),
     h('p', { class: 'small muted' }, 'Merchants carry goods to a city, sell at the price on arrival, buy what you ordered and come back. Prices move while they travel, and roads can be dangerous.'),
@@ -140,6 +142,7 @@ export function renderExplore() {
   const f = F(), d = D(), t = now();
   const out = [];
   const active = f.expeditions.filter((e) => e.state === 'active');
+  out.push(...reportCards('expedition'));
   out.push(h('p', { class: 'small muted' }, `Expeditions: ${active.length} / ${d.expeditionSlots} out. Up to ${d.partyMax} dwarves per party. `
     + 'Dwarves can be hurt or die out there. Bring supplies and good gear.'));
 

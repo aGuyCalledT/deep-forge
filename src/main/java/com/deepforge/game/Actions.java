@@ -90,6 +90,13 @@ public final class Actions {
             case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
             case "door" -> Layouts.door(f, num(a, "col", -1), num(a, "floor", -1));
+            case "collect" -> {
+                int id = num(a, "id", -1);
+                Report rep = f.reports.stream().filter(x -> x.id == id || id == -1).findFirst().orElse(null);
+                check(rep != null, "Nothing to collect.");
+                if (id == -1) for (Report x : new ArrayList<>(f.reports)) collect(f, x);
+                else collect(f, rep);
+            }
             case "removeMachine" -> removeMachine(f, a);
             case "addMachine" -> addMachine(f, a);
             case "digMany" -> Layouts.digMany(f, cells(a));

@@ -315,6 +315,32 @@ public final class Rules {
         }
     }
 
+    // ------------------------------------------------------------ reports to collect
+
+    public static final int MAX_REPORTS = 20;
+
+    /** A new report waiting to be collected. The oldest is collected on its own when too many pile up. */
+    public static Report report(Fortress f, String kind, int ref, String title, double t) {
+        while (f.reports.size() >= MAX_REPORTS) collect(f, f.reports.get(0));
+        Report r = new Report();
+        r.id = f.nextId++;
+        r.kind = kind;
+        r.ref = ref;
+        r.title = title;
+        r.at = t;
+        f.reports.add(r);
+        return r;
+    }
+
+    /** Put a report's goods, coins and artifacts into the hold. */
+    public static void collect(Fortress f, Report r) {
+        f.coins += r.coins;
+        for (Map.Entry<String, Integer> e : r.goods.entrySet()) add(f, e.getKey(), e.getValue());
+        f.artifacts.addAll(r.artifacts);
+        f.reports.remove(r);
+        if (r.kind.equals("expedition")) f.expeditions.removeIf(e -> e.id == r.ref && !e.state.equals("active"));
+    }
+
     // ------------------------------------------------------------ costs
 
     public record Cost(double coins, Map<String, Integer> goods) {}

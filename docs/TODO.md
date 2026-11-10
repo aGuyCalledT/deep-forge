@@ -78,7 +78,7 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 
 ## Sounds (Platzhalter, Dateien fehlen noch)
 
-Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `build`, `level-up`, `coins`, `goblin-horn`, `monster-roar`,
+Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-up`, `coins`, `goblin-horn`, `monster-roar`,
 `death-toll`, `dwarf-cheer`, `defeat`, `door-creak`, `bellows-puff`, `quench-hiss`, `caravan-depart`,
 `expedition-depart`, `error`, `furnace-roar`, `grindstone-loop`, `brewing-bubbles`, `mine-ambience`,
 `tavern-ambience`, `night-ambience`.

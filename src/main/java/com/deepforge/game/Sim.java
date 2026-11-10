@@ -534,8 +534,11 @@ public final class Sim {
                     c.bought.clear();
                     coins = coins / 2;
                 }
-                f.coins += coins;
-                for (Map.Entry<String, Integer> e : c.bought.entrySet()) add(f, e.getKey(), e.getValue());
+                Report rep = Rules.report(f, "caravan", c.id, "Caravan back from " + city.name(), t);
+                rep.coins = Math.round(coins);
+                rep.goods.putAll(c.bought);
+                rep.lines.addAll(c.report);
+                rep.bad = c.report.stream().anyMatch(s -> s.startsWith("Bandits"));
                 for (int id : c.merchants) {
                     Dwarf d = dwarf(f, id);
                     if (d != null) {
@@ -551,7 +554,7 @@ public final class Sim {
                 fortressXp(f, c.revenue / 10);
                 log(f, t, c.report.stream().anyMatch(s -> s.startsWith("Bandits")) ? "bad" : "good",
                         "Caravan back from " + city.name() + ": " + String.join(" ", c.report)
-                                + " Brought home " + Math.round(coins) + " coins.");
+                                + " Brought home " + Math.round(coins) + " coins. Collect it in Trade.");
                 f.caravans.remove(c);
             }
         }

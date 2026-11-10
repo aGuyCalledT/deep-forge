@@ -198,6 +198,7 @@ function alerts() {
   if (f.storageFull) a.push(['warn', 'fortress', 'Warehouse full - mining stopped.']);
   const quench = f.buildings.filter((b) => b.job && b.job.quenching);
   if (quench.length) a.push(['good', 'work', 'Hot metal ready to quench at the forge!', quench[0].id]);
+  for (const r of f.reports || []) a.push(['good', r.kind === 'caravan' ? 'trade' : 'explore', `${r.title}: collect the loot.`]);
   const choices = f.expeditions.filter((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen);
   if (choices.length) a.push(['good', 'explore', `An expedition needs your decision.`]);
   const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
