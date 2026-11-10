@@ -1,31 +1,54 @@
 // Tiles and props for the hold, the surface and the mines.
 
 // ---------------------------------------------------------------- rock around the rooms (warm, cut by hand)
-sprite("rock", { w: 32, h: 32 }, (c) => {
-  // rounded stones set in dark crevices, lit from the top left; wraps on all sides so it tiles
-  c.rect(0, 0, 32, 32, "(");
-  const px = (x, y, k) => c.px(((x % 32) + 32) % 32, ((y % 32) + 32) % 32, k);
-  // rows: [y, height, [[x, width, dark?], ...]]
-  const rows = [
-    [0, 8, [[1, 9, 0], [11, 7, 1], [19, 13, 0]]],
-    [8, 9, [[5, 11, 1], [17, 8, 0], [26, 11, 0]]],
-    [17, 7, [[0, 6, 0], [7, 12, 0], [20, 9, 1], [30, 2, 0]]],
-    [24, 8, [[3, 8, 0], [12, 6, 1], [19, 12, 0]]],
-  ];
-  for (const [y0, h, stones] of rows) for (const [x0, w0, dark] of stones) {
-    const w = w0 - 1, hh = h - 1;   // one pixel crevice right and below
-    const fill = dark ? ")" : "[", lit = dark ? "[" : "]", shade = dark ? "(" : ")";
-    for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) {
-      const corner = (i === 0 || i === w - 1) && (j === 0 || j === hh - 1);
-      if (corner) continue;                                  // rounded corners
-      let k = fill;
-      if (j === 0 || (i === 0 && j < hh - 2)) k = lit;       // light on the top and left
-      if (j === hh - 1 || (i === w - 1 && j > 1)) k = shade; // shade on the bottom and right
-      px(x0 + i, y0 + j, k);
+// rows: [y, height, [[x, width, kind], ...]], kind 0 = plain, 1 = dark, 2 = odd (a warmer stone), 3 = cracked
+function rockTile(name, rows) {
+  sprite(name, { w: 32, h: 32 }, (c) => {
+    // rounded stones set in dark crevices, lit from the top left; wraps on all sides so it tiles
+    c.rect(0, 0, 32, 32, "(");
+    const px = (x, y, k) => c.px(((x % 32) + 32) % 32, ((y % 32) + 32) % 32, k);
+    for (const [y0, h, stones] of rows) for (const [x0, w0, kind] of stones) {
+      const w = w0 - 1, hh = h - 1;   // one pixel crevice right and below
+      const dark = kind === 1;
+      const fill = dark ? ")" : kind === 2 ? "Q" : "[", lit = dark ? "[" : kind === 2 ? "z" : "]", shade = dark ? "(" : ")";
+      for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) {
+        const corner = (i === 0 || i === w - 1) && (j === 0 || j === hh - 1);
+        if (corner) continue;                                  // rounded corners
+        let k = fill;
+        if (j === 0 || (i === 0 && j < hh - 2)) k = lit;       // light on the top and left
+        if (j === hh - 1 || (i === w - 1 && j > 1)) k = shade; // shade on the bottom and right
+        px(x0 + i, y0 + j, k);
+      }
+      if (kind === 0 && w > 6) { px(x0 + 2, y0 + 1, "{"); px(x0 + 3, y0 + 1, "{"); }   // a glint on the big stones
+      if (kind === 3) for (let j = 1; j < hh - 1; j++) px(x0 + Math.floor(w / 2) + (j % 3 === 0 ? 1 : 0), y0 + j, "(");   // a hairline crack
     }
-    if (!dark && w > 6) { px(x0 + 2, y0 + 1, "{"); px(x0 + 3, y0 + 1, "{"); }   // a glint on the big stones
-  }
-});
+  });
+}
+rockTile("rock", [
+  [0, 8, [[1, 9, 0], [11, 7, 1], [19, 13, 0]]],
+  [8, 9, [[5, 11, 1], [17, 8, 0], [26, 11, 0]]],
+  [17, 7, [[0, 6, 0], [7, 12, 0], [20, 9, 1], [30, 2, 0]]],
+  [24, 8, [[3, 8, 0], [12, 6, 1], [19, 12, 0]]],
+]);
+// same rhythm at the tile edges (so they fit next to "rock"), different stones inside
+rockTile("rock_b", [
+  [0, 8, [[1, 9, 0], [11, 7, 0], [19, 13, 1]]],
+  [8, 9, [[5, 6, 0], [11, 6, 1], [17, 14, 0], [31, 6, 0]]],
+  [17, 7, [[0, 6, 0], [7, 7, 1], [14, 10, 0], [24, 8, 0]]],
+  [24, 8, [[3, 8, 0], [12, 6, 0], [19, 12, 1]]],
+]);
+rockTile("rock_c", [
+  [0, 8, [[1, 9, 1], [11, 7, 0], [19, 13, 0]]],
+  [8, 9, [[5, 11, 0], [17, 8, 2], [26, 11, 0]]],
+  [17, 7, [[0, 6, 0], [7, 12, 3], [20, 9, 0], [30, 2, 0]]],
+  [24, 8, [[3, 8, 0], [12, 6, 0], [19, 12, 0]]],
+]);
+rockTile("rock_d", [
+  [0, 8, [[1, 9, 0], [11, 7, 1], [19, 13, 3]]],
+  [8, 9, [[5, 11, 0], [17, 8, 1], [26, 11, 0]]],
+  [17, 7, [[0, 6, 2], [7, 12, 0], [20, 9, 0], [30, 2, 0]]],
+  [24, 8, [[3, 8, 1], [12, 6, 0], [19, 12, 0]]],
+]);
 sprite("rock_dark", { base: "rock", swap: { "]": "[", "[": ")", ")": "(" } });
 
 // ---------------------------------------------------------------- hallway: a timbered tunnel, 24 x 96, as tall as the rooms' walls
@@ -265,3 +288,23 @@ function backDoor(name, open) {
 }
 backDoor("bdoor", false);
 backDoor("bdoor_open", true);
+
+// ---------------------------------------------------------------- the gate in the mountain face: 48 x 72, an arch of cut stone, doors open
+sprite("gate", { w: 48, h: 72, outline: "k" }, (c) => {
+  c.ellipse(24, 22, 24, 22, "4"); c.rect(0, 22, 48, 50, "4");             // the stone frame
+  c.ellipse(24, 24, 17, 17, "s"); c.rect(7, 24, 34, 48, "s");             // the dark way in
+  for (let i = 0; i < 11; i++) {                                          // voussoirs
+    const a = Math.PI + (i / 10) * Math.PI;
+    const x = Math.round(24 + Math.cos(a) * 20.5), y = Math.round(23 + Math.sin(a) * 20.5);
+    c.rect(x - 2, y - 2, 4, 4, i % 2 ? "5" : "6");
+  }
+  c.rect(20, 0, 8, 6, "6"); c.hline(20, 0, 8, "7");                       // keystone
+  for (const x of [0, 41]) { for (let y = 26; y < 72; y += 8) { c.rect(x, y, 7, 7, (y / 8) % 2 ? "5" : "4"); c.hline(x, y, 7, "6"); } }
+  // the doors, swung open against the frame
+  for (const [x, d] of [[7, 1], [35, -1]]) {
+    c.rect(x, 30, 6, 42, "v"); c.vline(d > 0 ? x : x + 5, 30, 42, "V");
+    for (const y of [38, 56]) c.hline(x, y, 6, "4");
+  }
+  c.rect(7, 70, 34, 2, "3");                                              // threshold
+  c.px(24, 4, "j"); c.px(23, 5, "j"); c.px(25, 5, "j");                   // a little rune
+});

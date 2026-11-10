@@ -49,10 +49,11 @@ function setZoom(z, sx, sy) {
 function clamp() {
   if (!screen) return;
   const { w, h } = screen.size();
+  const b = screen.bounds ? screen.bounds() : { x0: 0, y0: -20, x1: w, y1: h + 20 };
   const r = wrap.getBoundingClientRect();
   const vw = r.width / cam.zoom, vh = r.height / cam.zoom;
-  cam.x = vw >= w ? (w - vw) / 2 : Math.max(0, Math.min(w - vw, cam.x));
-  cam.y = vh >= h ? (h - vh) / 2 : Math.max(-20, Math.min(h - vh + 20, cam.y));
+  cam.x = vw >= b.x1 - b.x0 ? (b.x0 + b.x1 - vw) / 2 : Math.max(b.x0, Math.min(b.x1 - vw, cam.x));
+  cam.y = vh >= b.y1 - b.y0 ? (b.y0 + b.y1 - vh) / 2 : Math.max(b.y0, Math.min(b.y1 - vh, cam.y));
 }
 
 /** Screen pixels -> world pixels. */
@@ -196,8 +197,12 @@ function lighting(t, view, scale) {
   const ox = Math.floor(view.x), oy = Math.floor(view.y);
   lctx.globalCompositeOperation = 'source-over';
   lctx.clearRect(0, 0, W, H);
-  const zones = screen.ambient(t, view);   // [{y0, y1, color, a}]
-  for (const z of zones) { lctx.fillStyle = z.color; lctx.globalAlpha = z.a; lctx.fillRect(0, z.y0 - oy, W, z.y1 - z.y0); }
+  const zones = screen.ambient(t, view);   // [{y0, y1, color, a, x0?, x1?}]
+  for (const z of zones) {
+    const x0 = z.x0 === undefined ? 0 : Math.max(0, z.x0 - ox), x1 = z.x1 === undefined ? W : Math.min(W, z.x1 - ox);
+    if (x1 <= x0) continue;
+    lctx.fillStyle = z.color; lctx.globalAlpha = z.a; lctx.fillRect(x0, z.y0 - oy, x1 - x0, z.y1 - z.y0);
+  }
   lctx.globalAlpha = 1;
   const lights = screen.lights(t).filter((l) => l.x + l.r > view.x && l.x - l.r < view.x + view.w && l.y + l.r > view.y && l.y - l.r < view.y + view.h);
   lctx.globalCompositeOperation = 'destination-out';
