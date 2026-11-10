@@ -8,6 +8,8 @@ import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-b
 import { renderWork, animateWork, pump, currentHeat } from './panels-work.js';
 import { renderMines } from './panels-mines.js';
 import { renderTrade, renderExplore, loadMarket } from './panels-trade.js';
+import * as A from './audio.js';
+import { openAudioSheet } from './panels-audio.js';
 
 const TABS = [
   ['fortress', 'Hold', renderFortress],
@@ -26,8 +28,10 @@ const $ = (id) => document.getElementById(id);
 // ------------------------------------------------------------------ state
 
 function setState(s) {
+  const before = G.state;
   G.state = s;
   G.offset = s.now - Date.now() / 1000;
+  if (before) soundsForLog(before.fortress.log, s.fortress.log);
   renderTop();
   renderAlerts();
   render();
@@ -36,16 +40,107 @@ function setState(s) {
 bus.act = async (action, quiet = false, rethrow = false) => {
   try {
     const s = await api.action(action);
+    if (!quiet) soundForAction(action);
     // bellows taps are frequent: skip the full re-render for them
     if (quiet) { G.state = s; G.offset = s.now - Date.now() / 1000; renderTop(); return s; }
     setState(s);
     return s;
   } catch (e) {
     if (e.status === 401) return logout();
+    A.sfx('error');
     if (rethrow) throw e;
     toast(e.message, 'bad');
   }
 };
+
+// ------------------------------------------------------------------ sounds
+
+function soundForAction(a) {
+  switch (a.type) {
+    case 'assign': return A.sfx(a.job === 'warrior' ? 'unsheathe' : 'click');
+    case 'build': case 'upgrade': case 'upgradeLayer': case 'unlockLayer': return A.sfx('build');
+    case 'queueAdd': return A.sfx('open');
+    case 'queueRemove': return A.sfx('close');
+    case 'quench': return A.sfx('quench');
+    case 'equip': return A.sfx(String(a.item).startsWith('item:axe') ? 'unsheathe2' : 'open');
+    case 'unequip': return A.sfx('close');
+    case 'caravan': return A.sfx('caravan');
+    case 'expedition': return A.sfx('expedition');
+    case 'fightThreat': case 'breakSiege': return A.sfx('march');
+    case 'tradition': return A.sfx('chime');
+    case 'choice': case 'queueMove': case 'rename': case 'dismissExpedition': return A.sfx('click');
+    default: return null;
+  }
+}
+
+/** Play a sound for new chronicle entries (things that happened on the server). */
+const LOG_SOUNDS = [
+  [/Fortress level/, () => A.sfx('levelup')],
+  [/masterwork/i, () => A.sfx('fanfare')],
+  [/Perfect quench/, () => A.sfx('chime')],
+  [/Scouts report/, () => A.sfx('horn')],
+  [/driven off|siege is broken/, () => A.battle(true)],
+  [/broke through/, () => A.battle(false)],
+  [/was slain!/, () => A.battle(true)],
+  [/beaten back|sortie failed/, () => A.battle(false)],
+  [/Mining there has stopped/, () => A.sfx('monster')],
+  [/ died: /, () => A.sfx('death')],
+  [/lost with all hands/, () => A.sfx('death')],
+  [/Caravan back/, () => A.sfx('coins')],
+  [/expedition to .* returned/, () => A.sfx('fanfare')],
+  [/are open!/, () => A.sfx('fanfare')],
+  [/Migrants arrived/, () => A.sfx('bell')],
+  [/larder is empty|last barrel of ale/, () => A.sfx('alarm')],
+  [/caravan leaves/, () => null],
+];
+
+function soundsForLog(old, now) {
+  if (!old.length) return;
+  const last = old[old.length - 1];
+  let i = now.length - 1;
+  while (i >= 0 && !(now[i].t === last.t && now[i].text === last.text)) i--;
+  const fresh = now.slice(i + 1).slice(-4);
+  fresh.forEach((l, k) => {
+    const hit = LOG_SOUNDS.find(([re]) => re.test(l.text));
+    if (hit) setTimeout(hit[1], k * 700);
+  });
+}
+
+/** Background noise for what is on screen; runs once a second. */
+let nextPick = 0, nextMoo = 0;
+function ambience() {
+  if (!G.state) return;
+  const f = F(), wanted = new Set();
+  const nowMs = performance.now();
+  if (G.screen === 'workshop') {
+    const b = f.buildings.find((x) => x.id === G.ws);
+    const working = b && (b.job && !b.job.quenching || (byId.buildings[b.type].kind === 'continuous' && D().buildings[b.id] && D().buildings[b.id].worker)) && !f.siege;
+    if (b && working) {
+      if (b.type === 'forge') wanted.add('forge');
+      if (b.type === 'smelter') wanted.add('furnace');
+      if (b.type === 'grindstone') wanted.add('grindstone');
+      if (b.type === 'brewery') wanted.add('brewing');
+    }
+    if (b && b.type === 'farm' && nowMs > nextMoo) { nextMoo = nowMs + 45000 + Math.random() * 90000; if (Math.random() < 0.5) A.sfx('moo'); }
+  } else if (G.screen === 'mines') {
+    wanted.add('mine');
+    const digging = f.dwarves.some((d) => d.job === 'miner' && !d.busy && !f.layers[d.layer].threat);
+    if (digging && nowMs > nextPick) { nextPick = nowMs + 900 + Math.random() * 2200; A.sfx('pickaxe', { vol: 0.6 + Math.random() * 0.4 }); }
+  } else {
+    wanted.add('tavern');
+    const hr = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Berlin' }).format(new Date()));
+    if (hr >= 21 || hr < 6) wanted.add('night');
+  }
+  A.setLoops(wanted);
+}
+
+function renderAudioBtn() {
+  const s = A.state(), btn = $('audio-btn');
+  if (!btn) return;
+  btn.replaceChildren(img(S.icon(s.muted ? 'speaker_off' : s.playing ? 'note' : 'speaker'), 'icon s'),
+    h('span', { class: 'audio-title' }, s.muted ? 'Muted' : s.playing ? A.trackTitle(s.current) : 'Music'));
+  btn.title = s.muted ? 'Sound is off' : 'Music and sound';
+}
 
 bus.render = () => render();
 bus.go = (tab) => go(tab);
@@ -131,8 +226,11 @@ function buildTabs() {
 }
 
 const SCREEN = { mines: 'mines', work: 'workshop' };
+const MOOD = { mines: 'industry', work: 'industry', war: 'industry', trade: 'market' };
 
 function go(tab) {
+  if (tab !== G.tab) A.sfx('click');
+  A.setMood(MOOD[tab] || 'chill');
   G.tab = tab;
   G.screen = SCREEN[tab] || 'hold';
   if (tab !== 'mines') G.focus = null;
@@ -217,6 +315,13 @@ async function start() {
   document.documentElement.style.setProperty('--top-h', document.querySelector('.top').offsetHeight + 'px');
   initScene($('scene'), $('scene-wrap'), onPick);
   setInterval(poll, 5000);
+  setInterval(ambience, 1000);
+  $('audio-btn').addEventListener('click', openAudioSheet);
+  A.onChange(renderAudioBtn);
+  renderAudioBtn();
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'm' && !e.target.closest('input, select, textarea')) A.setMuted(!A.state().muted);
+  });
   setInterval(() => { if (G.tab === 'trade') loadMarket(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
   requestAnimationFrame(tick);
@@ -224,7 +329,8 @@ async function start() {
 
 async function boot() {
   try { await document.fonts.load('8px Silkscreen'); } catch { /* fine */ }
-  const [data, sprites] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => [])]);
+  const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
+  A.initAudio(audio);
   G.data = data;
   indexData(data);
   await S.loadOverrides(sprites);
@@ -238,5 +344,5 @@ async function boot() {
 
 G.screen = 'hold';
 G.heat = currentHeat;
-window.__deepforge = { G, go, reveal };
+window.__deepforge = { G, go, reveal, audio: A };
 boot();

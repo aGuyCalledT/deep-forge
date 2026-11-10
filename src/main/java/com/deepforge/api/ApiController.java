@@ -22,11 +22,14 @@ public class ApiController {
     private final AuthService auth;
     private final GameService game;
     private final String spritesDir;
+    private final String staticLocations;
 
-    public ApiController(AuthService auth, GameService game, @Value("${deepforge.sprites-dir:./sprites}") String spritesDir) {
+    public ApiController(AuthService auth, GameService game, @Value("${deepforge.sprites-dir:./sprites}") String spritesDir,
+                         @Value("${spring.web.resources.static-locations:}") String staticLocations) {
         this.auth = auth;
         this.game = game;
         this.spritesDir = spritesDir;
+        this.staticLocations = staticLocations;
     }
 
     static Store.User user(HttpServletRequest req) {
@@ -83,6 +86,36 @@ public class ApiController {
         Collections.sort(ids);
         return ids;
     }
+
+    /**
+     * Sound and music files that exist (file names), so the client only plays what is there.
+     * Looks in the built-in static folder and, when running from the IDE, in the source folder too.
+     */
+    @GetMapping("/audio")
+    public Map<String, List<String>> audio() throws IOException {
+        Map<String, List<String>> out = new LinkedHashMap<>();
+        var resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+        for (String dir : List.of("sounds", "music")) {
+            Set<String> names = new TreeSet<>();
+            for (var r : resolver.getResources("classpath*:/static/" + dir + "/*")) {
+                String n = r.getFilename();
+                if (n != null && AUDIO.matcher(n).matches()) names.add(n);
+            }
+            for (String loc : staticLocations.split(",")) {
+                loc = loc.trim();
+                if (!loc.startsWith("file:")) continue;
+                Path p = Path.of(loc.substring(5)).resolve(dir);
+                if (!Files.isDirectory(p)) continue;
+                try (Stream<Path> s = Files.list(p)) {
+                    s.map(x -> x.getFileName().toString()).filter(n -> AUDIO.matcher(n).matches()).forEach(names::add);
+                }
+            }
+            out.put(dir, new ArrayList<>(names));
+        }
+        return out;
+    }
+
+    static final java.util.regex.Pattern AUDIO = java.util.regex.Pattern.compile("[a-z0-9][a-z0-9._-]*\\.(mp3|ogg|m4a|wav)");
 
     @GetMapping("/me")
     public Map<String, Object> me(HttpServletRequest req) {

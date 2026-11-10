@@ -2,6 +2,7 @@
 import { G, F, D, byId, fmt, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName } from './ui.js';
 import { hall } from './halls.js';
+import * as A from './audio.js';
 import { HALL_ORDER } from './scene.js';
 import * as S from './sprites.js';
 import { upgradeBtn, jobSheet } from './panels-base.js';
@@ -107,6 +108,8 @@ let pending = 0, timer = null, localHeat = {};
 
 /** One pump of the bellows: heat shows at once, taps go to the server in small batches. */
 export function pump(id) {
+  if (currentHeat(id) < 5) A.sfx('ignite');
+  A.sfx('bellows');
   localHeat[id] = { v: Math.min(100, currentHeat(id) + 7), t: Date.now() / 1000 };
   pending++;
   if (navigator.vibrate) navigator.vibrate(8);

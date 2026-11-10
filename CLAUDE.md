@@ -40,9 +40,14 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/halls.js` | Werkstatt-Räume aus Code: `hall()` zeichnet, `anchors()` sagt, wo Feuer, Dampf, Funken und Arbeiter hingehören |
 | `static/js/sprites.js` | Pixelgrafik aus Code + eigene PNGs |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); Formulare laufen in Bottom-Sheets (`openSheet`) |
+| `static/js/audio.js` | Sounds, Hintergrund-Schleifen, Musik (Stimmung je Tab); Zuordnung in `docs/AUDIO.md` |
 | `static/js/data.js` → `contextResources()` | welche Vorräte jeder Tab in der Übersicht zeigt (Seitenleiste am Desktop, aufklappbar am Handy) |
 
 ## Rezepte
+
+- **Neuer Sound:** Eintrag in `SFX`/`LOOPS` (`audio.js`), abspielen über `A.sfx()` in `soundForAction()`,
+  `LOG_SOUNDS` oder `ambience()` (`main.js`), `docs/AUDIO.md` ergänzen. Fehlt die Datei, bleibt es still oder der
+  Ersatz-Sound spielt. Musik: Datei mit Stimmungs-Vorsilbe in `static/music/` (MP3/OGG, kein WAV).
 
 - **Neues Metall oder neue Legierung:** `metal(...)` in `Content.java` (Farbe, Wert, Härte, edel, Hitzefaktor,
   Schmelz- und Abschreck-Text, Abschreck-Fenster). Legierung zusätzlich `alloy(...)`. Wert so wählen, dass die
@@ -59,6 +64,10 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 - **Neue Aktion:** `Actions.apply` + eigene Methode mit `check(...)`, Aufruf im Client mit `bus.act({type: ...})`.
 - **Neue Schicht:** `LAYERS` in `Content.java` (Erze, Rate, Monster, Kosten), Erkundungs-Expedition in
   `Expeditions.refreshOffers`.
+
+## Offene Aufgaben
+
+- Stehen in `docs/TODO.md`. Erledigtes dort abhaken, Neues dort eintragen.
 
 ## Design
 
