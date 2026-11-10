@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Deep Forge" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.deepforge.DeepForgeApplication" />
+    <module name="deep-forge" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <envs>
+      <!-- Serve the frontend straight from the sources: edit JS/CSS, reload the browser, done. -->
+      <env name="SPRING_WEB_RESOURCES_STATIC_LOCATIONS" value="file:src/main/resources/static/" />
+      <!-- A player called "admin" may reset passwords (More tab). -->
+      <env name="ADMINS" value="admin" />
+    </envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

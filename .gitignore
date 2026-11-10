@@ -5,3 +5,5 @@ data/
 sprites/*.png
 sprites/**/*.png
 !sprites/README.md
+.idea/
+*.iml
