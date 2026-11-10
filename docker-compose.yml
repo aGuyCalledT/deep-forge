@@ -30,6 +30,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       INVITE_CODE: ${INVITE_CODE:-}
       ADMINS: ${ADMINS:-}
+      CHEATS: ${CHEATS:-false}
       SPRITES_DIR: /app/sprites
     volumes:
       - ./sprites:/app/sprites:ro

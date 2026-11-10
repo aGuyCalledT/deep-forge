@@ -1,34 +1,52 @@
-# Grafik und eigene Sprites
+# Grafik
 
-Alle Grafik wird im Browser aus Code erzeugt (`src/main/resources/static/js/sprites.js`). Jede Grafik hat eine **Id**.
-Liegt im Ordner `sprites/` (im Docker-Setup neben `docker-compose.yml`) eine PNG-Datei mit dieser Id, wird sie
-stattdessen benutzt. Unterordner gehören zur Id: `sprites/ore/galena.png` hat die Id `ore/galena`.
+Alle Grafik wird mit **pxl** gezeichnet (Skill `pxl-pixel-art`, liegt auch im Repo unter
+`.claude/skills/pixel-art/`). Quellen in `art-src/`, Ergebnis ist ein Sprite-Sheet:
 
-Nach dem Hinzufügen reicht ein Neuladen der Seite. Dateien werden 5 Minuten gecacht.
+```bash
+node scripts/build-art.mjs            # schreibt static/art/atlas.png, atlas.json, meta.json
+node scripts/build-art.mjs --preview  # zusätzlich vergrößerte Vorschauen in art-src/out/_preview/
+```
 
-## Ids und Größen
+| Datei | Inhalt |
+|---|---|
+| `art-src/shared.js` | Palette, Austauschfarben, Raum-Anker (Arbeitsplatz, Feuer, Licht, Sitzplätze, Betten), Zwergen-Posen, Erze, Minen-Schichten. Wird von pxl **und** vom Spiel gelesen (`meta.json`) |
+| `art-src/palette.px.js` | Palette und Farbtreppen |
+| `art-src/dwarves.px.js` | Zwerge aus Teilen: 3 Statur-Varianten × Posen, 8 Bärte, 6 Frisuren, 6 Hüte, 5 Accessoires, Werkzeuge |
+| `art-src/rooms.px.js` | die 12 Räume (64 px hoch, Breite = Zellen × 16), Feuer- und Rad-Animationen |
+| `art-src/world.px.js` | Fels, Gänge, Treppen, Schacht, Oberfläche, Wagen, Fackel, Pfeil, Minen-Teile |
+| `art-src/goods.px.js` | Erze, Barren, Waren, Rohstoffe, Münze, Artefakt |
+| `art-src/monsters.px.js` | 9 Monster mit 2 Bildern |
+| `art-src/ui.px.js` | Symbole der Oberfläche |
 
-| Id | Größe (px) | Was |
+## Austauschfarben
+
+Einige Farben in der Grafik sind Platzhalter, die das Spiel ersetzt (`SWAP` in `shared.js`):
+
+- **Metall** (`m M x X`): Barren, Waren, Werkzeuge bekommen die Farbe ihres Metalls.
+- **Haut** (`a A i`), **Bart** (`r R t`), **Haare** (`d D E`), **Tunika** (`T L K`): je Zwerg.
+
+Neue Grafik, die umgefärbt werden soll, nutzt genau diese Palettenschlüssel.
+
+## Eigene Bilder
+
+Eine PNG-Datei im Ordner `sprites/` mit dem Namen eines Sprites ersetzt es, z. B. `sprites/room_forge.png`,
+`sprites/ore_galena.png`, `sprites/ui_war.png`. Ein `sprites/dwarf.png` (18 × 29) ersetzt alle Zwerge.
+Alle Namen stehen in `static/art/atlas.json`. Neu laden reicht.
+
+## Größen
+
+| Was | Größe | Hinweis |
 |---|---|---|
-| `ore/<erz>` | 14×13 | Erz, z. B. `ore/galena`, `ore/native_copper` |
-| `bar/<metall>` | 16×10 | Barren, z. B. `bar/steel`, `bar/rose_gold` |
-| `raw/<id>` | 14×14 | `coal`, `limestone`, `stone`, `rough_gem`, `cut_gem`, `food`, `ale` |
-| `item/<typ>` | 16×16 | `pickaxe`, `axe`, `helm`, `mail`, `chain`, `goblet`, `ring`, `crown` – ersetzt den Typ für alle Metalle |
-| `dwarf` | 14×17 | ersetzt **alle** Zwerge (ohne Bart- und Rüstungsfarben) |
-| `monster/<id>/<frame>` | 20×16 | `giant_rat`, `cave_crawler`, `cave_spider`, `goblin_scouts`, `rock_troll`, `magma_crab`, `blind_ogre`, `crystal_golem`, `deep_wyrm`; Frame `0` und `1` |
-| `hall/<gebäude>` | beliebig, wird so gezeichnet wie geliefert | Ganze Werkstatt (Wand, Boden, Möbel) in der Festung und im Werkstatt-Screen. Feuer, Rauch, Funken und Zwerge kommen trotzdem darüber. Gebäude: `tavern`, `quarters`, `warehouse`, `vault`, `smelter`, `forge`, `grindstone`, `engraver`, `jeweler`, `farm`, `brewery`, `barracks` |
-| `room/<gebäude>` | 44×28 (Draußen: 22×16) | Kleines Vorschaubild; draußen Handelsposten und Expeditionszelt: `tavern`, `quarters`, `warehouse`, `vault`, `smelter`, `forge`, `grindstone`, `engraver`, `jeweler`, `farm`, `brewery`, `barracks`, `trading_post`, `expedition_hall` |
-| `tile/layer<n>` | 48×48, kachelbar | Gestein der Schicht 0–4 |
-| `prop/wagon/<frame>` | 20×13 | Karawane |
-| `prop/torch/<frame>` | 5×8 | Fackel, Frames 0–2 |
-| `ui/coin`, `ui/artifact` | 9×9, 14×14 | |
-| `ui/<icon>` | 14×14 | Tab-Symbole `fortress`, `dwarves`, `work`, `trade`, `explore`, `war`, `more` und `warn`, `skull`, `heart`, `mood`, `box`, `dwarf` |
-
-Die Szene rechnet in Pixeln dieser Größe und vergrößert ganzzahlig (×2 am Handy, ×3 am Desktop).
-Größere Bilder werden nicht skaliert – sie werden einfach größer gezeichnet.
+| Raum | Zellen × 16 breit, 64 hoch | Füße der Zwerge auf y = 58 |
+| Zwerg | 18 × 29 fertig | Teile 16 × 24 + Umriss, Hüte 3 px höher |
+| Gang | 16 × 64 | |
+| Treppe | 32 × 128 | zwei Stockwerke, nach rechts unten |
+| Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
+| Monster | ca. 26 × 22 | |
 
 ## Stil
 
-- Dunkler Umriss `#0c090e` um jede Figur (der Generator macht das automatisch).
-- Licht von oben links, harte Schatten, keine weichen Verläufe.
-- Metallfarben stehen in `Content.java` (`color`), so passen eigene Sprites zu den erzeugten.
+Warm und freundlich: abgerundete Höhlenräume statt Kästen, Licht von oben links, weiche Laternen- und
+Feuerschein-Effekte über das Licht im Spiel, kleine liebevolle Details (Katze am Kamin, Pflanzen, Spinnweben).
+Kein Rauschen als Füller: jede Markierung auf einer Fläche braucht einen Grund (Fuge, Brett, Fleck).

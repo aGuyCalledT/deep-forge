@@ -57,6 +57,11 @@ java -jar target/deep-forge.jar
 
 Ohne `DB_URL` legt das Spiel eine H2-Datenbank in `./data` an.
 
+## Cheats
+
+`CHEATS=true` in `.env` gibt allen Spielern die Test-Hilfen (More → Cheats). Admins (`ADMINS`) haben sie immer.
+Für ein echtes Spiel unter Freunden: aus lassen.
+
 ## Passwort vergessen
 
 Ein Admin (Name in `ADMINS`) setzt es im Spiel unter **More → Admin** zurück.

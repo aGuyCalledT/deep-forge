@@ -11,7 +11,13 @@ public final class View {
     private View() {}
 
     public static Map<String, Object> of(Fortress f, double now) {
+        return of(f, now, false);
+    }
+
+    public static Map<String, Object> of(Fortress f, double now, boolean cheats) {
+        Layouts.ensure(f);
         Map<String, Object> v = new LinkedHashMap<>();
+        v.put("cheats", cheats);
         v.put("now", now);
         v.put("fortress", f);
         Map<String, Object> d = new LinkedHashMap<>();

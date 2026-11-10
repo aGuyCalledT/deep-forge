@@ -3,7 +3,11 @@ import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
 import { h, img, bus, toast, storesView } from './ui.js';
 import * as S from './sprites.js';
-import { initScene, reveal, drawLoginArt } from './scene.js';
+import { initCanvas, zoomBy, lookAt, camera } from './canvas.js';
+import { holdScreen, roomCenter } from './hold.js';
+import { minesScreen, workshopScreen, drawLoginArt } from './views.js';
+import { openRoomSheet, openDwarfSheet } from './popups.js';
+import { berlinTime } from './sun.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
 import { renderWork, animateWork, pump, currentHeat } from './panels-work.js';
 import { renderMines } from './panels-mines.js';
@@ -226,13 +230,17 @@ function buildTabs() {
 }
 
 const SCREEN = { mines: 'mines', work: 'workshop' };
+function screenFor(tab) { return SCREEN[tab] || 'hold'; }
 const MOOD = { mines: 'industry', work: 'industry', war: 'industry', trade: 'market' };
 
 function go(tab) {
   if (tab !== G.tab) A.sfx('click');
   A.setMood(MOOD[tab] || 'chill');
   G.tab = tab;
-  G.screen = SCREEN[tab] || 'hold';
+  G.screen = screenFor(tab);
+  if (G.screen !== 'hold') G.build = null;
+  $('scene-wrap').classList.toggle('scroll', G.screen !== 'hold');
+  renderToolbar();
   if (tab !== 'mines') G.focus = null;
   if (tab === 'trade') loadMarket(true);
   render();
@@ -262,20 +270,47 @@ function render() {
 function onPick(q) {
   if (q.kind === 'bellows') return pump(q.id);
   if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id });
-  if (q.kind === 'building') {
+  if (q.kind === 'room') {
     const b = F().buildings.find((x) => x.id === q.id);
-    if (q.id === 'lift') return go('mines');
-    if (b && byId.buildings[b.type].kind !== 'passive') { G.ws = b.id; return go('work'); }
-    return go('fortress');
+    if (b) { A.sfx('open'); openRoomSheet(b); }
+    return;
+  }
+  if (q.kind === 'dwarf') {
+    const d = F().dwarves.find((x) => x.id === q.id);
+    if (d) openDwarfSheet(d);
+    return;
   }
   if (q.kind === 'layer') {
     G.focus = 'layer:' + q.id;
-    go('mines');
+    if (G.tab !== 'mines') go('mines'); else render();
     const el = document.getElementById('layer-' + q.id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
   if (q.kind === 'tab') go(q.id);
+}
+
+// ------------------------------------------------------------------ toolbar over the hold
+
+const TOOLS = [['move', 'hand', 'Move rooms', 'Click a room, then click where it should go.'], ['dig', 'dig', 'Dig hallway', 'Click rock next to a room or hallway to dig a tunnel.'],
+  ['stairs', 'stairs', 'Stairs', 'Click where the top of the stairs should be. They lead one floor down to the right.'], ['fill', 'fill', 'Fill in', 'Click a hallway or stairs to fill it back in.']];
+
+function renderToolbar() {
+  const bar = $('scene-tools');
+  if (!bar) return;
+  const onHold = G.screen === 'hold';
+  bar.hidden = !G.state;
+  const time = h('span', { class: 'clock', title: 'Time of day in Essen. Day and night follow it.' }, berlinTime() + ' · Essen');
+  if (!onHold) { bar.replaceChildren(time); return; }
+  const b = G.build;
+  bar.replaceChildren(...[
+    h('div', { class: 'tool-row' },
+      h('button', { class: 'tool', 'aria-label': 'Zoom in', onclick: () => zoomBy(1) }, img(S.icon('zoom_in'), 'icon s')),
+      h('button', { class: 'tool', 'aria-label': 'Zoom out', onclick: () => zoomBy(-1) }, img(S.icon('zoom_out'), 'icon s')),
+      h('button', { class: 'tool' + (b ? ' on' : ''), onclick: () => { G.build = b ? null : { tool: 'move', held: null }; renderToolbar(); } }, img(S.icon('build'), 'icon s'), b ? 'Done' : 'Build'),
+      time),
+    b ? h('div', { class: 'tool-row' }, TOOLS.map(([id, icon, label]) => h('button', { class: 'tool' + (b.tool === id ? ' on' : ''), onclick: () => { b.tool = id; b.held = null; renderToolbar(); } }, img(S.icon(icon), 'icon s'), label))) : null,
+    b ? h('div', { class: 'tool-hint' }, b.held ? 'Now click where the room should go. Right click or Esc to cancel.' : TOOLS.find((x) => x[0] === b.tool)[3]) : null].filter(Boolean));
 }
 
 // ------------------------------------------------------------------ timers
@@ -313,7 +348,10 @@ async function start() {
   setState(await api.get('/state'));
   $('app').hidden = false;
   document.documentElement.style.setProperty('--top-h', document.querySelector('.top').offsetHeight + 'px');
-  initScene($('scene'), $('scene-wrap'), onPick);
+  initCanvas($('scene'), $('scene-wrap'), { hold: holdScreen, mines: minesScreen, workshop: workshopScreen }, onPick);
+  renderToolbar();
+  setInterval(() => { if (G.screen !== 'hold' || !G.build) renderToolbar(); }, 30000);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && G.build) { G.build.held = null; renderToolbar(); } });
   setInterval(poll, 5000);
   setInterval(ambience, 1000);
   $('audio-btn').addEventListener('click', openAudioSheet);
@@ -328,7 +366,8 @@ async function start() {
 }
 
 async function boot() {
-  try { await document.fonts.load('8px Silkscreen'); } catch { /* fine */ }
+  try { await document.fonts.load('16px "Pixelify Sans"'); } catch { /* fine */ }
+  await S.loadArt();
   const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
   A.initAudio(audio);
   G.data = data;
@@ -344,5 +383,7 @@ async function boot() {
 
 G.screen = 'hold';
 G.heat = currentHeat;
-window.__deepforge = { G, go, reveal, audio: A };
+G.act = (a) => bus.act(a).then(() => renderToolbar());
+G.onBuildChange = () => renderToolbar();
+window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera };
 boot();

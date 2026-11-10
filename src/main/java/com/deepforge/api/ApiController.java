@@ -23,9 +23,12 @@ public class ApiController {
     private final GameService game;
     private final String spritesDir;
     private final String staticLocations;
+    private final boolean cheatsForAll;
 
     public ApiController(AuthService auth, GameService game, @Value("${deepforge.sprites-dir:./sprites}") String spritesDir,
-                         @Value("${spring.web.resources.static-locations:}") String staticLocations) {
+                         @Value("${spring.web.resources.static-locations:}") String staticLocations,
+                         @Value("${deepforge.cheats:false}") boolean cheatsForAll) {
+        this.cheatsForAll = cheatsForAll;
         this.auth = auth;
         this.game = game;
         this.spritesDir = spritesDir;
@@ -117,6 +120,10 @@ public class ApiController {
 
     static final java.util.regex.Pattern AUDIO = java.util.regex.Pattern.compile("[a-z0-9][a-z0-9._-]*\\.(mp3|ogg|m4a|wav)");
 
+    boolean cheats(Store.User u) {
+        return cheatsForAll || auth.isAdmin(u);
+    }
+
     @GetMapping("/me")
     public Map<String, Object> me(HttpServletRequest req) {
         Store.User u = user(req);
@@ -126,13 +133,13 @@ public class ApiController {
     @GetMapping("/state")
     public Map<String, Object> state(HttpServletRequest req) {
         Store.User u = user(req);
-        return game.state(u.id(), u.name());
+        return game.state(u.id(), u.name(), cheats(u));
     }
 
     @PostMapping("/action")
     public Map<String, Object> action(@RequestBody Map<String, Object> body, HttpServletRequest req) {
         Store.User u = user(req);
-        return game.act(u.id(), u.name(), body);
+        return game.act(u.id(), u.name(), body, cheats(u));
     }
 
     @GetMapping("/market")

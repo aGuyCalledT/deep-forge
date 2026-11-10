@@ -151,4 +151,58 @@ class SimTest {
         assertEquals(8, f.stock.getOrDefault("bar:bronze", 0));
         assertEquals(0, f.stock.getOrDefault("bar:tin", 0));
     }
+
+    @Test
+    void newHoldsHaveAPlanWithEveryRoom() {
+        Fortress f = fresh(41);
+        for (Building b : f.buildings)
+            if (Layouts.hasRoom(b)) assertTrue(f.layout.rooms.containsKey(b.id), b.id + " has no place");
+        // rooms never overlap
+        Set<String> used = new HashSet<>();
+        for (Map.Entry<String, int[]> e : f.layout.rooms.entrySet()) {
+            int w = Layouts.ROOM_CELLS.get(Rules.building(f, e.getKey()).type);
+            for (int c = e.getValue()[0]; c < e.getValue()[0] + w; c++) assertTrue(used.add(c + "," + e.getValue()[1]));
+        }
+    }
+
+    @Test
+    void roomsHallsAndStairsCanBePlaced() {
+        Fortress f = fresh(42);
+        Market m = Market.inMemory(42, T0);
+        act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
+        assertArrayEquals(new int[]{20, 5}, f.layout.rooms.get("forge-1"));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "smelter-1", "col", 22, "floor", 5));
+        act(f, m, T0, "type", "dig", "col", 10, "floor", 6);
+        assertTrue(f.layout.halls.contains("10,6"));
+        act(f, m, T0, "type", "stairs", "col", 12, "floor", 6);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 13, "floor", 7));
+        act(f, m, T0, "type", "fill", "col", 13, "floor", 7);
+        assertTrue(f.layout.stairs.isEmpty());
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 0, "floor", 1));
+    }
+
+    @Test
+    void newWorkshopsGetAPlace() {
+        Fortress f = fresh(43);
+        Market m = Market.inMemory(43, T0);
+        f.coins = 10000;
+        f.stock.put("stone", 500);
+        act(f, m, T0, "type", "build", "building", "grindstone");
+        assertTrue(f.layout.rooms.containsKey("grindstone-1"));
+    }
+
+    @Test
+    void cheatSkipPlaysOutTime() {
+        Fortress f = fresh(44);
+        Market m = Market.inMemory(44, T0);
+        Sim.advance(f, T0, m);
+        int bars = f.stats.barsSmelted;
+        Map<String, Object> a = new LinkedHashMap<>();
+        a.put("type", "cheatSkip");
+        a.put("hours", 3);
+        Fortress g = Cheats.apply(f, a, T0, m, new com.fasterxml.jackson.databind.ObjectMapper(), new Rng(1));
+        assertTrue(g.stats.barsSmelted > bars, "3 hours of smelting should make bars");
+        assertEquals(T0, g.t, 1e-6);
+        assertTrue(g.nextRaidAt < f.nextRaidAt);
+    }
 }

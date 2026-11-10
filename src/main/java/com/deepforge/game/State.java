@@ -50,6 +50,14 @@ public final class State {
         public int level = 1;
         public Map<String, Integer> traditions = new TreeMap<>();
         public Stats stats = new Stats();
+        public Layout layout;
+    }
+
+    /** Where rooms, hallways and stairs are in the hold. Cells are (col, floor); floor 0 is right under the surface. */
+    public static class Layout {
+        public Map<String, int[]> rooms = new TreeMap<>();  // building id -> [col, floor]
+        public Set<String> halls = new TreeSet<>();         // "col,floor"
+        public Set<String> stairs = new TreeSet<>();        // "col,floor": 2 wide, from floor down to floor + 1
     }
 
     public static class Stats {
@@ -72,6 +80,11 @@ public final class State {
         public String hair;
         public String skin;
         public int beardStyle;
+        public int hairStyle = -1;    // -1: derive from id (old saves)
+        public int hat = -1;
+        public int body = -1;         // build: 0 stout, 1 tall, 2 round
+        public String outfit;         // tunic colour
+        public int accessory = -1;
         public List<String> traits = new ArrayList<>();
         public Map<String, Double> xp = new TreeMap<>();
         public double health = 100;

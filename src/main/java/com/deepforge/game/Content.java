@@ -468,6 +468,19 @@ public final class Content {
         d.put("qualities", QUALITIES);
         d.put("skills", SKILLS);
         d.put("blueprints", BLUEPRINT_NAMES);
+        Map<String, Object> plan = new LinkedHashMap<>();
+        plan.put("cols", Layouts.COLS);
+        plan.put("floors", Layouts.FLOORS);
+        plan.put("shaft", Layouts.SHAFT);
+        plan.put("rooms", Layouts.ROOM_CELLS);
+        d.put("plan", plan);
+        Map<String, Object> looks = new LinkedHashMap<>();
+        looks.put("beardStyles", Factory.BEARD_STYLES);
+        looks.put("hairStyles", Factory.HAIR_STYLES);
+        looks.put("hats", Factory.HATS);
+        looks.put("bodies", Factory.BODIES);
+        looks.put("accessories", Factory.ACCESSORIES);
+        d.put("looks", looks);
         return d;
     }
 }
