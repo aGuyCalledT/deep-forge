@@ -87,7 +87,7 @@ export function renderFortress() {
 export function upgradeBtn(b) {
   if (!b) return null;
   const info = D().buildings[b.id], c = info.upgrade;
-  const label = b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade to level ${b.level + 1}`;
+  const label = b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`;
   if (info.canGrow === false) return costBtn(label, c, null, 'It gets wider when upgraded, but no floor has space for it. Dig out more of the hold.');
   return costBtn(info.canGrow ? label + ', +1 machine' : label, c, { type: 'upgrade', building: b.id });
 }

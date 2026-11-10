@@ -41,14 +41,14 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/Cheats.java` | Test-Hilfen (Ressourcen, Zwerge, Aussehen, Zeit überspringen), nur Admins oder `CHEATS=true` |
 | `art-src/` | Grafik-Quellen für pxl, `shared.js` mit Raum-Ankern und Palette; Ergebnis in `static/art/`. `figure.js` baut alle Figuren und wird als `static/js/figure.js` ins Spiel kopiert |
 | `static/js/canvas.js` | Kamera (ziehen, Mausrad, Pinch), Licht, Hover-Umriss, Klicks |
-| `static/js/hold.js` | Festung: Himmel und Sonne über Essen, Plan, Räume, Zwerge mit Wegen und 12-Minuten-Zyklus, Bau-Modus, grüne Pfeile |
-| `static/js/views.js` | Minen-Screen, Werkstatt-Screen, Login-Bild |
-| `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen, Cheat-Werkzeuge |
+| `static/js/hold.js` | Festung: Himmel und Sonne über Essen, Plan, Räume, Hintertüren, Zwerge mit Wegen (Dijkstra, Türen bevorzugt) und 12-Minuten-Zyklus, Blasebalg/Abschreckfass zum Anklicken, Bau-Modus, grüne Pfeile |
+| `static/js/views.js` | Minen-Screen, Login-Bild (Werkstätten haben keinen eigenen Screen, sie sind Räume der Festung) |
+| `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen (öffnen sich neben dem Objekt), Cheat-Werkzeuge |
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
 | `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall und Zwerge um, setzt Zwerge aus Teilen zusammen |
-| `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); Formulare laufen in Bottom-Sheets (`openSheet`) |
+| `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt) |
 | `static/js/audio.js` | Sounds, Hintergrund-Schleifen, Musik (Stimmung je Tab); Zuordnung in `docs/AUDIO.md` |
-| `static/js/data.js` → `contextResources()` | welche Vorräte jeder Tab in der Übersicht zeigt (Seitenleiste am Desktop, aufklappbar am Handy) |
+| `static/js/data.js` → `contextResources()` | welche Vorräte jeder Tab in der Übersicht zeigt (aufklappbar oben in der Schublade) |
 
 ## Rezepte
 
@@ -88,8 +88,10 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   grünen Umriss, stillstehende Werkstätten mit Material bekommen einen grünen Pfeil.
 - Farben aus den CSS-Variablen in `style.css`.
 - Immer in Handybreite (390 px) prüfen: kein horizontales Scrollen, Knöpfe mindestens 40 px hoch.
-- Breite Bildschirme nutzen den Platz: ab 900 px Szene und Panel nebeneinander, ab 1240 px dazu die Seitenleiste
-  mit Vorräten, Hinweisen und Chronik.
+- Die Szene füllt das Fenster. Die Tabs öffnen eine Schublade (Desktop rechts, Handy unten), ein zweiter Klick
+  oder das X schließt sie. Hinweise liegen als kleine Chips unten auf der Szene. Keine zweite Spalte.
+- Erklärungen nicht als Fließtext, sondern hinter kleinen Info-Knöpfen (`info(text)` aus `ui.js`); unter More
+  lassen sie sich abschalten.
 - Kosten immer mit `costChips`/`costBtn` zeigen: jede Zutat mit Symbol, fehlende rot als „habe/brauche“.
 - Keine Unicode-Zeichen als Symbole (☠ ♥ ✕): gezeichnete Icons über `ico()` aus `ui.js`.
 

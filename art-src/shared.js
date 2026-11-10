@@ -38,24 +38,24 @@ var SWAP = {
 };
 
 // Rooms: width in cells (24 px), height 96 px. Anchors in room pixels (feet / centres).
-// worker: where the worker stands; fire: glowing rect; lights: [x, y, radius, colour]; seats: [x, y] for free time.
+// door: centre of the back door (to the stairwell behind); worker: where the worker stands; fire: glowing rect; lights: [x, y, radius, colour]; seats: [x, y] for free time.
 var CELL = 24;
 var ROOM_H = 96;
 var FLOOR_Y = 90;           // the walking line: dwarves' feet stand on y = 90
 var ROOMS = {
-  tavern:     { w: 8, worker: [34, 90], fire: [156, 70, 20, 14], lights: [[166, 74, 60, "#ffb060"], [96, 22, 46, "#ffd98e"], [44, 20, 38, "#ffd98e"]],
+  tavern:     { w: 8, door: 183, worker: [34, 90], fire: [156, 70, 20, 14], lights: [[166, 74, 60, "#ffb060"], [96, 22, 46, "#ffd98e"], [44, 20, 38, "#ffd98e"]],
                 seats: [[66, 90], [100, 90], [114, 90], [140, 90], [84, 90]], bar: [[16, 90], [48, 90]] },
-  quarters:   { w: 6, lights: [[107, 20, 44, "#ffd98e"]], beds: [[27, 82], [27, 50], [79, 82], [79, 50]] },
-  warehouse:  { w: 6, lights: [[72, 20, 44, "#ffd98e"]], seats: [[62, 90]] },
-  vault:      { w: 4, lights: [[48, 22, 32, "#ffd98e"], [48, 50, 26, "#e3c06e"]] },
-  smelter:    { w: 6, worker: [78, 90], face: -1, fire: [24, 58, 16, 12], chimney: [30, 0], lights: [[32, 64, 60, "#ff8a4a"], [122, 20, 32, "#ffd98e"]], bellows: [54, 72] },
-  forge:      { w: 6, worker: [60, 90], face: 1, fire: [14, 68, 26, 8], chimney: [24, 0], anvil: [82, 76], quench: [112, 90], lights: [[27, 68, 58, "#ff9450"], [129, 20, 30, "#ffd98e"]] },
-  grindstone: { w: 4, worker: [62, 90], face: -1, wheel: [32, 66], lights: [[48, 18, 34, "#ffd98e"]] },
-  engraver:   { w: 4, worker: [64, 90], face: -1, work: [30, 66], lights: [[34, 54, 28, "#ffd98e"], [76, 20, 26, "#ffd98e"]] },
-  jeweler:    { w: 5, worker: [64, 90], face: -1, work: [34, 66], lights: [[36, 52, 32, "#fff0c0"], [92, 52, 28, "#aacde4"]] },
-  farm:       { w: 6, worker: [118, 90], face: -1, lights: [[22, 74, 36, "#90e0c8"], [58, 74, 32, "#90e0c8"], [94, 74, 32, "#90e0c8"], [72, 18, 32, "#ffd98e"]] },
-  brewery:    { w: 5, worker: [58, 90], face: -1, kettle: [28, 90], steam: [33, 30], lights: [[28, 62, 44, "#ffb070"], [67, 34, 30, "#ffd98e"]] },
-  barracks:   { w: 6, worker: [112, 90], seats: [[52, 90], [68, 90], [84, 90]], lights: [[98, 22, 44, "#ffd98e"]] },
+  quarters:   { w: 6, door: 137, lights: [[107, 20, 44, "#ffd98e"]], beds: [[27, 82], [27, 50], [79, 82], [79, 50]] },
+  warehouse:  { w: 6, door: 137, lights: [[72, 20, 44, "#ffd98e"]], seats: [[62, 90]] },
+  vault:      { w: 4, door: 88, lights: [[48, 22, 32, "#ffd98e"], [48, 50, 26, "#e3c06e"]] },
+  smelter:    { w: 6, door: 134, worker: [78, 90], face: -1, fire: [24, 58, 16, 12], chimney: [30, 0], lights: [[32, 64, 60, "#ff8a4a"], [122, 20, 32, "#ffd98e"]], bellows: [54, 72] },
+  forge:      { w: 6, door: 131, worker: [60, 90], face: 1, fire: [14, 68, 26, 8], chimney: [24, 0], anvil: [82, 76], quench: [112, 90], lights: [[27, 68, 58, "#ff9450"], [129, 20, 30, "#ffd98e"]] },
+  grindstone: { w: 4, door: 87, worker: [62, 90], face: -1, wheel: [32, 66], lights: [[48, 18, 34, "#ffd98e"]] },
+  engraver:   { w: 4, door: 60, worker: [64, 90], face: -1, work: [30, 66], lights: [[34, 54, 28, "#ffd98e"], [76, 20, 26, "#ffd98e"]] },
+  jeweler:    { w: 5, door: 113, worker: [64, 90], face: -1, work: [34, 66], lights: [[36, 52, 32, "#fff0c0"], [92, 52, 28, "#aacde4"]] },
+  farm:       { w: 6, door: 134, worker: [118, 90], face: -1, lights: [[22, 74, 36, "#90e0c8"], [58, 74, 32, "#90e0c8"], [94, 74, 32, "#90e0c8"], [72, 18, 32, "#ffd98e"]] },
+  brewery:    { w: 5, door: 54, worker: [58, 90], face: -1, kettle: [28, 90], steam: [33, 30], lights: [[28, 62, 44, "#ffb070"], [67, 34, 30, "#ffd98e"]] },
+  barracks:   { w: 6, door: 102, worker: [112, 90], seats: [[52, 90], [68, 90], [84, 90]], lights: [[98, 22, 44, "#ffd98e"]] },
 };
 
 // Extra machines: each one is a bay of `w` cells added to the right of the room, with its own worker spot.

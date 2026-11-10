@@ -54,17 +54,30 @@ sprite("hall_cap_r", { base: "hall_cap_l", flip: "x" });
 
 // ---------------------------------------------------------------- stairs: 48 wide, two floors (192) tall, going down to the right
 sprite("stairs", { w: 48, h: 192 }, (c) => {
-  c.poly([0, 7, 48, 100, 48, 192, 0, 192, 0, 90], "_");
-  // the cut in the rock, tall enough for a dwarf in a hat
-  c.poly([0, 10, 16, 10, 48, 100, 48, 186, 30, 186, 0, 90], "W");
-  for (let x = 4; x < 48; x += 12) c.line(x, 14 + x * 1.9, x, 80 + x * 1.9, "w");
-  for (let i = 0; i < 24; i++) {
-    const x = i * 2, y = 90 + i * 4;
-    c.rect(x, y, 5, 2, "V"); c.hline(x, y, 5, "u"); c.px(x + 4, y + 1, "v");
+  // the cut: the same timbered tunnel as the hallways, sloping down. Ceiling and floor both drop 2 px per px.
+  c.poly([0, 7, 48, 103, 48, 186, 0, 90], "W");
+  for (let x = 0; x < 48; x += 12) {                              // wall timbers, every 12 px like in the hallway
+    for (let y = 11 + 2 * x; y < 90 + 2 * x; y++) { c.px(x, y, "w"); c.px(x + 1, y, "v"); }
   }
-  // railing
-  c.line(4, 64, 50, 156, "v"); c.line(4, 65, 50, 157, "V");
-  for (let i = 0; i < 6; i++) c.vline(8 + i * 8, 70 + i * 16, 14, "W");
+  for (let x = 0; x < 48; x++) {                                  // ceiling beam following the slope
+    const y = 7 + 2 * x;
+    c.px(x, y, "u"); c.px(x, y + 1, "V"); c.px(x, y + 2, "V"); c.px(x, y + 3, "V"); c.px(x, y + 4, "w");
+  }
+  // 16 sturdy steps, 3 px deep and 6 px high, on a dark stringer
+  for (let i = 0; i < 16; i++) {
+    const x = i * 3, y = 90 + i * 6;
+    c.rect(x, y, 3, 12, "v"); c.hline(x, y, 3, "u"); c.hline(x, y + 1, 3, "V"); c.px(x, y + 6, "w");
+  }
+  for (let x = 0; x < 48; x++) c.px(x, 102 + 2 * x, "w");         // underside of the stringer
+  // handrail with posts
+  for (let x = 2; x < 47; x++) { c.px(x, 62 + 2 * x, "V"); c.px(x, 63 + 2 * x, "v"); }
+  for (const x of [8, 20, 32, 44]) c.vline(x, 64 + 2 * x, 26, "W");
+  // posts that frame the openings to the hallways above and below
+  c.rect(0, 7, 3, 83, "v"); c.vline(0, 7, 83, "V"); c.rect(0, 7, 4, 3, "V");
+  c.rect(45, 103, 3, 83, "v"); c.vline(47, 103, 83, "w"); c.rect(44, 103, 4, 3, "V");
+  // a lantern halfway down
+  c.vline(24, 55, 4, "4"); c.rect(21, 59, 7, 1, "2"); c.rect(21, 60, 7, 7, "y"); c.rect(22, 61, 5, 5, "Y"); c.rect(23, 62, 3, 3, "0");
+  c.vline(21, 60, 7, "2"); c.vline(27, 60, 7, "2"); c.rect(22, 67, 5, 1, "2");
 });
 
 // ---------------------------------------------------------------- mine shaft with ladder: 48 x 96
@@ -231,3 +244,24 @@ sprite("lock_sign", { w: 26, h: 18, outline: "k" }, (c) => {
   c.rect(0, 4, 26, 12, "V"); c.hline(0, 4, 26, "u"); c.vline(4, 16, 2, "v"); c.vline(21, 16, 2, "v");
   c.rect(10, 7, 6, 6, "j"); c.ring(13, 6, 2, "4"); c.px(13, 9, "o"); c.px(13, 10, "o");
 });
+
+// ---------------------------------------------------------------- back doors: every room has one, and hallways can get one.
+// Behind it is a stairwell (you see a step or two through the gap). 18 x 34, the bottom row stands on the floor line.
+function backDoor(name, open) {
+  sprite(name, { w: 18, h: 34 }, (c) => {
+    c.ellipse(9, 7, 9, 7, "4"); c.rect(0, 7, 18, 27, "4");            // stone arch
+    c.ellipse(9, 8, 7, 6, "s"); c.rect(2, 8, 14, 26, "s");            // dark stairwell
+    for (let i = 0; i < 5; i++) { c.hline(4 + i * 2, 31 - i * 5, 5, "w"); c.hline(4 + i * 2, 30 - i * 5, 5, "W"); }   // steps going up
+    c.px(13, 12, "y"); c.px(13, 13, "f");                             // a lamp up the stairs
+    if (!open) {                                                      // the door stands ajar
+      c.ellipse(7, 9, 5, 5, "v"); c.rect(2, 9, 11, 25, "v");
+      for (const x of [5, 8, 11]) c.vline(x, 6, 28, "W");
+      c.vline(12, 9, 25, "V"); c.hline(2, 15, 11, "W"); c.hline(2, 26, 11, "W");
+      c.px(10, 20, "j");                                              // ring
+    }
+    for (let i = 0; i < 7; i++) { const a = Math.PI + (i / 6) * Math.PI; c.px(Math.round(9 + Math.cos(a) * 8), Math.round(7 + Math.sin(a) * 6), "5"); }   // keystones
+    c.rect(0, 33, 18, 1, "3");                                        // threshold
+  });
+}
+backDoor("bdoor", false);
+backDoor("bdoor_open", true);

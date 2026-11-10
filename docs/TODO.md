@@ -50,7 +50,18 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [x] Köpfe im Profil: Schädel, flaches Gesicht, Brauenwulst, Kinn und Nacken statt Kugel; Haare und Hüte folgen der Form.
 - [ ] Ab Gebäudestufe 4 ändert sich das Aussehen nicht mehr; eine vierte Stufe wäre möglich.
 - [ ] Maschinen einzeln einem Zwerg zuweisen (jetzt: Reihenfolge nach Zwergen-ID) und einzeln abbauen.
-- [ ] Werkstatt-Bild am Handy: Räume mit 4–5 Maschinen werden kleiner als ×2 gezeigt (krumme Pixel); besser seitlich wischen.
+- [x] **Festung als einziger Screen:** keine Werkstatt-Screens mehr, Werkstätten wachsen beim Ausbau (eine Maschine pro
+  Stufe, höchstens 5) und ziehen um, wenn kein Platz ist. Blasebalg und Abschreckfass direkt in der Festung anklicken.
+- [x] **Kleine Menüs:** Szene im Vollbild, Tabs öffnen eine Schublade, Fenster öffnen sich neben dem angeklickten Raum
+  oder Zwerg, Erklärungen hinter Info-Knöpfen (abschaltbar unter More), Hinweise als Chips auf der Szene.
+- [x] **Hintertüren:** jeder Raum hat eine Tür zum Treppenhaus dahinter, Türen lassen sich in Gänge setzen (Bau-Werkzeug
+  „Door“). Türen verbinden sich mit Türen der Etage darüber/darunter, deren Raum sich überschneidet; Zwerge nehmen
+  lieber Türen als Seitenwände.
+- [x] Treppe passt zum Gang: gleiche Bretterwand, Deckenbalken entlang der Schräge, Pfosten an beiden Öffnungen, Laterne.
+- [ ] Türpositionen (`ROOMS[type].door`) passen zur Variante 0 der Stufe 1; in anderen Varianten kann die Tür vor Möbeln
+  stehen. Besser: Tür in `rooms.px.js` mitzeichnen.
+- [ ] Am Handy überdeckt das Fenster die untere Hälfte der Szene; der Raum wird darüber gezeigt, aber Zwerge darunter
+  sind dann verdeckt.
 - [ ] Die Steine im Fels wiederholen sich alle 32 px sichtbar; eine zweite, passende Kachel würde helfen.
 
 - [ ] Gänge per Ziehen am Stück graben (jetzt: Klick pro Zelle).

@@ -58,6 +58,8 @@ damit Möbel sie verdecken.
 | Maschinen-Erweiterung | `BAYS[type].w` × 24 breit, 96 hoch | beginnt mit einem Pfeiler (x 0–5), eigene Anker in `BAYS` |
 | Zwerg | Leinwand 44 × 52, Figur ca. 33 px hoch | Anker unten Mitte (x 22, y 50); liegend 34 × 20 |
 | Gang | 24 × 96 | runde Enden `hall_cap_l/r` 8 × 96 |
+| Hintertür | `bdoor` / `bdoor_open` 18 × 34 | unten auf y = 90 (Boden), Mitte bei `ROOMS[type].door` bzw. Gangmitte; dahinter angedeutete Stufen |
+| Treppe | 48 × 192 | zwei Etagen; Wand, Balken und Pfosten wie im Gang (Bretter alle 12 px), 16 Stufen à 3 × 6 |
 | Treppe | 48 × 192 | zwei Spalten, zwei Stockwerke, nach rechts unten; Zwerge laufen die Stufen entlang |
 | Schacht | 48 × 96 | zwei Spalten links |
 | Oberfläche | Bäume 44 × 62, Stand 70 × 52, Zelt 60 × 46 | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE` |
