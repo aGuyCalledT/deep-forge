@@ -84,6 +84,13 @@ public final class Actions {
             case "fightThreat" -> fightThreat(f, a, t, r);
             case "breakSiege" -> breakSiege(f, a, t, r);
             case "tradition" -> tradition(f, a);
+            case "savePlan" -> Depot.savePlan(f, a);
+            case "deletePlan" -> Depot.deletePlan(f, a);
+            case "saveRule" -> Depot.saveRule(f, a);
+            case "toggleRule" -> Depot.toggleRule(f, a);
+            case "deleteRule" -> Depot.deleteRule(f, a);
+            case "saveOrder" -> Depot.saveOrder(f, a);
+            case "deleteOrder" -> Depot.deleteOrder(f, a);
             case "rename" -> rename(f, a);
             case "moveRoom" -> Layouts.moveRoom(f, str(a, "building"), num(a, "col", -1), num(a, "floor", -1));
             case "moveHall" -> Layouts.moveHall(f, num(a, "col", -1), num(a, "floor", -1), num(a, "col2", -1), num(a, "floor2", -1));
@@ -135,7 +142,9 @@ public final class Actions {
             }
             case "warrior" -> {
                 String post = str(a, "post");
-                check("fortress".equals(post) || "mine".equals(post), "Choose a post.");
+                check("hall".equals(post) || "mine".equals(post), "Choose a post.");
+                if (post.equals("hall") && !(d.job.equals("warrior") && "hall".equals(d.post)))
+                    check(guards(f).size() < hallSeats(f), "The entrance hall has room for " + hallSeats(f) + " guards. Upgrade it for more.");
                 d.job = "warrior";
                 d.post = post;
             }
@@ -207,7 +216,7 @@ public final class Actions {
         check(b != null && isWorkshop(b), "No such workshop.");
         check(machines(b) < maxMachines(b), "Upgrade the workshop for another machine.");
         Cost c = machineCost(b);
-        check(canPay(f, c), "Not enough coins or stone for another machine.");
+        check(canPay(f, c), "Not enough money or stone for another machine.");
         Layouts.ensure(f);
         int[] spot = Layouts.spaceToGrow(f, b);
         check(spot != null, "There is no dug-out space for a wider " + Content.BUILDINGS.get(b.type).name().toLowerCase()
@@ -285,7 +294,7 @@ public final class Actions {
         check(bt != null && bt.multi(), "You can't build that.");
         check(count(f, type) < 6, "That's enough of those.");
         Cost c = buildCost(f, type);
-        check(canPay(f, c), "Not enough coins or materials.");
+        check(canPay(f, c), "Not enough money or materials.");
         int[] spot = Layouts.ROOM_CELLS.containsKey(type) ? Layouts.spotForNew(f, type) : null;
         pay(f, c);
         int n = 1;
@@ -305,7 +314,7 @@ public final class Actions {
         check(b != null, "No such building.");
         check(b.level < 30, "Already at the highest level.");
         Cost c = upgradeCost(b);
-        check(canPay(f, c), "Not enough coins or materials.");
+        check(canPay(f, c), "Not enough money or materials.");
         Layouts.ensure(f);
         boolean grows = isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
         String name = Content.BUILDINGS.get(b.type).name();
@@ -337,7 +346,7 @@ public final class Actions {
         LayerState l = f.layers.get(idx);
         check(l.level < 30, "Already at the highest level.");
         Cost c = layerUpgradeCost(l);
-        check(canPay(f, c), "Not enough coins or materials.");
+        check(canPay(f, c), "Not enough money or materials.");
         pay(f, c);
         l.level++;
         fortressXp(f, 5 * l.level);
@@ -354,7 +363,7 @@ public final class Actions {
         check(!layer.needsDiscovery() || f.discovered.contains(String.valueOf(idx)),
                 "Nobody knows the way down yet. Send an expedition to scout it.");
         Cost c = layerUnlockCost(idx);
-        check(canPay(f, c), "Not enough coins or materials.");
+        check(canPay(f, c), "Not enough money or materials.");
         pay(f, c);
         l.unlocked = true;
         fortressXp(f, 100 * idx);
@@ -434,7 +443,7 @@ public final class Actions {
     static void caravan(Fortress f, Map<String, Object> a, double t) {
         String city = str(a, "city");
         check(city != null && f.cities.contains(city), "You don't know the way there.");
-        check(f.caravans.size() < caravanSlots(f), "All caravan slots are in use. Upgrade the trading post.");
+        check(f.caravans.size() < caravanSlots(f), "All caravan slots are in use. Upgrade the trade depot.");
         List<Dwarf> ms = new ArrayList<>(), gs = new ArrayList<>();
         for (int id : ids(a, "merchants")) {
             Dwarf d = freeDwarf(f, id);
@@ -464,34 +473,10 @@ public final class Actions {
         }
         Map<String, Integer> buy = goods(a, "buy");
         for (String k : buy.keySet()) check(Content.buyable(k), "You can't buy " + k + ".");
-        double budget = Math.max(0, num(a, "budget", 0));
-        check(budget <= f.coins, "Not enough coins for that budget.");
+        double budget = Math.max(0, Math.round(Depot.dbl(a, "budget")));
+        check(budget <= f.coins, "Not enough money for that budget.");
         check(units > 0 || !arts.isEmpty() || !buy.isEmpty(), "The caravan has nothing to do.");
-
-        Caravan c = new Caravan();
-        c.id = f.nextId++;
-        c.city = city;
-        for (Dwarf d : ms) {
-            c.merchants.add(d.id);
-            d.busy = "caravan:" + c.id;
-        }
-        for (Dwarf d : gs) {
-            c.guards.add(d.id);
-            d.busy = "caravan:" + c.id;
-        }
-        takeAll(f, cargo);
-        c.cargo.putAll(cargo);
-        f.artifacts.removeAll(arts);
-        c.artifacts.addAll(arts);
-        c.buy.putAll(buy);
-        c.budget = budget;
-        f.coins -= budget;
-        double hours = Content.CITIES.get(city).hours();
-        c.departAt = t;
-        c.arriveAt = t + hours * H;
-        c.returnAt = t + 2 * hours * H;
-        f.caravans.add(c);
-        log(f, t, "info", "A caravan leaves for " + Content.CITIES.get(city).name() + " with " + units + " goods.");
+        Depot.launch(f, t, city, ms, gs, cargo, arts, buy, budget);
     }
 
     // ------------------------------------------------------------ expeditions

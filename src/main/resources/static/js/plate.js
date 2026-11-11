@@ -10,8 +10,8 @@ let el = null, shown = null, leaving = null;
 
 /** The metal of a room's plate: what the room is for. */
 export function roomMaterial(type) {
-  if (['barracks', 'walls'].includes(type)) return 'war';
-  if (['warehouse', 'vault', 'trading_post'].includes(type)) return 'trade';
+  if (['barracks', 'gate', 'entrance_hall'].includes(type)) return 'war';
+  if (['warehouse', 'vault', 'trade_depot'].includes(type)) return 'trade';
   if (['quarters', 'tavern', 'farm', 'brewery'].includes(type)) return 'dwarf';
   if (type === 'expedition_hall') return 'lore';
   return 'forge';

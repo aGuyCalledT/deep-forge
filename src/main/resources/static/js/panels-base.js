@@ -1,5 +1,5 @@
 // Fortress overview, dwarves, war and "more" panels.
-import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue } from './data.js';
+import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue, moneyText } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp } from './ui.js';
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
@@ -14,9 +14,10 @@ export const EFFECT = {
   quarters: () => `${D().beds} beds for ${D().pop} dwarves`,
   tavern: (b) => `+${Math.min(28, 4 + 3 * (b.level - 1))} happiness (needs ale)`,
   barracks: (b) => `Warriors gain ${6 + 4 * b.level} combat xp per hour`,
-  walls: (b) => b.level ? `+${15 * b.level} defence at the gate` : 'Not built yet',
+  gate: (b) => b.level > 1 ? `+${15 * (b.level - 1)} defence against raids` : 'A plain wooden gate. Upgrade it for defence',
+  entrance_hall: () => `Room for ${D().hallSeats} guards (${D().guards} posted), +${Math.round((D().hallBonus - 1) * 100)}% when they fight at home`,
   vault: () => `Raiders can't touch ${Math.round(D().vaultProtect * 100)}% of your goods`,
-  trading_post: () => `${D().caravanSlots} caravan(s), ${D().caravanCapacity} goods per merchant`,
+  trade_depot: () => `${D().caravanSlots} caravan(s), ${D().caravanCapacity} goods per merchant, ${D().depot.maxRules} rule(s), ${D().depot.maxOrders} buy order(s)`,
   expedition_hall: () => `${D().expeditionSlots} expedition(s), up to ${D().partyMax} dwarves each`,
 };
 
@@ -164,7 +165,7 @@ export function jobSheet(x) {
       return opt(buildingName(b), wn + ' · ' + byId.buildings[b.type].skill, { job: 'worker', building: b.id }, x.job === 'worker' && x.building === b.id);
     }),
     h('h3', null, 'Other'),
-    opt('Warrior at the gate', 'defends against raids', { job: 'warrior', post: 'fortress' }, x.job === 'warrior' && x.post === 'fortress'),
+    opt('Guard in the entrance hall', `defends the gate, chases critters · ${D().guards}/${D().hallSeats} posted`, { job: 'warrior', post: 'hall' }, x.job === 'warrior' && x.post !== 'mine'),
     opt('Warrior on mine patrol', 'fights monsters in the mine', { job: 'warrior', post: 'mine' }, x.job === 'warrior' && x.post === 'mine'),
     opt('Merchant', 'leads caravans', { job: 'merchant' }, x.job === 'merchant'),
     opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
@@ -215,17 +216,17 @@ export function renderWar() {
   const warriors = f.dwarves.filter((x) => x.job === 'warrior');
   out.push(h('div', { class: 'card' },
     h('div', { class: 'row between' }, h('h3', null, 'Gate defence'), h('b', { class: 'gold-t' }, fmt(d.gatePower))),
-    h('p', { class: 'small muted' }, `${warriors.filter((x) => x.post === 'fortress' && !x.busy).length} warriors at the gate + ${fmt(d.wallPower)} from walls. `
+    h('p', { class: 'small muted' }, `${d.guards} of ${d.hallSeats} guards in the entrance hall (+${Math.round((d.hallBonus - 1) * 100)}% at home) + ${fmt(d.wallPower)} from the gate. `
       + `The vault protects ${Math.round(d.vaultProtect * 100)}% of your goods.`),
     h('div', { class: 'row' }, h('span', { class: 'grow' }, 'Mine patrol'), h('b', null, fmt(d.minePower))),
-    h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('walls')), upgradeBtn(building('vault')), upgradeBtn(building('barracks')))));
+    h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('gate')), upgradeBtn(building('entrance_hall')), upgradeBtn(building('vault')), upgradeBtn(building('barracks')))));
 
   if (f.raid) {
     const ok = d.gatePower >= f.raid.power;
     out.push(h('div', { class: 'card bad' }, h('h3', null, img(S.icon('warn'), 'icon s'), ' ', f.raid.name, ' incoming!'),
       h('p', null, 'Strength ', h('b', null, fmt(f.raid.power)), ' vs your gate ', h('b', { class: ok ? 'good-t' : 'bad-t' }, fmt(d.gatePower)),
         '. Arrives in ', h('b', { 'data-until': f.raid.arrivesAt }, dur(f.raid.arrivesAt - t)), '.'),
-      h('p', { class: 'small muted' }, ok ? 'Your defence should hold, but fights are never certain.' : 'Too weak! Post more warriors at the gate, give them axes and armor, or build walls. If the raid wins, they steal goods, may kill dwarves and besiege the gate.')));
+      h('p', { class: 'small muted' }, ok ? 'Your defence should hold, but fights are never certain.' : 'Too weak! Post more guards in the entrance hall, give them axes and armor, or upgrade the gate. If the raid wins, they steal goods, may kill dwarves and besiege the gate.')));
   }
   if (f.siege) {
     out.push(h('div', { class: 'card bad' }, h('h3', null, 'Siege! ', f.siege.name, ' at the gate'),
@@ -237,7 +238,7 @@ export function renderWar() {
       h('div', { class: 'row' }, img(S.monster(th.monster, 0), 'icon l'), h('div', { class: 'grow' }, h('h3', null, th.name), h('span', { class: 'small' }, th.cell ? 'Overgrown cave, floor ' + (+th.cell.split(',')[1] + 1) : G.data.layers[th.layer].name))),
       th.cell
         ? h('p', null, 'Strength ', h('b', null, fmt(th.power)), '. It raids the larder and bites dwarves, next in ', h('b', { 'data-until': th.nextHarm }, dur(th.nextHarm - t)),
-          '. Warriors at the gate chase it on their own. Or put a hallway or room into its cave, or fill the cave in.')
+          th.fightAt > now() ? h('span', null, '. Guards are on their way: ', h('b', { 'data-until': th.fightAt }, dur(th.fightAt - t)), '.') : '. Guards from the entrance hall chase it on their own. Or put a hallway or room into its cave, or fill the cave in.')
         : h('p', null, 'Strength ', h('b', null, fmt(th.power)), '. Mining there has stopped. It may kill a hiding miner in ', h('b', { 'data-until': th.nextHarm }, dur(th.nextHarm - t)), '.'),
       h('button', { class: 'btn danger', onclick: () => fightSheet('Fight the ' + th.name.toLowerCase(), th.power, (ids) => ({ type: 'fightThreat', threat: th.id, warriors: ids })) }, 'Send warriors')));
   }
@@ -248,7 +249,7 @@ export function renderWar() {
   out.push(h('div', { class: 'list' }, warriors.map((x) => h('div', { class: 'card sub row' },
     img(S.portrait(x)), h('span', { class: 'grow' }, h('b', null, fullName(x)), h('br'), h('span', { class: 'small muted' }, jobLabel(x))),
     h('span', { class: 'gold-t' }, fmt(D().dwarves[x.id].power)),
-    !x.busy ? h('button', { class: 'btn small', onclick: () => bus.act({ type: 'assign', dwarf: x.id, job: 'warrior', post: x.post === 'mine' ? 'fortress' : 'mine' }) }, x.post === 'mine' ? 'To gate' : 'To mine') : null,
+    !x.busy ? h('button', { class: 'btn small', onclick: () => bus.act({ type: 'assign', dwarf: x.id, job: 'warrior', post: x.post === 'mine' ? 'hall' : 'mine' }) }, x.post === 'mine' ? 'To the hall' : 'To the mine') : null,
     !x.busy ? h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear') : null))));
   return out;
 }
@@ -286,7 +287,7 @@ export function renderMore() {
   api.get('/players').then((list) => players.replaceChildren(h('table', null,
     h('tr', null, ['Hold', 'Lvl', 'Depth', 'Dwarves', 'Earned', 'Lost'].map((x) => h('th', null, x))),
     list.map((p) => h('tr', null, h('td', null, h('b', null, p.name), h('br'), h('span', { class: 'small muted' }, p.owner)),
-      h('td', null, p.level), h('td', null, p.depth), h('td', null, p.dwarves), h('td', null, fmt(p.coinsEarned)), h('td', null, p.lost)))))).catch(() => {});
+      h('td', null, p.level), h('td', null, p.depth), h('td', null, p.dwarves), h('td', null, moneyText(p.coinsEarned)), h('td', null, p.lost)))))).catch(() => {});
   out.push(...section('Other holds', players));
 
   out.push(...section('Chronicle', h('div', { class: 'card' }, f.log.slice().reverse().slice(0, 60).map((l) =>

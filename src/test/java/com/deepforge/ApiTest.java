@@ -49,7 +49,10 @@ class ApiTest {
                 .andExpect(jsonPath("$.error").exists());
 
         mvc.perform(get("/api/market").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.index['bar:copper']").exists());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.goods['bar:copper'].base").value(1000))
+                .andExpect(jsonPath("$.cities.emberton.mult['type:axe']").exists());
+        mvc.perform(get("/api/market/good").param("key", "type:axe").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cities.ironmarch").isArray());
         mvc.perform(get("/api/players").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].owner").value("Tester"));
         mvc.perform(get("/api/data")).andExpect(status().isOk()).andExpect(jsonPath("$.metals.length()").value(25));

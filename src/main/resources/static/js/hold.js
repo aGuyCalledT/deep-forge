@@ -1,6 +1,6 @@
 // The hold: surface, rock, mine shaft, hallways, stairwells and rooms where the player placed them,
 // and the dwarves walking between them.
-import { G, F, D, byId, now, stock, fullName } from './data.js';
+import { G, F, D, byId, now, stock, fullName, moneyText } from './data.js';
 import * as S from './sprites.js';
 import { sun, daylight, skyColors, berlinHour } from './sun.js';
 import { text, sign } from './pixfont.js';
@@ -200,14 +200,33 @@ function want(g, d, ctx) {
   if (d.job === 'miner') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 8, hidden: true };
   if (d.job === 'warrior') {
     if (d.post === 'mine') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 8, hidden: true };
+    // on the way to a critter in the hold, or back from it
+    const th = (F().threats || []).find((x) => x.cell && x.fightAt > now() - 60 && (x.guards || []).includes(d.id));
+    if (th) { const [c, fl] = th.cell.split(',').map(Number); return { f: fl, x: c * CELL + 12, pose: 'work', tool: 'axe', face: 1 }; }
     if (sch.off && !F().raid && !F().siege) return free();
-    const i = ctx.gate++;
-    return { f: -1, x: SURFACE.wall + SURFACE.wallW + 16 + i * 18, pose: 'idle', tool: 'axe', face: -1 };
+    return guardSpot(d, ctx.gate++);
   }
   if (d.job === 'merchant') { const i = ctx.stall++; return { f: -1, x: SURFACE.stall + STALL_W + 12 + i * 20, pose: 'idle', tool: 'sack', face: -1 }; }
   void room;
   return free();
 }
+
+/**
+ * Guards in the entrance hall (the gate tunnel, x -FACE..0 on the valley's floor line): they stand watch facing the
+ * gate, and every pair spars with wooden sticks a few minutes in every twelve (that is how they learn).
+ */
+function guardSpot(d, i) {
+  const f = F();
+  if (f.raid || f.siege) return { f: -1, x: -FACE + 14 + i * 12, pose: 'idle', tool: 'axe', face: -1 };
+  const pair = Math.floor(i / 2), x0 = -FACE + 78 + pair * 18;
+  const partner = f.dwarves.filter((x) => x.job === 'warrior' && x.post === 'hall' && !x.busy).length > (i ^ 1);
+  const spar = partner && pair < 2 && S.hash('spar' + pair + ':' + Math.floor(now() / 240)) % 3 === 0;
+  if (spar) return { f: -1, x: x0 + (i % 2 ? 12 : 0), pose: 'work', tool: 'stick', face: i % 2 ? -1 : 1 };
+  return { f: -1, x: -FACE + 76 + i * 8, pose: 'idle', tool: 'axe', face: i % 2 ? 1 : -1 };
+}
+
+/** Level of a building type (0 when the hold has none). */
+function levelOf(type) { const b = F().buildings.find((x) => x.type === type); return b ? b.level : 0; }
 
 /** The job running on machine i (machine 0 uses b.job). */
 export function jobOf(b, i) { return i === 0 ? b.job : (b.more || [])[i - 1] || null; }
@@ -491,8 +510,7 @@ function drawSurface(ctx, t) {
   for (const x of [-560, -456, -310, -236, -196]) onGrass(ctx, 'flowers', x);
   for (const x of [-660, -250]) onGrass(ctx, 'bush', x);
   onGrass(ctx, 'tree_0', -228, true);
-  const walls = (f.buildings.find((b) => b.type === 'walls') || { level: 0 }).level;
-  onGrass(ctx, walls ? 'stonewall' : 'palisade', SURFACE.wall);
+  onGrass(ctx, levelOf('gate') >= 3 ? 'stonewall' : 'palisade', SURFACE.wall);
   // caravans on the road, out to the left
   const t0 = now();
   for (const c of f.caravans) {
@@ -633,7 +651,11 @@ function drawUnderground(ctx, t, view, g) {
   ctx.drawImage(dl.rock, -VW, 0);
   ctx.drawImage(dl.lips, -VW, 0);
   // the gate tunnel from the valley to the shaft
-  for (let x = -FACE, i = 0; x < 0; x += CELL, i++) S.draw(ctx, ['hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_d', 'hall_a'][i % 6], x, ftop(ENTRY));
+  const hallLvl = levelOf('entrance_hall');
+  if (hallLvl) {
+    S.draw(ctx, 'entrance_hall_' + hallTier(hallLvl), -FACE, ftop(ENTRY));
+    if (hallTier(hallLvl) === 2) for (const x of HALL_BRAZIERS) { S.draw(ctx, 'brazier', -FACE + x - 7, fy(ENTRY) - 21); S.draw(ctx, 'fire_place_' + ((Math.floor(t * 6) + x) % 4), -FACE + x - 10, fy(ENTRY) - 32); }
+  } else for (let x = -FACE, i = 0; x < 0; x += CELL, i++) S.draw(ctx, ['hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_d', 'hall_a'][i % 6], x, ftop(ENTRY));
   // hallways with rounded ends where they meet rock
   for (const [k, v] of g.cells) {
     if (v.kind !== 'hall' && v.kind !== 'cave') continue;
@@ -657,8 +679,18 @@ function drawUnderground(ctx, t, view, g) {
   ctx.drawImage(dl.shadow, -VW, 0);
   drawMarks(ctx, t, g);
   drawCritters(ctx, t, g);
-  S.draw(ctx, 'gate', SURFACE.gate + 6, GROUND - 71);
+  const gl = gateLevel(), gs = S.sprite('gate_' + gl);
+  if (gs) {
+    S.draw(ctx, 'gate_' + gl, -FACE - (gs.width >> 1), GROUND - gs.height + 1);
+    if (gl >= 3) for (const s of [-1]) { const x = -FACE + s * ((gs.width >> 1) + 9); S.draw(ctx, 'brazier', x - 7, GROUND - 21); S.draw(ctx, 'fire_place_' + ((Math.floor(t * 6) + (s > 0 ? 2 : 0)) % 4), x - 10, GROUND - 32); }
+  } else S.draw(ctx, 'gate', SURFACE.gate + 6, GROUND - 71);
 }
+
+/** The entrance hall's look: 0 timber, 1 cut stone, 2 grand (banners, braziers). */
+const hallTier = (lvl) => Math.max(0, Math.min(2, lvl - 1));
+const HALL_BRAZIERS = [76, 108];       // tunnel pixels of the grand hall's braziers
+/** The gate grows with its level (gate_1..gate_4). */
+const gateLevel = () => Math.max(1, Math.min(4, levelOf('gate') || 1));
 
 /** Rock marked for digging: a chalk outline, cracks that spread as the miner works, and how far along it is. */
 function drawMarks(ctx, t, g) {
@@ -842,6 +874,10 @@ export const holdScreen = {
       out.push({ x: w.c * CELL + 44, y: ftop(w.f) + 34, r: 30, color: '#ffd98e', flicker: 1 });
       if ((wellLit.get(wellKey(w)) || 0) > performance.now()) out.push({ x: w.c * CELL + 29, y: ftop(w.f) + 68, r: 22, color: '#ffb070', power: 0.8 });
     }
+    const hl = levelOf('entrance_hall');
+    if (hl) for (const x of hallTier(hl) === 2 ? HALL_BRAZIERS : [75, 107]) out.push({ x: -FACE + x, y: hallTier(hl) === 2 ? fy(ENTRY) - 26 : ftop(ENTRY) + 51, r: 34, color: '#ffb070', flicker: 2 });
+    const gs = S.sprite('gate_' + gateLevel());
+    if (gs && gateLevel() >= 3) for (const sd of [-1]) out.push({ x: -FACE + sd * ((gs.width >> 1) + 9), y: GROUND - 26, r: 40, color: '#ffb070', flicker: 2 });
     const day = daylight(sun().elev);
     if (day < 0.8) {
       out.push({ x: SURFACE.stall + 36, y: GRASS - 38, r: 44, color: '#ffd98e', power: 0.8 });
@@ -863,6 +899,10 @@ export const holdScreen = {
     if (!G_) return null;
     for (const c of critterHits) if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return { kind: 'tab', id: 'war', rect: [c.x, c.y, c.w, c.h], round: true };
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return machineHit(r, x, y) || { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
+    for (const type of ['entrance_hall', 'gate']) {
+      const b = F().buildings.find((q) => q.type === type), r = b && fixedRect(type);
+      if (r && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return { kind: 'room', id: b.id, rect: [r.x, r.y, r.w, r.h], round: true };
+    }
     if (x < -FACE && y < GRASS + 2 && y > GRASS - 62) {
       const X = SURFACE;
       if (x >= X.stall && x < X.stall + STALL_W && y > GRASS - 54) return { kind: 'tab', id: 'trade', rect: [X.stall, GRASS - 53, STALL_W, 54], round: true };
@@ -1107,7 +1147,7 @@ function buildOverlay(ctx, t, mouse) {
     const at = (st.last ?? st.from) * CELL, ty = ftop(st.f) - 8;
     if (tool === 'hall' && n) {
       const cost = (D().layoutCosts || {}).hall, can = cost ? Math.floor(F().coins / cost.coins) : n;
-      text(ctx, n + ' CELLS ' + Math.round(n * (cost ? cost.coins : 0)) + ' COINS' + (can < n ? ' - ONLY ' + can : ''), at, ty, can < n ? '#ff9a7a' : '#fbf4e6');
+      text(ctx, n + ' CELLS ' + moneyText(n * (cost ? cost.coins : 0)) + (can < n ? ' - ONLY ' + can : ''), at, ty, can < n ? '#ff9a7a' : '#fbf4e6');
     }
     if (tool === 'dig' && n && !st.unmark) {
       const dig = D().dig || {}, secs = (dig.seconds || [])[st.f] || 300, m = Math.max(1, dig.miners || 0);
@@ -1185,14 +1225,25 @@ function buildClick(x, y, hit) {
 export function roomRect(id) {
   const g = G_ || grid();
   const r = g.rooms.find((q) => q.b.id === id);
-  return r ? { x: r.x, y: r.y, w: r.pw, h: RH } : null;
+  if (r) return { x: r.x, y: r.y, w: r.pw, h: RH };
+  const b = F().buildings.find((q) => q.id === id);
+  return b ? fixedRect(b.type) : null;
+}
+
+/** Buildings that are not on the grid: the entrance hall (the gate tunnel) and the gate in the mountain face. */
+function fixedRect(type) {
+  if (type === 'entrance_hall') return { x: -FACE, y: ftop(ENTRY), w: FACE, h: RH };
+  if (type === 'gate') { const s = S.sprite('gate_' + gateLevel()); return s ? { x: -FACE - (s.width >> 1), y: GROUND - s.height + 1, w: s.width >> 1, h: s.height } : null; }
+  return null;
 }
 
 /** World position of a room (for focusing the camera). */
 export function roomCenter(id) {
   const g = G_ || grid();
   const r = g.rooms.find((q) => q.b.id === id);
-  return r ? { x: r.x + r.pw / 2, y: r.y + RH / 2 } : null;
+  if (r) return { x: r.x + r.pw / 2, y: r.y + RH / 2 };
+  const q = roomRect(id);
+  return q ? { x: q.x + q.w / 2, y: q.y + q.h / 2 } : null;
 }
 
 export { fullName, text };

@@ -1,7 +1,7 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
-import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand } from './ui.js';
+import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money } from './ui.js';
 import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
@@ -181,7 +181,7 @@ function renderTop() {
   $('hold-name').textContent = f.name + ' · Lv ' + f.level;
   const food = d.foodPerHour, ale = d.alePerHour;
   $('res').replaceChildren(
-    h('span', { title: 'Coins' }, img(S.coin(), 'icon s'), fmt(f.coins)),
+    money(f.coins, 'top'),
     h('span', { title: `Mushrooms (${food >= 0 ? '+' : ''}${food.toFixed(1)}/h)`, class: f.noFood ? 'bad-t' : '' }, img(S.raw('food'), 'icon s'), fmt(f.stock.food || 0), h('small', { class: food < 0 ? 'bad-t' : 'dim' }, food >= 0 ? '+' + food.toFixed(1) : food.toFixed(1))),
     h('span', { title: `Ale (${ale >= 0 ? '+' : ''}${ale.toFixed(1)}/h)`, class: f.noAle ? 'bad-t' : '' }, img(S.raw('ale'), 'icon s'), fmt(f.stock.ale || 0), h('small', { class: ale < 0 ? 'bad-t' : 'dim' }, ale >= 0 ? '+' + ale.toFixed(1) : ale.toFixed(1))),
     h('span', { title: 'Dwarves / beds' }, img(S.icon('dwarf'), 'icon s'), `${d.pop}/${d.beds}`),

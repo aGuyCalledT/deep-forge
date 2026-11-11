@@ -52,6 +52,20 @@ const RAW = {
 for (const [k, fn] of Object.entries(RAW)) sprite("raw_" + k, { w: 14, h: 14, outline: "k" }, fn);
 
 sprite("coin", { w: 10, h: 10, outline: "k" }, (c) => { c.circ(5, 5, 4, "O"); c.circ(5, 5, 3, "j"); c.vline(5, 3, 5, "O"); c.px(3, 3, "8"); });
+// money: a Gold Mark (stamped with the mountain), a Silver Talent (milled rim) and a Copper Jot (holed, strung on cords)
+sprite("coin_mark", { w: 10, h: 10, outline: "k" }, (c) => {
+  c.circ(5, 5, 4, "O"); c.circ(5, 5, 3, "j");
+  c.px(4, 4, "o"); c.px(5, 3, "o"); c.px(6, 4, "o"); c.hline(3, 5, 5, "o"); c.px(3, 3, "8"); c.px(4, 2, "8");
+});
+sprite("coin_talent", { w: 10, h: 10, outline: "k" }, (c) => {
+  c.circ(5, 5, 4, "5"); c.circ(5, 5, 3, "6");
+  for (const [x, y] of [[5, 1], [9, 5], [5, 9], [1, 5]]) c.px(x, y, "4");
+  c.vline(5, 3, 5, "5"); c.px(3, 3, "7"); c.px(4, 2, "C");
+});
+sprite("coin_jot", { w: 8, h: 8, outline: "k" }, (c) => {
+  c.circ(4, 4, 3, "~"); c.circ(4, 4, 2, "^");
+  c.px(4, 4, "_"); c.px(2, 2, "y");
+});
 sprite("artifact", { w: 14, h: 14, outline: "k" }, (c) => {
   c.poly([7, 0, 12, 5, 7, 10, 2, 5], "p"); c.poly([7, 2, 10, 5, 7, 8, 4, 5], "P"); c.px(6, 4, "C");
   c.rect(3, 10, 8, 3, "O"); c.hline(3, 10, 8, "j"); c.hline(3, 12, 8, "o");

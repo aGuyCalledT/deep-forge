@@ -148,6 +148,12 @@ public class ApiController {
         return game.market(u.id(), u.name());
     }
 
+    @GetMapping("/market/good")
+    public Map<String, Object> marketGood(HttpServletRequest req, @RequestParam("key") String key) {
+        user(req);
+        return game.marketGood(key);
+    }
+
     @GetMapping("/players")
     public List<Map<String, Object>> players() {
         return game.players();

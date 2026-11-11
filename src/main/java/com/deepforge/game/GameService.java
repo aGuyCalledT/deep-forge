@@ -90,8 +90,22 @@ public class GameService {
         synchronized (lock(uid)) {
             Fortress f = load(uid, owner, now);
             double tp = Rules.trad(f, "silver_tongues");
-            return market.snapshot(f.cities, 1 + 0.03 * tp, 1 + 0.03 * tp);
+            Map<String, Object> m = market.snapshot(f.cities, 1 + 0.03 * tp, 1 + 0.03 * tp);
+            // how hard this player's trades move each price, and how many units it takes to move it
+            Map<String, Object> power = new LinkedHashMap<>(), liq = new LinkedHashMap<>();
+            for (String k : Content.marketGoods()) {
+                power.put(k, Math.round(Rules.marketPower(f, k) * 100) / 100.0);
+                liq.put(k, Math.round(Content.liquidity(k) * 10) / 10.0);
+            }
+            m.put("power", power);
+            m.put("liquidity", liq);
+            return m;
         }
+    }
+
+    public Map<String, Object> marketGood(String key) {
+        if (!Content.isMarketKey(key)) throw new Actions.GameException("Unknown good.");
+        return market.good(key);
     }
 
     /** Other players: name, level, depth and a few numbers. */

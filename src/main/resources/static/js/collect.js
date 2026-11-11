@@ -1,7 +1,7 @@
 // Loot that waits to be collected: what caravans and expeditions brought home stays in a report until the
 // player presses "Collect". Then the goods fly up into the stores with a sound.
 import { F, fmt, goodName } from './data.js';
-import { h, img, goodIcon, bus, ico } from './ui.js';
+import { h, img, goodIcon, bus, ico, money } from './ui.js';
 import { paper } from './paper.js';
 import * as S from './sprites.js';
 import * as A from './audio.js';
@@ -13,7 +13,7 @@ export function reportCards(kind) {
 
 function reportCard(r) {
   const loot = [];
-  if (r.coins) loot.push(h('span', { class: 'loot-item', 'data-fly': 'coins' }, img(S.coin(), 'icon'), h('b', null, fmt(r.coins))));
+  if (r.coins) loot.push(h('span', { class: 'loot-item', 'data-fly': 'coins' }, money(r.coins, 'big')));
   for (const [k, v] of Object.entries(r.goods || {})) loot.push(h('span', { class: 'loot-item', 'data-fly': k, title: goodName(k) }, goodIcon(k, 'icon'), h('b', null, fmt(v))));
   for (const a of r.artifacts || []) loot.push(h('span', { class: 'loot-item', 'data-fly': 'artifact', title: a.desc || a.name }, img(S.artifact(), 'icon'), h('b', null, a.name)));
   const empty = !loot.length;

@@ -34,7 +34,29 @@ public final class View {
         d.put("partyMax", partyMax(f));
         d.put("vaultProtect", vaultProtect(f));
         d.put("wallPower", wallPower(f));
-        d.put("gatePower", power(f, warriors(f, "fortress")) + wallPower(f));
+        d.put("gatePower", guardPower(f, guards(f)) + wallPower(f));
+        d.put("hallSeats", hallSeats(f));
+        d.put("hallBonus", round(hallBonus(f)));
+        d.put("guards", guards(f).size());
+
+        // trade depot: limits, market share, how much of each good the rules and caravans look at
+        fadeTrade(f, now);
+        Map<String, Object> dep = new LinkedHashMap<>();
+        dep.put("maxPlans", maxPlans(f));
+        dep.put("maxRules", maxRules(f));
+        dep.put("maxOrders", maxOrders(f));
+        dep.put("lot", deliveryLot(f));
+        dep.put("share", Math.round(share(f) * 100000) / 100000.0);
+        dep.put("startShare", START_SHARE);
+        Map<String, Object> shares = new LinkedHashMap<>(), counts = new LinkedHashMap<>();
+        for (String k : Content.marketGoods()) {
+            int n = stockOf(f, k);
+            if (n > 0) counts.put(k, n);
+            if (f.traded.containsKey(k) || n > 0) shares.put(k, Math.round(share(f, k) * 100000) / 100000.0);
+        }
+        dep.put("shares", shares);
+        dep.put("stock", counts);
+        d.put("depot", dep);
         d.put("minePower", power(f, warriors(f, "mine")));
 
         // per dwarf numbers

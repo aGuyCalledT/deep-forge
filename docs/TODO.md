@@ -115,3 +115,17 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 `death-toll`, `dwarf-cheer`, `defeat`, `door-creak`, `bellows-puff`, `quench-hiss`, `caravan-depart`,
 `expedition-depart`, `error`, `furnace-roar`, `grindstone-loop`, `brewing-bubbles`, `mine-ambience`,
 `tavern-ambience`, `night-ambience`.
+
+## Markt, Handelsdepot und Eingangshalle
+
+- [x] **Eingangshalle** im Tor-Tunnel: Wachen stationieren (`2 + 2 × Stufe`), sie verteidigen gegen Überfälle und gehen
+      von selbst auf Kriechtiere los; daheim kämpfen sie besser und lernen langsam (Üben mit Holzstöcken).
+- [x] **Tor statt Mauern,** in vier Stufen ausbaubar (Holztor bis Runentor mit Feuerschalen).
+- [x] **Handelsdepot als Raum:** gespeicherte Karawanen, Regeln („If Battle Axes reach 100, send … to …“),
+      Kauf-Aufträge mit Höchstpreis und Rücklage, Lieferungen bezahlt bei Ankunft.
+- [x] **Marktübersicht** mit Kurs, Wochenlinie und Tagesänderung; Klick zeigt alle Städte mit Preisen und Verlauf.
+- [x] **Schwankende Preise** um einen Grundwert (10 %–1000 %), Handel bewegt Stadt und Welt nach Marktanteil.
+- [x] **Geld:** Gold Marks, Silver Talents, Copper Jots mit eigenen Münz-Symbolen; alte Spielstände umgerechnet.
+- [ ] Hinweis-Chip, wenn eine Regel pausiert oder ein Kauf-Auftrag mangels Geld nicht ausgeführt wird.
+- [ ] Sounds für Depot-Regel ausgelöst und Lieferung angekommen (`docs/AUDIO.md`).
+- [ ] Balancing der Marktmacht nach einigen Tagen echtem Spiel prüfen.

@@ -66,6 +66,8 @@ damit Möbel sie verdecken.
 | Graben | `dig_crack_<0..2>` 24 × 96 | Risse, die mit dem Fortschritt wachsen; Kreide-Umriss und Balken zeichnet `hold.js` |
 | Treppenhaus | `well` / `well_lit` 48 × 96 | Gang zwei Zellen breit, in der Mitte der Rückwand ein Steinbogen ins Dunkle (Mitte bei x = 24), Schild mit Pfeilen, Laterne; `well_lit` leuchtet, wenn gerade jemand hinein- oder herausgeht. Keine Stufen zu sehen |
 | Schacht | 48 × 96 | zwei Spalten links, ein Treppenhaus mit gekreuzten Spitzhacken und Gleisen (`shaft`, `shaft_lit`) |
+| Tor | `gate_1..4`: 48 × 72, 54 × 78, 64 × 88, 76 × 100 | wächst mit der Tor-Stufe: Holztor, Steinbogen mit beschlagenen Flügeln, Fallgitter und Banner, Runenbogen mit Wappen; mittig auf der Bergwand (x = −FACE), ab Stufe 3 Feuerschalen (`brazier` 14 × 22 + `fire_place`) daneben |
+| Eingangshalle | `entrance_hall_0..2` 144 × 96 | der Tor-Tunnel: Holz, Stein mit Schilden, prächtig mit Bannern und Läufer; Mitte (x 48–100) frei für die Übungskämpfe der Wachen (Werkzeug `stick` in `figure.js`) |
 | Oberfläche | Bäume 44 × 62, Stand 70 × 52, Zelt 60 × 46 | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE` |
 | Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
 | Monster | je nach Art, Figuren wie Zwerge | `Figure.monster(id, frame)` |
@@ -86,7 +88,7 @@ Posen: `idle talk sit sitTalk eat drink walk work climb sleep`, Stimmung `happy 
 
 ## Tiefe
 
-- Die Festung liegt in einem Berg: links das Tal (Markt, Zelt, Winde, Mauer, Karawanen), ein Tor (`gate`) mit Tunnel
+- Die Festung liegt in einem Berg: links das Tal (Markt, Zelt, Winde, Palisade bzw. ab Tor-Stufe 3 Steinmauer, Karawanen), ein Tor (`gate_<stufe>`) mit Tunnel (die Eingangshalle)
   führt auf Etage `ENTRY` (2) zum Schacht, darüber zwei Etagen über dem Talboden. Die Bergform kommt aus `mtop(x)` in
   `hold.js` (Steilwand am Tor, Hang, Gipfel mit Schnee, Gras und kleine Tannen am Rand).
 - Der Fels ist die vordere Ebene: grauer Naturstein in vier Gesteinsbändern (`stone_*`, je zwei Etagen, je drei

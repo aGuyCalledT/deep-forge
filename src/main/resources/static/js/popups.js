@@ -25,6 +25,8 @@ export function openRoomSheet(b, at) {
     if (cur.type === 'warehouse') extra.push(h('p', { class: 'small' }, `${fmt(D().used)} / ${fmt(D().capacity)} stored.`),
       h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('fortress'); } }, 'See the stockpile'));
     if (cur.type === 'barracks') extra.push(h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('war'); } }, 'Warriors and defence'));
+    if (cur.type === 'trade_depot') extra.push(h('button', { class: 'btn primary', onclick: () => bus.depot && bus.depot(at) }, 'Open the depot'));
+    if (cur.type === 'entrance_hall' || cur.type === 'gate') extra.push(...hallCard(f, cur));
     return h('div', null,
       h('h2', null, buildingName(cur), info(t.note)), h('p', { class: 'small muted' }, 'Level ' + cur.level),
       still,
@@ -32,6 +34,25 @@ export function openRoomSheet(b, at) {
       ...extra,
       upgradeBtn(cur));
   }, at || null, roomMaterial(b.type));
+}
+
+/** The guards of the entrance hall, and who could join them. */
+function hallCard(f, cur) {
+  const d = D();
+  const guards = f.dwarves.filter((x) => x.job === 'warrior' && x.post === 'hall');
+  const could = f.dwarves.filter((x) => !x.busy && !(x.job === 'warrior' && x.post === 'hall') && (x.job === 'warrior' || x.job === 'idle'));
+  return [
+    h('div', { class: 'row between' }, h('h3', null, `Guards ${guards.length} / ${d.hallSeats}`), h('span', null, 'Gate defence ', h('b', { class: 'gold-t' }, fmt(d.gatePower)))),
+    h('p', { class: 'small muted' }, `They defend the gate against raids and run to critters on their own, +${Math.round((d.hallBonus - 1) * 100)}% when they fight at home. Standing watch and sparring, they slowly get better.`),
+    guards.length ? h('div', { class: 'list' }, guards.map((x) => h('div', { class: 'card sub row' }, img(S.portrait(x)),
+      h('span', { class: 'grow' }, h('b', null, fullName(x)), h('br'), h('span', { class: 'small muted' }, x.busy ? 'Away' : `combat ${d.dwarves[x.id].skills.combat} · power ${fmt(d.dwarves[x.id].power)}`)),
+      !x.busy ? h('button', { class: 'btn small', onclick: () => bus.act({ type: 'assign', dwarf: x.id, job: 'warrior', post: 'mine' }) }, 'To the mine') : null)))
+      : h('p', { class: 'small warn-t' }, 'Nobody stands guard. Post warriors or idle dwarves here.'),
+    guards.length < d.hallSeats && could.length ? h('div', null, h('h3', null, 'Post a guard'), could.slice(0, 6).map((x) => h('div', { class: 'row' }, img(S.portrait(x)),
+      h('span', { class: 'grow small' }, fullName(x), ' · ', jobLabel(x)),
+      h('button', { class: 'btn small good', onclick: () => bus.act({ type: 'assign', dwarf: x.id, job: 'warrior', post: 'hall' }) }, 'Post here')))) : null,
+    upgradeBtn(f.buildings.find((b) => b.type === (cur.type === 'gate' ? 'entrance_hall' : 'gate'))),
+  ];
 }
 
 export function openDwarfSheet(d, at) {
@@ -98,7 +119,7 @@ export function cheatsSection() {
   const dyes = Object.keys(G.data.dyes || {});
   const keys = ['coins', ...G.data.ores.map((o) => o.id), 'coal', 'limestone', 'stone', 'food', 'ale', 'rough_gem', 'cut_gem', ...G.data.metals.map((m) => 'bar:' + m.id),
     ...(G.data.clothes || []).flatMap((c) => dyes.map((dy) => 'wear:' + c.id + ':' + dy))];
-  const what = h('select', null, keys.map((k) => h('option', { value: k }, k === 'coins' ? 'Coins' : goodName(k))));
+  const what = h('select', null, keys.map((k) => h('option', { value: k }, k === 'coins' ? 'Marks' : goodName(k))));
   const amount = h('input', { type: 'number', value: 100, min: -100000, max: 100000 });
   return h('div', { class: 'card cheats' },
     h('h3', null, ico('cheat'), ' Cheats'),

@@ -239,3 +239,119 @@ sprite("gate", { w: 48, h: 72, outline: "k" }, (c) => {
   c.rect(7, 70, 34, 2, "3");                                              // threshold
   c.px(24, 4, "j"); c.px(23, 5, "j"); c.px(25, 5, "j");                   // a little rune
 });
+
+// ---------------------------------------------------------------- the gate by level (gate_1..gate_4), it grows with each upgrade.
+// The game stands it on the valley floor, centred on the mountain face. Doors are always open; dwarves walk through.
+const GATES = [[48, 72], [54, 78], [64, 88], [76, 100]];
+for (let L = 1; L <= 4; L++) {
+  const [w, h] = GATES[L - 1];
+  sprite("gate_" + L, { w, h, outline: "k" }, (c) => {
+    const cx = Math.floor(w / 2), r = Math.floor(w / 2) - 7, top = h - 48 - r;    // the opening: 48 px tall walls under a round top
+    const stone = L === 4 ? ["2", "3", "4"] : ["4", "5", "6"];
+    if (L === 1) {                                                     // timber: two posts, a beam, a little roof
+      for (const x of [2, w - 9]) { c.rect(x, 14, 7, h - 14, "v"); c.vline(x, 14, h - 14, "V"); c.vline(x + 6, 14, h - 14, "W"); c.px(x + 3, 30, "W"); c.px(x + 4, 52, "W"); }
+      c.rect(0, 10, w, 7, "V"); c.hline(0, 10, w, "u"); c.hline(0, 16, w, "W");
+      c.poly([0, 10, cx, 0, w, 10], "W"); c.line(0, 10, cx, 0, "v"); c.line(cx, 0, w - 1, 10, "v");
+      c.rect(9, 17, w - 18, h - 17, "s");
+      for (const [x, d] of [[9, 1], [w - 15, -1]]) { c.rect(x, 22, 6, h - 22, "v"); c.vline(d > 0 ? x : x + 5, 22, h - 22, "V"); for (let y = 26; y < h; y += 8) c.px(x + 2, y, "W"); }
+      c.rect(cx - 5, 3, 10, 5, "u"); c.px(cx - 2, 5, "w"); c.px(cx + 1, 5, "w");   // a carved board
+      c.rect(9, h - 2, w - 18, 2, "W");
+      return;
+    }
+    // stone frame with a round arch
+    c.ellipse(cx, top + r, cx, r + 6, stone[1]); c.rect(0, top + r, w, h - top - r, stone[1]);
+    c.ellipse(cx, top + r + 2, r, r, "s"); c.rect(cx - r, top + r + 2, 2 * r + 1, h - top - r - 2, "s");
+    const n = 9 + L * 2;
+    for (let i = 0; i <= n; i++) {                                     // voussoirs
+      const a = Math.PI + (i / n) * Math.PI, x = Math.round(cx + Math.cos(a) * (r + 3)), y = Math.round(top + r + 1 + Math.sin(a) * (r + 3));
+      c.rect(x - 2, y - 2, 4, 4, i % 2 ? stone[2] : stone[1]);
+      if (L === 4 && i % 3 === 1) c.px(x, y, "N");                     // runes that glow
+    }
+    c.rect(cx - 4, top - 6, 9, 8, stone[2]); c.hline(cx - 4, top - 6, 9, L === 4 ? "j" : "7");   // keystone
+    for (const x of [0, w - 7]) for (let y = top + r + 4, k = 0; y < h; y += 8, k++) { c.rect(x, y, 7, 7, k % 2 ? stone[1] : stone[0]); c.hline(x, y, 7, stone[2]); }
+    // doors swung open, iron-bound
+    for (const [x, d] of [[cx - r, 1], [cx + r - 5, -1]]) {
+      c.rect(x, top + r + 6, 6, h - top - r - 6, "v"); c.vline(d > 0 ? x : x + 5, top + r + 6, h - top - r - 6, "V");
+      for (let y = top + r + 12; y < h - 4; y += 14) { c.hline(x, y, 6, "4"); c.px(x + 2, y, "6"); }
+    }
+    c.rect(cx - r, h - 2, 2 * r + 1, 2, stone[0]);                     // threshold
+    if (L >= 3) {                                                      // the portcullis, pulled up into the arch
+      for (let x = cx - r + 3; x <= cx + r - 3; x += 4) { c.vline(x, top + r - 4, 12, "3"); c.px(x, top + r + 8, "5"); }
+      c.hline(cx - r + 2, top + r, 2 * r - 3, "3"); c.hline(cx - r + 2, top + r + 5, 2 * r - 3, "3");
+      for (const x of [3, w - 13]) {                                   // banners of the hold
+        c.hline(x - 1, top + r + 4, 12, "v");
+        c.rect(x, top + r + 5, 10, 22, L === 4 ? "f" : "Q"); c.vline(x + 1, top + r + 5, 22, "F");
+        c.poly([x, top + r + 27, x + 5, top + r + 31, x + 9, top + r + 27], L === 4 ? "f" : "Q");
+        c.poly([x + 1, top + r + 20, x + 5, top + r + 11, x + 9, top + r + 20], "j"); c.px(x + 5, top + r + 12, "8"); c.hline(x + 3, top + r + 17, 5, "o");   // the mountain of the hold
+      }
+    }
+    if (L === 4) {                                                     // a crest over the keystone and gold rails
+      c.circ(cx, top - 12, 6, "o"); c.circ(cx, top - 12, 4, "j"); c.circ(cx, top - 12, 2, "f"); c.px(cx - 1, top - 13, "9");
+      c.hline(0, top + r + 3, 7, "j"); c.hline(w - 7, top + r + 3, 7, "j");
+    } else c.px(cx, top - 3, "j");                                     // a little rune on the keystone
+  }, glow("N", { r: 4, strength: 0.4 }));
+}
+
+// braziers beside the higher gates and in the entrance hall (fire drawn by the game: fire_place)
+sprite("brazier", { w: 14, h: 22, outline: "k" }, (c) => {
+  c.poly([0, 4, 13, 4, 10, 9, 3, 9], "3"); c.hline(0, 4, 14, "5"); c.hline(1, 3, 12, "s");
+  c.vline(6, 9, 10, "3"); c.vline(7, 9, 10, "4");
+  c.line(6, 18, 2, 21, "3"); c.line(7, 18, 11, 21, "3"); c.hline(5, 18, 4, "4");
+});
+
+// ---------------------------------------------------------------- the entrance hall in the gate tunnel: 144 x 96, three looks by level.
+// The left 40 px stay plain: the gate (up to 76 px wide, centred on the mountain face) covers them.
+// Guards stand watch and spar on the free floor x 72..112 (hold.js guardSpot).
+for (let T = 0; T < 3; T++) sprite("entrance_hall_" + T, { w: 144, h: 96 }, (c) => {
+  if (T === 0) {                                                     // the timbered tunnel, as the hallways
+    c.rect(0, 10, 144, 80, "W");
+    for (let x = 0; x < 144; x += 12) { c.vline(x, 10, 80, "w"); c.vline(x + 1, 10, 80, "v"); }
+    c.px(29, 40, "w"); c.px(88, 66, "w"); c.px(121, 30, "w");
+  } else {                                                           // cut stone, darker and more even when grand
+    const [base, dark, lite] = T === 2 ? ["3", "2", "4"] : ["4", "3", "5"];
+    c.rect(0, 10, 144, 80, base);
+    for (let y = 10, row = 0; y < 90; y += 10, row++) {
+      c.hline(0, y, 144, dark);
+      for (let x = row % 2 ? 0 : 12; x < 144; x += 24) { c.vline(x, y, 10, dark); c.hline(x + 1, y + 1, 22, lite); }
+    }
+    for (const [x, y] of [[30, 41], [102, 61], [126, 21]]) c.rect(x, y, 10, 8, T === 2 ? "4" : "6");   // odd stones
+    c.line(64, 11, 61, 24, dark); c.line(61, 24, 63, 30, dark);         // a crack from the lintel
+  }
+  c.rect(0, 7, 144, 4, T === 2 ? "2" : "V"); c.hline(0, 7, 144, T === 2 ? "4" : "u"); c.hline(0, 11, 144, T === 2 ? "o" : "w");   // lintel
+  c.rect(0, 90, 144, 6, T ? "3" : "W"); c.hline(0, 90, 144, T ? "5" : "V"); c.hline(0, 91, 144, T ? "4" : "v");                    // floor
+  for (let x = 6; x < 144; x += 24) c.px(x, 93, T ? "2" : "w");
+  for (const x of [0, 141]) { c.rect(x, 11, 3, 79, T === 2 ? "2" : "v"); c.vline(x, 11, 79, T === 2 ? "4" : "V"); }   // posts
+  // weapon rack: spears, later axes
+  c.rect(42, 34, 26, 3, "V"); c.hline(42, 34, 26, "u"); c.rect(42, 84, 26, 3, "V");
+  for (let i = 0; i < 4; i++) {
+    const x = 45 + i * 6;
+    c.vline(x, 22, 64, "v"); c.vline(x + 1, 22, 64, "W");
+    if (T === 0) { c.poly([x - 1, 22, x + 1, 16, x + 3, 22], "5"); c.px(x + 1, 18, "6"); }
+    else { c.rect(x - 2, 24, 5, 7, i % 2 ? "5" : "6"); c.vline(x - 2, 25, 5, "7"); c.px(x + 2, 24, "4"); }
+  }
+  // the guards' bench, a mug, practice sticks leaning beside it
+  c.rect(114, 80, 26, 3, "V"); c.hline(114, 80, 26, "u"); c.rect(116, 83, 3, 7, "W"); c.rect(135, 83, 3, 7, "W");
+  c.rect(130, 76, 5, 4, "u"); c.hline(130, 76, 5, "C"); c.vline(135, 77, 2, "u");
+  c.line(110, 89, 114, 60, "u"); c.line(111, 89, 115, 60, "V"); c.line(107, 89, 112, 62, "u");
+  // a duty board with tally marks
+  c.rect(118, 44, 20, 16, "v"); c.box(118, 44, 20, 16, "W"); c.rect(120, 46, 16, 12, "c");
+  for (let i = 0; i < 6; i++) c.vline(122 + i * 2, 48, 4, "w"); c.line(121, 51, 133, 49, "w"); c.hline(122, 55, 9, "u");
+  if (T === 1) {                                                     // shields and two crossed practice sticks
+    shieldOn(c, 72, 24, "f"); shieldOn(c, 104, 24, "B");
+    c.rect(86, 30, 16, 2, "v"); c.vline(93, 26, 6, "v");
+    c.line(87, 42, 101, 28, "u"); c.line(87, 28, 101, 42, "u");
+  }
+  if (T === 2) {                                                     // banners of the hold around a big shield, a runner on the floor
+    for (const x of [70, 106]) { c.hline(x - 1, 13, 12, "o"); c.rect(x, 14, 10, 26, "f"); c.vline(x + 1, 14, 26, "F"); c.poly([x, 40, x + 5, 44, x + 9, 40], "f"); c.poly([x + 1, 30, x + 5, 21, x + 9, 30], "j"); c.px(x + 5, 22, "8"); c.hline(x + 3, 27, 5, "o"); }
+    shieldOn(c, 83, 22, "f");
+    c.rect(72, 88, 40, 2, "f"); c.hline(72, 88, 40, "F"); c.px(71, 89, "F"); c.px(112, 89, "F");
+  }
+  // torches (the game adds light); the grand hall has braziers instead
+  for (const x of T === 2 ? [] : [74, 106]) { c.rect(x, 54, 2, 7, "v"); c.rect(x - 1, 60, 4, 2, "4"); c.rect(x - 1, 51, 4, 3, "F"); c.rect(x, 50, 2, 2, "y"); c.px(x, 49, "Y"); }
+  // a cobweb in the corner where nobody looks
+  for (let i = 0; i < 7; i++) c.px(140 - i, 12, "6"); c.line(140, 12, 134, 18, "6"); c.line(137, 12, 137, 15, "6");
+}, glow("yY0", { r: 8, strength: 0.3 }));
+
+function shieldOn(c, x, y, col) {
+  c.circ(x + 6, y + 6, 6, col); c.ring(x + 6, y + 6, 6, "o"); c.ring(x + 6, y + 6, 3, col === "f" ? "F" : "n"); c.circ(x + 6, y + 6, 1, "j"); c.px(x + 5, y + 5, "8");   // rim and boss
+}

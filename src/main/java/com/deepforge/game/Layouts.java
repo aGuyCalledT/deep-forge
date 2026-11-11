@@ -17,7 +17,7 @@ public final class Layouts {
     public static final int SHAFT = 2;   // shaft width in columns
     public static final Map<String, Integer> ROOM_CELLS = new LinkedHashMap<>();
     public static final List<String> ORDER = List.of("tavern", "quarters", "warehouse", "vault", "smelter", "forge",
-            "grindstone", "engraver", "jeweler", "tailor", "farm", "brewery", "barracks");
+            "grindstone", "engraver", "jeweler", "tailor", "farm", "brewery", "barracks", "trade_depot");
 
     // every room has one cell more than its furniture needs: a free strip by the side wall (a hook with a cloak)
     static {
@@ -34,6 +34,7 @@ public final class Layouts {
         ROOM_CELLS.put("farm", 7);
         ROOM_CELLS.put("brewery", 6);
         ROOM_CELLS.put("barracks", 7);
+        ROOM_CELLS.put("trade_depot", 7);
     }
 
     /** Extra cells each additional machine adds to the right of a workshop. */
@@ -465,7 +466,7 @@ public final class Layouts {
             n++;
         }
         if (n == 0 && rock > 0) throw new Actions.GameException(rockMessage(rock, "a hallway"));
-        Actions.check(n > 0, Rules.canPay(f, Rules.HALL_COST) ? "Hallways go into empty dug-out cells." : "A hallway costs " + (int) Rules.HALL_COST.coins() + " coins per cell. Sell some goods first.");
+        Actions.check(n > 0, Rules.canPay(f, Rules.HALL_COST) ? "Hallways go into empty dug-out cells." : "A hallway costs " + Rules.money(Rules.HALL_COST.coins()) + " per cell. Sell some goods first.");
         return n;
     }
 
@@ -490,7 +491,7 @@ public final class Layouts {
 
     static String describe(Rules.Cost c) {
         List<String> parts = new ArrayList<>();
-        if (c.coins() > 0) parts.add((int) c.coins() + " coins");
+        if (c.coins() > 0) parts.add(Rules.money(c.coins()));
         c.goods().forEach((k, v) -> parts.add(v + " " + k));
         return String.join(" and ", parts);
     }

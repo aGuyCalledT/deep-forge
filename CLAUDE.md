@@ -32,7 +32,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/Sim.java` | Zeitschritt: Bedürfnisse, Stimmung, Mine, Werkstätten, Monster, Überfälle, Karawanen, Zuwanderung |
 | `game/Recipes.java` | was jede Werkstatt kann und braucht |
 | `game/Expeditions.java` | Gerüchte, Etappen, Entscheidungen, Beute |
-| `game/Market.java` | globale Kurse, Stadt-Nachfrage, Kauf und Verkauf mit Preiseinfluss |
+| `game/Market.java` | Weltkurs und Stadtkurse je Sorte (`type:`/`cat:`), Verlauf 7 Tage, Kauf und Verkauf mit Preiseinfluss nach Marktanteil |
+| `game/Depot.java` | Handelsdepot: gespeicherte Karawanen, Regeln, Kauf-Aufträge, Lieferungen, Marktanteil-Verlauf |
 | `game/Actions.java` | alle Spieleraktionen mit Prüfung |
 | `game/View.java` | was der Client sieht (Spielstand + abgeleitete Zahlen) |
 | `game/GameService.java` | Laden, Weiterrechnen, Speichern, Minuten-Takt für alle Festungen |
@@ -47,6 +48,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
 | `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall und Zwerge um, setzt Zwerge aus Teilen zusammen |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt) |
+| `static/js/panels-market.js` | Marktliste mit Wochenlinie, Waren-Fenster mit Kursverlauf und Städte-Tabelle |
+| `static/js/panels-depot.js` | Fenster des Handelsdepots: Marktanteil, Karawanen, Regeln, Kauf-Aufträge |
 | `static/js/paper.js` | Papier-Zettel (Risse, Flecken, Falten aus der id) und Abhaklisten |
 | `static/js/plate.js` | Hover-Schild, das an Ketten aus der Raumdecke fällt; Material je Raum (`roomMaterial`) |
 | `static/js/collect.js` | Beute-Berichte von Karawanen und Expeditionen als Karten mit „Collect“-Knopf, Flug-Animation in die Vorräte |
@@ -59,6 +62,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   `LOG_SOUNDS` oder `ambience()` (`main.js`), `docs/AUDIO.md` ergänzen. Fehlt die Datei, bleibt es still oder der
   Ersatz-Sound spielt. Musik: Datei mit Stimmungs-Vorsilbe in `static/music/` (MP3/OGG, kein WAV).
 
+- **Geld** rechnet der Server in Copper Jots (1 Mark = 100 Talents = 1000 Jots); im Client `money()`/`moneyText()`,
+  in Logtexten `Rules.money()`.
 - **Neues Metall oder neue Legierung:** `metal(...)` in `Content.java` (Farbe, Wert, Härte, edel, Hitzefaktor,
   Schmelz- und Abschreck-Text, Abschreck-Fenster). Legierung zusätzlich `alloy(...)`. Wert so wählen, dass die
   Legierung mehr wert ist als ihre Zutaten. Balancing-Doku ergänzen.

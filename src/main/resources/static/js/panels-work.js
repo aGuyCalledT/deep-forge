@@ -118,7 +118,7 @@ function machinesBlock(b) {
         h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
         w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
         n > 1 ? h('button', { class: 'btn small ghost', disabled: !!busyJob, title: busyJob ? 'Wait until this machine is done.' : 'Take this machine out. The room gets narrower.',
-          onclick: () => { if (confirm('Take machine ' + (i + 1) + ' out? ' + (w ? w.first + ' will rest. ' : '') + 'Putting it back costs coins and stone.')) bus.act({ type: 'removeMachine', building: b.id, machine: i }); } }, 'Remove') : null)));
+          onclick: () => { if (confirm('Take machine ' + (i + 1) + ' out? ' + (w ? w.first + ' will rest. ' : '') + 'Putting it back costs money and stone.')) bus.act({ type: 'removeMachine', building: b.id, machine: i }); } }, 'Remove') : null)));
   }
   const waiting = (bi.waiting || []).map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
   return h('div', { class: 'machines' },

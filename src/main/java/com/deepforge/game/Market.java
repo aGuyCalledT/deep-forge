@@ -9,18 +9,26 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 /**
- * The shared market. Every good has one global price index that drifts slowly (mean-reverting random walk).
- * Player sales push the index down, purchases push it up; it recovers over hours.
- * Each city multiplies the global price by its own demand, which changes every 4 hours.
+ * The shared market. Every good (market key) has a world level, and every city its own level on top; the price in a
+ * city is base value x exp(world + city), never below 10% or above 1000% of the base value.
+ * Both levels drift at random: the world level slowly back to the base price, a city level faster back to what the
+ * city wants right now (its demand, which changes every 4 hours).
+ * Selling pushes the price down, buying pushes it up: fully in the city traded with, and by that city's share of the
+ * world market in every other city. How hard a trade pushes depends on the player's own market share.
  */
 @Component
 public class Market {
     public static final double STEP = 60;               // seconds per market step
     public static final double DEMAND_EPOCH = 4 * 3600; // city demand changes every 4 h
-    static final double THETA = 1.0 / (12 * 3600);       // mean reversion speed
-    static final double SIGMA = 0.0011;                  // noise per sqrt(second)
-    static final double MIN = 0.35, MAX = 3.0;
-    static final double BUY_SPREAD = 1.25;
+    static final double THETA_G = 1.0 / (24 * 3600);     // the world level returns to the base price within a day or so
+    static final double SIGMA_G = 0.25 * Math.sqrt(2 * THETA_G);   // spread of the world level: about x0.6 .. x1.6 (two sigma)
+    static final double THETA_C = 1.0 / (6 * 3600);      // a city recovers from a big sale within hours
+    static final double SIGMA_C = 0.15 * Math.sqrt(2 * THETA_C);
+    public static final double MIN = 0.10, MAX = 10.0;   // 10% .. 1000% of the base value
+    static final double LMIN = Math.log(MIN), LMAX = Math.log(MAX);
+    public static final double BUY_SPREAD = 1.25;        // cities sell to you for 25% more than they pay
+    static final double HIST_EVERY = 1800, CHIST_EVERY = 7200;
+    static final int HIST_LEN = 336, CHIST_LEN = 84;    // 7 days each
 
     private final Store store;
     private final ObjectMapper om;
@@ -39,32 +47,66 @@ public class Market {
         } catch (Exception e) {
             w = null;
         }
-        if (w == null) {
-            w = new World();
-            w.seed = new Random().nextLong();
-            w.rng = w.seed;
-            w.t = now();
-            w.histAt = w.t;
-        }
-        for (String g : Content.marketGoods()) w.idx.putIfAbsent(g, 1.0);
-        updateDemand(now());
+        if (w == null) w = fresh(new Random().nextLong(), now());
+        prepare();
+        if (w.hist.isEmpty()) warmUp(now());
+    }
+
+    /** A new world starts with a week of price history, so the charts show something from the first minute. */
+    public void warmUp(double now) {
+        w.t = now - HIST_LEN * HIST_EVERY;
+        w.histAt = w.t;
+        w.chistAt = w.t;
+        run(now);
     }
 
     static double now() {
         return System.currentTimeMillis() / 1000.0;
     }
 
+    private static World fresh(long seed, double now) {
+        World w = new World();
+        w.seed = seed;
+        w.rng = seed;
+        w.t = now;
+        w.histAt = now;
+        w.chistAt = now;
+        return w;
+    }
+
     /** A market without database, for tests and tools. */
     public static Market inMemory(long seed, double now) {
         Market m = new Market(null, new ObjectMapper());
-        m.w = new World();
-        m.w.seed = seed;
-        m.w.rng = seed;
-        m.w.t = now;
-        m.w.histAt = now;
-        for (String g : Content.marketGoods()) m.w.idx.put(g, 1.0);
-        m.updateDemand(now);
+        m.w = fresh(seed, now);
+        m.prepare();
         return m;
+    }
+
+    /** Fill in every market key, turn old worlds (one global index) into world + city levels. */
+    private void prepare() {
+        updateDemand(w.t);
+        Rng r = new Rng(w.rng ^ 0x5eed5eedL);
+        boolean old = w.version < 2;
+        Set<String> keys = new LinkedHashSet<>(Content.marketGoods());
+        for (String k : keys) {
+            if (!w.g.containsKey(k)) {
+                Double i = old ? w.idx.get(k) : null;
+                w.g.put(k, i != null ? Math.log(Math.max(MIN, Math.min(MAX, i))) : 0.2 * r.gauss());
+            }
+            for (String c : Content.CITIES.keySet()) {
+                Map<String, Double> cm = w.c.computeIfAbsent(c, x -> new TreeMap<>());
+                if (!cm.containsKey(k)) cm.put(k, Math.log(demand(c, cat(k))) + 0.12 * r.gauss());
+            }
+        }
+        w.g.keySet().retainAll(keys);
+        w.hist.keySet().retainAll(keys);
+        for (Map<String, Double> cm : w.c.values()) cm.keySet().retainAll(keys);
+        w.c.keySet().retainAll(Content.CITIES.keySet());
+        if (old) {
+            w.idx.clear();
+            w.chistAt = w.t;
+            w.version = 2;
+        }
     }
 
     public synchronized void save() {
@@ -76,32 +118,60 @@ public class Market {
         }
     }
 
+    private static final Map<String, String> CATS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    static String cat(String marketKey) {
+        return CATS.computeIfAbsent(marketKey, k -> Content.category(Content.refGood(k)));
+    }
+
     /** Advance the world market to the given time. */
     public synchronized void tick(double now) {
         if (now - w.t > 2 * 86400) w.t = now - 2 * 86400;
+        run(now);
+    }
+
+    private void run(double now) {
         Rng r = new Rng(w.rng);
+        double sq = Math.sqrt(STEP);
         while (w.t + STEP <= now) {
             w.t += STEP;
-            for (Map.Entry<String, Double> e : w.idx.entrySet()) {
-                double x = Math.log(e.getValue());
-                x += -THETA * x * STEP + SIGMA * Math.sqrt(STEP) * r.gauss();
-                e.setValue(clamp(Math.exp(x)));
+            updateDemand(w.t);
+            for (Map.Entry<String, Double> e : w.g.entrySet()) {
+                double g = e.getValue();
+                g += -THETA_G * g * STEP + SIGMA_G * sq * r.gauss();
+                e.setValue(Math.max(LMIN, Math.min(LMAX, g)));
             }
-            if (w.t - w.histAt >= 1800) {
+            for (Map.Entry<String, Map<String, Double>> ce : w.c.entrySet()) {
+                for (Map.Entry<String, Double> e : ce.getValue().entrySet()) {
+                    double target = Math.log(demand(ce.getKey(), cat(e.getKey())));
+                    double c = e.getValue();
+                    c += -THETA_C * (c - target) * STEP + SIGMA_C * sq * r.gauss();
+                    e.setValue(clampCity(w.g.getOrDefault(e.getKey(), 0.0), c));
+                }
+            }
+            if (w.t - w.histAt >= HIST_EVERY) {
                 w.histAt = w.t;
-                for (Map.Entry<String, Double> e : w.idx.entrySet()) {
-                    List<Double> h = w.hist.computeIfAbsent(e.getKey(), k -> new ArrayList<>());
-                    h.add(Math.round(e.getValue() * 1000) / 1000.0);
-                    while (h.size() > 96) h.remove(0);
+                for (String k : w.g.keySet()) push(w.hist.computeIfAbsent(k, x -> new ArrayList<>()), worldMult(k), HIST_LEN);
+            }
+            if (w.t - w.chistAt >= CHIST_EVERY) {
+                w.chistAt = w.t;
+                for (String c : w.c.keySet()) {
+                    Map<String, List<Double>> m = w.chist.computeIfAbsent(c, x -> new TreeMap<>());
+                    for (String k : w.g.keySet()) push(m.computeIfAbsent(k, x -> new ArrayList<>()), mult(c, k), CHIST_LEN);
                 }
             }
         }
         w.rng = r.s;
-        updateDemand(now);
     }
 
-    private static double clamp(double v) {
-        return Math.max(MIN, Math.min(MAX, v));
+    private static void push(List<Double> h, double v, int max) {
+        h.add(Math.round(v * 1000) / 1000.0);
+        while (h.size() > max) h.remove(0);
+    }
+
+    /** A city level may not carry the price past the bounds. */
+    private static double clampCity(double g, double c) {
+        return Math.max(LMIN - g, Math.min(LMAX - g, c));
     }
 
     private void updateDemand(double now) {
@@ -127,79 +197,156 @@ public class Market {
         }
     }
 
-    public synchronized double index(String marketKey) {
-        return w.idx.getOrDefault(marketKey, 1.0);
-    }
+    // ------------------------------------------------------------ prices
 
     public synchronized double demand(String city, String category) {
         Map<String, Double> m = w.demand.get(city);
         return m == null ? 1.0 : m.getOrDefault(category, 1.0);
     }
 
+    /** Price multiplier of a market key in a city (1 = base price). */
+    public synchronized double mult(String city, String marketKey) {
+        double g = w.g.getOrDefault(marketKey, 0.0);
+        Map<String, Double> cm = w.c.get(city);
+        double c = cm == null ? 0 : cm.getOrDefault(marketKey, 0.0);
+        return Math.max(MIN, Math.min(MAX, Math.exp(g + c)));
+    }
+
+    /** The world price multiplier: every city's price weighted by its share of the market. */
+    public synchronized double worldMult(String marketKey) {
+        double s = 0, ws = 0;
+        for (Content.City c : Content.CITIES.values()) {
+            s += c.share() * mult(c.id(), marketKey);
+            ws += c.share();
+        }
+        return s / ws;
+    }
+
     /** Price one unit sells for (no volume impact). */
     public synchronized double sellPrice(String city, String key, double bonus) {
-        return Content.baseValue(key) * index(Content.marketKey(key)) * demand(city, Content.category(key)) * bonus;
+        return Content.baseValue(key) * mult(city, Content.marketKey(key)) * bonus;
     }
 
     public synchronized double buyPrice(String city, String key, double bonus) {
-        return Content.baseValue(key) * index(Content.marketKey(key)) * demand(city, Content.category(key))
-                * BUY_SPREAD / bonus;
+        return Content.baseValue(key) * mult(city, Content.marketKey(key)) * BUY_SPREAD / bonus;
     }
 
-    /** Sell q units, move the index, return the revenue. */
-    public synchronized double sell(String city, String key, int q, double bonus) {
+    /** How far q units move the price (log), for a trader with the given power (1 = a small player). */
+    static double impact(String marketKey, int q, double power) {
+        return q / Content.liquidity(marketKey) * Math.max(0.1, power);
+    }
+
+    /** Move a city's price (and the world's, by the city's share) by dx in log space. */
+    private void move(String city, String mk, double dx) {
+        double share = Content.CITIES.get(city).share();
+        double g = Math.max(LMIN, Math.min(LMAX, w.g.getOrDefault(mk, 0.0) + dx * share));
+        w.g.put(mk, g);
+        Map<String, Double> cm = w.c.computeIfAbsent(city, x -> new TreeMap<>());
+        cm.put(mk, clampCity(g, cm.getOrDefault(mk, 0.0) + dx * (1 - share)));
+    }
+
+    /** Sell q units, move the prices, return the revenue in Jots. */
+    public synchronized double sell(String city, String key, int q, double bonus, double power) {
         if (q <= 0) return 0;
         String mk = Content.marketKey(key);
         double p = sellPrice(city, key, bonus);
-        double x = q / Content.liquidity(mk);
+        double x = impact(mk, q, power);
         double revenue = q * p * (1 - Math.exp(-x)) / x;
-        w.idx.put(mk, clamp(index(mk) * Math.exp(-x)));
+        revenue = Math.max(revenue, q * Content.baseValue(key) * MIN * bonus);
+        move(city, mk, -x);
         return revenue;
     }
 
     /** Cost of buying q units including price impact. */
-    public synchronized double buyCost(String city, String key, int q, double bonus) {
+    public synchronized double buyCost(String city, String key, int q, double bonus, double power) {
         if (q <= 0) return 0;
         String mk = Content.marketKey(key);
-        double x = q / Content.liquidity(mk);
+        double x = impact(mk, q, power);
         return q * buyPrice(city, key, bonus) * (Math.exp(x) - 1) / x;
     }
 
     /** Buy up to q units within budget. Returns units bought; cost goes into spent[0]. */
-    public synchronized int buy(String city, String key, int q, double budget, double bonus, double[] spent) {
+    public synchronized int buy(String city, String key, int q, double budget, double bonus, double power, double[] spent) {
+        return buyUpTo(city, key, q, Double.MAX_VALUE, budget, bonus, power, spent);
+    }
+
+    /** Buy up to q units while the price stays at or under maxUnit and the cost within budget. */
+    public synchronized int buyUpTo(String city, String key, int q, double maxUnit, double budget, double bonus, double power,
+                                    double[] spent) {
+        spent[0] = 0;
+        String mk = Content.marketKey(key);
+        double p = buyPrice(city, key, bonus);
+        if (q <= 0 || p > maxUnit) return 0;
+        double perUnit = impact(mk, 1, power);
+        if (maxUnit < Double.MAX_VALUE) q = Math.min(q, (int) Math.floor(Math.log(maxUnit / p) / perUnit) + 1);
         int lo = 0, hi = q;
         while (lo < hi) {
             int mid = (lo + hi + 1) / 2;
-            if (buyCost(city, key, mid, bonus) <= budget) lo = mid;
+            if (buyCost(city, key, mid, bonus, power) <= budget) lo = mid;
             else hi = mid - 1;
         }
-        if (lo == 0) {
-            spent[0] = 0;
-            return 0;
-        }
-        spent[0] = buyCost(city, key, lo, bonus);
-        String mk = Content.marketKey(key);
-        w.idx.put(mk, clamp(index(mk) * Math.exp(lo / Content.liquidity(mk))));
+        if (lo == 0) return 0;
+        spent[0] = buyCost(city, key, lo, bonus, power);
+        move(city, mk, impact(mk, lo, power));
         return lo;
     }
 
-    /** Snapshot for the trade screen: prices per city for every market good plus history. */
-    public synchronized Map<String, Object> snapshot(Collection<String> cities, double sellBonus, double buyBonus) {
+    // ------------------------------------------------------------ for the client
+
+    /** Every market key with its base value, world price and the last day of history, plus every city's price now. */
+    public synchronized Map<String, Object> snapshot(Collection<String> known, double sellBonus, double buyBonus) {
         Map<String, Object> out = new LinkedHashMap<>();
         Map<String, Object> per = new LinkedHashMap<>();
-        for (String c : cities) {
+        for (Content.City c : Content.CITIES.values()) {
             Map<String, Object> cm = new LinkedHashMap<>();
-            cm.put("demand", w.demand.get(c));
-            cm.put("news", w.news.get(c));
-            per.put(c, cm);
+            cm.put("known", known.contains(c.id()));
+            cm.put("demand", w.demand.get(c.id()));
+            cm.put("news", w.news.get(c.id()));
+            Map<String, Double> mults = new TreeMap<>();
+            for (String k : w.g.keySet()) mults.put(k, round(mult(c.id(), k)));
+            cm.put("mult", mults);
+            per.put(c.id(), cm);
         }
         out.put("cities", per);
-        out.put("index", new TreeMap<>(w.idx));
-        out.put("history", w.hist);
+        Map<String, Object> goods = new LinkedHashMap<>();
+        for (String k : w.g.keySet()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("name", Content.marketName(k));
+            m.put("ref", Content.refGood(k));
+            m.put("base", Content.baseValue(Content.refGood(k)));
+            m.put("mult", round(worldMult(k)));
+            List<Double> h = w.hist.getOrDefault(k, List.of());
+            m.put("day", new ArrayList<>(h.subList(Math.max(0, h.size() - 48), h.size())));
+            goods.put(k, m);
+        }
+        out.put("goods", goods);
         out.put("sellBonus", sellBonus);
         out.put("buyBonus", buyBonus);
         out.put("buySpread", BUY_SPREAD);
+        out.put("min", MIN);
+        out.put("max", MAX);
+        out.put("histEvery", HIST_EVERY);
         out.put("nextDemandChange", (w.demandEpoch + 1) * DEMAND_EPOCH);
         return out;
+    }
+
+    /** One good in detail: a week of world prices and of every city's price. */
+    public synchronized Map<String, Object> good(String marketKey) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("key", marketKey);
+        out.put("world", w.hist.getOrDefault(marketKey, List.of()));
+        out.put("histEvery", HIST_EVERY);
+        out.put("cityEvery", CHIST_EVERY);
+        Map<String, Object> cities = new LinkedHashMap<>();
+        for (String c : Content.CITIES.keySet()) {
+            Map<String, List<Double>> m = w.chist.get(c);
+            cities.put(c, m == null ? List.of() : m.getOrDefault(marketKey, List.of()));
+        }
+        out.put("cities", cities);
+        return out;
+    }
+
+    private static double round(double v) {
+        return Math.round(v * 1000) / 1000.0;
     }
 }

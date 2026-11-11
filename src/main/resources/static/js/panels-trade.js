@@ -1,6 +1,8 @@
 // Trade (caravans, cities, prices) and expeditions.
 import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstimate, marketKey, stock, baseValue, isItem } from './data.js';
-import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico, hourglass } from './ui.js';
+import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico, hourglass, money, info } from './ui.js';
+import { marketList } from './panels-market.js';
+import { openDepotSheet } from './panels-depot.js';
 import { paper, todo } from './paper.js';
 import * as S from './sprites.js';
 import { api } from './api.js';
@@ -13,13 +15,6 @@ export async function loadMarket(force) {
   try { G.market = await api.get('/market'); marketAt = Date.now(); bus.render(); } catch { /* ignore */ }
 }
 
-function trend(k) {
-  const hist = G.market && G.market.history[marketKey(k)];
-  if (!hist || hist.length < 4) return '';
-  const a = hist[hist.length - 1], b = hist[Math.max(0, hist.length - 7)];
-  return a > b * 1.04 ? ico('trend_up', 'icon xs') : a < b * 0.96 ? ico('trend_down', 'icon xs') : '';
-}
-
 // ================================================================== trade
 
 export function renderTrade() {
@@ -30,9 +25,8 @@ export function renderTrade() {
   const slots = d.caravanSlots - f.caravans.length;
   out.push(...reportCards('caravan'));
   out.push(h('div', { class: 'card' },
-    h('div', { class: 'row between' }, h('h3', null, 'Caravans'), h('span', { class: 'muted' }, `${f.caravans.length} / ${d.caravanSlots} on the road`)),
-    h('p', { class: 'small muted' }, 'Merchants carry goods to a city, sell at the price on arrival, buy what you ordered and come back. Prices move while they travel, and roads can be dangerous.'),
-    h('button', { class: 'btn primary', disabled: !merchants.length || slots <= 0, onclick: caravanSheet },
+    h('div', { class: 'row between' }, h('h3', null, 'Caravans ', info('Merchants carry goods to a city, sell at the price on arrival, buy what you ordered and come back. Roads can be dangerous.')), h('span', { class: 'muted' }, `${f.caravans.length} / ${d.caravanSlots} on the road`)),
+    h('button', { class: 'btn primary', disabled: !merchants.length || slots <= 0, onclick: () => caravanSheet() },
       !merchants.length ? 'No free merchant (give a dwarf the merchant job)' : slots <= 0 ? 'All caravan slots busy' : 'Send a caravan')));
   for (const c of f.caravans) {
     const out1 = c.state === 'outbound';
@@ -40,47 +34,47 @@ export function renderTrade() {
     const units = Object.values(c.cargo).reduce((s, v) => s + v, 0);
     out.push(h('div', { class: 'card sub row' }, img(S.wagon(0), 'icon l'),
       h('div', { class: 'grow' }, h('b', null, (out1 ? 'To ' : 'Back from ') + byId.cities[c.city].name),
-        h('div', { class: 'small muted' }, out1 ? `${units} goods, ${fmt(c.budget)} coins to spend` : `sold for ${fmt(c.revenue)} coins`)),
+        c.rule ? h('span', { class: 'chip' }, 'by rule') : null,
+        h('div', { class: 'small muted' }, out1 ? [`${units} goods`, c.budget ? [', ', money(c.budget), ' to spend'] : null] : ['sold for ', money(c.revenue)])),
       h('span', { class: 'nowrap', 'data-until': end }, dur(end - t))));
   }
 
+  // the depot: share, rules, orders
+  const dep = d.depot, depotB = F().buildings.find((b) => b.type === 'trade_depot');
+  out.push(h('div', { class: 'card depot-card' },
+    h('div', { class: 'row between' }, h('h3', null, 'Trade depot'), h('span', null, 'Market share ', h('b', { class: 'gold-t' }, (dep.share * 100).toFixed(dep.share < 0.1 ? 2 : 1) + '%'))),
+    h('p', { class: 'small muted' }, `${f.rules.filter((x) => x.on).length} rule(s) running, ${f.orders.filter((o) => o.left > 0).length} buy order(s) posted, ${f.deliveries.length} delivery(s) on the way.`),
+    h('button', { class: 'btn', disabled: !depotB || depotB.level <= 0, onclick: (e) => openDepotSheet(e.currentTarget) }, 'Open the depot')));
+
+  out.push(h('h2', null, 'Market', info('Every city has its own price for each good. They drift on their own, and every sale pushes a price down, every purchase pushes it up. Prices stay between 10% and 1000% of the base price. Tap a good to see which city pays what.')));
+  out.push(marketList());
+
   out.push(h('h2', null, 'Cities'));
-  if (!G.market) out.push(h('p', { class: 'muted' }, 'Asking around for prices...'));
-  else {
-    out.push(h('p', { class: 'small muted' }, 'Demand changes in ', h('span', { 'data-until': G.market.nextDemandChange }, dur(G.market.nextDemandChange - t)), '. Prices are shared by every hold - when anyone sells a lot, the price drops for everyone.'));
+  if (G.market) {
+    out.push(h('p', { class: 'small muted' }, 'What they want changes in ', h('span', { 'data-until': G.market.nextDemandChange }, dur(G.market.nextDemandChange - t)), '.'));
     for (const cid of f.cities) {
       const c = byId.cities[cid], m = G.market.cities[cid] || {};
-      const dem = Object.entries(m.demand || {}).sort((a, b) => b[1] - a[1]);
-      out.push(h('div', { class: 'card' },
-        h('div', { class: 'row between' }, h('h3', null, c.name), h('span', { class: 'small muted' }, `${c.hours}h each way · ${Math.round(c.danger * 100)}% bandits`)),
-        h('p', { class: 'small' }, m.news || c.note),
-        h('div', null, dem.slice(0, 3).map(([k, v]) => h('span', { class: 'chip good' }, `${k} ×${v.toFixed(2)}`)),
-          dem.slice(-1).map(([k, v]) => h('span', { class: 'chip bad' }, `${k} ×${v.toFixed(2)}`)))));
-    }
-    // price table for goods in stock
-    const goods = Object.keys(f.stock).filter((k) => f.stock[k] > 0)
-      .sort((a, b) => baseValue(b) * f.stock[b] - baseValue(a) * f.stock[a]).slice(0, 14);
-    if (goods.length) {
-      const cities = [...f.cities];
-      out.push(h('h2', null, 'What your goods fetch'), h('div', { class: 'card scroll-x' }, h('table', null,
-        h('tr', null, h('th', null, 'Good'), h('th', { class: 'num' }, 'Have'), cities.map((c) => h('th', { class: 'num' }, byId.cities[c].name.split(' ')[0]))),
-        goods.map((k) => {
-          const prices = cities.map((c) => sellPrice(c, k));
-          const best = Math.max(...prices);
-          return h('tr', null, h('td', null, goodIcon(k, 'icon s'), ' ', goodName(k), ' ', h('span', { class: 'small muted' }, trend(k))),
-            h('td', { class: 'num' }, fmt(f.stock[k])),
-            prices.map((p) => h('td', { class: 'num' + (p === best ? ' best' : '') }, p < 10 ? p.toFixed(1) : fmt(p))));
-        }))));
+      out.push(h('div', { class: 'card sub' },
+        h('div', { class: 'row between' }, h('b', null, c.name), h('span', { class: 'small muted' }, `${c.hours}h each way · ${Math.round(c.danger * 100)}% bandits · ${Math.round(c.share * 100)}% of the market`)),
+        h('p', { class: 'small' }, m.news || c.note)));
     }
   }
   return out;
 }
 
-function caravanSheet() {
+/** Send a caravan; city and a market key to load can be preset (from the market window). */
+export function caravanSheet(city, mk) {
   const f = F();
-  const st = { city: [...f.cities][0], merchants: new Set(), guards: new Set(), cargo: {}, arts: new Set(), buy: {}, budget: 0, buyKey: 'coal' };
+  const st = { city: city || [...f.cities][0], merchants: new Set(), guards: new Set(), cargo: {}, arts: new Set(), buy: {}, budget: 0, buyKey: 'coal' };
   const first = f.dwarves.find((x) => x.job === 'merchant' && !x.busy);
   if (first) st.merchants.add(first.id);
+  if (mk) {
+    let room = D().caravanCapacity * Math.max(1, st.merchants.size);
+    for (const k of Object.keys(f.stock).filter((x) => marketKey(x) === mk).sort((a, b) => baseValue(b) - baseValue(a))) {
+      const q = Math.min(room, f.stock[k]);
+      if (q > 0) { st.cargo[k] = q; room -= q; }
+    }
+  }
   openSheet(() => {
     const f2 = F(), d = D();
     const merchants = f2.dwarves.filter((x) => x.job === 'merchant' && !x.busy);
@@ -108,23 +102,23 @@ function caravanSheet() {
       h('p', { class: 'small ' + (guardPower >= bandit ? 'good-t' : 'warn-t') }, `${Math.round(city.danger * 100)}% chance of bandits on each leg (strength ~${fmt(bandit)}). Your caravan: ${fmt(guardPower)}.`),
       h('h3', null, `Cargo ${units} / ${cap}`),
       goods.map((k) => h('div', { class: 'row', style: { margin: '3px 0' } }, goodIcon(k),
-        h('span', { class: 'grow small' }, goodName(k), h('br'), h('span', { class: 'muted' }, `have ${fmt(f2.stock[k])} · ~${sellPrice(st.city, k).toFixed(1)} each `, trend(k))),
+        h('span', { class: 'grow small' }, goodName(k), h('br'), h('span', { class: 'muted' }, `have ${fmt(f2.stock[k])} · `, money(sellPrice(st.city, k)), ' each')),
         h('input', { type: 'number', min: 0, max: f2.stock[k], value: st.cargo[k] || '', placeholder: '0', onchange: (e) => setQ(k, e.target.value) }),
         h('button', { class: 'btn small ghost', onclick: () => setQ(k, Math.min(f2.stock[k], (st.cargo[k] || 0) + Math.max(0, cap - units))) }, 'Max'))),
       f2.artifacts.length ? [h('h3', null, 'Artifacts'), f2.artifacts.map((a) => h('label', { class: 'pick' + (st.arts.has(a.id) ? ' on' : '') },
         h('input', { type: 'checkbox', checked: st.arts.has(a.id), onchange: () => { st.arts.has(a.id) ? st.arts.delete(a.id) : st.arts.add(a.id); refreshSheet(); } }),
-        img(S.artifact()), h('span', { class: 'grow' }, a.name), h('span', { class: 'gold-t' }, '~' + fmt(a.value))))] : null,
+        img(S.artifact()), h('span', { class: 'grow' }, a.name), money(a.value)))] : null,
       h('h3', null, 'Buy on the way back'),
       h('div', { class: 'row' },
         h('select', { onchange: (e) => { st.buyKey = e.target.value; refreshSheet(); } }, buyable.map((k) => h('option', { value: k, selected: st.buyKey === k }, goodName(k)))),
-        h('span', { class: 'small muted' }, `~${buyPrice(st.city, st.buyKey).toFixed(1)} each`),
+        h('span', { class: 'small muted' }, money(buyPrice(st.city, st.buyKey)), ' each'),
         h('button', { class: 'btn small', onclick: () => { st.buy[st.buyKey] = (st.buy[st.buyKey] || 0) + 10; refreshSheet(); } }, '+10')),
       Object.entries(st.buy).map(([k, v]) => h('div', { class: 'row small' }, goodIcon(k, 'icon s'), h('span', { class: 'grow' }, `${v} ${goodName(k)}`),
         h('button', { class: 'btn small ghost', 'aria-label': 'Remove', onclick: () => { delete st.buy[k]; refreshSheet(); } }, ico('close')))),
-      h('label', null, 'Coins to take for buying (max)', h('input', { type: 'number', min: 0, max: Math.floor(f2.coins), value: st.budget || '', placeholder: '0',
-        onchange: (e) => { st.budget = Math.max(0, Math.min(Math.floor(f2.coins), Math.floor(+e.target.value || 0))); refreshSheet(); } })),
+      h('label', null, 'Money to take for buying, in Marks', h('div', { class: 'row' }, h('input', { type: 'number', min: 0, step: 0.01, inputmode: 'decimal', value: st.budget ? +(st.budget / 1000).toFixed(2) : '', placeholder: '0',
+        onchange: (e) => { st.budget = Math.max(0, Math.min(Math.floor(f2.coins), Math.round((+e.target.value || 0) * 1000))); refreshSheet(); } }), money(st.budget))),
       h('div', { class: 'card sub' },
-        h('p', null, 'Estimated sale at today\'s price: ', h('b', { class: 'gold-t' }, fmt(est) + ' coins')),
+        h('p', null, 'Estimated sale at today\'s price: ', money(est, 'big')),
         h('p', { class: 'small muted' }, `Arrives in ${city.hours}h, back in ${city.hours * 2}h. Selling many of one kind lowers its price.`)),
       h('button', { class: 'btn big primary', disabled: !st.merchants.size || units > cap || (!units && !st.arts.size && !Object.keys(st.buy).length),
         onclick: async () => {
@@ -227,3 +221,5 @@ function expeditionSheet(o) {
 }
 
 export { isItem };
+
+bus.caravanTo = (city, mk) => caravanSheet(city, mk);

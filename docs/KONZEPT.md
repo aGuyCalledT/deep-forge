@@ -70,7 +70,7 @@ Mine → Lift → Lager → Schmelze → Barren → Legierung → Schmiede → A
 
 - **Monster in der Mine** blockieren eine Schicht, bis Krieger sie töten. Krieger auf Minen-Patrouille kämpfen sofort.
   Alle 4 Stunden kann ein versteckter Bergmann sterben.
-- **Überfälle** werden 3 Stunden vorher angekündigt. Verteidigung = Krieger am Tor + Mauern. Verloren:
+- **Überfälle** werden 3 Stunden vorher angekündigt. Verteidigung = Wachen der Eingangshalle + Tor. Verloren:
   Diebstahl (außer was im Tresor geschützt ist), Tote und eine **Belagerung**, die alle Werkstätten stilllegt,
   bis man sie bricht oder sie nach 8 Stunden abzieht.
 - **Banditen** auf jeder Karawanen-Strecke, Risiko je nach Stadt. Wachen helfen.

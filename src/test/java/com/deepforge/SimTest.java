@@ -61,31 +61,31 @@ class SimTest {
         act(f, m, T0, "type", "assign", "dwarf", merchant.id, "job", "merchant");
         double before = f.coins;
         act(f, m, T0, "type", "caravan", "city", "stonebridge", "merchants", List.of(merchant.id),
-                "cargo", Map.of("bar:copper", 30), "buy", Map.of("coal", 10), "budget", 50);
+                "cargo", Map.of("bar:copper", 30), "buy", Map.of("coal", 10), "budget", 5000);
         assertEquals(1, f.caravans.size());
         assertEquals("caravan:" + f.caravans.get(0).id, merchant.busy);
         Sim.advance(f, T0 + 2.1 * 3600, m);
         assertTrue(f.caravans.isEmpty(), "caravan should be home after 2 hours");
         // the coins wait in a report until they are collected
         assertEquals(1, f.reports.size());
-        assertEquals(before - 50, f.coins, 1e-9);
+        assertEquals(before - 5000, f.coins, 1e-9);
         act(f, m, T0 + 2.1 * 3600, "type", "collect", "id", f.reports.get(0).id);
         assertTrue(f.reports.isEmpty());
-        // robbed caravans bring half; a normal one sells 30 bars for ~300 coins
+        // robbed caravans bring half; a normal one sells 30 copper bars for about 30 Marks
         if (f.log.stream().noneMatch(l -> l.text.contains("Bandits")))
-            assertTrue(f.coins > before + 150, "coins " + f.coins + " before " + before);
+            assertTrue(f.coins > before + 15000, "coins " + f.coins + " before " + before);
     }
 
     @Test
     void sellingPushesThePriceDown() {
         Market m = Market.inMemory(5, T0);
         double p0 = m.sellPrice("stonebridge", "bar:copper", 1);
-        double rev = m.sell("stonebridge", "bar:copper", 300, 1);
+        double rev = m.sell("stonebridge", "bar:copper", 300, 1, 1);
         double p1 = m.sellPrice("stonebridge", "bar:copper", 1);
         assertTrue(p1 < p0 * 0.75);
         assertTrue(rev < 300 * p0 && rev > 300 * p1);
         m.tick(T0 + 24 * 3600);
-        assertTrue(m.index("bar:copper") > p1 / p0 * 0.99, "price recovers over time");
+        assertTrue(m.sellPrice("stonebridge", "bar:copper", 1) > p1 * 0.99, "price recovers over time");
     }
 
     @Test
@@ -142,12 +142,12 @@ class SimTest {
     void raidArrivesAndCanBeLost() {
         Fortress f = fresh(21);
         Market m = Market.inMemory(21, T0);
-        f.coins = 1000;
+        f.coins = 100_000;
         f.nextRaidAt = T0 + 60;
         Sim.advance(f, T0 + 4 * 3600, m);
         // no warriors, no walls: the raid wins against an empty gate
         assertNotNull(f.siege);
-        assertTrue(f.coins < 1000);
+        assertTrue(f.coins < 100_000);
     }
 
     @Test
@@ -255,7 +255,7 @@ class SimTest {
     void roomsGoOnlyOnDugOutGroundAndStandStillWithoutAHallway() {
         Fortress f = fresh(42);
         Market m = Market.inMemory(42, T0);
-        f.coins = 10000;
+        f.coins = 1_000_000;
         f.stock.put("stone", 500);
         int[] r = rock(f, 10);
         int c = r[0], fl = r[1];
@@ -317,7 +317,7 @@ class SimTest {
         assertTrue(f.stock.getOrDefault("stone", 0) >= stone + 3 * Rules.DIG_STONE, "every dug cell gives stone");
         assertTrue(f.dwarves.stream().allMatch(d -> d.dig == null));
         // building needs dug-out space
-        f.coins = 100000;
+        f.coins = 10_000_000;
         f.stock.put("stone", 5000);
         Actions.GameException e = assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 4 * 3600, "type", "build", "building", "grindstone"));
         assertTrue(e.getMessage().contains("Dig tool"), e.getMessage());
@@ -363,7 +363,7 @@ class SimTest {
     void machinesAreAssignedAndRemovedOneByOne() {
         Fortress f = fresh(45);
         Market m = Market.inMemory(45, T0);
-        f.coins = 100000;
+        f.coins = 10_000_000;
         f.stock.put("stone", 5000);
         f.stock.put("bar:copper", 500);
         f.stock.put("bar:bronze", 500);
@@ -402,7 +402,7 @@ class SimTest {
     void newWorkshopsGetAPlace() {
         Fortress f = fresh(43);
         Market m = Market.inMemory(43, T0);
-        f.coins = 10000;
+        f.coins = 1_000_000;
         f.stock.put("stone", 500);
         int[] r = rock(f, 6);
         open(f, r[0], r[0] + 5, r[1]);
@@ -416,7 +416,7 @@ class SimTest {
     void theTailorWeavesSewsAndClothesSell() {
         Fortress f = fresh(47);
         Market m = Market.inMemory(47, T0);
-        f.coins = 10000;
+        f.coins = 1_000_000;
         f.stock.put("stone", 500);
         f.stock.put("food", 200);
         int[] r = rock(f, 7);

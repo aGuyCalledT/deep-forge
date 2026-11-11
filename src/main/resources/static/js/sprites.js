@@ -154,6 +154,8 @@ function copy(name) {
 export function ore(id) { return sprite('ore_' + id); }
 export function raw(id) { return sprite('raw_' + id); }
 export function coin() { return sprite('coin'); }
+/** The coin for a denomination: 'mark' (gold), 'talent' (silver) or 'jot' (copper). */
+export function coinOf(d) { return sprite('coin_' + d); }
 export function artifact() { return sprite('artifact'); }
 export function icon(name) { return sprite('ui_' + name); }
 
