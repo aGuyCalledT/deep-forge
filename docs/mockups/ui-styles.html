@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deep Forge Windows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Germania+One&family=Alegreya+Sans:wght@400;500;700;800&family=Alegreya+Sans+SC:wght@700;800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* iron and steel */
+  --iron-0: #15161b; --iron-1: #23252d; --iron-2: #353844; --iron-3: #4d5160; --iron-4: #747a8c; --iron-5: #a9afbf;
+  /* trims */
+  --gold-0: #5a3a12; --gold-1: #8c6220; --gold-2: #c9963c; --gold-3: #ecc76b; --gold-4: #fff0b8;
+  --brass-0: #4a3517; --brass-1: #7a5a28; --brass-2: #b08a45; --brass-3: #dcbd7a;
+  --copper-0: #4d2418; --copper-1: #82412a; --copper-2: #b8673f; --copper-3: #e19a6e;
+  /* gems */
+  --ruby: #c0283c; --ruby-hi: #ff8a96; --emerald: #1f9a6a; --emerald-hi: #8ff0c4;
+  --sapphire: #2a5bc0; --sapphire-hi: #9cc0ff; --amber: #d98a1c; --amber-hi: #ffe08a;
+  /* paper and ink */
+  --paper: #e8d6ad; --paper-dark: #c9ae78; --ink: #2b2118; --ink-soft: #5b4630; --ink-red: #8a2a1e;
+  --text: #ece6da; --text-dim: #b9b1a2;
+  --ease-clunk: cubic-bezier(.2, .9, .25, 1.0);
+}
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+body {
+  margin: 0; min-height: 100vh; color: var(--text);
+  font: 16px/1.45 "Alegreya Sans", system-ui, sans-serif;
+  /* riveted iron sheets */
+  background-color: var(--iron-1);
+  background-image:
+    radial-gradient(circle at 10px 10px, #5d6272 0 2px, #1a1b21 2.6px 3.4px, transparent 4px),
+    radial-gradient(circle at 10px 10px, transparent 0 4px, transparent 5px),
+    linear-gradient(90deg, rgba(0,0,0,.55) 0 2px, rgba(255,255,255,.06) 2px 3px, transparent 3px),
+    linear-gradient(0deg, rgba(0,0,0,.55) 0 2px, rgba(255,255,255,.06) 2px 3px, transparent 3px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.9 0.012' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0.6  0 0 0 0 0.62  0 0 0 0 0.7  0 0 0 0.22 0'/></filter><rect width='100%' height='100%' filter='url(%23b)'/></svg>"),
+    radial-gradient(ellipse at 30% 20%, #3a3d48, #1e2027 70%);
+  background-size: 240px 160px, 240px 160px, 240px 160px, 240px 160px, 320px 320px, 100% 100%;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+}
+::selection { background: var(--gold-2); color: var(--iron-0); }
+h1, h2 { font-family: "Germania One", serif; font-weight: 400; letter-spacing: .01em; margin: 0; }
+.page { max-width: 1400px; margin: 0 auto; padding: 32px 28px 80px; }
+.page > header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+.page > header h1 { font-size: 44px; color: var(--gold-3); text-shadow: 0 1px 0 var(--gold-0), 0 2px 6px rgba(0,0,0,.6); }
+.page > header p { margin: 4px 0 0; color: var(--text-dim); max-width: 60ch; }
+.label { font: 700 13px "Alegreya Sans SC", sans-serif; letter-spacing: .06em; color: var(--iron-5); margin: 0 0 10px; }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 34px 30px; align-items: start; }
+
+/* ---------------------------------------------------------------- windows */
+.win {
+  --m0: var(--iron-0); --m1: var(--iron-1); --m2: var(--iron-2); --m3: var(--iron-3);
+  --t0: var(--gold-0); --t1: var(--gold-1); --t2: var(--gold-2); --t3: var(--gold-3); --t4: var(--gold-4);
+  --gem: var(--ruby); --gem-hi: var(--ruby-hi);
+  position: relative; padding: 30px 26px 24px;
+  border-radius: 10px;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='1.1 0.02' numOctaves='2' seed='9'/><feColorMatrix values='0 0 0 0 0.8  0 0 0 0 0.8  0 0 0 0 0.85  0 0 0 0.12 0'/></filter><rect width='100%' height='100%' filter='url(%23b)'/></svg>"),
+    linear-gradient(180deg, color-mix(in oklab, var(--m2) 80%, white 6%), var(--m1) 38%, var(--m0));
+  box-shadow:
+    inset 0 0 0 2px var(--t1), inset 0 0 0 3px var(--t3), inset 0 0 0 5px var(--m0), inset 0 0 0 6px color-mix(in oklab, var(--t1) 60%, black),
+    inset 0 10px 18px rgba(255,255,255,.05), inset 0 -14px 24px rgba(0,0,0,.45),
+    0 2px 0 #000, 0 18px 34px rgba(0,0,0,.55), 0 4px 10px rgba(0,0,0,.4);
+}
+/* filigree band just inside the rim */
+.win::before {
+  content: ""; position: absolute; inset: 9px; border-radius: 6px; pointer-events: none;
+  border: 1px solid color-mix(in oklab, var(--t2) 55%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.5);
+}
+.win .corner { position: absolute; width: 58px; height: 58px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+.win .corner.tl { top: -6px; left: -6px; }
+.win .corner.tr { top: -6px; right: -6px; transform: scaleX(-1); }
+.win .corner.bl { bottom: -6px; left: -6px; transform: scaleY(-1); }
+.win .corner.br { bottom: -6px; right: -6px; transform: scale(-1, -1); }
+.win .crest { position: absolute; top: -19px; left: 50%; translate: -50% 0; width: 92px; height: 40px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.6)); }
+.win .runes { position: absolute; left: 60px; right: 60px; bottom: 1px; height: 9px; pointer-events: none; background: var(--t3); opacity: .8;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='9'><g stroke='black' stroke-width='1.3' fill='none' stroke-linecap='square'><path d='M3 1 V8 M3 2 L7 5'/><path d='M12 1 V8 M10 1 L14 8'/><path d='M20 8 L22 1 L24 8 M21 4.5 H23'/><path d='M30 1 V8 M30 4.5 L34 1 M30 4.5 L34 8'/><path d='M40 1 L44 4.5 L40 8'/><path d='M50 1 V8 M53 1 V8 M50 4.5 H53'/><path d='M59 1 L61 8 L63 1'/></g></svg>") 0 0 / 64px 9px repeat-x; mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='9'><g stroke='black' stroke-width='1.3' fill='none' stroke-linecap='square'><path d='M3 1 V8 M3 2 L7 5'/><path d='M12 1 V8 M10 1 L14 8'/><path d='M20 8 L22 1 L24 8 M21 4.5 H23'/><path d='M30 1 V8 M30 4.5 L34 1 M30 4.5 L34 8'/><path d='M40 1 L44 4.5 L40 8'/><path d='M50 1 V8 M53 1 V8 M50 4.5 H53'/><path d='M59 1 L61 8 L63 1'/></g></svg>") 0 0 / 64px 9px repeat-x; filter: drop-shadow(0 1px 0 rgba(0,0,0,.8)); }
+
+/* nameplate */
+.plate {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 7px 14px 8px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--t3), var(--t2) 45%, var(--t1));
+  box-shadow: inset 0 1px 0 var(--t4), inset 0 -2px 0 var(--t0), 0 2px 0 rgba(0,0,0,.55), 0 3px 6px rgba(0,0,0,.4);
+  position: relative;
+}
+.plate::before, .plate::after { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 35%, var(--t4), var(--t1) 60%, var(--t0)); box-shadow: 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 1px rgba(0,0,0,.5); }
+.plate h2 { flex: 1; font-size: 25px; line-height: 1; color: #2a1a08; text-shadow: 0 1px 0 rgba(255,240,190,.55); }
+.plate small { font: 800 12px "Alegreya Sans SC", sans-serif; letter-spacing: .05em; color: color-mix(in oklab, var(--t0) 85%, black); }
+
+.win p { margin: 0 0 12px; }
+.dim { color: var(--text-dim); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.sep { height: 10px; margin: 14px 0; background:
+  radial-gradient(circle, var(--t3) 0 2px, var(--t1) 2.5px 3.5px, transparent 4px) center / 10px 10px no-repeat,
+  linear-gradient(var(--t1), var(--t1)) center / 100% 1px no-repeat; opacity: .8; }
+
+/* engraved inset panel */
+.inset { border-radius: 6px; padding: 12px 14px; margin-bottom: 14px;
+  background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.22));
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.07); }
+
+/* materials by meaning */
+.win.forge  { --gem: var(--ruby); --gem-hi: var(--ruby-hi); }
+.win.trade  { --m0: #1f170c; --m1: #33260f; --m2: #5a4420; --t0: var(--gold-0); --t1: var(--gold-1); --t2: var(--gold-2); --t3: var(--gold-3); --gem: var(--emerald); --gem-hi: var(--emerald-hi); }
+.win.war    { --m0: #0d0d10; --m1: #17171c; --m2: #26262d; --t0: #3b1010; --t1: #6d1f1f; --t2: #9a3a2c; --t3: #c9715a; --t4: #f0b39a; --gem: var(--ruby); --gem-hi: var(--ruby-hi); }
+.win.dwarf  { --m0: #231410; --m1: #3a2219; --m2: #5c3727; --t0: var(--copper-0); --t1: var(--copper-1); --t2: var(--copper-2); --t3: var(--copper-3); --t4: #ffd6b8; --gem: var(--amber); --gem-hi: var(--amber-hi); }
+.win.lore   { --m0: #12182a; --m1: #1c2440; --m2: #2b375e; --t0: #2a3550; --t1: #56648a; --t2: #9aa6c4; --t3: #d3dbef; --t4: #ffffff; --gem: var(--sapphire); --gem-hi: var(--sapphire-hi); }
+.win.war .plate h2 { color: #1a0505; }
+.win.lore .plate h2 { color: #10162a; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
+
+/* ---------------------------------------------------------------- buttons: forged plates that press in */
+.btn {
+  --b0: var(--iron-1); --b1: var(--iron-2); --b2: var(--iron-3); --b3: var(--iron-4); --fg: var(--text);
+  appearance: none; border: 0; cursor: pointer; min-height: 42px; padding: 0 18px 2px;
+  display: inline-flex; align-items: center; gap: 8px;
+  font: 800 15px "Alegreya Sans SC", sans-serif; letter-spacing: .04em; color: var(--fg);
+  border-radius: 7px;
+  background: linear-gradient(180deg, var(--b3), var(--b2) 12%, var(--b1) 55%, var(--b0));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.35),
+    0 0 0 1px #0b0b0e, 0 4px 0 #0b0b0e, 0 6px 8px rgba(0,0,0,.45);
+  text-shadow: 0 -1px 0 rgba(0,0,0,.6);
+  transform: translateY(0); transition: transform .06s, box-shadow .06s, filter .15s;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn:active, .btn.pressed { transform: translateY(3px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 2px 5px rgba(0,0,0,.45), 0 0 0 1px #0b0b0e, 0 1px 0 #0b0b0e, 0 2px 3px rgba(0,0,0,.4); }
+.btn:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 4px; }
+.btn.gold { --b0: var(--gold-0); --b1: var(--gold-1); --b2: var(--gold-2); --b3: var(--gold-4); --fg: #2a1806; text-shadow: 0 1px 0 rgba(255,240,190,.6); }
+.btn.green { --b0: #0d3b2a; --b1: #17654a; --b2: #2a9a6e; --b3: #9ff0c8; }
+.btn.red { --b0: #3a0c10; --b1: #761c24; --b2: #b23440; --b3: #ff9aa2; }
+.btn[disabled] { cursor: not-allowed; filter: grayscale(.8) brightness(.7); }
+.btn .i { width: 18px; height: 18px; flex: none; }
+
+/* cost chips: little stamped tokens */
+.cost { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 4px; border-radius: 999px; font-weight: 700; font-size: 14px;
+  background: rgba(0,0,0,.35); box-shadow: inset 0 1px 2px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.06); }
+.cost i { width: 18px; height: 18px; border-radius: 50%; display: inline-block; }
+.cost .coin { background: radial-gradient(circle at 35% 30%, var(--gold-4), var(--gold-2) 50%, var(--gold-0)); }
+.cost .bar { border-radius: 3px; background: linear-gradient(180deg, #e6b08a, #b06a44 55%, #6d3a24); height: 12px; }
+.cost .coal { background: radial-gradient(circle at 35% 30%, #6a6a76, #26262e 60%, #0c0c10); }
+.cost.miss { color: #ff9a8e; }
+
+/* ---------------------------------------------------------------- hourglass progress */
+.hg { width: 46px; height: 64px; flex: none; }
+.hg .sand-top { animation: drain var(--dur, 8s) linear infinite; transform-origin: 50% 32px; }
+.hg .sand-bot { animation: fill var(--dur, 8s) linear infinite; transform-origin: 50% 58px; }
+.hg .stream { animation: stream var(--dur, 8s) linear infinite; }
+.hg .glass-turn { transform-origin: 23px 32px; animation: turn var(--dur, 8s) var(--ease-clunk) infinite; }
+@keyframes drain { 0% { transform: scaleY(1); } 92% { transform: scaleY(0); } 100% { transform: scaleY(0); } }
+@keyframes fill { 0% { transform: scaleY(0); } 92% { transform: scaleY(1); } 100% { transform: scaleY(1); } }
+@keyframes stream { 0%, 90% { opacity: 1; } 92%, 100% { opacity: 0; } }
+@keyframes turn { 0%, 93% { transform: rotate(0); } 100% { transform: rotate(180deg); } }
+.job { display: flex; gap: 14px; align-items: center; }
+.job b { display: block; }
+.job .eta { font: 700 13px "Alegreya Sans SC", sans-serif; color: var(--gold-3); letter-spacing: .04em; }
+
+/* ---------------------------------------------------------------- paper */
+.paper {
+  --seed-rot: -1.2deg;
+  position: relative; color: var(--ink); padding: 30px 30px 26px;
+  font: 400 19px/1.35 "Kalam", cursive;
+  background:
+    var(--stain, none),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='420'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.02' numOctaves='3' seed='3'/><feDiffuseLighting lighting-color='%23fff6dc' surfaceScale='3.2'><feDistantLight azimuth='225' elevation='58'/></feDiffuseLighting><feComposite operator='arithmetic' k1='0' k2='1' k3='0' k4='0'/></filter><rect width='100%' height='100%' filter='url(%23c)' opacity='0.55'/></svg>"),
+    radial-gradient(ellipse at 50% 45%, #f1e2bd, var(--paper) 55%, var(--paper-dark));
+  background-blend-mode: multiply, multiply, normal;
+  clip-path: var(--tear);
+  rotate: var(--seed-rot);
+}
+.paper::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(var(--fold, 172deg), transparent 0 49.6%, rgba(90,60,25,.22) 49.7% 50%, rgba(255,250,230,.55) 50.1% 50.4%, transparent 50.6%),
+    linear-gradient(var(--fold2, 82deg), transparent 0 63.6%, rgba(90,60,25,.16) 63.7% 64%, rgba(255,250,230,.4) 64.1% 64.3%, transparent 64.5%),
+    radial-gradient(ellipse at 100% 100%, rgba(80,50,20,.28), transparent 18%),
+    radial-gradient(ellipse at 0 0, rgba(80,50,20,.2), transparent 16%); }
+.paper-wrap { filter: drop-shadow(0 2px 1px rgba(0,0,0,.45)) drop-shadow(0 12px 16px rgba(0,0,0,.45)); position: relative; }
+.paper h3 { font: 700 26px/1.1 "Kalam", cursive; margin: 0 0 8px; color: #3a2614; }
+.paper .who { font-size: 16px; color: var(--ink-soft); margin: -4px 0 12px; }
+.paper ul { list-style: none; margin: 0 0 14px; padding: 0; }
+.paper li { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; border-bottom: 1px dashed rgba(60,40,20,.25); }
+.paper li .box { width: 18px; height: 18px; flex: none; translate: 0 3px; }
+.paper li.done span { text-decoration: line-through; text-decoration-color: rgba(138,42,30,.75); text-decoration-thickness: 2px; color: var(--ink-soft); }
+.paper .reward { font-weight: 700; color: var(--ink-red); }
+.paper .nail { position: absolute; top: 12px; left: 50%; translate: -50% 0; width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #c4c8d4, #5d6272 55%, #24262e); box-shadow: 0 2px 2px rgba(0,0,0,.5); }
+.paper .seal { position: absolute; right: 22px; bottom: 18px; width: 62px; height: 62px; rotate: 12deg; }
+.paper .btn { font-family: "Alegreya Sans SC", sans-serif; }
+
+/* ---------------------------------------------------------------- a room with a window sliding out of its ceiling */
+.roomstage { position: relative; border-radius: 10px; overflow: hidden; height: 360px;
+  background: #0d0c12 url(room.png) center 70px / auto 290px no-repeat; image-rendering: pixelated;
+  box-shadow: inset 0 0 0 2px #000, 0 10px 30px rgba(0,0,0,.5); }
+.roomstage .ceiling { position: absolute; left: 0; right: 0; top: 0; height: 70px; background: linear-gradient(#1b1c22, #0e0e12);
+  box-shadow: inset 0 -3px 0 #000, 0 4px 10px rgba(0,0,0,.6); z-index: 2; }
+.roomstage .ceiling::after { content: ""; position: absolute; left: 160px; width: 300px; bottom: -2px; height: 6px; border-radius: 0 0 4px 4px;
+  background: #050507; box-shadow: inset 0 2px 3px rgba(0,0,0,.9); }
+.roomstage .hover { position: absolute; left: 182px; top: 64px; width: 272px; z-index: 1; padding: 22px 26px 18px; font-size: 15px;
+  animation: drop 3.6s var(--ease-clunk) infinite; }
+.roomstage .hover .chain { position: absolute; top: -40px; width: 4px; height: 44px; background: repeating-linear-gradient(#8b8f9d 0 5px, #3b3e48 5px 7px); }
+.roomstage .hover .chain.l { left: 28px; } .roomstage .hover .chain.r { right: 28px; }
+.roomstage .hover .plate h2 { font-size: 20px; }
+.roomstage .hover .stat { display: flex; justify-content: space-between; font-weight: 700; }
+@keyframes drop {
+  0% { transform: translateY(-110%); }
+  14% { transform: translateY(6%); }
+  18% { transform: translateY(-2%); }
+  22% { transform: translateY(1%); }
+  25%, 78% { transform: translateY(0); }
+  82% { transform: translateY(2%); }
+  92%, 100% { transform: translateY(-110%); }
+}
+
+/* sliding in from the screen edge: a rail, a ratchet, a settle */
+.slide { animation: slide-in .9s var(--ease-clunk) both; }
+.slide.from-right { --dx: 120%; } .slide.from-left { --dx: -120%; } .slide.from-bottom { --dy: 120%; }
+@keyframes slide-in {
+  0% { transform: translate(var(--dx, 0), var(--dy, 0)); }
+  55% { transform: translate(calc(var(--dx, 0) * -0.03), calc(var(--dy, 0) * -0.03)); }
+  70% { transform: translate(calc(var(--dx, 0) * 0.012), calc(var(--dy, 0) * 0.012)); }
+  82% { transform: translate(calc(var(--dx, 0) * -0.005), calc(var(--dy, 0) * -0.005)); }
+  100% { transform: none; }
+}
+.replay { position: fixed; right: 22px; bottom: 22px; z-index: 9; }
+@media (prefers-reduced-motion: reduce) { .slide, .roomstage .hover, .hg * { animation: none !important; } }
+@media (max-width: 900px) { .grid > * { grid-column: 1 / -1 !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- a corner: scrolled filigree in the trim metal, a gem set where the scrolls meet -->
+    <symbol id="corner" viewBox="0 0 58 58">
+      <path d="M6 52 V18 Q6 6 18 6 H52" fill="none" stroke="var(--t0)" stroke-width="7" stroke-linecap="round"/>
+      <path d="M6 52 V18 Q6 6 18 6 H52" fill="none" stroke="var(--t2)" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M6 52 V18 Q6 6 18 6 H52" fill="none" stroke="var(--t4)" stroke-width="1" stroke-linecap="round" opacity=".7" transform="translate(-.6 -.6)"/>
+      <path d="M17 44 C17 30 22 22 30 22 C37 22 38 30 32 31 C28 32 27 27 30 26" fill="none" stroke="var(--t3)" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M44 17 C30 17 22 22 22 30" fill="none" stroke="var(--t3)" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M11 30 l-3 -3 M30 11 l-3 -3" stroke="var(--t1)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="15" cy="15" r="7.5" fill="var(--t1)"/>
+      <circle cx="15" cy="15" r="5.6" fill="var(--gem)"/>
+      <ellipse cx="13" cy="12.8" rx="2.4" ry="1.6" fill="var(--gem-hi)" opacity=".85"/>
+      <path d="M15 20.6 a5.6 5.6 0 0 0 5.4 -4.2" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="1.4"/>
+    </symbol>
+    <!-- the crest on top of each window: a trim shield with a bigger gem -->
+    <symbol id="crest" viewBox="0 0 92 40">
+      <path d="M4 22 C18 22 22 10 34 8 H58 C70 10 74 22 88 22 C74 24 68 34 58 36 H34 C24 34 18 24 4 22 Z" fill="var(--t0)"/>
+      <path d="M8 22 C20 21 24 12 35 10.5 H57 C68 12 72 21 84 22 C72 23 66 32 57 33.5 H35 C26 32 20 23 8 22 Z" fill="var(--t2)"/>
+      <path d="M35 10.5 H57" stroke="var(--t4)" stroke-width="1.2" opacity=".8"/>
+      <path d="M46 11 L56 22 L46 33 L36 22 Z" fill="var(--t1)"/>
+      <path d="M46 13.5 L53.5 22 L46 30.5 L38.5 22 Z" fill="var(--gem)"/>
+      <path d="M46 13.5 L50 18 L46 20 L42 18 Z" fill="var(--gem-hi)" opacity=".9"/>
+      <path d="M38.5 22 L46 30.5 L53.5 22" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="1.2"/>
+      <circle cx="22" cy="22" r="2" fill="var(--t4)"/><circle cx="70" cy="22" r="2" fill="var(--t4)"/>
+    </symbol>
+    <!-- a strip of carved marks along the bottom rim: made-up dwarven letters, all straight cuts -->
+    <pattern id="runes" width="64" height="8" patternUnits="userSpaceOnUse">
+      <g stroke="var(--t3)" stroke-width="1.2" fill="none" stroke-linecap="square">
+        <path d="M3 1 V7 M3 2 L7 5"/><path d="M12 1 V7 M10 1 L14 7"/><path d="M20 7 L22 1 L24 7 M21 4 H23"/>
+        <path d="M30 1 V7 M30 4 L34 1 M30 4 L34 7"/><path d="M40 1 L44 4 L40 7"/><path d="M50 1 V7 M53 1 V7 M50 4 H53"/>
+        <path d="M59 1 L61 7 L63 1"/>
+      </g>
+    </pattern>
+    <!-- a checkbox drawn by hand -->
+    <symbol id="box" viewBox="0 0 18 18"><path d="M2.5 3 C6 2.4 12 2.6 15.6 2.8 C15.9 7 15.4 12 15.7 15.4 C11 15.8 6 15.3 2.3 15.6 C2.2 11 2.8 6 2.5 3 Z" fill="none" stroke="#3a2614" stroke-width="1.5"/></symbol>
+    <symbol id="tick" viewBox="0 0 18 18"><path d="M3.5 9.5 C5 11 6 12.6 7.2 14.4 C9.5 9 12 5.5 16.5 1.8" fill="none" stroke="#8a2a1e" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-hammer" viewBox="0 0 18 18"><path d="M3 15 L10 8" stroke="#8a5a34" stroke-width="2.6" stroke-linecap="round"/><path d="M8 4 L12 2 L16 6 L14 10 Z" fill="#c4c8d4" stroke="#24262e" stroke-width="1"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="#c9963c" stroke="#5a3a12"/><circle cx="9" cy="9" r="4.5" fill="none" stroke="#fff0b8" stroke-opacity=".7"/></symbol>
+    <symbol id="i-axe" viewBox="0 0 18 18"><path d="M4 16 L12 4" stroke="#8a5a34" stroke-width="2.4" stroke-linecap="round"/><path d="M10 2 C15 2 17 6 16 10 L11 6 Z" fill="#c4c8d4" stroke="#24262e"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+  <header>
+    <div>
+      <h1>Forged windows</h1>
+      <p>Style samples. The metal and the gem change with what the window says: iron and ruby for workshops, gold and emerald for trade, black iron for danger, copper and amber for dwarves, silver and sapphire for lore. Quests and expeditions come on paper.</p>
+    </div>
+    <button class="btn gold" onclick="replay()"><svg class="i"><use href="#i-hammer"/></svg>Replay the animations</button>
+  </header>
+
+  <div class="grid">
+    <!-- 1: hover window out of the ceiling -->
+    <section style="grid-column: span 7">
+      <p class="label">Hover over a room: a small plate drops out of the ceiling on chains</p>
+      <div class="roomstage">
+        <div class="ceiling"></div>
+        <div class="win forge hover">
+          <span class="chain l"></span><span class="chain r"></span>
+          <svg class="corner tl"><use href="#corner"/></svg><svg class="corner tr"><use href="#corner"/></svg>
+          <svg class="corner bl"><use href="#corner"/></svg><svg class="corner br"><use href="#corner"/></svg>
+          <div class="plate"><h2>Forge</h2><small>Lv 2</small></div>
+          <div class="stat"><span>Goblets 3 / 6</span><span style="color:var(--gold-3)">4 min</span></div>
+          <div class="stat dim" style="font-weight:500"><span>Brann Ironhand</span><span>speed 1.4</span></div>
+          <span class="runes"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2: buttons -->
+    <section style="grid-column: span 5">
+      <p class="label">Buttons are forged plates. They stand up and press in.</p>
+      <div class="win slide from-right" style="--gem: var(--iron-4); --gem-hi: #fff">
+        <svg class="corner tl"><use href="#corner"/></svg><svg class="corner tr"><use href="#corner"/></svg>
+        <svg class="corner bl"><use href="#corner"/></svg><svg class="corner br"><use href="#corner"/></svg>
+        <svg class="crest"><use href="#crest"/></svg>
+        <div class="plate"><h2>Buttons</h2></div>
+        <div class="row" style="margin-bottom:14px">
+          <button class="btn">Iron</button>
+          <button class="btn gold"><svg class="i"><use href="#i-coin"/></svg>Buy</button>
+          <button class="btn green">Start</button>
+          <button class="btn red"><svg class="i"><use href="#i-axe"/></svg>Fight</button>
+        </div>
+        <div class="row">
+          <button class="btn pressed">Pressed</button>
+          <button class="btn gold" disabled>Not enough</button>
+        </div>
+        <span class="runes"></span>
+      </div>
+    </section>
+
+    <!-- 3: workshop window -->
+    <section style="grid-column: span 4">
+      <p class="label">Workshop: iron with ruby</p>
+      <div class="win forge slide from-left">
+        <svg class="corner tl"><use href="#corner"/></svg><svg class="corner tr"><use href="#corner"/></svg>
+        <svg class="corner bl"><use href="#corner"/></svg><svg class="corner br"><use href="#corner"/></svg>
+        <svg class="crest"><use href="#crest"/></svg>
+        <div class="plate"><h2>Forge</h2><small>Level 2</small></div>
+        <div class="inset job">
+          <svg class="hg" viewBox="0 0 46 64" style="--dur: 7s">
+            <rect x="3" y="1" width="40" height="5" rx="2" fill="#8a5a34"/><rect x="3" y="58" width="40" height="5" rx="2" fill="#8a5a34"/>
+            <rect x="5" y="6" width="3" height="52" fill="#5e3c22"/><rect x="38" y="6" width="3" height="52" fill="#5e3c22"/>
+            <g class="glass-turn">
+              <path d="M11 7 H35 C35 20 26 26 24 32 C26 38 35 44 35 57 H11 C11 44 20 38 22 32 C20 26 11 20 11 7 Z" fill="rgba(200,220,255,.12)" stroke="rgba(220,235,255,.6)" stroke-width="1.2"/>
+              <path class="sand-top" d="M14 12 H32 C31 20 25 25 23 30 C21 25 15 20 14 12 Z" fill="#e7b85e"/>
+              <rect class="stream" x="22.4" y="31" width="1.2" height="25" fill="#e7b85e"/>
+              <path class="sand-bot" d="M13 56 H33 C32 50 28 46 23 45 C18 46 14 50 13 56 Z" fill="#e7b85e"/>
+              <path d="M14 10 C14 16 18 21 21 25" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.2"/>
+            </g>
+          </svg>
+          <div><b>Copper goblet</b><span class="dim">3 of 6 · Brann Ironhand</span><div class="eta">4 MIN LEFT</div></div>
+        </div>
+        <p class="dim" style="font-size:15px">Next in line: 2 bronze axes</p>
+        <div class="row" style="margin-bottom:12px">
+          <span class="cost"><i class="coal"></i>12 / 4</span>
+          <span class="cost"><i class="bar"></i>8 / 6</span>
+          <span class="cost miss"><i class="bar" style="background:linear-gradient(180deg,#d8dce6,#8a90a0 55%,#4a4e5a)"></i>1 / 3</span>
+        </div>
+        <div class="row"><button class="btn green">Add to queue</button><button class="btn">Workers</button></div>
+        <span class="runes"></span>
+      </div>
+    </section>
+
+    <!-- 4: trade -->
+    <section style="grid-column: span 4">
+      <p class="label">Trade: gold with emerald</p>
+      <div class="win trade slide from-bottom">
+        <svg class="corner tl"><use href="#corner"/></svg><svg class="corner tr"><use href="#corner"/></svg>
+        <svg class="corner bl"><use href="#corner"/></svg><svg class="corner br"><use href="#corner"/></svg>
+        <svg class="crest"><use href="#crest"/></svg>
+        <div class="plate"><h2>Market</h2><small>Ironhold</small></div>
+        <div class="inset">
+          <div class="row" style="justify-content:space-between"><b>Bronze bar</b><span style="color:var(--emerald-hi);font-weight:800">31 coins</span></div>
+          <div class="row dim" style="justify-content:space-between;font-size:14px"><span>You have 14</span><span>Price rising</span></div>
+        </div>
+        <div class="inset">
+          <div class="row" style="justify-content:space-between"><b>Silver ring</b><span style="color:var(--emerald-hi);font-weight:800">120 coins</span></div>
+          <div class="row dim" style="justify-content:space-between;font-size:14px"><span>You have 2</span><span>Wanted in Stonebridge</span></div>
+        </div>
+        <div class="row"><button class="btn gold"><svg class="i"><use href="#i-coin"/></svg>Sell 5</button><button class="btn">Buy</button></div>
+        <span class="runes"></span>
+      </div>
+    </section>
+
+    <!-- 5: danger -->
+    <section style="grid-column: span 4">
+      <p class="label">Danger: black iron with garnet</p>
+      <div class="win war slide from-right">
+        <svg class="corner tl"><use href="#corner"/></svg><svg class="corner tr"><use href="#corner"/></svg>
+        <svg class="corner bl"><use href="#corner"/></svg><svg class="corner br"><use href="#corner"/></svg>
+        <svg class="crest"><use href="#crest"/></svg>
+        <div class="plate"><h2>Goblin raid</h2><small>In 2 h</small></div>
+        <p>Strength <b style="color:#ff9a8e">48</b> against your gate <b>31</b>.</p>
+        <p class="dim" style="font-size:15px">Too weak. Post more warriors at the gate, give them axes and mail, or build walls.</p>
+        <div class="row"><button class="btn red"><svg class="i"><use href="#i-axe"/></svg>Send warriors</button><button class="btn">Walls</button></div>
+        <span class="runes"></span>
+      </div>
+    </section>
+
+    <!-- 6: papers -->
+    <section style="grid-column: span 4">
+      <p class="label">Quest: pinned paper, torn corner, an ale ring</p>
+      <div class="paper-wrap slide from-left">
+        <div class="paper" style="--seed-rot:-1.6deg;
+          --tear: polygon(0 3%, 6% 0, 40% 1%, 78% 0, 93% 0, 95% 3%, 97% 1.5%, 100% 6%, 99.5% 50%, 100% 97%, 70% 100%, 30% 99%, 8% 100%, 5% 97%, 3% 99%, 0 94%, .5% 60%);
+          --stain: radial-gradient(circle at 78% 72%, transparent 0 34px, rgba(120,70,20,.22) 35px 38px, rgba(120,70,20,.08) 39px 41px, transparent 42px),
+                   radial-gradient(ellipse at 14% 88%, rgba(110,70,30,.18), transparent 22%);">
+          <span class="nail"></span>
+          <h3>The innkeeper's order</h3>
+          <div class="who">from Hilda, Tavern</div>
+          <ul>
+            <li class="done"><svg class="box"><use href="#box"/><use href="#tick"/></svg><span>Brew 20 barrels of ale</span></li>
+            <li><svg class="box"><use href="#box"/></svg><span>Forge 4 copper goblets (1 of 4)</span></li>
+            <li><svg class="box"><use href="#box"/></svg><span>Hire a second cook</span></li>
+          </ul>
+          <div class="reward">Reward: 300 coins and a song about you</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="grid-column: span 5">
+      <p class="label">Expedition: a worn map page, crinkled, with a wax seal and a soot smear</p>
+      <div class="paper-wrap slide from-bottom">
+        <div class="paper" style="--seed-rot:1.1deg; --fold: 4deg; --fold2: 95deg; padding-right:100px;
+          --tear: polygon(0 0, 30% 1%, 62% 0, 100% 1.5%, 99% 30%, 100% 70%, 98.5% 88%, 100% 91%, 97% 94%, 99% 97%, 94% 100%, 60% 99%, 20% 100%, 0 99%, 1% 50%);
+          --stain: radial-gradient(ellipse 120px 40px at 30% 18%, rgba(40,30,25,.16), transparent 70%),
+                   radial-gradient(circle at 92% 8%, rgba(150,90,30,.16), transparent 14%),
+                   repeating-linear-gradient(115deg, transparent 0 60px, rgba(90,60,30,.06) 60px 61px, transparent 61px 130px);">
+          <h3>To the Silver Halls</h3>
+          <div class="who">4 dwarves · 3 days · day 2 of 3</div>
+          <ul>
+            <li class="done"><svg class="box"><use href="#box"/><use href="#tick"/></svg><span>Crossed the flooded gallery</span></li>
+            <li class="done"><svg class="box"><use href="#box"/><use href="#tick"/></svg><span>Found an old dwarf lantern</span></li>
+            <li><svg class="box"><use href="#box"/></svg><span>A rope bridge sways over the chasm. Cross it, or go the long way round?</span></li>
+          </ul>
+          <div class="row"><button class="btn green">Cross</button><button class="btn">Long way</button></div>
+          <svg class="seal" viewBox="0 0 62 62">
+            <path d="M31 3 C40 4 44 2 50 8 C57 13 58 19 59 27 C61 35 57 41 54 47 C49 55 42 58 33 59 C24 60 17 57 11 51 C5 45 3 38 3 30 C3 21 7 14 13 9 C18 5 24 3 31 3 Z" fill="#8e1f22"/>
+            <circle cx="31" cy="31" r="18" fill="none" stroke="#5e1014" stroke-width="2"/>
+            <path d="M31 18 L31 44 M22 24 L40 38 M40 24 L22 38" stroke="#5e1014" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M14 18 C18 12 24 9 30 8" fill="none" stroke="#ff9a8e" stroke-opacity=".45" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7: dwarf -->
+    <section style="grid-column: span 3">
+      <p class="label">Dwarf: copper with amber</p>
+      <div class="win dwarf slide from-right">
+        <svg class="corner tl"><use href="#corner"/></svg><svg class="corner tr"><use href="#corner"/></svg>
+        <svg class="corner bl"><use href="#corner"/></svg><svg class="corner br"><use href="#corner"/></svg>
+        <svg class="crest"><use href="#crest"/></svg>
+        <div class="plate"><h2>Brann</h2><small>Smith</small></div>
+        <p>Content. Likes ale, hates goblins.</p>
+        <div class="inset" style="font-size:15px">Smithing 7 · Mining 3<br><span class="dim">Bronze hammer, leather apron</span></div>
+        <div class="row"><button class="btn">Job</button><button class="btn">Gear</button></div>
+        <span class="runes"></span>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+function replay() {
+  document.querySelectorAll('.slide').forEach((el, i) => {
+    el.style.animation = 'none'; void el.offsetWidth;
+    el.style.animation = ''; el.style.animationDelay = (i * 0.08) + 's';
+  });
+}
+document.querySelectorAll('.slide').forEach((el, i) => { el.style.animationDelay = (i * 0.08) + 's'; });
+</script>
+</body>
+</html>
