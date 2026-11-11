@@ -487,7 +487,7 @@ public final class Actions {
         for (Offer x : f.offers) if (x.id == oid) o = x;
         check(o != null, "That expedition is no longer available.");
         long active = f.expeditions.stream().filter(e -> e.state.equals("active")).count();
-        check(active < expeditionSlots(f), "All expedition slots are in use. Upgrade the expedition hall.");
+        check(active < expeditionSlots(f), "All expedition slots are in use. Upgrade the adventurers' guild.");
         List<Dwarf> party = new ArrayList<>();
         for (int id : ids(a, "party")) party.add(freeDwarf(f, id));
         check(!party.isEmpty(), "Choose at least one dwarf.");

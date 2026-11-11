@@ -56,6 +56,7 @@ var ROOMS = {
   tailor:     { w: 6, door: 132, worker: [64, 90], face: -1, work: [30, 62], lights: [[60, 20, 34, "#ffd98e"], [28, 56, 22, "#ffe6b0"]] },
   farm:       { w: 7, door: 156, worker: [118, 90], face: -1, lights: [[22, 74, 36, "#90e0c8"], [58, 74, 32, "#90e0c8"], [94, 74, 32, "#90e0c8"], [72, 18, 32, "#ffd98e"]] },
   brewery:    { w: 6, door: 132, worker: [58, 90], face: -1, kettle: [28, 90], steam: [33, 30], lights: [[28, 62, 44, "#ffb070"], [67, 34, 30, "#ffd98e"]] },
+  expedition_hall: { w: 7, door: 156, seats: [[26, 90], [94, 90]], lights: [[66, 20, 44, "#ffd98e"], [46, 72, 22, "#ffd98e"]] },
   trade_depot: { w: 7, door: 156, lights: [[63, 20, 44, "#ffd98e"]] },
   barracks:   { w: 7, door: 156, worker: [112, 90], seats: [[52, 90], [68, 90], [84, 90]], lights: [[98, 22, 44, "#ffd98e"]] },
 };

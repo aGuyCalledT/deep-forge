@@ -68,7 +68,8 @@ damit Möbel sie verdecken.
 | Schacht | 48 × 96 | zwei Spalten links, ein Treppenhaus mit gekreuzten Spitzhacken und Gleisen (`shaft`, `shaft_lit`) |
 | Tor | `gate_1..4`: 48 × 72, 54 × 78, 64 × 88, 76 × 100 | wächst mit der Tor-Stufe: Holztor, Steinbogen mit beschlagenen Flügeln, Fallgitter und Banner, Runenbogen mit Wappen; mittig auf der Bergwand (x = −FACE), ab Stufe 3 Feuerschalen (`brazier` 14 × 22 + `fire_place`) daneben |
 | Eingangshalle | `entrance_hall_0..2` 144 × 96 | der Tor-Tunnel: Holz, Stein mit Schilden, prächtig mit Bannern und Läufer; Mitte (x 48–100) frei für die Übungskämpfe der Wachen (Werkzeug `stick` in `figure.js`) |
-| Oberfläche | Bäume 44 × 62, Stand 70 × 52, Zelt 60 × 46 | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE` |
+| Oberfläche | Bäume `tree_a`/`tree_b` 160 × 240 (4 Bilder Wind, die Krone neigt sich oben mehr), Marktstand `market_stall` 128 × 84 mit Vordach `stall_awning` 136 × 30 (4 Bilder, flattert) | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE`. Die kleinen `tree_0/1`, `stall`, `tent` gibt es nur noch für das Login-Bild |
+| Status | `ui_stop` (rotes Achteck, steht still), `ui_warn` (gelbes Dreieck, braucht dich), `ui_idle` (graue Punkte, nichts zu tun) 16 × 16 | über Räumen (`roomStatus` in `hold.js`), über untätigen Zwergen und in den Hinweis-Chips |
 | Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
 | Monster | je nach Art, Figuren wie Zwerge | `Figure.monster(id, frame)` |
 
@@ -88,7 +89,7 @@ Posen: `idle talk sit sitTalk eat drink walk work climb sleep`, Stimmung `happy 
 
 ## Tiefe
 
-- Die Festung liegt in einem Berg: links das Tal (Markt, Zelt, Winde, Palisade bzw. ab Tor-Stufe 3 Steinmauer, Karawanen), ein Tor (`gate_<stufe>`) mit Tunnel (die Eingangshalle)
+- Die Festung liegt in einem Berg: links das Tal (zwei große Bäume, Marktstand, Wegweiser, Reisende, Karawanen), ein Tor (`gate_<stufe>`) mit Tunnel (die Eingangshalle)
   führt auf Etage `ENTRY` (2) zum Schacht, darüber zwei Etagen über dem Talboden. Die Bergform kommt aus `mtop(x)` in
   `hold.js` (Steilwand am Tor, Hang, Gipfel mit Schnee, Gras und kleine Tannen am Rand).
 - Der Fels ist die vordere Ebene: grauer Naturstein in vier Gesteinsbändern (`stone_*`, je zwei Etagen, je drei

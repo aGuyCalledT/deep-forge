@@ -181,7 +181,7 @@ function royalWall(type, c, x, w, rng) {
 }
 
 const FAMILY = {
-  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood", tailor: "wood", trade_depot: "wood",
+  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood", tailor: "wood", trade_depot: "wood", expedition_hall: "stone",
   smelter: "brick", forge: "brick", jeweler: "brick", vault: "stone", grindstone: "stone", barracks: "stone", farm: "earth",
 };
 const BRICK = { smelter: ["z", "Z"], forge: ["Q", "z"], jeweler: ["p", "P"] };
@@ -821,6 +821,65 @@ room("trade_depot", (c, w, R, T, v, rng) => {
   lights(c, T, [[60, 10]], v);
   cobweb(c, v ? 6 : w - 8, v ? 8 : 12, !v, 8);
   c.line(46, FY - 1, 51, FY - 2, "u");               // a dragged crate's scratch
+});
+
+// ------------------------------------------------------------------ adventurers' guild: a map table, the rumour board, gear for the road
+
+/** A board with pinned notes: the rumours the guild has heard. */
+function rumourBoard(c, x, y, T) {
+  c.rect(x, y, 30, 22, T === 2 ? "W" : "v"); c.box(x, y, 30, 22, T === 2 ? "o" : "W");
+  const notes = [[x + 3, y + 3, 9, 7], [x + 14, y + 2, 12, 9], [x + 4, y + 12, 11, 8], [x + 18, y + 13, 9, 7]];
+  notes.forEach(([nx, ny, w, h], i) => { c.rect(nx, ny, w, h, i % 3 ? "c" : "C"); c.hline(nx + 1, ny + 2, w - 3, "u"); c.hline(nx + 1, ny + 4, w - 4, "u"); c.px(nx + Math.floor(w / 2), ny, i % 2 ? "f" : "B"); });
+  c.line(x + 8, y + 8, x + 20, y + 6, "f");                                    // red string between two notes
+}
+
+/** The map table: a spread map with a route, a compass and a candle. */
+function mapTable(c, x, b, w, T) {
+  table(c, x, b, w, T);
+  c.rect(x + 3, b - 15, w - 6, 2, "c"); c.hline(x + 3, b - 15, w - 6, "C");
+  c.px(x + 6, b - 15, "f"); c.px(x + w - 9, b - 15, "f"); for (let i = x + 8; i < x + w - 10; i += 3) c.px(i, b - 14, "u");
+  c.circ(x + w - 12, b - 18, 3, "6"); c.circ(x + w - 12, b - 18, 2, "N"); c.px(x + w - 12, b - 19, "f");   // compass
+  candle(c, x + 8, b - 16);
+}
+
+/** Gear for the road on pegs: rope, a lantern, a pack. */
+function gearPegs(c, x, y, T) {
+  c.rect(x, y, 40, 3, "V"); c.hline(x, y, 40, "u");
+  c.ring(x + 6, y + 9, 5, "u"); c.ring(x + 6, y + 9, 3, "U"); c.vline(x + 6, y + 3, 2, "u");                       // rope coil
+  c.vline(x + 18, y + 3, 3, "4"); c.rect(x + 16, y + 6, 5, 7, "y"); c.rect(x + 17, y + 7, 3, 5, "Y"); c.hline(x + 16, y + 6, 5, "2"); c.hline(x + 16, y + 13, 5, "2");   // lantern
+  c.rect(x + 26, y + 4, 11, 14, T === 2 ? "B" : "G"); c.rect(x + 27, y + 4, 9, 4, T === 2 ? "n" : "h"); c.vline(x + 31, y + 8, 6, "V"); c.px(x + 31, y + 10, "j");   // a pack
+}
+
+/** A trophy: the antlered skull of a cave elk on a shield. */
+function trophy(c, x, y) {
+  c.circ(x + 8, y + 8, 8, "v"); c.ring(x + 8, y + 8, 8, "W");
+  c.ellipse(x + 8, y + 10, 4, 5, "C"); c.px(x + 6, y + 9, "s"); c.px(x + 10, y + 9, "s"); c.hline(x + 7, y + 14, 3, "c");
+  c.line(x + 4, y + 6, x - 1, y - 1, "c"); c.line(x + 1, y + 2, x - 2, y + 3, "c"); c.line(x + 12, y + 6, x + 17, y - 1, "c"); c.line(x + 15, y + 2, x + 18, y + 3, "c");
+}
+
+room("expedition_hall", (c, w, R, T, v, rng) => {
+  if (T === 0) {                                       // a few crates and a rough table, notes nailed to the rock
+    mapTable(c, 30, B, 40, 0);
+    stool(c, 18, B, 0); stool(c, 74, B, 0);
+    rumourBoard(c, 92, 30, 0);
+    crate(c, 6, B, 13); sack(c, 96, B, "u"); barrel(c, 116, B, 18);
+    c.line(8, 30, 8, 60, "u"); c.ring(8, 64, 4, "u");   // a rope hanging from a peg
+  } else {
+    mapTable(c, 34, B, 52, T);
+    stool(c, 22, B, T); stool(c, 90, B, T);
+    rumourBoard(c, 98, 28, T);
+    gearPegs(c, 6, 24, T);
+    trophy(c, 58, 18);
+    chest(c, 104, B); if (T === 1) crate(c, 124, B, 12, "u");
+    c.line(4, B, 12, B - 30, "4"); c.line(5, B, 13, B - 30, "4"); c.rect(9, B - 32, 8, 3, "6");   // a pickaxe leaning
+    if (T === 2) {
+      rug(c, 26, 70, "b", "n");
+      for (const x of [80, 131]) { c.hline(x - 1, 14, 12, "6"); c.rect(x, 15, 10, 20, "b"); c.vline(x + 1, 15, 20, "B"); c.poly([x, 35, x + 5, 39, x + 9, 35], "b"); c.ring(x + 5, 24, 3, "7"); c.px(x + 5, 21, "N"); c.px(x + 5, 27, "7"); }   // banners with a compass rose
+    }
+  }
+  lights(c, T, [[66, 10]], v);
+  cobweb(c, v ? 6 : w - 8, 8, !v, 8);
+  c.px(50, FY - 1, "c"); c.px(52, FY - 1, "c");        // crumbs of trail bread
 });
 
 room("vault", (c, w, R, T, v, rng) => {

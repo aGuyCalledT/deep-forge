@@ -5,7 +5,7 @@ import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costC
 import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
-import { holdScreen, roomCenter, roomAt, roomRect, agents } from './hold.js';
+import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus } from './hold.js';
 import { minesScreen, drawLoginArt } from './views.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
@@ -197,21 +197,23 @@ function alerts() {
     ? ['warn', 'war', `${th.name} in an overgrown cave on floor ${+th.cell.split(',')[1] + 1}. Send warriors or build there.`]
     : ['bad', 'war', `${th.name} in the ${G.data.layers[th.layer].name}! Mining stopped.`]);
   const still = f.buildings.filter((b) => d.buildings[b.id] && d.buildings[b.id].active === false);
-  if (still.length) a.push(['warn', 'fortress', `${byId.buildings[still[0].type].name} stands still: build a hallway beside it.`, still[0].id]);
+  if (still.length) a.push(['stop', 'fortress', `${byId.buildings[still[0].type].name} stands still: build a hallway beside it.`, still[0].id]);
   const marks = (f.layout && f.layout.marks) || [];
   if (marks.length && !(d.dig && d.dig.miners)) a.push(['warn', 'dwarves', `${marks.length} cell(s) marked to dig, but no miners. Make a dwarf a miner.`]);
   if (f.noFood) a.push(['bad', 'work', 'No food! Dwarves are starving. Staff the mushroom farm or buy food.']);
   if (f.noAle) a.push(['warn', 'work', 'Out of ale. Dwarves are unhappy.']);
-  if (f.storageFull) a.push(['warn', 'fortress', 'Warehouse full - mining stopped.']);
+  if (f.storageFull) a.push(['stop', 'fortress', 'Warehouse full - mining stopped. Smelt, sell or upgrade it.', (f.buildings.find((b) => b.type === 'warehouse') || {}).id]);
   const quench = f.buildings.filter((b) => b.job && b.job.quenching);
   if (quench.length) a.push(['good', 'work', 'Hot metal ready to quench at the forge!', quench[0].id]);
   for (const r of f.reports || []) a.push(['good', r.kind === 'caravan' ? 'trade' : 'explore', `${r.title}: collect the loot.`]);
   const choices = f.expeditions.filter((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen);
   if (choices.length) a.push(['good', 'explore', `An expedition needs your decision.`]);
   const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
-  if (idle) a.push(['warn', 'dwarves', `${idle} idle dwarf(s).`]);
+  const stuck = f.buildings.filter((b) => byId.buildings[b.type].kind === 'queue' && b.queue.length && roomStatus(b, idle) === 'stop' && d.buildings[b.id].active !== false);
+  if (stuck.length) a.push(['stop', 'work', `${byId.buildings[stuck[0].type].name} stopped: its orders need materials or a worker.`, stuck[0].id]);
+  if (idle) a.push(['idle', 'dwarves', `${idle} idle dwarf(s). Give them a job.`]);
   const empty = f.buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive' && !d.buildings[b.id].worker);
-  if (empty.length && !idle) a.push(['warn', 'work', `${empty.length} workshop(s) without a worker.`, empty[0].id]);
+  if (empty.length && !idle) a.push(['idle', 'work', `${empty.length} workshop(s) without a worker.`, empty[0].id]);
   if (d.traditionPoints > 0) a.push(['good', 'more', `${d.traditionPoints} tradition point(s) to spend.`]);
   return a;
 }
@@ -220,9 +222,9 @@ function renderAlerts() {
   const list = alerts();
   const n = wide() ? 4 : 2;
   $('alerts').replaceChildren(...list.slice(0, n).map(([k, tab, text, room]) =>
-    h('button', { class: 'alert ' + k, title: text, onclick: () => (room ? showRoom(room) : go(tab, true)) }, img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), h('span', null, text))),
+    h('button', { class: 'alert ' + k, title: text, onclick: () => (room ? showRoom(room) : go(tab, true)) }, img(S.icon({ bad: 'skull', stop: 'stop', idle: 'idle' }[k] || 'warn'), 'icon s'), h('span', null, text))),
     list.length > n ? h('button', { class: 'alert', onclick: () => go('fortress', true) }, h('span', null, `+${list.length - n} more`)) : '');
-  const hot = new Set(list.filter(([k]) => k !== 'warn').map(([, tab]) => tab));
+  const hot = new Set(list.filter(([k]) => k !== 'warn' && k !== 'idle').map(([, tab]) => tab));
   document.querySelectorAll('.tab').forEach((el) => {
     const dot = el.querySelector('.dot');
     if (hot.has(el.dataset.tab) && !dot) el.append(h('span', { class: 'dot' }));

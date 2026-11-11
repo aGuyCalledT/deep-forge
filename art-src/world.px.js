@@ -105,24 +105,6 @@ sprite("tent", { w: 60, h: 46, outline: "k" }, (c) => {
   c.px(54, 44, "V"); c.px(6, 44, "V"); c.line(56, 44, 60, 40, "u"); c.line(4, 44, 0, 40, "u");
 });
 
-sprite("palisade", { w: 72, h: 42, outline: "k" }, (c) => {
-  for (let x = 0; x < 72; x += 9) {
-    c.rect(x, 6, 8, 36, "v"); c.vline(x, 6, 36, "V"); c.vline(x + 1, 6, 36, "V"); c.vline(x + 7, 6, 36, "W");
-    c.poly([x, 6, x + 4, 0, x + 8, 6], "v"); c.px(x + 3, 2, "V");
-    c.px(x + 4, 14 + (x % 3) * 6, "W");
-  }
-  c.rect(0, 20, 72, 3, "W"); c.hline(0, 20, 72, "v"); c.rect(0, 33, 72, 3, "W"); c.hline(0, 33, 72, "v");
-});
-
-sprite("stonewall", { w: 84, h: 60, outline: "k" }, (c) => {
-  c.rect(0, 9, 84, 51, "4");
-  for (let x = 0; x < 84; x += 12) { c.rect(x, 0, 8, 10, "4"); c.hline(x, 0, 8, "5"); }
-  for (let y = 14, r = 0; y < 60; y += 8, r++) { c.hline(0, y, 84, "3"); for (let x = r % 2 ? 0 : 8; x < 84; x += 16) { c.vline(x, y, 8, "3"); c.hline(x + 1, y + 1, 6, "5"); } }
-  c.hline(0, 9, 84, "5");
-  c.ellipse(42, 38, 13, 11, "W"); c.rect(29, 38, 27, 22, "W"); for (let x = 32; x < 54; x += 5) c.vline(x, 30, 30, "v");
-  c.rect(39, 44, 6, 2, "j");
-});
-
 for (let i = 0; i < 2; i++) sprite("tree_" + i, { w: 44, h: 62, outline: "k" }, (c) => {
   c.rect(19, 36, 7, 26, "~"); c.vline(19, 36, 26, "^"); c.vline(24, 40, 20, "w");
   c.line(19, 61, 14, 61, "~"); c.line(26, 61, 31, 61, "~");                 // roots
@@ -355,3 +337,89 @@ for (let T = 0; T < 3; T++) sprite("entrance_hall_" + T, { w: 144, h: 96 }, (c) 
 function shieldOn(c, x, y, col) {
   c.circ(x + 6, y + 6, 6, col); c.ring(x + 6, y + 6, 6, "o"); c.ring(x + 6, y + 6, 3, col === "f" ? "F" : "n"); c.circ(x + 6, y + 6, 1, "j"); c.px(x + 5, y + 5, "8");   // rim and boss
 }
+
+
+// ---------------------------------------------------------------- the market stall in the valley: 128 x 84, the awning is drawn
+// separately (stall_awning, 4 frames) and flutters in the wind. Lanterns hang from the beam (light: hold.js).
+sprite("market_stall", { w: 128, h: 84, outline: "k" }, (c) => {
+  // posts and the beam under the awning
+  for (const x of [4, 120]) { c.rect(x, 14, 5, 70, "v"); c.vline(x, 14, 70, "V"); c.vline(x + 4, 14, 70, "W"); c.px(x + 2, 40, "W"); c.px(x + 2, 62, "W"); }
+  c.rect(0, 14, 128, 5, "V"); c.hline(0, 14, 128, "u"); c.hline(0, 18, 128, "W");
+  // back shelves with jars and bolts of cloth
+  c.rect(12, 30, 104, 3, "V"); c.hline(12, 30, 104, "u");
+  for (let x = 16, i = 0; x < 110; x += 11, i++) {
+    if (i % 3 === 0) { c.rect(x, 22, 7, 8, "c"); c.hline(x, 22, 7, "C"); c.rect(x + 1, 20, 5, 2, "u"); }          // a jar
+    else if (i % 3 === 1) { c.rect(x, 23, 8, 7, i % 2 ? "B" : "p"); c.vline(x + 2, 23, 7, i % 2 ? "n" : "P"); }   // cloth
+    else { c.ellipse(x + 4, 26, 4, 4, "F"); c.px(x + 3, 24, "y"); c.vline(x + 4, 21, 2, "G"); }                   // a pumpkin
+  }
+  // the counter: planks, a cloth runner, goods
+  c.rect(10, 52, 108, 6, "V"); c.hline(10, 52, 108, "u"); c.hline(10, 57, 108, "W");
+  c.rect(14, 58, 100, 26, "W"); for (let x = 14; x < 114; x += 10) c.vline(x, 58, 26, "w"); c.hline(14, 70, 100, "v");
+  c.rect(14, 58, 100, 5, "h"); c.hline(14, 62, 100, "G"); for (let x = 16; x < 112; x += 6) c.px(x, 63, "G");      // green runner (trade)
+  // bars stacked, a scale, apples, a mug
+  for (let i = 0; i < 5; i++) { const bx = 18 + (i % 3) * 9 + (i > 2 ? 4 : 0), by = i > 2 ? 44 : 48; c.rect(bx, by, 8, 4, i % 2 ? "6" : "O"); c.hline(bx + 1, by, 6, i % 2 ? "7" : "j"); }
+  c.vline(64, 36, 16, "o"); c.line(54, 38, 74, 36, "o"); c.px(64, 35, "j");
+  for (const [px, dy] of [[54, 0], [74, -2]]) { c.vline(px - 3, 38 + dy, 6, "5"); c.vline(px + 3, 38 + dy, 6, "5"); c.hline(px - 4, 44 + dy, 9, "o"); c.hline(px - 3, 45 + dy, 7, "j"); }
+  for (const [x, y] of [[86, 48], [92, 48], [89, 45]]) { c.circ(x, y, 3, "f"); c.px(x - 1, y - 2, "F"); c.px(x, y - 3, "G"); }
+  c.rect(102, 44, 6, 8, "u"); c.hline(102, 44, 6, "C"); c.vline(108, 46, 3, "u");
+  // a crate and a sack before the counter, a barrel at the side
+  c.rect(0, 70, 14, 14, "V"); c.box(0, 70, 14, 14, "v"); c.line(1, 71, 12, 82, "v");
+  c.ellipse(116, 78, 7, 6, "c"); c.rect(113, 69, 6, 3, "c"); c.hline(113, 71, 6, "u"); c.px(114, 76, "C");
+  // a hanging sign with a coin
+  c.vline(54, 19, 4, "4"); c.vline(74, 19, 4, "4");
+  c.rect(50, 23, 28, 11, "u"); c.box(50, 23, 28, 11, "V"); c.circ(64, 28, 4, "O"); c.circ(64, 28, 3, "j"); c.px(63, 27, "8");
+  // two lanterns
+  for (const x of [20, 104]) { c.vline(x + 2, 19, 3, "4"); c.rect(x, 22, 5, 6, "y"); c.rect(x + 1, 23, 3, 4, "Y"); c.hline(x, 22, 5, "2"); c.hline(x, 28, 5, "2"); }
+  // bunting between the posts
+  for (let x = 10, i = 0; x < 118; x += 8, i++) c.poly([x, 19, x + 6, 19, x + 3, 24], ["f", "j", "h", "B"][i % 4]);
+}, glow("Y", { r: 5, strength: 0.4 }));
+
+// The striped awning over the stall: 136 x 20, its scalloped edge and the loose end ripple in the wind.
+anim("stall_awning", { w: 136, h: 30, frames: 4, fps: 3, outline: "k" }, (c) => {
+  const k = c.phase * Math.PI * 2;
+  for (let x = 0; x < 136; x++) {
+    const red = Math.floor(x / 10) % 2 === 0, top = 2 + Math.round(Math.abs(68 - x) / 68 * 4);
+    const lift = Math.round(Math.sin(k + x * 0.08) * 1.5), bottom = 22 + lift;
+    c.vline(x, top, bottom - top, red ? "f" : "C");
+    c.vline(x, bottom - 6, 2, red ? "Q" : "c");                                   // the fold where the valance hangs
+    const sc = x % 10, dip = sc === 0 || sc === 9 ? 0 : sc === 1 || sc === 8 ? 2 : 3;   // scalloped valance
+    c.vline(x, bottom, dip, red ? "f" : "C"); if (dip) c.px(x, bottom + dip - 1, red ? "Q" : "c");
+  }
+  c.line(0, 6, 68, 2, "F"); c.line(68, 2, 135, 6, "F");                                     // the ridge
+  const tail = Math.round(Math.sin(k + 1) * 2);
+  c.line(135, 22, 133 + tail, 29, "j"); c.px(133 + tail, 29, "o");                             // a ribbon on the corner
+});
+
+// ---------------------------------------------------------------- big valley trees: 160 x 240, four frames of wind.
+// The crown leans with the wind, more at the top; the trunk stays. tree_a: a broad oak, tree_b: a blossoming lime tree.
+function bigTree(c, kind) {
+  const W = 160, Ht = 240, k = c.phase * Math.PI * 2;
+  const sway = (y) => Math.round(Math.sin(k) * 4 * Math.pow(Math.max(0, 1 - y / 150), 1.4));     // only above y = 150
+  const P = (x, y) => [x + sway(y), y];
+  // trunk and roots
+  c.poly([70, 240, 90, 240, 87, 150, 73, 150], "~"); c.line(72, 150, 70, 239, "^"); c.vline(83, 160, 70, "w");
+  c.poly([62, 240, 70, 230, 72, 240], "~"); c.poly([88, 240, 92, 228, 100, 240], "~");
+  c.line(76, 200, 78, 206, "w"); c.line(81, 176, 80, 184, "w");                                    // a knot and a crack in the bark
+  // branches into the crown
+  for (const [x0, y0, x1, y1] of [[78, 160, 46, 112], [82, 156, 116, 104], [80, 150, 80, 80]]) {
+    const [ax, ay] = P(x0, y0), [bx, by] = P(x1, y1); c.line(ax, ay, bx, by, "~", 4); c.line(ax - 1, ay, bx - 1, by, "^");
+  }
+  const blobs = kind === "a"
+    ? [[80, 70, 52], [38, 104, 34], [122, 100, 36], [56, 44, 34], [108, 42, 32], [80, 22, 26], [24, 128, 20], [138, 126, 20], [80, 118, 34]]
+    : [[80, 64, 46], [44, 96, 32], [116, 94, 32], [80, 30, 30], [60, 120, 26], [102, 122, 26], [30, 70, 22], [130, 66, 22]];
+  for (const [x, y, r] of blobs) { const [px] = P(x, y); c.circ(px, y, r, ">"); }
+  for (const [x, y, r] of blobs) { const [px] = P(x, y); c.circ(px + 4, y + 6, Math.max(2, r - 10), "<"); }   // shade, lower right
+  for (const [x, y, r] of blobs) { const [px] = P(x, y); c.circ(px - Math.round(r * 0.25), y - Math.round(r * 0.25), Math.round(r * 0.55), "="); }   // light, upper left
+  for (const [x, y, r] of blobs) { const [px] = P(x, y); c.circ(px - Math.round(r * 0.45), y - Math.round(r * 0.45), Math.max(1, Math.round(r * 0.2)), "+"); }
+  // leaf clumps along the lit edges (each a small bump with a highlight)
+  for (const [x, y, r] of blobs) for (let i = 0; i < 5; i++) {
+    const a = -2.6 + i * 0.45, lx = Math.round(x + Math.cos(a) * (r - 3)), ly = Math.round(y + Math.sin(a) * (r - 3)), [px] = P(lx, ly);
+    c.circ(px, ly, 3, "="); c.px(px - 1, ly - 1, "+");
+  }
+  if (kind === "b") for (const [x, y] of [[60, 50], [96, 40], [112, 84], [46, 92], [80, 96], [70, 24], [124, 104], [36, 118], [100, 120], [86, 66]]) {
+    const [px] = P(x, y); c.px(px, y, "P"); c.px(px + 1, y, "9"); c.px(px, y + 1, "9");               // blossoms
+  }
+  if (kind === "a") { const [px] = P(118, 140); c.ellipse(px, 140, 5, 7, "v"); c.ellipse(px, 141, 3, 4, "w"); c.px(px, 134, "~"); }   // a beehive in the crown
+}
+anim("tree_a", { w: 160, h: 240, frames: 4, fps: 2, outline: "k" }, (c) => bigTree(c, "a"));
+anim("tree_b", { w: 160, h: 240, frames: 4, fps: 2, outline: "k" }, (c) => bigTree(c, "b"));

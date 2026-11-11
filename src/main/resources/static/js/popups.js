@@ -12,7 +12,7 @@ export function openRoomSheet(b, at) {
     const cur = F().buildings.find((x) => x.id === b.id) || b;
     const t = byId.buildings[cur.type];
     const still = D().buildings[cur.id] && D().buildings[cur.id].active === false
-      ? h('div', { class: 'card sub warn' }, h('b', null, ico('warn'), ' Stands still. '),
+      ? h('div', { class: 'card sub warn' }, h('b', null, ico('stop'), ' Stands still. '),
         h('span', { class: 'small' }, 'No hallway, stairwell or shaft beside it, so nobody can get in. Build a hallway next to it, or move it (Build mode).')) : null;
     if (t.kind !== 'passive') return still ? h('div', null, still, workCard(cur)) : workCard(cur);
     const f = F();
@@ -25,6 +25,7 @@ export function openRoomSheet(b, at) {
     if (cur.type === 'warehouse') extra.push(h('p', { class: 'small' }, `${fmt(D().used)} / ${fmt(D().capacity)} stored.`),
       h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('fortress'); } }, 'See the stockpile'));
     if (cur.type === 'barracks') extra.push(h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('war'); } }, 'Warriors and defence'));
+    if (cur.type === 'expedition_hall') extra.push(h('button', { class: 'btn primary', onclick: () => { closeSheet(); bus.go('explore'); } }, ico('explore'), 'Rumours and expeditions'));
     if (cur.type === 'trade_depot') extra.push(h('button', { class: 'btn primary', onclick: () => bus.depot && bus.depot(at) }, 'Open the depot'));
     if (cur.type === 'entrance_hall' || cur.type === 'gate') extra.push(...hallCard(f, cur));
     return h('div', null,

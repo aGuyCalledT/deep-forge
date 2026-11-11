@@ -18,8 +18,9 @@ export const VW = 720;                           // width of the valley
 const VC = VW / CELL;
 const FACE = 144;                                // the gate tunnel: from x = -FACE to the shaft
 // the valley: where things stand (left x; they stand on the grass). Clicks, lights and dwarves use the same numbers.
-const SURFACE = { wall: -620, tent: -510, stall: -430, sign: -330, winch: -290, gate: -FACE - 30, wallW: 86 };
-const STALL_W = 72, TENT_W = 62;
+// wall: where the village begins (raiders gather beyond it); the stall is the market, the trees sway in the wind.
+const SURFACE = { wall: -620, stall: -540, sign: -330, gate: -FACE - 30, treeA: -760, treeB: -400 };
+const STALL_W = 130, CARAVAN_HOME = -350;
 /** Draw a sprite so its bottom row stands on the grass. */
 function onGrass(ctx, name, x, flip) { const s = S.sprite(name); if (s) S.draw(ctx, name, x, GRASS - s.height + 1, flip); }
 
@@ -500,23 +501,19 @@ function drawSurface(ctx, t) {
   const r = S.rand(5);
   for (let x = x0 + 4; x < x1; x += 9 + Math.floor(r() * 8)) { ctx.fillStyle = r() < 0.5 ? '#86b06a' : '#b5d48c'; ctx.fillRect(x, GRASS - 4, 1, 2); }
   ctx.fillStyle = '#b07a4e'; ctx.fillRect(x0, GRASS - 1, x1 - x0 + 10, 2);       // the road into the mountain
-  onGrass(ctx, 'tree_1', -700);
-  onGrass(ctx, 'tent', SURFACE.tent);
-  onGrass(ctx, 'stall', SURFACE.stall);
-  drawStrangers(ctx, t, 'stall');
-  onGrass(ctx, 'tree_0', -350);
-  onGrass(ctx, 'signpost', SURFACE.sign);
-  onGrass(ctx, 'winch', SURFACE.winch);
-  for (const x of [-560, -456, -310, -236, -196]) onGrass(ctx, 'flowers', x);
+  onGrass(ctx, 'tree_a_' + (Math.floor(t * 2) % 4), SURFACE.treeA);
+  onGrass(ctx, 'tree_b_' + (Math.floor(t * 2 + 1) % 4), SURFACE.treeB);
   for (const x of [-660, -250]) onGrass(ctx, 'bush', x);
-  onGrass(ctx, 'tree_0', -228, true);
-  onGrass(ctx, levelOf('gate') >= 3 ? 'stonewall' : 'palisade', SURFACE.wall);
+  drawStall(ctx, t);
+  drawStrangers(ctx, t, 'stall');
+  onGrass(ctx, 'signpost', SURFACE.sign);
+  for (const x of [-604, -380, -310, -236, -206]) onGrass(ctx, 'flowers', x);
   // caravans on the road, out to the left
   const t0 = now();
   for (const c of f.caravans) {
     const out = c.state === 'outbound';
     const p = out ? (t0 - c.departAt) / (c.arriveAt - c.departAt) : 1 - (t0 - c.arriveAt) / (c.returnAt - c.arriveAt);
-    const x = SURFACE.winch - 60 - Math.max(0, Math.min(1, p)) * (SURFACE.winch - 60 - SURFACE.wall + 40);
+    const x = CARAVAN_HOME - Math.max(0, Math.min(1, p)) * (CARAVAN_HOME - SURFACE.wall + 40);
     onGrass(ctx, 'wagon_' + (Math.floor(t * 4) % 2), x, out);
   }
   if (f.raid) {
@@ -527,6 +524,13 @@ function drawSurface(ctx, t) {
     for (let i = 0; i < 4; i++) onGrass(ctx, 'mon_goblin_scouts_' + (Math.floor(t * 3 + i) % 2), -VW + 4 + i * 18);
     onGrass(ctx, 'fire_place_' + (Math.floor(t * 6) % 4), SURFACE.wall - 30);
   }
+}
+
+/** The market stall: the stall, and its striped awning fluttering in the wind on top. */
+function stallTop() { const s = S.sprite('market_stall'); return GRASS - (s ? s.height : 84) + 1; }
+function drawStall(ctx, t) {
+  onGrass(ctx, 'market_stall', SURFACE.stall);
+  S.draw(ctx, 'stall_awning_' + (Math.floor(t * 3) % 4), SURFACE.stall - 4, stallTop() - 6);
 }
 
 // ------------------------------------------------------------------ depth: the rock face and the shadows it casts
@@ -880,9 +884,7 @@ export const holdScreen = {
     if (gs && gateLevel() >= 3) for (const sd of [-1]) out.push({ x: -FACE + sd * ((gs.width >> 1) + 9), y: GROUND - 26, r: 40, color: '#ffb070', flicker: 2 });
     const day = daylight(sun().elev);
     if (day < 0.8) {
-      out.push({ x: SURFACE.stall + 36, y: GRASS - 38, r: 44, color: '#ffd98e', power: 0.8 });
-      out.push({ x: SURFACE.tent + 31, y: GRASS - 14, r: 38, color: '#ffb070', power: 0.7 });
-      out.push({ x: SURFACE.winch + 22, y: GRASS - 30, r: 36, color: '#ffd98e', power: 0.8 });
+      for (const lx of [23, 107]) out.push({ x: SURFACE.stall + lx, y: stallTop() + 25, r: 40, color: '#ffd98e', flicker: 1, power: 0.8 });
       if (f.siege) out.push({ x: SURFACE.wall - 22, y: GRASS - 8, r: 56, color: '#ff8a4a', flicker: 3, power: 1.4 });
       out.push({ x: SURFACE.gate + 30, y: GROUND - 40, r: 30, color: '#ffd98e', flicker: 1, power: 0.8 });
     }
@@ -903,12 +905,10 @@ export const holdScreen = {
       const b = F().buildings.find((q) => q.type === type), r = b && fixedRect(type);
       if (r && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return { kind: 'room', id: b.id, rect: [r.x, r.y, r.w, r.h], round: true };
     }
-    if (x < -FACE && y < GRASS + 2 && y > GRASS - 62) {
+    if (x < -FACE && y < GRASS + 2 && y > GRASS - 100) {
       const X = SURFACE;
-      if (x >= X.stall && x < X.stall + STALL_W && y > GRASS - 54) return { kind: 'tab', id: 'trade', rect: [X.stall, GRASS - 53, STALL_W, 54], round: true };
-      if (x >= X.tent && x < X.tent + TENT_W && y > GRASS - 50) return { kind: 'tab', id: 'explore', rect: [X.tent, GRASS - 48, TENT_W, 49], round: true };
-      if (x >= X.wall && x < X.wall + X.wallW) return { kind: 'tab', id: 'war', rect: [X.wall, GRASS - 61, X.wallW, 62], round: true };
-      if (x >= X.winch && x < X.winch + 46 && y > GRASS - 46) return { kind: 'tab', id: 'mines', rect: [X.winch, GRASS - 45, 46, 46], round: true };
+      const st = stallTop() - 6;
+      if (x >= X.stall - 4 && x < X.stall + STALL_W + 4 && y > st) return { kind: 'tab', id: 'trade', rect: [X.stall - 4, st, STALL_W + 8, GRASS - st + 1], round: true };
     }
     if (x < plan.shaft * CELL && y >= SURF) return { kind: 'tab', id: 'mines', rect: [0, SURF, plan.shaft * CELL, H() - SURF] };
     return null;
@@ -919,14 +919,22 @@ export const holdScreen = {
     const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
     roomPlate(hover);
     for (const r of G_.rooms) {
-      if (!roomActive(r.b.id)) {
-        ctx.fillStyle = 'rgba(20,14,30,0.35)'; ctx.fillRect(r.x, r.y + 12, r.pw, RH - 12);
-        S.draw(ctx, 'ui_warn', r.x + r.pw / 2 - 8, r.y + 17 + Math.round(Math.sin(t * 3)));
-        continue;
-      }
-      if (canRun(r.b, idle)) S.draw(ctx, 'arrow_' + (Math.floor(t * 3) % 2), r.x + r.pw / 2 - 5, r.y + 18);
+      if (!roomActive(r.b.id)) { ctx.fillStyle = 'rgba(20,14,30,0.35)'; ctx.fillRect(r.x, r.y + 12, r.pw, RH - 12); }
+      const st = roomStatus(r.b, idle);
+      if (st === 'run') S.draw(ctx, 'arrow_' + (Math.floor(t * 3) % 2), r.x + r.pw / 2 - 5, r.y + 18);
+      else if (st) statusIcon(ctx, t, st, r.x + r.pw / 2, r.y + 17);
+      if (!roomActive(r.b.id)) continue;
       machineOverlay(ctx, t, r);
       if (f.siege && byId.buildings[r.b.type].kind !== 'passive') { ctx.fillStyle = 'rgba(169,71,60,0.25)'; ctx.fillRect(r.x, r.y, r.pw, RH); }
+    }
+    for (const type of ['entrance_hall', 'gate']) {
+      const b = f.buildings.find((q) => q.type === type), st = b && roomStatus(b, idle), rr = b && fixedRect(type);
+      if (st && st !== 'run' && rr) statusIcon(ctx, t, st, rr.x + rr.w / 2, rr.y + 17);
+    }
+    // idle dwarves: grey dots over the head
+    for (const dw of drawn) {
+      const x = f.dwarves.find((q) => q.id === dw.id);
+      if (x && x.job === 'idle' && !(dw.a.want && dw.a.want.sleep)) S.draw(ctx, 'ui_idle', dw.sx + (dw.spr.width >> 1) - 8, dw.sy - 12 + Math.round(Math.sin(t * 2 + dw.id)));
     }
     for (const dw of drawn) if (dw.a.want && dw.a.want.sleep && !dw.a.mode) {
       const k = (t * 0.7 + dw.id * 0.3) % 1;
@@ -999,6 +1007,34 @@ function opaque(spr, x, y) {
   if (!d) { d = spr.getContext('2d').getImageData(0, 0, spr.width, spr.height).data; alphaCache.set(spr, d); }
   x = Math.floor(x); y = Math.floor(y);
   return x >= 0 && y >= 0 && x < spr.width && y < spr.height && d[(y * spr.width + x) * 4 + 3] > 0;
+}
+
+/**
+ * What a room shows over its door:
+ *   'stop'  red octagon: it stopped (cut off from the hallways, orders it cannot work on, the warehouse is full);
+ *   'warn'  yellow triangle: something wants you (loot to collect, a critter and nobody on guard);
+ *   'run'   green arrow: it stands still, but could run right now;
+ *   'idle'  grey dots: nothing to do, and nothing it needs to do;
+ *   null    working, or nothing to say.
+ */
+export function roomStatus(b, idle) {
+  const f = F(), t = byId.buildings[b.type], info = D().buildings[b.id] || {};
+  if (!roomActive(b.id)) return 'stop';
+  if (b.type === 'warehouse' && f.storageFull) return 'stop';
+  const reports = f.reports || [];
+  if (b.type === 'trade_depot' && (reports.some((x) => x.kind === 'caravan') || (f.rules || []).some((x) => x.on && /deleted|don't know/.test(x.status || '')))) return 'warn';
+  if (b.type === 'expedition_hall' && (reports.some((x) => x.kind === 'expedition') || f.expeditions.some((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen))) return 'warn';
+  if (b.type === 'entrance_hall' && (f.threats || []).some((x) => x.cell) && !f.dwarves.some((x) => x.job === 'warrior' && x.post === 'hall')) return 'warn';
+  if (t.kind === 'passive' || f.siege) return null;
+  if (canRun(b, idle)) return 'run';
+  if (t.kind === 'continuous') return info.worker ? null : 'idle';
+  if (b.job || (b.more || []).some(Boolean)) return null;
+  return b.queue.length ? 'stop' : 'idle';     // orders waiting for materials or a worker: stopped; no orders: resting
+}
+
+/** A status sign (ui_stop, ui_warn, ui_idle) centred on x, bobbing a little. */
+function statusIcon(ctx, t, st, x, y) {
+  S.draw(ctx, 'ui_' + st, Math.round(x - 8), y + (st === 'idle' ? 0 : Math.round(Math.sin(t * 3))));
 }
 
 /** Green arrow: the workshop stands still but could run (materials, worker, or an idle dwarf there). */

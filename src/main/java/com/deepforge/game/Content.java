@@ -304,7 +304,7 @@ public final class Content {
                 "Raiders cannot steal what is locked away.");
         building("trade_depot", "Trade depot", "passive", null, false, 0, goods(), 40000, 40, 1.7, 1,
                 "Caravans leave from here. Set rules that send goods on their own, and post what you want to buy.");
-        building("expedition_hall", "Expedition hall", "passive", null, false, 0, goods(), 50000, 40, 1.75, 1,
+        building("expedition_hall", "Adventurers' guild", "passive", null, false, 0, goods(), 50000, 40, 1.75, 1,
                 "More expeditions at once, bigger parties, more offers.");
 
         // --- personality traits
