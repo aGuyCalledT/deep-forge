@@ -86,7 +86,20 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [ ] Kriechtiere haben noch keine eigenen kleinen Sprites (es sind die Minen-Monster) und keine eigenen Sounds.
 - [ ] Der freie Streifen rechts in jedem Raum (früher für die Hintertür) könnte wegfallen; dann würden alle Räume
   eine Zelle schmaler.
-- [ ] Vom Eingangstunnel führt nur die Leiter im Schacht zu den Räumen; ein Treppenhaus am Tunnel wäre schöner.
+- [x] Die Leitern im Schacht sind weg: der Schacht ist auf jeder Etage ein Treppenhaus (Bogen, Gleise, gekreuzte
+  Spitzhacken). Bergleute gehen auf ihrer Etage in den Bogen und kommen auf der Ziel-Etage wieder heraus.
+
+## Zwergische Oberfläche
+
+- [x] Eisenplatten als Hintergrund, geschmiedete Fenster mit Ecken, Wappen, Edelstein und Runen; Material und Stein je
+  nach Inhalt (Werkstatt, Handel, Krieg, Zwerge, Erkunden). Knöpfe als geschmiedete Platten, die sich eindrücken.
+- [x] Fenster und Schublade fahren mechanisch aus dem Bildschirmrand ein und wieder hinaus.
+- [x] Expeditionen, Gerüchte und Berichte auf Papier mit Rissen, Flecken und Falten, Handschrift und Abhakliste.
+- [x] Sanduhren statt Balken für Werkstatt-Aufträge und Expeditionen.
+- [x] Keine Namensschilder mehr über den Räumen; beim Hovern fällt ein Metallschild an Ketten aus der Decke.
+- [ ] Quests gibt es noch nicht als eigenes System; das Papier (`paper.js`) ist dafür vorbereitet.
+- [ ] Felsgrafik aus den Referenzbildern des Nutzers für den Berg übernehmen (Bilder fehlen noch in `art-src/ref/`).
+- [ ] Hover-Schild nur mit Maus; auf dem Handy öffnet ein Tipp gleich das Fenster.
 
 ## Aus früheren Runden
 

@@ -24,7 +24,7 @@ hall("hall_e", (c) => { for (const x of [2, 19]) { c.rect(x, 11, 3, 79, "v"); c.
 
 // ---------------------------------------------------------------- stairwell: a hallway two cells wide (48 x 96) with an
 // arch in the back wall. Dwarves walk in and come out of a stairwell on another floor; the way behind is not shown.
-function well(name, glowing) {
+function well(name, glowing, mine) {
   sprite(name, { w: 48, h: 96 }, (c) => {
     c.rect(0, 10, 48, 80, "W");                                     // timbered back wall, as in the hallway
     for (let x = 0; x < 48; x += 12) { c.vline(x, 10, 80, "w"); c.vline(x + 1, 10, 80, "v"); }
@@ -43,30 +43,29 @@ function well(name, glowing) {
     if (glowing) { c.rect(26, 62, 6, 12, "o"); c.rect(27, 63, 4, 10, "y"); c.vline(28, 64, 8, "Y"); }
     else { c.rect(27, 64, 4, 8, "o"); c.vline(28, 65, 6, "y"); }
     c.rect(9, 89, 31, 1, "3"); c.hline(11, 88, 27, "2");               // worn threshold
-    // a sign with arrows up and down, and a lantern on the other side
+    // a sign with arrows up and down (the mine shaft: crossed picks), and a lantern on the other side
     c.rect(2, 40, 6, 1, "v"); c.rect(1, 41, 7, 14, "u"); c.box(1, 41, 7, 14, "v");
-    c.px(4, 43, "w"); c.hline(3, 44, 3, "w"); c.hline(2, 45, 5, "w"); c.vline(4, 46, 2, "w");     // up
-    c.vline(4, 49, 2, "w"); c.hline(2, 51, 5, "w"); c.hline(3, 52, 3, "w"); c.px(4, 53, "w");     // down
+    if (mine) {
+      c.line(2, 52, 6, 44, "w"); c.line(6, 52, 2, 44, "w");                                     // two handles
+      c.hline(1, 44, 3, "4"); c.hline(5, 44, 3, "4"); c.px(1, 45, "4"); c.px(7, 45, "4");         // pick heads
+    } else {
+      c.px(4, 43, "w"); c.hline(3, 44, 3, "w"); c.hline(2, 45, 5, "w"); c.vline(4, 46, 2, "w");   // up
+      c.vline(4, 49, 2, "w"); c.hline(2, 51, 5, "w"); c.hline(3, 52, 3, "w"); c.px(4, 53, "w");   // down
+    }
     c.vline(44, 26, 4, "4"); c.rect(41, 30, 7, 1, "2"); c.rect(41, 31, 7, 7, "y"); c.rect(42, 32, 5, 5, "Y"); c.rect(43, 33, 3, 3, "0");
     c.vline(41, 31, 7, "2"); c.vline(47, 31, 7, "2"); c.rect(42, 38, 5, 1, "2");
     c.line(10, 86, 6, 89, "w"); c.px(40, 89, "w");                     // scuffs where the dwarves walk in
+    if (mine) {
+      // the cart rails run out of the arch
+      c.hline(12, 92, 25, "3"); c.hline(12, 94, 25, "3"); for (let x = 13; x < 37; x += 4) c.vline(x, 92, 3, "v");
+    }
   });
 }
 well("well", false);
 well("well_lit", true);
-
-// ---------------------------------------------------------------- mine shaft with ladder: 48 x 96
-sprite("shaft", { w: 48, h: 96 }, (c) => {
-  c.rect(0, 0, 48, 96, "(");
-  c.rect(3, 0, 42, 96, "s");
-  c.vline(3, 0, 96, "w"); c.vline(44, 0, 96, "w");
-  c.vline(13, 0, 96, "v"); c.vline(34, 0, 96, "v"); c.vline(14, 0, 96, "W"); c.vline(35, 0, 96, "W");   // ladder rails
-  for (let y = 4; y < 96; y += 9) { c.hline(15, y, 19, "V"); c.hline(15, y + 1, 19, "W"); }
-  c.rect(3, 90, 42, 6, "W"); c.hline(3, 90, 42, "V"); c.hline(3, 91, 42, "v");   // landing
-  c.rect(0, 30, 4, 4, "V"); c.rect(44, 30, 4, 4, "V");
-  // a rope and a bucket on the side
-  c.vline(40, 0, 60, "u"); c.rect(38, 60, 6, 6, "v"); c.hline(38, 60, 6, "V");
-});
+// the mine shaft on every floor is a stairwell too: the miners go down to the mines through it
+well("shaft", false, true);
+well("shaft_lit", true, true);
 
 // ---------------------------------------------------------------- surface (sized for the 33 px dwarves)
 sprite("door", { w: 26, h: 30, outline: "k" }, (c) => {

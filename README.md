@@ -39,4 +39,4 @@ mvn test
 mvn -DskipTests package && java -jar target/deep-forge.jar
 ```
 
-Fonts: Pixelify Sans and Poppins (SIL Open Font License), see `src/main/resources/static/fonts/`.
+Fonts: Germania One, Alegreya Sans, Alegreya Sans SC and Kalam (SIL Open Font License), see `src/main/resources/static/fonts/`.

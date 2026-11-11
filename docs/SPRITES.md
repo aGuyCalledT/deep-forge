@@ -65,7 +65,7 @@ damit Möbel sie verdecken.
 | Bewuchs | `grow_<1..3>_<0..1>` 24 × 96 | über der Höhle: 1 Moos, 2 dazu Wurzeln und Pilze, 3 Moosteppich, leuchtende Pilze, Spinnennetz |
 | Graben | `dig_crack_<0..2>` 24 × 96 | Risse, die mit dem Fortschritt wachsen; Kreide-Umriss und Balken zeichnet `hold.js` |
 | Treppenhaus | `well` / `well_lit` 48 × 96 | Gang zwei Zellen breit, in der Mitte der Rückwand ein Steinbogen ins Dunkle (Mitte bei x = 24), Schild mit Pfeilen, Laterne; `well_lit` leuchtet, wenn gerade jemand hinein- oder herausgeht. Keine Stufen zu sehen |
-| Schacht | 48 × 96 | zwei Spalten links |
+| Schacht | 48 × 96 | zwei Spalten links, ein Treppenhaus mit gekreuzten Spitzhacken und Gleisen (`shaft`, `shaft_lit`) |
 | Oberfläche | Bäume 44 × 62, Stand 70 × 52, Zelt 60 × 46 | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE` |
 | Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
 | Monster | je nach Art, Figuren wie Zwerge | `Figure.monster(id, frame)` |

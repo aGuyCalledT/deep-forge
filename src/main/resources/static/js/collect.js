@@ -2,6 +2,7 @@
 // player presses "Collect". Then the goods fly up into the stores with a sound.
 import { F, fmt, goodName } from './data.js';
 import { h, img, goodIcon, bus, ico } from './ui.js';
+import { paper } from './paper.js';
 import * as S from './sprites.js';
 import * as A from './audio.js';
 
@@ -16,8 +17,9 @@ function reportCard(r) {
   for (const [k, v] of Object.entries(r.goods || {})) loot.push(h('span', { class: 'loot-item', 'data-fly': k, title: goodName(k) }, goodIcon(k, 'icon'), h('b', null, fmt(v))));
   for (const a of r.artifacts || []) loot.push(h('span', { class: 'loot-item', 'data-fly': 'artifact', title: a.desc || a.name }, img(S.artifact(), 'icon'), h('b', null, a.name)));
   const empty = !loot.length;
-  return h('div', { class: 'card report' + (r.bad ? ' bad' : '') },
-    h('div', { class: 'row between' }, h('h3', null, r.title), r.bad ? ico('skull', 'icon s') : null),
+  // a sealed letter from the caravan master or the party leader
+  return paper('report-' + r.id, { seal: !r.bad, cls: 'report' + (r.bad ? ' bad' : '') },
+    h('div', { class: 'row between' }, h('h3', { class: r.bad ? 'bad-t' : '' }, r.title), r.bad ? ico('skull', 'icon s') : null),
     (r.lines || []).map((l) => h('div', { class: 'small muted' }, l)),
     (r.extras || []).map((l) => h('div', { class: 'small good-t' }, l)),
     loot.length ? h('div', { class: 'loot' }, loot) : null,
