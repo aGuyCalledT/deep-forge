@@ -544,8 +544,8 @@ td.num, th.num { text-align: right; }
 .panel-stores { margin: 0 0 14px; border-radius: 6px; background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.5); }
 .panel-stores > summary { cursor: pointer; padding: 9px 14px; font: 800 15px var(--f-sc); letter-spacing: 0.04em; color: var(--gold); list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
 .panel-stores > summary::-webkit-details-marker { display: none; }
-.panel-stores > summary::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-135deg) translate(-2px, -2px); }
-.panel-stores:not([open]) > summary::after { transform: rotate(45deg) translate(-2px, -2px); }
+.panel-stores > summary::after { content: ""; width: 12px; height: 7px; background: var(--muted); clip-path: polygon(0 100%, 50% 0, 100% 100%, 82% 100%, 50% 30%, 18% 100%); }
+.panel-stores:not([open]) > summary::after { transform: rotate(180deg); }
 .panel-stores .stores { padding: 0 14px 12px; }
 .stores-group { margin-top: 6px; }
 .stores-title { font: 800 12.5px var(--f-sc); letter-spacing: 0.06em; color: var(--dim); margin: 6px 0 4px; }
