@@ -1,7 +1,8 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
-import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips } from './ui.js';
+import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand } from './ui.js';
+import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
 import { holdScreen, roomCenter, roomAt, roomRect, agents } from './hold.js';
@@ -255,8 +256,10 @@ function go(tab, keep = false) {
   if (tab === 'trade') loadMarket(true);
   if (popOpen()) closeSheet();
   render();
-  $('panel').scrollTop = 0;
+  scroller().scrollTop = 0;
 }
+
+const scroller = () => $('panel').querySelector('.panel-scroll') || $('panel');
 
 function closeDrawer() {
   if (!G.tab) return;
@@ -267,28 +270,45 @@ function closeDrawer() {
 
 function setScreen(name) {
   G.screen = name;
+  hidePlate();
   if (name !== 'hold') G.build = null;
   $('scene-wrap').classList.toggle('scroll', name !== 'hold');
   renderToolbar();
 }
+
+let drawerOut = null;   // the drawer sliding back into the screen edge
+const drawerSide = () => (wide() ? 'right' : 'bottom');
 
 function render() {
   if (!G.state) return;
   document.querySelectorAll('.tab').forEach((el) => el.setAttribute('aria-current', el.dataset.tab === G.tab ? 'page' : 'false'));
   const p = $('panel');
   const tab = TABS.find((x) => x[0] === G.tab);
-  p.hidden = !tab;
   $('scene-wrap').parentElement.classList.toggle('drawer', !!tab);
-  if (!tab) return;
-  const py = p.scrollTop;
+  if (!tab) {
+    // slide the drawer back out of sight, then hide it
+    if (!p.hidden && !drawerOut) {
+      const out = drawerOut = slideOut(p, drawerSide());
+      out.done.then((ok) => { if (drawerOut === out) drawerOut = null; if (ok && !G.tab) p.hidden = true; });
+    }
+    return;
+  }
+  if (drawerOut) { drawerOut.cancel(); drawerOut = null; }
+  const fresh = p.hidden;
+  const py = fresh ? 0 : scroller().scrollTop;
+  setMaterial(p, MATERIAL[tab[0]]);
   const stores = storesView(false);
   const body = [tab[2]()].flat(3).filter(Boolean);
   const box = stores ? h('details', { class: 'panel-stores', open: G.storesOpen === true, ontoggle: (e) => { G.storesOpen = e.target.open; } }, h('summary', null, 'Stores'), stores) : null;
-  p.replaceChildren(
-    h('div', { class: 'panel-head' }, img(S.icon(ICON[tab[0]]), 'icon'), h('h2', null, tab[1] === 'Hold' ? 'Your hold' : tab[1]),
-      h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer }, ico('close'))),
-    ...(box ? [box] : []), ...body);
-  p.scrollTop = py;
+  p.replaceChildren(...frameDecor(),
+    h('div', { class: 'panel-scroll' },
+      h('div', { class: 'panel-head' },
+        h('div', { class: 'plate' }, img(S.icon(ICON[tab[0]]), 'icon s'), h('h2', null, tab[1] === 'Hold' ? 'Your hold' : tab[1])),
+        h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer }, ico('close'))),
+      ...(box ? [box] : []), ...body));
+  p.hidden = false;
+  scroller().scrollTop = py;
+  if (fresh) slideIn(p, drawerSide());
 }
 
 /** Look at a room and open its window next to it. Used by the Work tab and by alerts. */
@@ -375,6 +395,7 @@ function toolCost(b) {
 function tick() {
   const t = now();
   document.querySelectorAll('[data-until]').forEach((el) => { el.textContent = dur(+el.dataset.until - t); });
+  document.querySelectorAll('[data-hg-to]').forEach((el) => { const a = +el.dataset.hgFrom, b = +el.dataset.hgTo; setSand(el, b > a ? (t - a) / (b - a) : 1); });
   animateWork();
   requestAnimationFrame(tick);
 }
@@ -426,8 +447,9 @@ async function start() {
 }
 
 async function boot() {
-  try { await document.fonts.load('16px "Pixelify Sans"'); } catch { /* fine */ }
+  try { await Promise.all(['16px "Germania One"', '500 16px "Alegreya Sans"', '800 16px "Alegreya Sans SC"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
   await S.loadArt();
+  document.querySelector('.sheet-x').replaceChildren(ico('close'));
   const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
   A.initAudio(audio);
   G.data = data;

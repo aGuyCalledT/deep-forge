@@ -44,6 +44,115 @@ export function img(sprite, cls = 'icon', alt = '') {
 
 export function goodIcon(key, cls = 'icon') { return img(S.good(key), cls); }
 
+// ------------------------------------------------------------------ forged frames, slides, hourglasses
+
+const SVG = 'http://www.w3.org/2000/svg';
+function svgUse(id, cls) {
+  const s = document.createElementNS(SVG, 'svg');
+  s.setAttribute('class', cls); s.setAttribute('aria-hidden', 'true');
+  const u = document.createElementNS(SVG, 'use');
+  u.setAttribute('href', '#' + id);
+  s.append(u);
+  return s;
+}
+
+/** The trim of a forged window (put inside an element with class "win"): four corners, a crest, runes. */
+export function frameDecor(crest = true) {
+  return [svgUse('corner', 'corner tl'), svgUse('corner', 'corner tr'), svgUse('corner', 'corner bl'), svgUse('corner', 'corner br'),
+    crest ? svgUse('crest', 'crest') : null, h('span', { class: 'runes', 'aria-hidden': 'true' })];
+}
+
+/** A hand-drawn checkbox for paper, ticked or not. */
+export function tickBox(done) {
+  const s = document.createElementNS(SVG, 'svg');
+  s.setAttribute('class', 'box'); s.setAttribute('aria-hidden', 'true');
+  for (const id of done ? ['box', 'tick'] : ['box']) { const u = document.createElementNS(SVG, 'use'); u.setAttribute('href', '#' + id); s.append(u); }
+  return s;
+}
+
+/** The wax seal on reports. */
+export function seal() { return svgUse('seal', 'seal'); }
+
+/** What a window is about decides its metal and gem. */
+export const MATERIAL = { fortress: 'forge', mines: 'forge', work: 'forge', dwarves: 'dwarf', trade: 'trade', explore: 'lore', war: 'war', more: 'neutral' };
+const ALL_MATERIALS = ['forge', 'trade', 'war', 'dwarf', 'lore', 'neutral'];
+export function setMaterial(el, m) {
+  el.classList.remove(...ALL_MATERIALS);
+  el.classList.add(ALL_MATERIALS.includes(m) ? m : 'neutral');
+}
+
+const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** How far an element has to travel to be just outside the screen edge on that side. */
+function offEdge(el, side) {
+  const r = el.getBoundingClientRect(), W = window.innerWidth, H = window.innerHeight;
+  return { right: [W - r.left + 30, 0], left: [-(r.right + 30), 0], bottom: [0, H - r.top + 30], top: [0, -(r.bottom + 30)] }[side] || [0, 0];
+}
+
+/**
+ * Slide a window out of a screen edge on a rail: fast, a hard stop that overshoots a little, a ratchet back and a
+ * settle. Nothing moves when the player asked for less motion.
+ */
+export function slideIn(el, side) {
+  if (reduced() || !el.animate) return;
+  const [dx, dy] = offEdge(el, side);
+  const o = (v) => -Math.sign(v) * Math.min(14, Math.abs(v) * 0.03);
+  const t = (k) => `translate(${(dx ? o(dx) * k : 0).toFixed(1)}px, ${(dy ? o(dy) * k : 0).toFixed(1)}px)`;
+  el.animate([
+    { transform: `translate(${dx}px, ${dy}px)` },
+    { transform: t(1), offset: 0.55 },
+    { transform: t(-0.4), offset: 0.7 },
+    { transform: t(0.17), offset: 0.82 },
+    { transform: 'none' },
+  ], { duration: 720, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' });
+}
+
+/** Pull a window back into the screen edge: a small tug first, then gone. Resolves true when it is out. */
+export function slideOut(el, side) {
+  if (reduced() || !el.animate) return { done: Promise.resolve(true), cancel() {} };
+  const [dx, dy] = offEdge(el, side);
+  const a = el.animate([
+    { transform: 'none' },
+    { transform: `translate(${-Math.sign(dx) * 8}px, ${-Math.sign(dy) * 8}px)`, offset: 0.22 },
+    { transform: `translate(${dx}px, ${dy}px)` },
+  ], { duration: 420, easing: 'cubic-bezier(0.55, 0, 0.8, 0.35)', fill: 'forwards' });
+  let cancelled = false;
+  return {
+    done: a.finished.then(() => { if (!cancelled) a.cancel(); return !cancelled; }, () => false),
+    cancel() { cancelled = true; a.cancel(); },
+  };
+}
+
+/**
+ * An hourglass for time running out. Give it what drives the sand: {job, machine} (a workshop job, animateWork
+ * moves it), {from, to} (seconds of game time, the clock moves it) or {p} (a fixed share).
+ */
+export function hourglass(opts = {}, size = '') {
+  const s = document.createElementNS(SVG, 'svg');
+  s.setAttribute('viewBox', '0 0 46 64');
+  s.setAttribute('class', 'hg ' + size);
+  s.setAttribute('role', 'img');
+  s.setAttribute('aria-label', 'Time left');
+  s.innerHTML = '<rect x="3" y="1" width="40" height="5" rx="2" fill="#8a5a34"/><rect x="3" y="58" width="40" height="5" rx="2" fill="#8a5a34"/>'
+    + '<rect x="5" y="6" width="3" height="52" fill="#5e3c22"/><rect x="38" y="6" width="3" height="52" fill="#5e3c22"/>'
+    + '<g class="glass"><path d="M11 7 H35 C35 20 26 26 24 32 C26 38 35 44 35 57 H11 C11 44 20 38 22 32 C20 26 11 20 11 7 Z" fill="rgba(200,220,255,.12)" stroke="rgba(220,235,255,.6)" stroke-width="1.2"/>'
+    + '<path class="sand-top" d="M14 12 H32 C31 20 25 25 23 30 C21 25 15 20 14 12 Z" fill="#e7b85e"/>'
+    + '<rect class="stream" x="22.4" y="31" width="1.2" height="25" fill="#e7b85e"/>'
+    + '<path class="sand-bot" d="M13 56 H33 C32 50 28 46 23 45 C18 46 14 50 13 56 Z" fill="#e7b85e"/>'
+    + '<path d="M14 10 C14 16 18 21 21 25" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.2"/></g>';
+  if (opts.job != null) { s.dataset.job = opts.job; s.dataset.machine = opts.machine || 0; }
+  if (opts.to != null) { s.dataset.hgFrom = opts.from; s.dataset.hgTo = opts.to; }
+  setSand(s, opts.p ?? 0);
+  return s;
+}
+
+/** Move the sand of an hourglass to a share (0..1). */
+export function setSand(el, p) {
+  p = Math.max(0, Math.min(1, p || 0));
+  el.style.setProperty('--p', p.toFixed(4));
+  el.classList.toggle('done', p >= 1);
+}
+
 export function bar(frac, cls = '') {
   const b = h('div', { class: 'bar ' + cls });
   const i = h('i');
@@ -63,20 +172,31 @@ let sheetRender = null, sheetAnchor = null;
  * bottom sheet (phone) or a centred dialog (desktop).
  */
 let sheetBack = null;   // a pop-over that a bigger sheet replaced: it comes back when that one closes
-export function openSheet(render, anchor = null) {
-  sheetBack = !anchor && sheetAnchor && sheetRender ? { render: sheetRender, anchor: sheetAnchor } : anchor ? null : sheetBack;
+let sheetMat = null, closing = null, sheetSide = 'bottom';
+export function openSheet(render, anchor = null, material = null) {
+  sheetBack = !anchor && sheetAnchor && sheetRender ? { render: sheetRender, anchor: sheetAnchor, material: sheetMat } : anchor ? null : sheetBack;
   sheetRender = render;
   sheetAnchor = anchor;
-  const el = sheetEl();
-  if (el.hidden) A.sfx('open');
+  sheetMat = material;
+  const el = sheetEl(), body = el.querySelector('.sheet-body');
+  if (closing) { closing.cancel(); closing = null; el.classList.remove('closing'); }
+  const fresh = el.hidden;
+  if (fresh) A.sfx('open');
   el.classList.toggle('pop', !!anchor);
   el.classList.remove('peek');
+  setMaterial(body, material || (sheetBack && sheetBack.material) || MATERIAL[G.tab] || 'neutral');
   const c = document.getElementById('sheet-content');
   c.replaceChildren(render());
   el.hidden = false;
   place();
+  if (fresh) {
+    // a pop-over comes in from the screen edge it is closest to; a big window drops out of the ceiling; phones: from below
+    const r = body.getBoundingClientRect(), phone = !window.matchMedia('(min-width: 700px)').matches;
+    sheetSide = phone ? 'bottom' : !anchor ? 'top' : r.left + r.width / 2 > window.innerWidth / 2 ? 'right' : 'left';
+    slideIn(body, sheetSide);
+  }
   const first = c.querySelector('input, select, button');
-  if (first && !anchor && window.matchMedia('(min-width: 900px)').matches) first.focus();
+  if (first && !anchor && window.matchMedia('(min-width: 900px)').matches) first.focus({ preventScroll: true });
 }
 
 /** Put a pop-over beside its anchor, inside the window. Phones get a short sheet at the bottom. */
@@ -92,7 +212,7 @@ function place() {
   if (!room(x)) x = a.x - gap - r.width;
   if (!room(x)) x = sheetAnchor.x + gap;
   x = Math.max(12, Math.min(W - r.width - 12, x));
-  const y = Math.max(12, Math.min(H - r.height - 12, (a.h ? a.y : sheetAnchor.y - 60)));
+  const y = Math.max(26, Math.min(H - r.height - 12, (a.h ? a.y : sheetAnchor.y - 60)));
   body.style.left = x + 'px'; body.style.top = y + 'px';
 }
 
@@ -107,15 +227,25 @@ export function refreshSheet() {
 }
 
 export function closeSheet() {
-  if (sheetBack) { const k = sheetBack; sheetBack = null; openSheet(k.render, k.anchor); return; }
-  if (!sheetEl().hidden) A.sfx('close');
-  sheetEl().hidden = true;
+  if (sheetBack) { const k = sheetBack; sheetBack = null; openSheet(k.render, k.anchor, k.material); return; }
+  const el = sheetEl();
+  if (el.hidden || !sheetRender) return;
+  A.sfx('close');
   sheetRender = null;
   sheetAnchor = null;
+  el.classList.add('closing');
+  closing = slideOut(el.querySelector('.sheet-body'), sheetSide);
+  const mine = closing;
+  mine.done.then((out) => {
+    if (!out || closing !== mine) return;
+    closing = null;
+    el.classList.remove('closing');
+    el.hidden = true;
+  });
 }
 
-export function sheetOpen() { return !sheetEl().hidden; }
-export function popOpen() { return !sheetEl().hidden && !!sheetAnchor; }
+export function sheetOpen() { return !sheetEl().hidden && !!sheetRender; }
+export function popOpen() { return sheetOpen() && !!sheetAnchor; }
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-close]')) closeSheet();
@@ -131,7 +261,7 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.sheet-grip')) return;
   const el = sheetEl();
   el.classList.toggle('peek');
-  el.querySelector('.sheet-body').scrollTop = 0;
+  el.querySelector('.sheet-scroll').scrollTop = 0;
 });
 
 // ------------------------------------------------------------------ help

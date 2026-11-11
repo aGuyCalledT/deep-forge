@@ -4,6 +4,7 @@ import { h, img, openSheet, refreshSheet, closeSheet, bus, ico, toast, info } fr
 import * as S from './sprites.js';
 import { workCard } from './panels-work.js';
 import { dwarfCard, EFFECT, upgradeBtn } from './panels-base.js';
+import { roomMaterial } from './plate.js';
 
 export function openRoomSheet(b, at) {
   G.ws = b.id;
@@ -30,7 +31,7 @@ export function openRoomSheet(b, at) {
       EFFECT[cur.type] ? h('p', null, EFFECT[cur.type](cur)) : null,
       ...extra,
       upgradeBtn(cur));
-  }, at || null);
+  }, at || null, roomMaterial(b.type));
 }
 
 export function openDwarfSheet(d, at) {
@@ -39,7 +40,7 @@ export function openDwarfSheet(d, at) {
     if (!cur) return h('p', null, 'This dwarf is gone.');
     return h('div', null, dwarfCard(cur),
       G.state.cheats ? h('button', { class: 'btn small', onclick: () => lookSheet(cur) }, ico('cheat'), 'Change looks (cheat)') : null);
-  }, at || null);
+  }, at || null, 'dwarf');
 }
 
 // ------------------------------------------------------------------ cheats

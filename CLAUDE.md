@@ -41,12 +41,14 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/Cheats.java` | Test-Hilfen (Ressourcen, Zwerge, Aussehen, Zeit überspringen), nur Admins oder `CHEATS=true` |
 | `art-src/` | Grafik-Quellen für pxl, `shared.js` mit Raum-Ankern und Palette; Ergebnis in `static/art/`. `figure.js` baut alle Figuren und wird als `static/js/figure.js` ins Spiel kopiert |
 | `static/js/canvas.js` | Kamera (ziehen, Mausrad, Pinch), Licht, Hover-Umriss, Klicks |
-| `static/js/hold.js` | Festung im Berg (grauer Fels nach Tiefe, Höhlen mit Bewuchs, Kriechtiere, grabende Zwerge, Warndreieck bei stillstehenden Räumen): links das Tal (Straße, Händlerstand, Reisende, Tor), Tunnel zum Schacht, Himmel und Sonne über Essen, Plan, Räume, Treppenhäuser (Bogen in der Rückwand, unsichtbarer Weg zu jedem Treppenhaus auf einer anderen Etage, Dauer nach Entfernung), Zwerge mit Wegen (Dijkstra) und 12-Minuten-Zyklus, Blasebalg/Abschreckfass zum Anklicken, Bau-Modus, grüne Pfeile |
+| `static/js/hold.js` | Festung im Berg (grauer Fels nach Tiefe, Höhlen mit Bewuchs, Kriechtiere, grabende Zwerge, Warndreieck bei stillstehenden Räumen, der Schacht ist auf jeder Etage ein Treppenhaus): links das Tal (Straße, Händlerstand, Reisende, Tor), Tunnel zum Schacht, Himmel und Sonne über Essen, Plan, Räume, Treppenhäuser (Bogen in der Rückwand, unsichtbarer Weg zu jedem Treppenhaus auf einer anderen Etage, Dauer nach Entfernung), Zwerge mit Wegen (Dijkstra) und 12-Minuten-Zyklus, Blasebalg/Abschreckfass zum Anklicken, Bau-Modus, grüne Pfeile |
 | `static/js/views.js` | Minen-Screen, Login-Bild (Werkstätten haben keinen eigenen Screen, sie sind Räume der Festung) |
 | `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen (öffnen sich neben dem Objekt), Cheat-Werkzeuge |
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
 | `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall und Zwerge um, setzt Zwerge aus Teilen zusammen |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt) |
+| `static/js/paper.js` | Papier-Zettel (Risse, Flecken, Falten aus der id) und Abhaklisten |
+| `static/js/plate.js` | Hover-Schild, das an Ketten aus der Raumdecke fällt; Material je Raum (`roomMaterial`) |
 | `static/js/collect.js` | Beute-Berichte von Karawanen und Expeditionen als Karten mit „Collect“-Knopf, Flug-Animation in die Vorräte |
 | `static/js/audio.js` | Sounds, Hintergrund-Schleifen, Musik (Stimmung je Tab); Zuordnung in `docs/AUDIO.md` |
 | `static/js/data.js` → `contextResources()` | welche Vorräte jeder Tab in der Übersicht zeigt (aufklappbar oben in der Schublade) |
@@ -81,10 +83,23 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 
 ## Design
 
-- **Warm und freundlich**, nicht kastig: abgerundete Ecken (`--r` 12 px), weiche Schatten (`--shadow`), warme
-  Tavernen-Farben (Braun, Creme, Honiggold, Salbeigrün, Rosé). Keine harten Block-Schatten mehr.
-- Schriften: Pixelify Sans für Überschriften, Tabs und kurze Anzeigen, Poppins für alles Lesbare.
-  Im Canvas die 3×5-Pixelschrift aus `pixfont.js` (`text`, `sign`).
+- **Zwergisch und gegenständlich** (Skeuomorphismus): Hintergrund aus genieteten Eisenplatten, Fenster als
+  geschmiedete Rahmen (`.win`) mit Filigran-Ecken, Wappen mit Edelstein und Runenleiste (`frameDecor()` aus `ui.js`,
+  Symbole `#corner`/`#crest` in `index.html`). Überschrift oben als goldenes Namensschild (`.plate`).
+- **Material nach Bedeutung** (`MATERIAL`/`setMaterial` in `ui.js`): Werkstatt/Festung Eisen + Rubin (`forge`),
+  Handel Gold + Smaragd (`trade`), Krieg Schwarzeisen + Granat (`war`), Zwerge Kupfer + Bernstein (`dwarf`),
+  Erkunden Silber + Saphir (`lore`), sonst `neutral`. `openSheet(render, anker, material)`; ohne Material gilt der Tab.
+- Knöpfe sind geschmiedete Platten, die sich eindrücken (`.btn`, `.primary` gold, `.good` grün, `.danger` rot).
+  Innen eingravierte Felder (`.card`) statt erhabener Karten.
+- **Papier** für Expeditionen, Gerüchte und Berichte: `paper(seed, opts, ...)` aus `paper.js` (Risse, Flecken, Falten,
+  Neigung je id verschieden, Nagel oder Wachssiegel), Handschrift Kalam, Abhakliste `todo()`.
+- **Sanduhr** statt Balken für ablaufende Zeit: `hourglass({job, machine} | {from, to} | {p})`, echter Fortschritt.
+  Balken (`bar`) nur für Mengen (Lager, Gesundheit, Stimmung, Hitze).
+- **Bewegung mechanisch:** Fenster fahren aus dem Bildschirmrand ein und wieder hinaus (`slideIn`/`slideOut`), das
+  Hover-Schild eines Raums fällt an Ketten aus der Decke (`plate.js`). Bei `prefers-reduced-motion` bewegt sich nichts.
+- Schriften (selbst gehostet in `static/fonts/`): Germania One für Titel, Alegreya Sans für Text, Alegreya Sans SC
+  für Knöpfe und Tabs, Kalam für Handschrift auf Papier. Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
+  Räume tragen keine Namensschilder mehr im Canvas.
 - Im Spiel klicken statt Menüs: Räume und Zwerge öffnen ihr Fenster direkt (`popups.js`), Hover zeigt einen
   grünen Umriss, stillstehende Werkstätten mit Material bekommen einen grünen Pfeil.
 - Farben aus den CSS-Variablen in `style.css`.

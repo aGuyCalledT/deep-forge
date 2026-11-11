@@ -1,6 +1,7 @@
 // Trade (caravans, cities, prices) and expeditions.
 import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstimate, marketKey, stock, baseValue, isItem } from './data.js';
-import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico } from './ui.js';
+import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico, hourglass } from './ui.js';
+import { paper, todo } from './paper.js';
 import * as S from './sprites.js';
 import { api } from './api.js';
 import { reportCards } from './collect.js';
@@ -146,39 +147,48 @@ export function renderExplore() {
   out.push(h('p', { class: 'small muted' }, `Expeditions: ${active.length} / ${d.expeditionSlots} out. Up to ${d.partyMax} dwarves per party. `
     + 'Dwarves can be hurt or die out there. Bring supplies and good gear.'));
 
+  // each party out there is a page from its logbook: what they did is ticked off, the next leg is still open
   for (const e of active) {
     const next = e.stages[e.next];
     const party = e.party.map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
-    out.push(h('div', { class: 'card' },
-      h('div', { class: 'row between' }, h('h3', null, e.name), h('span', { class: 'nowrap' }, 'back in ', h('b', { 'data-until': e.returnAt }, dur(e.returnAt - t)))),
-      h('div', { class: 'row' }, party.map((x) => h('span', { title: x.first + ' ' + x.clan }, img(S.portrait(x, 'walk')), h('span', { class: 'small' }, ` ${x.first} `), h('span', { class: 'small nowrap ' + (x.health < 50 ? 'bad-t' : 'muted') }, ico('heart', 'icon xs'), Math.round(x.health))))),
-      h('div', { class: 'stages' }, e.stages.map((s, i) => h('i', { class: s.done ? 'done' : i === e.next && s.kind === 'choice' ? 'choice' : '' }))),
-      next && next.kind === 'choice' ? h('div', { class: 'card sub' },
+    const left = e.stages.length - e.next;
+    const items = e.log.slice(-5).map((l) => ({ text: l, done: true }));
+    if (next && next.kind !== 'choice') items.push({ text: left > 1 ? `On to the next leg (${left} to go)` : 'The last leg, then home' });
+    out.push(paper('exp-' + e.id, { cls: 'expedition' },
+      h('div', { class: 'row between', style: { alignItems: 'flex-start', flexWrap: 'nowrap' } },
+        h('div', null, h('h3', null, e.name),
+          h('div', { class: 'who' }, `${party.length} dwarves · back in `, h('b', { 'data-until': e.returnAt }, dur(e.returnAt - t)))),
+        hourglass({ from: e.departAt, to: e.returnAt })),
+      h('div', { class: 'row', style: { marginBottom: '6px' } }, party.map((x) => h('span', { class: 'nowrap', title: x.first + ' ' + x.clan },
+        img(S.portrait(x, 'walk')), h('span', { class: 'small' }, ` ${x.first} `), h('span', { class: 'small ' + (x.health < 50 ? 'bad-t' : 'muted') }, ico('heart', 'icon xs'), Math.round(x.health))))),
+      todo(items),
+      next && next.kind === 'choice' ? h('div', { class: 'card' },
         h('p', null, h('b', null, 'Ahead: '), next.prompt),
         h('p', { class: 'small muted' }, 'Decide before they get there in ', h('span', { 'data-until': next.at }, dur(next.at - t)), ', or the leader decides.'),
-        h('div', { class: 'list' },
-          h('button', { class: 'btn small' + (next.chosen === 'a' ? ' primary' : ''), onclick: () => bus.act({ type: 'choice', expedition: e.id, option: 'a' }) }, next.optA),
-          h('button', { class: 'btn small' + (next.chosen === 'b' ? ' primary' : ''), onclick: () => bus.act({ type: 'choice', expedition: e.id, option: 'b' }) }, next.optB))) : null,
-      h('div', null, e.log.slice(-6).map((l) => h('div', { class: 'log-line' }, l)))));
+        h('div', { class: 'row' },
+          h('button', { class: 'btn small' + (next.chosen === 'a' ? ' good' : ''), onclick: () => bus.act({ type: 'choice', expedition: e.id, option: 'a' }) }, next.optA),
+          h('button', { class: 'btn small' + (next.chosen === 'b' ? ' good' : ''), onclick: () => bus.act({ type: 'choice', expedition: e.id, option: 'b' }) }, next.optB))) : null));
   }
 
+  // rumours are notices pinned to the board
   out.push(h('h2', null, 'Where to go'));
   const offers = f.offers.slice().sort((a, b) => (b.fixed ? 1 : 0) - (a.fixed ? 1 : 0));
   if (!offers.length) out.push(h('p', { class: 'muted' }, 'No leads right now. New rumours come in every few hours.'));
   for (const o of offers) {
-    out.push(h('div', { class: 'card' + (o.fixed ? ' good' : '') },
+    out.push(paper('offer-' + o.id, { nail: true, cls: 'offer' },
       h('div', { class: 'row between' }, h('h3', null, o.name), skulls(o.danger)),
-      h('p', { class: 'small' }, o.desc),
-      h('p', { class: 'small muted' }, `${o.hours}h · recommended party power ${fmt(o.recPower)}`, o.expires ? [' · gone in ', h('span', { 'data-until': o.expires }, dur(o.expires - t))] : ' · story'),
-      h('button', { class: 'btn primary small', disabled: active.length >= d.expeditionSlots, onclick: () => expeditionSheet(o) }, 'Prepare')));
+      h('p', null, o.desc),
+      h('p', { class: 'small muted' }, `${o.hours}h there and back · take party power ${fmt(o.recPower)}`, o.expires ? [' · gone in ', h('span', { 'data-until': o.expires }, dur(o.expires - t))] : ' · a story lead'),
+      h('button', { class: 'btn primary', disabled: active.length >= d.expeditionSlots, title: active.length >= d.expeditionSlots ? 'All parties are out. Wait for one to come back.' : null, onclick: () => expeditionSheet(o) }, 'Prepare')));
   }
 
   const done = f.expeditions.filter((e) => e.state !== 'active');
   if (done.length) {
     out.push(h('h2', null, 'Reports'));
-    for (const e of done.slice().reverse()) out.push(h('div', { class: 'card ' + (e.state === 'lost' ? 'bad' : 'sub') },
-      h('div', { class: 'row between' }, h('h3', null, e.name), h('button', { class: 'btn small ghost', 'aria-label': 'Dismiss report', onclick: () => bus.act({ type: 'dismissExpedition', id: e.id }) }, ico('close'))),
-      e.log.map((l) => h('div', { class: 'log-line' }, l))));
+    for (const e of done.slice().reverse()) out.push(paper('done-' + e.id, { seal: e.state !== 'lost' },
+      h('div', { class: 'row between' }, h('h3', { class: e.state === 'lost' ? 'bad-t' : '' }, e.name),
+        h('button', { class: 'btn small ghost', 'aria-label': 'Throw the report away', title: 'Throw away', onclick: () => bus.act({ type: 'dismissExpedition', id: e.id }) }, ico('close'))),
+      todo(e.log.map((l) => ({ text: l, done: true })))));
   }
   return out;
 }

@@ -1,6 +1,6 @@
 // Workshops: queues, the bellows and the quench.
-import { G, F, D, byId, fmt, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info } from './ui.js';
+import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand } from './ui.js';
 import * as A from './audio.js';
 const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'tailor', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
@@ -113,8 +113,7 @@ function machinesBlock(b) {
       w ? img(S.portrait(w), 'icon') : h('span', { class: 'machine-seat' }, ico('dwarf')),
       h('div', { class: 'grow' },
         h('div', null, w ? w.first + ' ' + w.clan : 'Free machine', w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
-        what,
-        j && !j.quenching ? h('div', { class: 'bar thin' }, h('i', { 'data-job': b.id, 'data-machine': i })) : null),
+        j && !j.quenching ? h('div', { class: 'busy' }, hourglass({ job: b.id, machine: i }, 's'), what, h('span', { class: 'small gold-t', 'data-eta': b.id, 'data-machine': i })) : what),
       h('div', { class: 'machine-btns' },
         h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
         w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
@@ -134,8 +133,9 @@ function jobBlock(b, i = 0) {
   const j = jobOf(b, i);
   if (j.quenching) return quenchBlock(b, i);
   const m = j.recipe === 'smelt' ? byId.metals[byId.ores[j.mat].metal] : byId.metals[j.mat];
-  const p = h('div', { class: 'bar' }, h('i', { 'data-job': b.id, 'data-machine': i }));
-  return h('div', null, h('div', { class: 'small' }, D().buildings[b.id].jobName || '', m && b.type === 'smelter' ? info(m.meltNote) : null), p);
+  return h('div', { class: 'job' }, hourglass({ job: b.id, machine: i }),
+    h('div', null, h('b', null, D().buildings[b.id].jobName || 'Working', m && b.type === 'smelter' ? info(m.meltNote) : null),
+      h('div', { class: 'eta', 'data-eta': b.id, 'data-machine': i })));
 }
 
 // ------------------------------------------------------------------ bellows
@@ -203,7 +203,17 @@ export function animateWork() {
     const info = D().buildings[b.id] || {};
     const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
     const since = Math.max(0, t - G.state.now);
-    el.style.width = Math.min(100, (j.progress + speed * since) / j.time * 100) + '%';
+    const done = (j.progress + speed * since) / j.time;
+    if (el.classList.contains('hg')) setSand(el, done); else el.style.width = Math.min(100, done * 100) + '%';
+  });
+  // time left beside the hourglasses
+  document.querySelectorAll('[data-eta]').forEach((el) => {
+    const b = F().buildings.find((x) => x.id === el.dataset.eta);
+    const i = +(el.dataset.machine || 0), j = b && jobOf(b, i);
+    if (!j || j.quenching) { el.textContent = ''; return; }
+    const info = D().buildings[b.id] || {};
+    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
+    el.textContent = speed > 0 ? dur((j.time - j.progress) / speed - Math.max(0, t - G.state.now)) + ' left' : 'Stopped';
   });
   document.querySelectorAll('[data-heat]').forEach((el) => { el.style.width = currentHeat(el.dataset.heat) + '%'; });
   document.querySelectorAll('[data-quench]').forEach((el) => {
