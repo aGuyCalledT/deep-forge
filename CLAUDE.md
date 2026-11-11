@@ -6,6 +6,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 
 - **Grafik:** Vor jedem neuen oder geänderten Sprite, Raum, Monster oder Szenen-Element die Skills `sprites` und
   `pxl-pixel-art` laden. Grafik entsteht in `art-src/` und wird mit `node scripts/build-art.mjs` gebaut.
+  Ausnahme Zwerge: PNG-Teile in `static/art/dwarf/`, gezeichnet in Pixelwright (siehe `docs/SPRITES.md`, „Zwerge“).
 - **Oberfläche:** Vor Arbeit an Panels, Layout oder CSS den Skill `impeccable:impeccable` laden, falls vorhanden.
   Der Abschnitt „Design“ unten geht vor.
 - Fehlt ein Skill, das dem Nutzer sagen.
@@ -46,7 +47,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/views.js` | Minen-Screen, Login-Bild (Werkstätten haben keinen eigenen Screen, sie sind Räume der Festung) |
 | `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen (öffnen sich neben dem Objekt), Cheat-Werkzeuge |
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
-| `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall und Zwerge um, setzt Zwerge aus Teilen zusammen |
+| `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall um, liefert Zwerge, Fremde und Porträts |
+| `static/js/dwarfkit.js` | setzt Zwerge aus den PNG-Teilen in `static/art/dwarf/` zusammen (`kit.json`: Bilder, Reihenfolge, Platzhalterfarben) und färbt sie um; gezeichnet im Pixelwright-Projekt „Deep Forge Dwarves“ |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt) |
 | `static/js/panels-market.js` | Marktliste mit Wochenlinie, Waren-Fenster mit Kursverlauf und Städte-Tabelle |
 | `static/js/panels-depot.js` | Fenster des Handelsdepots: Marktanteil, Karawanen, Regeln, Kauf-Aufträge |

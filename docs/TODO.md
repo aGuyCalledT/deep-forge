@@ -141,3 +141,14 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       flatterndem Vordach; zwei große Bäume, die sich im Wind wiegen.
 - [ ] Login-Bild auf die neuen Bäume und den neuen Stand umstellen.
 - [ ] Gelbes Dreieck auch für weitere Fälle (z. B. Regel wartet sehr lange, Lieferung kann nicht bezahlt werden).
+
+## Zwerge aus PNG-Teilen
+
+- [x] **Neue Zwerge aus Pixelwright:** PNG-Teile in `static/art/dwarf/`, gleiche Körpergröße für alle, Form Mann/Frau,
+      6 Frisuren, 5 Bärte, Helm/Mütze/Kapuze, alle Posen (stehen, reden, sitzen, essen, trinken, gehen, arbeiten,
+      klettern, schlafen), Umfärben von Haut, Haar, Augen, Kleidung, Metall.
+- [ ] Wieder einbauen, was der alte Figuren-Baukasten konnte: Schürze, Brille, Ohrringe, Rüstung als eigenes Teil
+      (jetzt nur Tunika in Metallfarbe), Kleidungs-Muster (Strick, Weste, Flicken), Nasen-, Brauen- und Mundformen.
+- [ ] Mehr Frisuren und Bärte zeichnen, damit die 10 alten Frisuren und 8 Bärte wieder eigene Bilder haben.
+- [ ] Werkzeuge als gezeichnete Teile statt Linien aus dem Code.
+- [ ] Übrige Grafik (Räume, Erweiterungen, Monster, Tal, Symbole) im neuen Stil in Pixelwright neu zeichnen.

@@ -1,0 +1,177 @@
+{
+ "size": [
+  32,
+  44
+ ],
+ "anchor": [
+  16,
+  42
+ ],
+ "hatClip": 8,
+ "styles": [
+  "short",
+  "bald",
+  "topknot",
+  "long",
+  "braids",
+  "bun"
+ ],
+ "beards": [
+  "full",
+  "wide",
+  "fork",
+  "long",
+  "short"
+ ],
+ "hats": [
+  "helm",
+  "cap",
+  "hood"
+ ],
+ "moods": [
+  "neutral",
+  "happy",
+  "angry",
+  "open",
+  "sleep"
+ ],
+ "props": [
+  "spoon_mid",
+  "spoon_up",
+  "mug_down",
+  "mug_up",
+  "axe",
+  "sack"
+ ],
+ "frontDy": [
+  0,
+  1,
+  4,
+  5
+ ],
+ "sideDy": [
+  0,
+  -1,
+  0,
+  -1,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "sideHands": [
+  [
+   11,
+   28
+  ],
+  [
+   14,
+   28
+  ],
+  [
+   19,
+   28
+  ],
+  [
+   14,
+   28
+  ],
+  [
+   11,
+   10
+  ],
+  [
+   17,
+   8
+  ],
+  [
+   24,
+   24
+  ],
+  [
+   22,
+   19
+  ],
+  [
+   13,
+   29
+  ]
+ ],
+ "sheets": {
+  "front_body_m": 4,
+  "front_arm_m": 3,
+  "front_body_f": 4,
+  "front_arm_f": 3,
+  "front_head": 1,
+  "front_face": 6,
+  "front_hair": 6,
+  "front_brows": 1,
+  "front_beard": 5,
+  "front_hat": 3,
+  "front_prop": 6,
+  "side_body_m": 9,
+  "side_arm": 9,
+  "side_body_f": 9,
+  "side_head": 1,
+  "side_face": 6,
+  "side_hair": 6,
+  "side_brows": 1,
+  "side_beard": 5,
+  "side_hat": 3,
+  "side_quilt": 2,
+  "back_body_m": 2,
+  "back_arm": 2,
+  "back_body_f": 2,
+  "back_head": 1,
+  "back_hair": 6,
+  "back_beard": 5,
+  "back_hat": 3
+ },
+ "ramps": {
+  "skin": [
+   "#7a3f3a",
+   "#b8705a",
+   "#e3a47c",
+   "#f7cfa4"
+  ],
+  "hair": [
+   "#4a1c1e",
+   "#8c3524",
+   "#c75f2a",
+   "#eb9445"
+  ],
+  "tunic": [
+   "#3a1626",
+   "#76263a",
+   "#ad3e3c",
+   "#d86e4e"
+  ],
+  "pants": [
+   "#231d2b",
+   "#3d3545",
+   "#5f5566"
+  ],
+  "boots": [
+   "#2b1817",
+   "#4d2b22",
+   "#784731",
+   "#a26c47"
+  ],
+  "metal": [
+   "#2c2a38",
+   "#5a5a6c",
+   "#9a9cac",
+   "#dcdde4"
+  ],
+  "cloth": [
+   "#3d2e4a",
+   "#6b4f7a",
+   "#9a76a6",
+   "#c7a3c4"
+  ],
+  "eye": [
+   "#4a7ab0"
+  ]
+ }
+}
