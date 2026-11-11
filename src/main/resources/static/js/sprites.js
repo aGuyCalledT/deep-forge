@@ -1,9 +1,11 @@
-// All game art comes from one sprite sheet (static/art/atlas.png), drawn with pxl from art-src/.
+// All game art comes from one sprite sheet (static/art/atlas.png), drawn with pxl from art-src/, except the
+// dwarves: they are put together from PNG parts in static/art/dwarf/ (dwarfkit.js).
 // Some colours in the art are placeholders that are swapped at runtime: metal (per metal), skin, beard,
 // hair and tunic (per dwarf). A PNG in the sprites folder with a sheet name (e.g. sprites/room_forge.png)
 // replaces that sprite. See docs/SPRITES.md.
 import { byId, G } from './data.js';
 import Figure from './figure.js';
+import * as Kit from './dwarfkit.js';
 
 let sheet = null;          // HTMLImageElement
 let frames = {};           // name -> {x, y, w, h}
@@ -15,6 +17,7 @@ export async function loadArt() {
   const [json, meta] = await Promise.all([
     fetch('/art/atlas.json').then((r) => r.json()),
     fetch('/art/meta.json').then((r) => r.json()),
+    Kit.load(),
   ]);
   META = meta;
   for (const [k, v] of Object.entries(json.frames)) frames[k.replace(/\.png$/, '')] = v.frame;
@@ -256,7 +259,13 @@ export function dwarfSprite(d, pose = 'idle', frame = 0, tool = null, opts = {})
   if (cache.has(key)) return cache.get(key);
   let c;
   if (overrides.has('dwarf')) { const o = overrides.get('dwarf'); c = mk(o.width, o.height); c.getContext('2d').drawImage(o, 0, 0); c.ax = o.width >> 1; c.ay = o.height - 1; }
-  else {
+  else if (Kit.ready()) {
+    c = Kit.dwarf({
+      sex: L.sex, hairStyle: Figure.HAIR_STYLES[L.hairStyle], beard: Figure.BEARDS[L.beard], skin: L.skin, hair: L.hair,
+      eye: Figure.EYES[L.eye], freckles: L.freckles, wear: w, armor: metalOf(d.armor), helm: metalOf(d.helm),
+      pose, frame, mood: md, tool: tool ? { kind: tool } : null, toolMetal: toolMetal || '#9a9aa6', blink: d.id,
+    });
+  } else {
     const img = Figure.person({
       body: (L.sex === 'f' ? 5 : 0) + L.body, skin: L.skin, hair: L.hair, eye: Figure.EYES[L.eye],
       hairStyle: Figure.HAIR_STYLES[L.hairStyle], beard: L.sex === 'm' ? Figure.BEARDS[L.beard] : null,
@@ -278,6 +287,14 @@ export function npcSprite(n, pose = 'idle', frame = 0) {
   frame = frame % (FRAMES[pose] || 1);
   const key = 'npc|' + n.id + '|' + pose + '|' + frame;
   if (cache.has(key)) return cache.get(key);
+  if (Kit.ready() && !n.tall) {     // tall travellers are people of the valley, not dwarves
+    const c = Kit.dwarf({
+      sex: n.body >= 5 ? 'f' : 'm', hairStyle: n.hairStyle, beard: n.beard, skin: n.skin, hair: n.hair, eye: n.eye,
+      wear: n.wear, pose, frame, mood: 'happy', tool: n.tool ? { kind: n.tool } : null, toolMetal: '#9a9aa6', blink: n.id,
+    });
+    cache.set(key, c);
+    return c;
+  }
   const img = Figure.person({
     body: n.body, bodyOverride: n.tall ? { legLen: 7, torsoH: 13 } : null, skin: n.skin, hair: n.hair, eye: n.eye,
     hairStyle: n.hairStyle, beard: n.beard || null, nose: Figure.NOSES[n.nose || 0],

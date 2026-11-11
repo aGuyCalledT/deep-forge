@@ -81,11 +81,27 @@ Kein Rauschen als Füller: jede Markierung auf einer Fläche braucht einen Grund
 
 ## Zwerge
 
-`figure.js` baut jede Figur aus Teilen (Körper, Beine, Kleidung, Kopf, Gesicht, Haare, Bart, Hut, Werkzeug) und malt
-sie flach mit leichtem Verlauf von oben nach unten, Stoff-Texturen je Kleidungsstück, farbigen Innenlinien und einem
-weichen Umriss. 10 Körper (5 Männer, 5 Frauen), Nasen, Brauen, Augenfarben, Münder, Frisuren und Bärte (Bart = Haarfarbe).
-Posen: `idle talk sit sitTalk eat drink walk work climb sleep`, Stimmung `happy neutral angry` aus der Zufriedenheit.
-`sprites.js` (`dwarfSprite`, `placeDwarf`, `portrait`) speichert fertige Bilder zwischen.
+Zwerge (und kleine Fremde im Tal) setzt `static/js/dwarfkit.js` aus **PNG-Teilen** in `static/art/dwarf/` zusammen.
+Gezeichnet wurden sie im Pixelwright-Projekt „Deep Forge Dwarves“ (ein Sprite pro Teil); die PNGs im Repo sind
+pixelgenau dieselben und ab jetzt die Quelle: zum Ändern die PNG in Aseprite, Krita o. ä. bearbeiten, neu laden.
+
+- Jede PNG ist ein Streifen aus Bildern à **32 × 44**, alle deckungsgleich (Füße auf Zeile 41, Anker 16/42).
+  Welche Datei wie viele Bilder hat und in welcher Reihenfolge, steht in `kit.json` (`sheets`, `styles`, `beards`, `hats`, `moods`, `props`).
+- Körpergröße ist immer gleich; Mann und Frau unterscheiden sich nur in der Form (`*_body_m`, `*_body_f`).
+- Ansichten: `front_*` (stehen, atmen, sitzen, essen, trinken, reden), `side_*` (gehen 0–3, arbeiten 4–7, stehen 8;
+  nach rechts schauend, das Spiel spiegelt), `back_*` (klettern). Schlafen = Seitenansicht mit Decke, gedreht.
+- **Platzhalterfarben** (`ramps` in `kit.json`): Haut, Haar, Tunika, Hose, Stiefel, Augen, Metall (Helm, Werkzeug) und
+  Stoff (Mütze, Kapuze, Decke, Sack). Wer diese Farben benutzt, bekommt sie im Spiel umgefärbt; alle anderen Farben
+  (Umriss, Gürtel, Gold, Holz) bleiben.
+- Zeichenreihenfolge vorn: Körper, Kopf, Gesicht, Bart, Haare, Hut, rechter Arm, Ding in der Hand. Mit Hut fallen Haare
+  oberhalb von Zeile 8 (`hatClip`) weg.
+- Alte Merkmale werden zugeordnet: 10 Frisuren auf 6, 8 Bärte auf 5, Hüte auf Helm/Mütze/Kapuze. Werkzeuge an der
+  Seite malt `dwarfkit.js` als Stiel und Kopf aus den Handpositionen (`sideHands`).
+- `art-src/dwarf-kit/*.py` sind die Entwurfs-Skripte (`python3 build_kit.py <ordner>` schreibt die Teile neu). Nur für
+  große Umbauten nutzen: es überschreibt Handarbeit an den PNGs.
+- Fehlt `kit.json`, malt `figure.js` die Zwerge wie früher. Große Reisende (`tall`), Monster und Kleidungs-Symbole
+  kommen weiter aus `figure.js`.
+- `sprites.js` (`dwarfSprite`, `npcSprite`, `placeDwarf`, `portrait`) speichert fertige Bilder zwischen.
 
 ## Tiefe
 
