@@ -111,7 +111,7 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
 
 - Aufwerten: `Grundpreis × Wachstum^(Stufe−1)` Jots, Stein × 1,3^(Stufe−1), dazu `4 + 3 × Stufe` Barren
   (bis Stufe 3 Kupfer, 4–5 Bronze, 6–8 Eisen, ab 9 Stahl).
-  Wachstum: Lager, Lift, Kaserne, Tor, Eingangshalle, Tresor, Handelsdepot 1,7 · Expeditionshalle 1,75 · Taverne 1,65 · Rest 1,55–1,6.
+  Wachstum: Lager, Lift, Kaserne, Tor, Eingangshalle, Tresor, Handelsdepot 1,7 · Abenteurergilde 1,75 · Taverne 1,65 · Rest 1,55–1,6.
 - Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener Werkstatt dieser Art.
 - Schichten: Freischalten in Marks: Grey Veins 80, Silver Halls 400, Golden Deep 1 500 + Erkundung, Crystal Abyss 5 000 + Erkundung.
   Schicht ausbauen: `25 Marks × (Schicht + 1) × 1,6^(Stufe−1)`.

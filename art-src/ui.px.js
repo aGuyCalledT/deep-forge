@@ -42,3 +42,14 @@ icon("zoom_out", (c) => { c.ring(6, 6, 4, "c"); c.line(9, 9, 13, 13, "c", 2); c.
 icon("info", (c) => { c.circ(7, 7, 6, "n"); c.circ(7, 7, 5, "B"); c.rect(6, 6, 2, 5, "C"); c.rect(6, 3, 2, 2, "C"); c.px(5, 6, "C"); c.hline(5, 10, 4, "C"); });
 icon("menu", (c) => { for (const y of [2, 6, 10]) { c.rect(1, y, 12, 2, "c"); } });
 icon("door", (c) => { c.rect(3, 3, 8, 10, "W"); c.ellipse(7, 4, 4, 3, "W"); c.rect(4, 4, 6, 9, "v"); for (const x of [6, 8]) c.vline(x, 3, 10, "W"); c.px(9, 8, "j"); c.hline(1, 13, 12, "5"); });
+
+// Status over rooms and dwarves: stopped (red octagon), needs attention (ui_warn), resting / not needed (grey dots).
+icon("stop", (c) => {
+  c.poly([4, 0, 9, 0, 13, 4, 13, 9, 9, 13, 4, 13, 0, 9, 0, 4], "f");
+  c.poly([4, 1, 9, 1, 12, 4, 12, 5, 1, 5, 1, 4], "F");
+  c.rect(6, 3, 2, 6, "C"); c.rect(6, 10, 2, 2, "C");
+});
+icon("idle", (c) => {
+  c.rect(1, 4, 12, 6, "5"); c.hline(2, 3, 10, "5"); c.hline(2, 10, 10, "5"); c.hline(2, 4, 10, "6");
+  for (const x of [3, 6, 9]) c.rect(x, 6, 2, 2, "2");
+});

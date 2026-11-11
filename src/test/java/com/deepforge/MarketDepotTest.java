@@ -237,5 +237,18 @@ class MarketDepotTest {
         assertNull(Rules.building(f, "walls"));
         Layouts.ensure(f);
         assertTrue(f.layout.rooms.containsKey("trade_depot"), "the depot gets a room");
+        assertTrue(f.layout.rooms.containsKey("expedition_hall"), "the adventurers' guild gets a room");
+    }
+
+    @Test
+    void aNewHoldHasTheGuildAndBarracksAsRooms() {
+        Fortress f = fresh(31);
+        Layouts.ensure(f);
+        for (String type : List.of("expedition_hall", "barracks", "trade_depot")) {
+            Building b = f.buildings.stream().filter(x -> x.type.equals(type)).findFirst().orElseThrow();
+            assertTrue(f.layout.rooms.containsKey(b.id), type + " stands in the mountain");
+            assertTrue(Rules.active(f, b), type + " is reachable");
+        }
+        assertEquals("Adventurers' guild", Content.BUILDINGS.get("expedition_hall").name());
     }
 }

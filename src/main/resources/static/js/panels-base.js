@@ -136,16 +136,36 @@ export function dwarfCard(x) {
     h('div', null, portrait),
     h('div', null,
       h('div', { class: 'row between' }, h('b', null, fullName(x)), h('span', { class: 'small muted' }, x.age + ' years')),
-      h('div', { class: 'small ' + (x.busy ? 'warn-t' : x.job === 'idle' ? 'muted' : 'gold-t') }, jobLabel(x), dd.rate ? ` · ${fmt(dd.rate)} ore/h` : ''),
+      profession(x, dd),
       h('div', null, x.traits.map((t) => h('span', { class: 'chip', title: byId.traits[t].note }, byId.traits[t].name))),
       h('div', { class: 'row small', style: { gap: '4px 10px' } },
         h('span', { class: 'grow' }, 'Health', bar(x.health / 100, 'hp')),
         h('span', { class: 'grow' }, 'Mood' + (dd.target > x.happiness + 3 ? ' ↑' : dd.target < x.happiness - 3 ? ' ↓' : ''), bar(x.happiness / 100, 'mood'))),
-      h('div', { class: 'small muted' }, top.map(([k, v]) => `${k} ${v}`).join(' · ') || 'No skills yet', ` · power ${fmt(dd.power)}`),
+      h('div', { class: 'small muted skills' }, top.length ? top.map(([k, v], i) => [i ? ' · ' : '', k === jobSkill(x) ? h('b', { class: 'gold-t' }, `${k} ${v}`) : `${k} ${v}`]) : 'No skills yet', ` · power ${fmt(dd.power)}`),
       gear.length ? h('div', { class: 'row' }, gear.map((k) => h('span', { title: goodName(k) }, goodIcon(k, 'icon s')))) : null,
       !x.busy ? h('div', { class: 'row', style: { marginTop: '6px' } },
         h('button', { class: 'btn small', onclick: () => jobSheet(x) }, 'Job'),
         h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear')) : null));
+}
+
+/** The skill a dwarf's job trains and uses. */
+function jobSkill(x) {
+  if (x.job === 'miner') return 'mining';
+  if (x.job === 'warrior') return 'combat';
+  if (x.job === 'merchant') return 'trading';
+  if (x.job === 'worker') { const b = F().buildings.find((q) => q.id === x.building); return b ? byId.buildings[b.type].skill : null; }
+  return null;
+}
+
+/** The profession as an engraved badge: what the dwarf does, its icon and the skill it works with. */
+function profession(x, dd) {
+  const kind = x.busy ? (x.busy.startsWith('caravan') ? 'trade' : 'lore') : { miner: 'mine', worker: 'forge', warrior: 'war', merchant: 'trade' }[x.job] || 'idle';
+  const icon = x.busy ? (x.busy.startsWith('caravan') ? 'trade' : 'explore') : { miner: 'mines', worker: 'work', warrior: 'war', merchant: 'trade' }[x.job] || 'idle';
+  const sk = jobSkill(x), lvl = sk && dd.skills ? dd.skills[sk] || 0 : null;
+  return h('div', { class: 'profession ' + kind },
+    ico(icon), h('b', null, jobLabel(x)),
+    sk ? h('span', { class: 'small' }, `${sk} ${lvl}`) : null,
+    dd.rate ? h('span', { class: 'small' }, `${fmt(dd.rate)} ore/h`) : null);
 }
 
 export function jobSheet(x) {

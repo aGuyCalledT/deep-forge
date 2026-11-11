@@ -129,3 +129,15 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Hinweis-Chip, wenn eine Regel pausiert oder ein Kauf-Auftrag mangels Geld nicht ausgeführt wird.
 - [ ] Sounds für Depot-Regel ausgelöst und Lieferung angekommen (`docs/AUDIO.md`).
 - [ ] Balancing der Marktmacht nach einigen Tagen echtem Spiel prüfen.
+
+## Status und Tal
+
+- [x] **Status über Räumen:** rotes Achteck mit ! (steht still: abgeschnitten, Aufträge ohne Material oder Arbeiter,
+      Lager voll), gelbes Dreieck (braucht dich: Beute abholen, Entscheidung, Kriechtier ohne Wache), graue Punkte
+      (nichts zu tun), grüner Pfeil bleibt (könnte laufen). Dieselben Symbole in den Hinweis-Chips.
+- [x] **Graue Punkte über untätigen Zwergen.**
+- [x] **Beruf im Zwergenfenster** als Schild mit Symbol, der Beruf-Skill golden hervorgehoben.
+- [x] **Tal aufgeräumt:** Zelt, Winde und Palisade weg; Abenteurergilde ist ein Raum im Berg; Marktstand größer mit
+      flatterndem Vordach; zwei große Bäume, die sich im Wind wiegen.
+- [ ] Login-Bild auf die neuen Bäume und den neuen Stand umstellen.
+- [ ] Gelbes Dreieck auch für weitere Fälle (z. B. Regel wartet sehr lange, Lieferung kann nicht bezahlt werden).
