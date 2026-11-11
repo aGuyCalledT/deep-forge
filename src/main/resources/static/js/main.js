@@ -306,7 +306,7 @@ function render() {
     h('div', { class: 'panel-scroll' },
       h('div', { class: 'panel-head' },
         h('div', { class: 'plate' }, img(S.icon(ICON[tab[0]]), 'icon s'), h('h2', null, tab[1] === 'Hold' ? 'Your hold' : tab[1])),
-        h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer }, ico('close'))),
+        h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer })),
       ...(box ? [box] : []), ...body));
   p.hidden = false;
   scroller().scrollTop = py;
@@ -448,10 +448,23 @@ async function start() {
   requestAnimationFrame(tick);
 }
 
+/** Hand the pixel-art button plates, the window X and the green badge to the CSS as image variables. */
+function artToCss() {
+  const root = document.documentElement.style;
+  const url = (name) => `url(${S.sprite(name).toDataURL()})`;
+  for (const m of ['iron', 'gold', 'green', 'red']) {
+    root.setProperty(`--plate-${m}`, url('btn_' + m));
+    root.setProperty(`--plate-${m}-down`, url('btn_' + m + '_down'));
+  }
+  root.setProperty('--xbtn', url('ui_xbtn'));
+  root.setProperty('--xbtn-down', url('ui_xbtn_down'));
+  root.setProperty('--badge-good', url('ui_good'));
+}
+
 async function boot() {
   try { await Promise.all(['16px "Germania One"', '500 16px "Alegreya Sans"', '800 16px "Alegreya Sans SC"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
   await Promise.all([S.loadArt(), loadArt48()]);
-  document.querySelector('.sheet-x').replaceChildren(ico('close'));
+  artToCss();
   const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
   A.initAudio(audio);
   G.data = data;

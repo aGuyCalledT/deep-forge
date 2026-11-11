@@ -70,10 +70,16 @@ damit Möbel sie verdecken.
 | Eingangshalle | `entrance_hall_0..2` 144 × 96 | der Tor-Tunnel: Holz, Stein mit Schilden, prächtig mit Bannern und Läufer; Mitte (x 48–100) frei für die Übungskämpfe der Wachen (Werkzeug `stick` in `figure.js`) |
 | Oberfläche | Bäume `tree_a`/`tree_b` 160 × 240 (4 Bilder Wind, die Krone neigt sich oben mehr), Marktstand `market_stall` 128 × 84 mit Vordach `stall_awning` 136 × 30 (4 Bilder, flattert) | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE`. Die kleinen `tree_0/1`, `stall`, `tent` gibt es nur noch für das Login-Bild |
 | Status | `ui_stop` (rotes Achteck, steht still), `ui_warn` (gelbes Dreieck, braucht dich), `ui_idle` (graue Punkte, nichts zu tun) 16 × 16 | über Räumen (`roomStatus` in `hold.js`), über untätigen Zwergen und in den Hinweis-Chips |
+| Abzeichen | `ui_good` (Smaragd mit !, 14 × 14, im Spiel 28 px) | auf Tabs mit etwas Gutem zu tun (`.tab .dot`) |
+| Fenster-X | `ui_xbtn`, `ui_xbtn_down` (runde Eisenplatte, 20 × 20, im Spiel 40 px) | `.sheet-x` und `.icon-btn` |
+| Knopfplatten | `btn_iron`, `btn_gold`, `btn_green`, `btn_red` und je `_down` (24 × 21, Slice 7 4 7 4) | `.btn`/`.tool` als `border-image`, 2-fach; die Mitte ist einfarbig, damit sie sauber dehnt |
 | Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
 | Monster | je nach Art, Figuren wie Zwerge | `Figure.monster(id, frame)` |
 
 ## Stil
+
+- Symbole und Knöpfe exakt symmetrisch: nur die linke Hälfte als Raster zeichnen und mit `mx` spiegeln
+  (`mx: "c"` bei ungerader Breite). `poly`/`line` geben schräge Kanten oft ungleich.
 
 Warm und freundlich: abgerundete Höhlenräume statt Kästen, Licht von oben links, weiche Laternen- und
 Feuerschein-Effekte über das Licht im Spiel, kleine liebevolle Details (Katze am Kamin, Pflanzen, Spinnweben).

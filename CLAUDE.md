@@ -103,7 +103,10 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 - **Material nach Bedeutung** (`MATERIAL`/`setMaterial` in `ui.js`): Werkstatt/Festung Eisen + Rubin (`forge`),
   Handel Gold + Smaragd (`trade`), Krieg Schwarzeisen + Granat (`war`), Zwerge Kupfer + Bernstein (`dwarf`),
   Erkunden Silber + Saphir (`lore`), sonst `neutral`. `openSheet(render, anker, material)`; ohne Material gilt der Tab.
-- Knöpfe sind geschmiedete Platten, die sich eindrücken (`.btn`, `.primary` gold, `.good` grün, `.danger` rot).
+- Knöpfe sind Pixel-Platten, die sich eindrücken (`.btn`, `.primary` gold, `.good` grün, `.danger` rot; auch `.tool`):
+  `btn_<iron|gold|green|red>[_down]` aus `ui.px.js` als CSS-`border-image` (Ecken fest, Mitte dehnt sich), die
+  Bild-Variablen setzt `artToCss()` in `main.js`. Das X der Fenster ist `ui_xbtn` (`.sheet-x`, `.icon-btn`), das grüne
+  Abzeichen auf Tabs `ui_good` (`.tab .dot`). Symbole immer als linke Hälfte zeichnen und spiegeln (`mx`).
   Innen eingravierte Felder (`.card`) statt erhabener Karten.
 - **Papier** für Expeditionen, Gerüchte und Berichte: `paper(seed, opts, ...)` aus `paper.js` (Risse, Flecken, Falten,
   Neigung je id verschieden, Nagel oder Wachssiegel), Handschrift Kalam, Abhakliste `todo()`.

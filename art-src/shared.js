@@ -14,6 +14,9 @@ var PAL = {
   o: "#7d5a30", O: "#b98a44", j: "#e3c06e", 8: "#f6e3a4",                                         // gold
   p: "#955a71", P: "#d390a2", 9: "#f2c4cc",                                                       // pink
   s: "#1f1c28",                                                                                   // soot
+  "*": "#ff8a96", "&": "#c0283c", "?": "#9a2230", ";": "#6a1520", "!": "#3a0c10",                  // ruby (status signs, red buttons)
+  ":": "#8ff0c4", "|": "#3fbf88", "$": "#1f9a6a", "-": "#1f6b4c", ",": "#0d3b2a",                  // emerald (green badge and buttons)
+  "/": "#5a3a12",                                                                                 // dark gold (button base)
   "(": "#2e2527", ")": "#3d3132", "[": "#4f3f3d", "]": "#65514c", "{": "#7e6860", "}": "#9a8478",  // warm rock
   "<": "#3c5a3a", ">": "#5b8350", "=": "#86b06a", "+": "#b5d48c",                                 // grass and leaves
   "~": "#8a5a3c", "^": "#b07a4e", "@": "#d8a874",                                                 // bark, path, sand

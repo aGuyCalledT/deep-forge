@@ -29,7 +29,22 @@ icon("heart", (c) => { c.circ(4, 5, 3, "P"); c.circ(10, 5, 3, "P"); c.poly([1, 6
 icon("mood", (c) => { c.circ(7, 7, 6, "j"); c.px(5, 5, "w"); c.px(9, 5, "w"); c.line(4, 9, 7, 11, "w"); c.line(7, 11, 10, 9, "w"); c.px(3, 8, "P"); c.px(11, 8, "P"); });
 icon("box", (c) => { c.rect(1, 3, 12, 10, "V"); c.box(1, 3, 12, 10, "v"); c.hline(1, 6, 12, "v"); c.rect(5, 6, 4, 2, "u"); });
 icon("dwarf", (c) => { c.circ(7, 5, 4, "A"); c.rect(3, 1, 8, 3, "P"); c.px(5, 5, "e"); c.px(9, 5, "e"); c.ellipse(7, 10, 4, 3, "R"); });
-icon("close", (c) => { c.line(3, 3, 11, 11, "c", 2); c.line(11, 3, 3, 11, "c", 2); });
+// close: an X, left half mirrored, so both arms are the same
+sprite("ui_close", { mx: true, outline: "k" }, `
+  .......
+  .......
+  ..cc...
+  ...cc..
+  ....cc.
+  .....cc
+  ......c
+  ......c
+  .....cc
+  ....cc.
+  ...cc..
+  ..cc...
+  .......
+  .......`);
 icon("up", (c) => { c.poly([7, 2, 13, 8, 1, 8], "c"); c.rect(5, 8, 4, 4, "c"); });
 icon("down", (c) => { c.poly([7, 12, 13, 6, 1, 6], "c"); c.rect(5, 2, 4, 4, "c"); });
 icon("trend_up", (c) => { c.poly([7, 3, 13, 10, 1, 10], "h"); });
@@ -59,12 +74,118 @@ icon("menu", (c) => { for (const y of [2, 6, 10]) { c.rect(1, y, 12, 2, "c"); } 
 icon("door", (c) => { c.rect(3, 3, 8, 10, "W"); c.ellipse(7, 4, 4, 3, "W"); c.rect(4, 4, 6, 9, "v"); for (const x of [6, 8]) c.vline(x, 3, 10, "W"); c.px(9, 8, "j"); c.hline(1, 13, 12, "5"); });
 
 // Status over rooms and dwarves: stopped (red octagon), needs attention (ui_warn), resting / not needed (grey dots).
-icon("stop", (c) => {
-  c.poly([4, 0, 9, 0, 13, 4, 13, 9, 9, 13, 4, 13, 0, 9, 0, 4], "f");
-  c.poly([4, 1, 9, 1, 12, 4, 12, 5, 1, 5, 1, 4], "F");
-  c.rect(6, 3, 2, 6, "C"); c.rect(6, 10, 2, 2, "C");
-});
+// stop: an embossed red octagon, light top edge, darker lower part. Left half, mirrored.
+sprite("ui_stop", { mx: true, outline: "k" }, `
+  ....***
+  ...*&&&
+  ..*&&&&
+  .*&&&&C
+  &&&&&&C
+  &&&&&&C
+  &&&&&&C
+  &&&&&&C
+  &&&&&&C
+  ffffff&
+  .fffffC
+  ..ffffC
+  ...ffff
+  ....fff`);
+// good: an emerald with a cream ! (tabs with something good to do). 12 x 12, mirrored.
+sprite("ui_good", { mx: true, outline: "k" }, `
+  ...|||
+  .|||||
+  .|$$$C
+  $$$$$C
+  $$$$$C
+  $$$$$C
+  $$$$$C
+  ----$$
+  ----$C
+  .----C
+  .-----
+  ...---`);
 icon("idle", (c) => {
   c.rect(1, 4, 12, 6, "5"); c.hline(2, 3, 10, "5"); c.hline(2, 10, 10, "5"); c.hline(2, 4, 10, "6");
   for (const x of [3, 6, 9]) c.rect(x, 6, 2, 2, "2");
 });
+
+// ---------------------------------------------------------------- window X and button plates
+// The X button on windows: a round forged iron plate with a cream X, standing on its base.
+// 20 x 20, left half mirrored. "_down" is the same plate pressed into its base.
+const XBTN = `
+  ......kkkk
+  ....kk6666
+  ...k665555
+  ..k6555555
+  .k65555555
+  .k655CC555
+  k65555CC55
+  k655555CC5
+  k6555555CC
+  k65555555C
+  k54444444C
+  k5444444CC
+  k444444CC4
+  .k4444CC44
+  .k444CC444
+  ..k4444444
+  ..k1333333
+  ...k113333
+  ....kk1111
+  ......kkkk`.split("\n").slice(1);
+sprite("ui_xbtn", { mx: true }, XBTN.join("\n"));
+sprite("ui_xbtn_down", { mx: true }, ["  ..........", ...XBTN.slice(0, 16), "  ...k333333", "  ....kk3333", "  ......kkkk"].join("\n"));
+
+// Button plates for CSS border-image (24 x 21, slice 7 4 7 4): the corners stay, the middle stretches.
+// The middle columns and rows are one flat colour so stretching keeps the pixels clean.
+// H highlight, L light, B body, D dark, E the base the plate stands on. "_down" is pressed in.
+const PLATE = `
+  ..kkkkkkkkkk
+  .kHHHHHHHHHH
+  kHLLLLLLLLLL
+  kLLLLLLLLLLL
+  kLHBBBBBBBBB
+  kLDBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kBDDDDDDDDDD
+  kDDDDDDDDDDD
+  kkkkkkkkkkkk
+  kEEEEEEEEEEE
+  .kEEEEEEEEEE
+  ..kkkkkkkkkk`;
+const PLATE_DOWN = `
+  ............
+  ............
+  ..kkkkkkkkkk
+  .kLLLLLLLLLL
+  kLBBBBBBBBBB
+  kLHBBBBBBBBB
+  kLDBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kLBBBBBBBBBB
+  kBDDDDDDDDDD
+  kDDDDDDDDDDD
+  kkkkkkkkkkkk
+  .kEEEEEEEEEE
+  ..kkkkkkkkkk`;
+const PLATES = { iron: "6543" + "1", gold: "8jOo/", green: ":|$-,", red: "*&?;!" };
+for (const [name, keys] of Object.entries(PLATES)) {
+  const map = (g) => g.replace(/[HLBDE]/g, (ch) => keys["HLBDE".indexOf(ch)]);
+  sprite("btn_" + name, { mx: true }, map(PLATE));
+  sprite("btn_" + name + "_down", { mx: true }, map(PLATE_DOWN));
+}

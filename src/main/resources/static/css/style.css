@@ -160,35 +160,33 @@ input, select, button, textarea { font: inherit; color: inherit; }
 
 /* ================================================================ buttons: forged plates that stand up and press in */
 .btn {
-  --b0: var(--iron-1); --b1: var(--iron-2); --b2: var(--iron-3); --b3: var(--iron-4); --fg: var(--ink);
-  appearance: none; border: 0; cursor: pointer; touch-action: manipulation; position: relative;
+  --plate: var(--plate-iron); --plate-down: var(--plate-iron-down); --fg: var(--ink);
+  appearance: none; cursor: pointer; touch-action: manipulation; position: relative;
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  min-height: 42px; padding: 0 16px 2px; margin-bottom: 4px;
+  min-height: 42px; padding: 4px 14px 10px; margin-bottom: 4px;
   font: 800 15px/1.1 var(--f-sc); letter-spacing: 0.04em; color: var(--fg);
-  border-radius: 7px;
-  background: linear-gradient(180deg, var(--b3), var(--b2) 12%, var(--b1) 55%, var(--b0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px #0b0b0e, 0 4px 0 #0b0b0e, 0 6px 8px rgba(0, 0, 0, 0.45);
+  /* a pixel-art plate (24 x 21 at 2x): the corners stay, the flat middle stretches to any width */
+  border: 0 solid transparent; background: none;
+  border-image: var(--plate) 7 4 7 4 fill / 14px 8px 14px 8px stretch; image-rendering: pixelated;
   text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
-  transform: translateY(0); transition: transform 0.06s, box-shadow 0.06s, filter 0.15s;
+  transition: filter 0.15s;
 }
 .btn:hover { filter: brightness(1.12); }
-.btn:active, .btn.pressed {
-  transform: translateY(3px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 2px 5px rgba(0, 0, 0, 0.45), 0 0 0 1px #0b0b0e, 0 1px 0 #0b0b0e, 0 2px 3px rgba(0, 0, 0, 0.4);
-}
-.btn:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 4px; }
-.btn.primary, .btn.gold, .btn.collect { --b0: var(--gold-0); --b1: var(--gold-1); --b2: var(--gold-2); --b3: var(--gold-4); --fg: #2a1806; text-shadow: 0 1px 0 rgba(255, 240, 190, 0.6); }
-.btn.good, .btn.green { --b0: #0d3b2a; --b1: #17654a; --b2: #2a9a6e; --b3: #9ff0c8; }
-.btn.danger, .btn.red { --b0: #3a0c10; --b1: #761c24; --b2: #b23440; --b3: #ff9aa2; }
-.btn.small { min-height: 36px; padding: 0 12px 1px; font-size: 13.5px; border-radius: 6px; }
+.btn:active, .btn.pressed { border-image-source: var(--plate-down); padding-top: 6px; padding-bottom: 8px; }
+.btn:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; border-radius: 4px; }
+.btn.primary, .btn.gold, .btn.collect { --plate: var(--plate-gold); --plate-down: var(--plate-gold-down); --fg: #2a1806; text-shadow: 0 1px 0 rgba(255, 240, 190, 0.6); }
+.btn.good, .btn.green { --plate: var(--plate-green); --plate-down: var(--plate-green-down); }
+.btn.danger, .btn.red { --plate: var(--plate-red); --plate-down: var(--plate-red-down); }
+.btn.small { min-height: 36px; padding: 3px 10px 9px; font-size: 13.5px; }
+.btn.small:active { padding-top: 5px; padding-bottom: 7px; }
 .btn.ghost {
-  --fg: var(--muted); background: rgba(0, 0, 0, 0.25); text-shadow: none;
+  --fg: var(--muted); background: rgba(0, 0, 0, 0.25); text-shadow: none; border-image: none; border-radius: 7px; padding-top: 0; padding-bottom: 2px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .btn.ghost:hover { --fg: var(--ink); filter: none; background: rgba(0, 0, 0, 0.35); }
-.btn.ghost:active { transform: translateY(1px); }
-.btn:disabled, .btn[disabled] { cursor: not-allowed; filter: grayscale(0.8) brightness(0.7); transform: none; }
-.btn.big { min-height: 54px; font-size: 19px; width: 100%; border-radius: 8px; }
+.btn.ghost:active { transform: translateY(1px); padding-top: 0; padding-bottom: 2px; }
+.btn:disabled, .btn[disabled] { cursor: not-allowed; filter: grayscale(0.8) brightness(0.7); border-image-source: var(--plate); padding-top: 4px; padding-bottom: 10px; }
+.btn.big { min-height: 54px; font-size: 19px; width: 100%; }
 .btn .icon { width: 16px; height: 16px; }
 
 /* ---------- inputs: engraved slots */
@@ -360,29 +358,28 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
 }
 .panel-head .plate { flex: 1; margin: 0; min-width: 0; }
 .panel-head .plate h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.icon-btn {
-  width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer;
-  background: radial-gradient(circle at 35% 30%, var(--iron-4), var(--iron-2) 60%, var(--iron-0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 0 1px #000, 0 3px 0 #000, 0 4px 6px rgba(0, 0, 0, 0.5);
+/* round forged X plate (pixel art, 20 x 20 at 2x) for windows and the drawer */
+.icon-btn, .sheet-x {
+  width: 40px; height: 40px; flex: none; border: 0; padding: 0; cursor: pointer;
+  background: var(--xbtn) center / 40px 40px no-repeat; image-rendering: pixelated;
 }
-.icon-btn:hover { filter: brightness(1.15); }
-.icon-btn:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 0 1px #000, 0 1px 0 #000; }
+.icon-btn:hover, .sheet-x:hover { filter: brightness(1.15); }
+.icon-btn:active, .sheet-x:active { background-image: var(--xbtn-down); }
 
 /* ---------- tools over the scene: small forged buttons */
 .scene-tools { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; z-index: 3; }
 .scene-wrap.scroll .scene-tools { position: sticky; top: 8px; left: 8px; }
 .tool-row { display: flex; flex-wrap: wrap; gap: 8px; pointer-events: auto; }
 .tool {
-  --b0: var(--iron-1); --b1: var(--iron-2); --b2: var(--iron-3); --b3: var(--iron-4);
-  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px 1px; border: 0; border-radius: 6px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 4px 12px 10px; cursor: pointer;
   font: 800 14px var(--f-sc); letter-spacing: 0.03em; color: var(--ink); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
-  background: linear-gradient(180deg, var(--b3), var(--b2) 12%, var(--b1) 55%, var(--b0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 0 1px #0b0b0e, 0 3px 0 #0b0b0e, 0 5px 8px rgba(0, 0, 0, 0.45);
-  transition: transform 0.06s;
+  background: none; border: 0 solid transparent;
+  border-image: var(--plate-iron) 7 4 7 4 fill / 14px 8px 14px 8px stretch; image-rendering: pixelated;
 }
 .tool:hover { filter: brightness(1.12); }
-.tool:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 0 1px #0b0b0e, 0 1px 0 #0b0b0e; }
-.tool.on { --b0: var(--gold-0); --b1: var(--gold-1); --b2: var(--gold-2); --b3: var(--gold-4); color: #2a1806; text-shadow: 0 1px 0 rgba(255, 240, 190, 0.6); }
+.tool:active { border-image-source: var(--plate-iron-down); padding-top: 6px; padding-bottom: 8px; }
+.tool.on { border-image-source: var(--plate-gold); color: #2a1806; text-shadow: 0 1px 0 rgba(255, 240, 190, 0.6); }
+.tool.on:active { border-image-source: var(--plate-gold-down); }
 .clock, .tool-hint, .tool-cost {
   background: var(--grain), linear-gradient(180deg, rgba(53, 56, 68, 0.94), rgba(21, 22, 27, 0.94)); color: var(--muted);
   box-shadow: inset 0 0 0 1px rgba(201, 150, 60, 0.45), 0 0 0 1px #000, 0 4px 8px rgba(0, 0, 0, 0.5); border-radius: 6px;
@@ -410,8 +407,9 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
   background: linear-gradient(180deg, var(--gold-4), var(--gold-2) 15%, var(--gold-1) 70%, var(--gold-0));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 0 1px #000, 0 2px 0 #000;
 }
-.tab .dot { position: absolute; top: 5px; right: calc(50% - 20px); width: 10px; height: 10px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, var(--ruby-hi), var(--ruby) 55%, #5a0c16); box-shadow: 0 0 0 1.5px #000, 0 1px 2px rgba(0, 0, 0, 0.6); }
+/* green emerald with ! (pixel art, 14 x 14 at 2x): something good to do in this tab */
+.tab .dot { position: absolute; top: 0; right: calc(50% - 30px); width: 28px; height: 28px;
+  background: var(--badge-good) center / 28px 28px no-repeat; image-rendering: pixelated; }
 
 /* ---------- wide screens: tabs on top, the drawer on the right */
 @media (min-width: 900px) {
@@ -421,7 +419,7 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
   .tabs { order: -1; padding: 6px 10px 7px; box-shadow: inset 0 -2px 0 var(--gold-1), inset 0 -3px 0 #000, 0 4px 12px rgba(0, 0, 0, 0.5); }
   .top { order: -2; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 0 #000; }
   .tab { flex: none; height: 40px; padding: 0 16px 1px; flex-direction: row; gap: 8px; font-size: 15px; }
-  .tab .dot { top: 4px; right: 4px; }
+  .tab .dot { top: -12px; right: -14px; }
   .panel { left: auto; top: 28px; right: 16px; bottom: 16px; width: 470px; height: auto; }
   .alerts { right: auto; max-width: calc(100% - 520px); flex-direction: column; align-items: flex-start; }
   .main:not(.drawer) .alerts { max-width: 60%; }
@@ -440,14 +438,7 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
   display: flex; flex-direction: column;
 }
 .sheet-scroll { position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 10px 8px 12px 10px; padding: 20px 10px calc(14px + env(safe-area-inset-bottom)) 8px; }
-.sheet-x {
-  position: absolute; top: 16px; right: 18px; z-index: 4; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer;
-  background: radial-gradient(circle at 35% 30%, var(--iron-4), var(--iron-2) 60%, var(--iron-0));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 0 1px #000, 0 3px 0 #000, 0 4px 6px rgba(0, 0, 0, 0.5);
-}
-.sheet-x:hover { filter: brightness(1.15); }
-.sheet-x:active { transform: translateY(2px); }
-.sheet-x .icon { width: 16px; height: 16px; }
+.sheet-x { position: absolute; top: 16px; right: 18px; z-index: 4; }
 #sheet-content > div > h2:first-child, #sheet-content > h2:first-child { margin-right: 50px; }
 @media (min-width: 700px) { .sheet { align-items: center; } .sheet-body { margin-bottom: 0; } }
 /* pop-over next to the thing you clicked: the scene stays visible and clickable */
@@ -475,8 +466,8 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
 
 /* little "i" buttons with an explanation */
 .info-wrap { display: inline; }
-.info { display: inline-grid; place-items: center; width: 26px; height: 26px; margin: -4px 0 -4px 4px; vertical-align: middle; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; opacity: 0.85; }
-.info:hover, .info[aria-expanded=true] { opacity: 1; background: rgba(255, 255, 255, 0.1); }
+button.info { display: inline-grid; place-items: center; width: 26px; height: 26px; margin: -4px 0 -4px 4px; vertical-align: middle; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; opacity: 0.85; }
+button.info:hover, button.info[aria-expanded=true] { opacity: 1; background: rgba(255, 255, 255, 0.1); }
 .info-tip { display: block; margin: 6px 0; padding: 8px 11px; border-radius: 6px; color: var(--ink); font: 500 14px/1.45 var(--f-body); text-shadow: none;
   background: linear-gradient(180deg, rgba(42, 91, 192, 0.3), rgba(28, 36, 64, 0.5)); box-shadow: inset 0 0 0 1px rgba(156, 192, 255, 0.35); }
 .info-tip[hidden] { display: none !important; }
@@ -754,7 +745,8 @@ table.cities .best .money .coin { color: var(--good); }
 .rule-form label { margin: 8px 0; }
 .stepper { display: inline-flex; align-items: center; gap: 10px; }
 .stepper b { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; font-size: 17px; }
-.stepper .btn { min-width: 40px; min-height: 40px; padding: 0; }
+.stepper .btn { min-width: 40px; min-height: 40px; padding: 3px 0 9px; }
+.stepper .btn:active { padding-top: 5px; padding-bottom: 7px; }
 label.inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
 label.inline input { display: inline-block; margin: 0; }
 .row.wrap { flex-wrap: wrap; }

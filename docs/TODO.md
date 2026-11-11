@@ -201,3 +201,10 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.
 - [ ] Kleinigkeiten: Fächer-Muster im Fels glätten, größere Scheren der Magmakrabbe, zweiter Arm des Ogers,
       Lichtringe in Stufen statt Kreisen.
+- [x] **Symmetrische Symbole:** Stoppschild (geprägtes Achteck), gelbes Dreieck, grüner Pfeil und X als gespiegelte
+  Hälften neu gezeichnet.
+- [x] **Grünes Abzeichen** (Smaragd mit !) statt rotem Punkt auf den Tabs.
+- [x] **Neues Fenster-X** als Pixel-Platte, die sich eindrückt (Fenster und Schublade).
+- [x] **Knopfplatten** in Eisen, Gold, Grün, Rot als dehnbares `border-image` für alle `.btn` und `.tool`.
+- [x] Klick ins Tal öffnet nicht mehr die Mine; Logzeilen der Art `info` wurden vom Info-Knopf-Stil zerdrückt.
+- [ ] Übrige Symbole noch nicht ganz symmetrisch: Totenkopf, Herz, Info, Schloss, Pfeile hoch/runter.
