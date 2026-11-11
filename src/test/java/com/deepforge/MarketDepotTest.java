@@ -30,6 +30,18 @@ class MarketDepotTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void aNewWorldStartsWithAWeekOfHistory() {
+        Market m = Market.inMemory(11, T0);
+        m.warmUp(T0);
+        Map<String, Object> g = m.good("bar:copper");
+        assertEquals(336, ((List<Double>) g.get("world")).size());
+        Map<String, List<Double>> cities = (Map<String, List<Double>>) g.get("cities");
+        for (List<Double> h : cities.values()) assertEquals(84, h.size());
+        assertTrue(((List<Double>) g.get("world")).stream().distinct().count() > 50, "the price moved during the week");
+    }
+
+    @Test
     void dumpingHitsTheFloorAndBuyingTheCeiling() {
         Market m = Market.inMemory(10, T0);
         m.sell("stonebridge", "bar:copper", 100_000, 1, 5);

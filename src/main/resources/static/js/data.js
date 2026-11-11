@@ -54,7 +54,26 @@ export function category(k) {
   return byId.raws[k] ? byId.raws[k].category : 'materials';
 }
 
-export function marketKey(k) { return isItem(k) || k.startsWith('wear:') ? 'cat:' + category(k) : k; }
+/** Market key: one price per item type (all battle axes), one for all clothes, everything else its own. */
+export function marketKey(k) {
+  if (k.startsWith('wear:')) return 'cat:clothing';
+  if (isItem(k)) return 'type:' + parseItem(k).type;
+  return k;
+}
+
+/** Display name of a market key: "Battle axes", "Copper bar". */
+export function marketName(mk) {
+  const g = G.market && G.market.goods[mk];
+  if (g) return g.name;
+  if (mk.startsWith('type:')) return byId.items[mk.slice(5)].name + 's';
+  return mk === 'cat:clothing' ? 'Clothes' : goodName(mk);
+}
+
+/** The good a market key's price is quoted for (a common bronze axe, a linen shirt...). */
+export function refGood(mk) { return (G.market && G.market.goods[mk] && G.market.goods[mk].ref) || mk; }
+
+/** Does this stock key belong to the market key? */
+export function inMarket(k, mk) { return marketKey(k) === mk; }
 
 export function baseValue(k) {
   if (k.startsWith('wear:')) { const c = byId.clothes[k.split(':')[1]]; return c ? c.value : 0; }
@@ -70,28 +89,62 @@ export function baseValue(k) {
 }
 
 export function liquidity(mk) {
-  if (mk.startsWith('cat:')) return 180;
-  return 2000 / Math.sqrt(Math.max(1, baseValue(mk)));
+  const l = G.market && G.market.liquidity && G.market.liquidity[mk];
+  if (l) return l;
+  if (mk.startsWith('type:') || mk.startsWith('cat:')) return 150;
+  return 2000 / Math.sqrt(Math.max(1, baseValue(mk) / 100));
 }
 
-/** Estimated sale price per unit in a city (before volume impact). */
+/** Price multiplier of a market key in a city (1 = base price). */
+export function cityMult(city, mk) {
+  const c = G.market && G.market.cities[city];
+  return (c && c.mult && c.mult[mk]) || 1;
+}
+
+/** Estimated sale price per unit in a city, in Jots (before volume impact). */
 export function sellPrice(city, k, bonus = 1) {
-  const m = G.market;
-  if (!m) return baseValue(k);
-  const idx = m.index[marketKey(k)] ?? 1;
-  const dem = (m.cities[city] && m.cities[city].demand && m.cities[city].demand[category(k)]) || 1;
-  return baseValue(k) * idx * dem * bonus;
+  return baseValue(k) * cityMult(city, marketKey(k)) * bonus;
 }
 
+/** What a city asks when you buy one, in Jots. */
 export function buyPrice(city, k, bonus = 1) {
-  return sellPrice(city, k, 1) * (G.market ? G.market.buySpread : 1.25) / bonus;
+  return baseValue(k) * cityMult(city, marketKey(k)) * (G.market ? G.market.buySpread : 1.25) / bonus;
 }
+
+/** How hard your trades move this price (1 for a small trader, more with a big market share). */
+export function marketPower(mk) { return (G.market && G.market.power && G.market.power[mk]) || 1; }
 
 /** Revenue for selling q units at once, including the price drop. */
 export function saleEstimate(city, k, q, bonus = 1) {
   if (q <= 0) return 0;
-  const x = q / liquidity(marketKey(k));
+  const mk = marketKey(k), x = q / liquidity(mk) * marketPower(mk);
   return q * sellPrice(city, k, bonus) * (1 - Math.exp(-x)) / x;
+}
+
+// Money: the server keeps Jots. 1 Gold Mark = 100 Silver Talents, 1 Talent = 10 Copper Jots.
+export const JOT = 1, TALENT = 10, MARK = 1000;
+
+/** The two biggest denominations of an amount in Jots: [['mark', 2], ['talent', 35]]. */
+export function moneyParts(j) {
+  j = Math.round(Math.abs(j || 0));
+  const m = Math.floor(j / MARK), t = Math.floor((j % MARK) / TALENT), k = j % TALENT;
+  const out = [];
+  if (m) out.push(['mark', m]);
+  if (t && m < 1000) out.push(['talent', t]);
+  if (k && !m) out.push(['jot', k]);
+  if (!out.length) out.push(['jot', 0]);
+  return out.slice(0, 2);
+}
+
+/** Money as text: "2 M 35 T", "4 T 5 J". */
+export function moneyText(j) {
+  return (j < 0 ? '-' : '') + moneyParts(j).map(([d, n]) => fmt(n) + ' ' + d[0].toUpperCase()).join(' ');
+}
+
+/** Long money text for sentences: "2 Marks 35 Talents". */
+export function moneyWords(j) {
+  const name = { mark: ['Mark', 'Marks'], talent: ['Talent', 'Talents'], jot: ['Jot', 'Jots'] };
+  return moneyParts(j).map(([d, n]) => fmt(n) + ' ' + name[d][n === 1 ? 0 : 1]).join(' ');
 }
 
 export function fmt(n) {
@@ -133,7 +186,7 @@ export function jobLabel(d) {
   switch (d.job) {
     case 'miner': return 'Miner · ' + G.data.layers[d.layer].name;
     case 'worker': { const b = building(d.building); return b ? buildingName(b) : 'Worker'; }
-    case 'warrior': return d.post === 'mine' ? 'Warrior · mine patrol' : 'Warrior · gate';
+    case 'warrior': return d.post === 'mine' ? 'Warrior · mine patrol' : 'Guard · entrance hall';
     case 'merchant': return 'Merchant';
     default: return 'Idle';
   }
@@ -142,7 +195,7 @@ export function jobLabel(d) {
 export function costText(c) {
   if (!c) return '';
   const parts = [];
-  if (c.coins) parts.push(fmt(c.coins) + ' coins');
+  if (c.coins) parts.push(moneyWords(c.coins));
   for (const [k, v] of Object.entries(c.goods || {})) parts.push(v + ' ' + goodName(k).toLowerCase());
   return parts.join(', ');
 }

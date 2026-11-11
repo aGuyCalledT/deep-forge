@@ -32,7 +32,7 @@ und hier.
 | Lager | `500 × 1,4^(Stufe−1)` (Pilze und Bier zählen nicht) |
 | Gebäudestufe | `+25 %` Tempo pro Stufe |
 | Maschinen | jede Werkstatt hat `min(5, Stufe)` Maschinen, jede braucht einen eigenen Zwerg und arbeitet ihre eigene Bestellung ab (gemeinsame Warteschlange, gemeinsame Hitze im Schmelzofen) |
-| Maschine | kommt mit jedem Ausbau dazu (keine eigenen Kosten). Abgebaute Maschinen wieder aufstellen kostet `60 × Stufe` Münzen + `15 × Stufe` Stein (`Rules.machineCost`); der Raum wird um `MACHINE_CELLS` Zellen breiter. Ist rechts kein Platz, rückt er nach links oder zieht an die nächste freie Stelle (gleiche Etage zuerst) |
+| Maschine | kommt mit jedem Ausbau dazu (keine eigenen Kosten). Abgebaute Maschinen wieder aufstellen kostet `6 × Stufe` Marks + `15 × Stufe` Stein (`Rules.machineCost`); der Raum wird um `MACHINE_CELLS` Zellen breiter. Ist rechts kein Platz, rückt er nach links oder zieht an die nächste freie Stelle (gleiche Etage zuerst) |
 | Schmelzen | 180 s × Hitzefaktor des Metalls, Blasebalg bis ×2 (+7 Hitze pro Tipp, −4 pro Sekunde) |
 | Legierung | 120 s × Hitzefaktor × max(1, Ausbeute/2) |
 | Schmieden | 100 s × Barren × √Hitzefaktor |
@@ -56,15 +56,41 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
 ## Werte
 
 - Warenwert = `Metallwert × Barren × Typfaktor × Qualität × Veredelung` (geschärft ×1,3, graviert ×1,4, Edelstein ×1,8).
-- Kleidung: Stoff 4 Münzen, Kleidung 6–26 (Flickenhemd 6, Strickpullover 16, bestickte Tunika 26); also etwa das
-  Doppelte bis Dreifache des Stoffs. Eigene Markt-Kategorie `clothing` mit einem gemeinsamen Kurs; Stonebridge ×1,1,
-  Amberfall ×1,2. Brille, Ohrringe und Grubenhelm lassen sich nicht nähen.
+- Kleidung: Stoff 4 Marks, Kleidung 6–26 Marks (Flickenhemd 6, Strickpullover 16, bestickte Tunika 26); also etwa das
+  Doppelte bis Dreifache des Stoffs. Eigene Markt-Sorte `cat:clothing` mit einem gemeinsamen Kurs. Brille, Ohrringe und Grubenhelm lassen sich nicht nähen.
 - Erz ist 45 % eines Barrens wert. Legierungen sind immer mehr wert als ihre Zutaten.
-- Verkauf: `Grundwert × globaler Kurs × Stadt-Nachfrage × Händlerbonus`.
-  Menge: `Erlös = q × Preis × (1 − e^(−q/L)) / (q/L)`, danach Kurs × `e^(−q/L)`.
-  Liquidität `L = 2000 / √Grundwert` (Kupferbarren ≈ 630, Gold ≈ 260), Waren-Kategorien 180.
-- Einkauf: 25 % teurer als Verkauf, hebt den Kurs.
-- Kurs: Ornstein-Uhlenbeck im Log-Raum, Rückkehr-Halbwertszeit ca. 8 h, Grenzen 0,35–3.
+
+## Geld
+
+- Gold Mark = 100 Silver Talents, Silver Talent = 10 Copper Jots. Intern rechnet alles in Jots (`Rules.JOTS_PER_MARK` = 1000).
+- Alte Spielstände (`Fortress.version` < 2): Münzen und Artefakte × 100 (`Factory.toVersion2`), eine alte Münze = 100 Jots.
+  Ein Kupferbarren ist 1 Mark wert. Neue Festungen starten mit 30 Marks.
+
+## Markt (`Market.java`)
+
+- Sorten: jede Ware hat ihren Schlüssel; Gegenstände eines Typs teilen sich `type:<typ>`, alle Kleidung `cat:clothing`.
+  Der Kurs gilt für eine Bezugsware (Typ aus Bronze, Edles aus Silber, sonst Kupfer; Kleidung: Leinenhemd).
+- Stadtpreis = `Grundwert × e^(g + c)`, begrenzt auf 10 %–1000 % des Grundwerts (`Market.MIN/MAX`).
+  `g` ist der Weltkurs (Rückkehr zum Grundwert in etwa 24 h, Streuung 0,25), `c` der Stadtkurs (Rückkehr zu ln(Nachfrage)
+  in etwa 6 h, Streuung 0,15). Die Nachfrage jeder Stadt wechselt alle 4 h und kommt mit einer Nachricht.
+- NPC-Städte handeln nicht untereinander; Preise bewegen sich nur durch Zufall und Spieler.
+- Handel: `x = q / L × Macht`. Die gehandelte Stadt bewegt sich um x (Verkauf runter, Kauf rauf), der Weltkurs um
+  `x × Stadtanteil`, also bewegen sich alle anderen Städte um den Anteil der Stadt mit. Stadtanteile: Stonebridge 22 %,
+  Ironmarch 20 %, Amberfall 18 %, Saltreach 16 %, Highcrag 12 %, Emberton 12 %.
+  Erlös: `q × Preis × (1 − e^(−x)) / x`. Liquidität `L = 2000 / √(Grundwert / 100)` (Kupferbarren 2000), Typen und
+  Kleidung 150.
+- Einkauf: 25 % teurer als Verkauf (`BUY_SPREAD`), hebt den Kurs.
+- Verlauf: Weltkurs alle 30 min, Städte alle 2 h, je 7 Tage.
+- Marktanteil je Sorte: gehandelter Wert (Kauf und Verkauf, Jots) als gleitender Wert mit 7 Tagen Zeitkonstante
+  (`Rules.SHARE_DAYS`). `Anteil = (V + B) / (V + B + W)`, `W = L × 7 × Bezugswert`, `B` so, dass man mit 1 % startet.
+  Marktmacht `= √(Anteil / 1 %)`, begrenzt auf 1–5: wer viel handelt, bewegt den Preis stärker.
+
+## Handelsdepot (`Depot.java`)
+
+- Gespeicherte Karawanen: `1 + Stufe`; Regeln (WENN Vorrat ≥ N DANN schicke Karawane nach Stadt): `Stufe`, eine Regel
+  feuert erst wieder, wenn ihre Karawane zurück ist; Kauf-Aufträge: `Stufe`.
+- Kauf-Auftrag: fällt der Preis einer Stadt auf den Höchstpreis, kaufen ihre Händler eine Ladung (`10 + 10 × Stufe`),
+  solange nach dem Kauf noch die Rücklage bleibt. Bezahlt wird bei Ankunft; reicht das Geld dann nicht, ziehen sie ab.
 
 ## Kampf
 
@@ -72,33 +98,39 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
   Axt: `Härte × 1,6 × Qualität` (+25 % geschärft). Helm `Härte × 0,8 × Q`, Kettenhemd `Härte × 1,8 × Q`.
 - Siegchance = `r² / (r² + 1)` mit `r = eigene Kraft / Gegner`, begrenzt auf 3–98 %.
 - Verletzungen und Tod hängen von `r` ab; auch Sieger können sterben.
-- Überfall: `15 × 1,3^(Festungsstufe−1)`. Mauern +15 pro Stufe. Tresor schützt 10 % (ohne) bis 80 %.
+- Überfall: `15 × 1,3^(Festungsstufe−1)`. Verteidigt von den Wachen der Eingangshalle × Hallenbonus + Tor.
+  Tor: `15 × (Stufe − 1)` (Stufe 1 ist das Holztor; alte Mauern Stufe n werden Tor Stufe n + 1). Tresor schützt 10 % (ohne) bis 80 %.
+- Eingangshalle: `2 + 2 × Stufe` Wachen, Bonus `+8 % × Stufe` beim Kampf daheim. Wachen lernen beim Wachestehen und
+  Üben mit Holzstöcken `1,5 xp/h` Kampf (`Rules.GUARD_XP_PER_H`), zusätzlich zur Kaserne.
+- Kriechtiere: bis zu 3 Wachen (die stärksten) laufen von selbst hin, Weg 3 min (`Rules.CRITTER_WALK`); verlieren sie,
+  versuchen sie es nach 1 h wieder.
 - Banditen: `10 + 160 × Gefahr × (1 + 0,08 × (Stufe−1))`.
 - Expeditions-Gegner: `Gefahr × 12 × 0,7–1,25`. Empfohlene Trupp-Kraft: `Gefahr × 14`.
 
 ## Kosten
 
-- Aufwerten: `Grundpreis × Wachstum^(Stufe−1)` Münzen, Stein × 1,3^(Stufe−1), dazu `4 + 3 × Stufe` Barren
+- Aufwerten: `Grundpreis × Wachstum^(Stufe−1)` Jots, Stein × 1,3^(Stufe−1), dazu `4 + 3 × Stufe` Barren
   (bis Stufe 3 Kupfer, 4–5 Bronze, 6–8 Eisen, ab 9 Stahl).
-  Wachstum: Lager, Lift, Kaserne, Mauern, Tresor, Handelsposten 1,7 · Expeditionshalle 1,75 · Taverne 1,65 · Rest 1,55–1,6.
+  Wachstum: Lager, Lift, Kaserne, Tor, Eingangshalle, Tresor, Handelsdepot 1,7 · Expeditionshalle 1,75 · Taverne 1,65 · Rest 1,55–1,6.
 - Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener Werkstatt dieser Art.
-- Schichten: Grey Veins 800 Münzen, Silver Halls 4 000, Golden Deep 15 000 + Erkundung, Crystal Abyss 50 000 + Erkundung.
+- Schichten: Freischalten in Marks: Grey Veins 80, Silver Halls 400, Golden Deep 1 500 + Erkundung, Crystal Abyss 5 000 + Erkundung.
+  Schicht ausbauen: `25 Marks × (Schicht + 1) × 1,6^(Stufe−1)`.
 - Graben (`Rules.DIG_SECONDS`, `DIG_DEPTH`, `DIG_STONE`): Fels markieren ist frei. Ein Bergarbeiter gräbt eine Zelle
   in `300 s × Tiefenfaktor / (Arbeitstempo × Werkzeug)`; Faktor je zwei Etagen ×1 · ×1,5 · ×2,25 · ×3,25. Eine Zelle
   gräbt nur ein Zwerg, und nur, wenn links oder rechts schon offen ist (Schacht, Höhle, Gang, Raum). Jede Zelle gibt
   2 Stein. Wer gräbt, schürft in der Zeit kein Erz.
-- Bauen in der Festung (`Rules.HALL_COST` usw.): Gang 10 Münzen je Zelle, Treppenhaus (2 Zellen) 40 Münzen + 20 Stein,
-  Raum versetzen 30 Münzen + 10 Stein, Gang und Treppenhaus versetzen frei. Alles nur auf ausgegrabenem Boden.
+- Bauen in der Festung (`Rules.HALL_COST` usw.): Gang 1 Mark je Zelle, Treppenhaus (2 Zellen) 4 Marks + 20 Stein,
+  Raum versetzen 3 Marks + 10 Stein, Gang und Treppenhaus versetzen frei. Alles nur auf ausgegrabenem Boden.
   Zuschütten ist frei (Gang → leere Höhle → Fels). Zieht ein Raum beim Ausbau um, weil er wächst, kostet das nichts extra.
 - Räume ohne Gang, Treppenhaus oder Schacht daneben stehen still (`Rules.active`): sie arbeiten nicht und zählen nicht
   zur Stufe (Lager, Betten usw.).
 - Leere Höhlen (`Rules.OVERGROW_HOURS`, `CRITTER_AFTER_HOURS`, `CRITTERS_PER_DAY`, `MAX_CRITTERS`): Moos nach 2 h,
   Pilze und Wurzeln nach 8 h, wild nach 24 h. Ab 12 h kann in jedem zusammenhängenden Höhlenstück ein Kriechtier
   einziehen (1,5 pro Tag, höchstens 5): Ratten (Etage 1–2), Höhlenkriecher (3–4), Spinnen (ab 5), Stärke 60 % des
-  Minen-Monsters. Alle 4 h kämpfen die Krieger am Tor von selbst; sonst frisst es 1–3 Pilze und beißt vielleicht einen
+  Minen-Monsters. Die Wachen der Eingangshalle gehen von selbst hin (siehe Kampf); sonst frisst es 1–3 Pilze und beißt vielleicht einen
   Zwerg (6–14 Gesundheit, nie unter 10). Es verschwindet, wenn seine Höhle bebaut oder zugeschüttet wird.
 - Weg durchs Treppenhaus (nur Anzeige im Client): `0,6 s + (Abstand waagrecht + senkrecht in px) / 60 px/s`;
   Laufen sind 34 px/s.
 - Beute-Berichte (`Rules.MAX_REPORTS`): höchstens 20 warten aufs Einsammeln, sonst wird der älteste von selbst eingesammelt.
-- Festungsstufe: `150 × 1,5^(Stufe−1)` xp. Xp aus Verkäufen (1 pro 10 Münzen), Schmelzen, Schmieden, Expeditionen,
+- Festungsstufe: `150 × 1,5^(Stufe−1)` xp. Xp aus Verkäufen (1 pro Mark), Schmelzen, Schmieden, Expeditionen,
   Kämpfen, Ausbau.

@@ -21,7 +21,7 @@ public class Market {
     public static final double STEP = 60;               // seconds per market step
     public static final double DEMAND_EPOCH = 4 * 3600; // city demand changes every 4 h
     static final double THETA_G = 1.0 / (24 * 3600);     // the world level returns to the base price within a day or so
-    static final double SIGMA_G = 0.35 * Math.sqrt(2 * THETA_G);   // spread of the world level: about x0.7 .. x1.4
+    static final double SIGMA_G = 0.25 * Math.sqrt(2 * THETA_G);   // spread of the world level: about x0.6 .. x1.6 (two sigma)
     static final double THETA_C = 1.0 / (6 * 3600);      // a city recovers from a big sale within hours
     static final double SIGMA_C = 0.15 * Math.sqrt(2 * THETA_C);
     public static final double MIN = 0.10, MAX = 10.0;   // 10% .. 1000% of the base value
@@ -49,6 +49,15 @@ public class Market {
         }
         if (w == null) w = fresh(new Random().nextLong(), now());
         prepare();
+        if (w.hist.isEmpty()) warmUp(now());
+    }
+
+    /** A new world starts with a week of price history, so the charts show something from the first minute. */
+    public void warmUp(double now) {
+        w.t = now - HIST_LEN * HIST_EVERY;
+        w.histAt = w.t;
+        w.chistAt = w.t;
+        run(now);
     }
 
     static double now() {
@@ -118,6 +127,10 @@ public class Market {
     /** Advance the world market to the given time. */
     public synchronized void tick(double now) {
         if (now - w.t > 2 * 86400) w.t = now - 2 * 86400;
+        run(now);
+    }
+
+    private void run(double now) {
         Rng r = new Rng(w.rng);
         double sq = Math.sqrt(STEP);
         while (w.t + STEP <= now) {
