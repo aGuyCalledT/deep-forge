@@ -34,7 +34,8 @@ icon("hand", (c) => { c.rect(4, 6, 7, 7, "A"); for (let i = 0; i < 4; i++) c.vli
 icon("well", (c) => { c.ellipse(7, 6, 6, 5, "4"); c.rect(1, 6, 13, 8, "4"); c.ellipse(7, 7, 4, 4, "s"); c.rect(3, 7, 9, 7, "s");
   c.poly([7, 4, 10, 7, 4, 7], "y"); c.poly([7, 13, 10, 10, 4, 10], "y"); });
 icon("dig", (c) => { c.line(2, 12, 9, 3, "v"); c.poly([6, 1, 12, 1, 12, 5], "6"); c.circ(4, 4, 2, "]"); c.px(11, 11, "]"); c.px(12, 9, "]"); });
-icon("fill", (c) => { c.rect(1, 6, 12, 7, "]"); c.hline(1, 6, 12, "}"); c.rect(5, 1, 4, 4, "c"); c.poly([3, 4, 11, 4, 7, 7], "c"); });
+icon("fill", (c) => { c.rect(1, 6, 12, 7, "4"); c.hline(1, 6, 12, "6"); c.px(4, 9, "3"); c.px(9, 10, "3"); c.rect(5, 1, 4, 4, "c"); c.poly([3, 4, 11, 4, 7, 7], "c"); });
+icon("hall", (c) => { c.rect(1, 1, 12, 12, "W"); c.rect(1, 1, 12, 3, "V"); c.hline(1, 1, 12, "u"); c.rect(1, 4, 3, 9, "v"); c.rect(10, 4, 3, 9, "v"); c.vline(1, 4, 9, "V"); c.vline(10, 4, 9, "V"); c.hline(4, 12, 6, "u"); });
 icon("cheat", (c) => { c.poly([7, 0, 9, 5, 14, 5, 10, 8, 12, 13, 7, 10, 2, 13, 4, 8, 0, 5, 5, 5], "j"); c.px(7, 5, "8"); });
 icon("zoom_in", (c) => { c.ring(6, 6, 4, "c"); c.line(9, 9, 13, 13, "c", 2); c.hline(4, 6, 5, "c"); c.vline(6, 4, 5, "c"); });
 icon("zoom_out", (c) => { c.ring(6, 6, 4, "c"); c.line(9, 9, 13, 13, "c", 2); c.hline(4, 6, 5, "c"); });

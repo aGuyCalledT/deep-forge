@@ -185,8 +185,9 @@ class SimTest {
         Market m = Market.inMemory(12, T0);
         f.stock.put("bar:copper", 30);
         f.stock.put("coal", 50);
-        act(f, m, T0, "type", "dig", "col", 19, "floor", 5);
+        open(f, 19, 30, 5);
         act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
+        act(f, m, T0, "type", "hallMany", "cells", List.of(List.of(19, 5)));
         Building forge = f.buildings.stream().filter(x -> x.id.equals("forge-1")).findFirst().orElseThrow();
         assertEquals(1, Rules.maxMachines(forge));
         Rules.Cost c = Rules.upgradeCost(forge);
@@ -198,7 +199,7 @@ class SimTest {
         assertEquals(2, forge.machines);
         assertEquals(Layouts.ROOM_CELLS.get("forge") + Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
         // the room grew over the cells to its right: nothing else may stand there
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 27, "floor", 5));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "mark", "cells", List.of(List.of(27, 5))));
         act(f, m, T0, "type", "assign", "dwarf", b.id, "job", "worker", "building", "forge-1");
         assertEquals(2, Rules.workers(f, forge).size());
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "assign", "dwarf", x.id, "job", "worker", "building", "forge-1"));
@@ -230,47 +231,117 @@ class SimTest {
         }
     }
 
-    @Test
-    void aWorkshopWithoutSpaceMovesWhenUpgraded() {
-        Fortress f = fresh(12);
-        Market m = Market.inMemory(12, T0);
+    /** Dig out every rock cell from column c0 to c1 on these floors, at once. */
+    static void open(Fortress f, int c0, int c1, int... floors) {
         Layouts.ensure(f);
-        Building smelter = f.buildings.stream().filter(x -> x.type.equals("smelter")).findFirst().orElseThrow();
-        int[] before = f.layout.rooms.get(smelter.id).clone();
-        assertFalse(Layouts.canGrow(f, smelter), "the start plan packs the workshops side by side");
-        Rules.Cost c = Rules.upgradeCost(smelter);
-        f.coins += c.coins() + 10;
-        c.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
-        act(f, m, T0, "type", "upgrade", "building", smelter.id);
-        assertEquals(2, smelter.machines);
-        int[] after = f.layout.rooms.get(smelter.id);
-        assertFalse(before[0] == after[0] && before[1] == after[1]);
-        // nothing overlaps it
-        for (int x = after[0]; x < after[0] + Layouts.width(smelter); x++)
-            assertEquals("room:" + smelter.id, Layouts.at(f, x, after[1], null));
+        List<int[]> cells = new ArrayList<>();
+        for (int fl : floors) for (int c = c0; c <= c1; c++) if (Layouts.at(f, c, fl, null) == null) cells.add(new int[]{c, fl});
+        if (!cells.isEmpty()) Layouts.mark(f, cells);
+        Layouts.digAll(f, f.t);
+    }
+
+    /** A free stretch of rock this wide: [col, floor]. */
+    static int[] rock(Fortress f, int w) {
+        for (int fl = Layouts.FLOORS - 1; fl >= 0; fl--)
+            for (int c = Layouts.SHAFT + 2; c + w <= Layouts.COLS - 1; c++) {
+                boolean ok = true;
+                for (int x = c - 1; x <= c + w && ok; x++) ok = Layouts.at(f, x, fl, null) == null;
+                if (ok) return new int[]{c, fl};
+            }
+        throw new AssertionError("no rock");
     }
 
     @Test
-    void roomsNeedAHallwayAndStairwellsAreHallwaysTwoCellsWide() {
+    void roomsGoOnlyOnDugOutGroundAndStandStillWithoutAHallway() {
         Fortress f = fresh(42);
         Market m = Market.inMemory(42, T0);
         f.coins = 10000;
         f.stock.put("stone", 500);
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5),
-                "no hallway beside it");
-        act(f, m, T0, "type", "dig", "col", 19, "floor", 5);
-        act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
-        assertArrayEquals(new int[]{20, 5}, f.layout.rooms.get("forge-1"));
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "smelter-1", "col", 22, "floor", 5));
-        // the forge needs its hallway
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "fill", "col", 19, "floor", 5));
-        act(f, m, T0, "type", "stairwell", "col", 12, "floor", 6);
-        assertTrue(f.layout.wells.contains("12,6"));
-        assertEquals("well", Layouts.at(f, 13, 6, null));
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 13, "floor", 6));
-        act(f, m, T0, "type", "fill", "col", 13, "floor", 6);
-        assertTrue(f.layout.wells.isEmpty() || !f.layout.wells.contains("12,6"));
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 0, "floor", 1));
+        int[] r = rock(f, 10);
+        int c = r[0], fl = r[1];
+        Actions.GameException e = assertThrows(Actions.GameException.class,
+                () -> act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", c + 1, "floor", fl));
+        assertTrue(e.getMessage().startsWith("Dig this out first"), e.getMessage());
+        open(f, c, c + 9, fl);
+        Building forge = Rules.building(f, "forge-1");
+        act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", c + 1, "floor", fl);
+        assertArrayEquals(new int[]{c + 1, fl}, f.layout.rooms.get("forge-1"));
+        assertFalse(Rules.active(f, forge), "no hallway beside it");
+        assertEquals(0, Rules.level(f, "forge"));
+        act(f, m, T0, "type", "hallMany", "cells", List.of(List.of(c, fl)));
+        assertTrue(Rules.active(f, forge));
+        // filling the hallway in makes it stand still again; the cell stays dug out
+        act(f, m, T0, "type", "fill", "col", c, "floor", fl);
+        assertFalse(Rules.active(f, forge));
+        assertEquals("cave", Layouts.at(f, c, fl, null));
+        act(f, m, T0, "type", "fill", "col", c, "floor", fl);
+        assertNull(Layouts.at(f, c, fl, null), "an empty cave fills back to rock");
+        // a stairwell is two dug-out cells; it can't be marked, filling it leaves caves
+        act(f, m, T0, "type", "stairwell", "col", c + 8, "floor", fl);
+        assertEquals("well", Layouts.at(f, c + 9, fl, null));
+        assertTrue(Rules.active(f, forge));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "mark", "cells", List.of(List.of(c + 9, fl))));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "mark", "cells", List.of(List.of(0, 1))));
+        act(f, m, T0, "type", "fill", "col", c + 9, "floor", fl);
+        assertEquals("cave", Layouts.at(f, c + 8, fl, null));
+        // halls and stairwells move freely onto dug-out cells
+        act(f, m, T0, "type", "hallMany", "cells", List.of(List.of(c + 8, fl)));
+        act(f, m, T0, "type", "moveHall", "col", c + 8, "floor", fl, "col2", c + 9, "floor2", fl);
+        assertEquals("hall", Layouts.at(f, c + 9, fl, null));
+        assertEquals("cave", Layouts.at(f, c + 8, fl, null));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveHall", "col", c + 9, "floor", fl, "col2", c, "floor2", fl));
+    }
+
+    @Test
+    void minersDigMarkedRockDeeperTakesLonger() {
+        assertEquals(300, Rules.digSeconds(0), 1e-9);
+        assertTrue(Rules.digSeconds(7) > Rules.digSeconds(4) && Rules.digSeconds(4) > Rules.digSeconds(1));
+        Fortress f = fresh(47);
+        Market m = Market.inMemory(47, T0);
+        Layouts.ensure(f);
+        // rock right next to the shaft on some floor
+        int fl = -1;
+        for (int y = 0; y < Layouts.FLOORS && fl < 0; y++)
+            if (Layouts.at(f, 2, y, null) == null && Layouts.at(f, 3, y, null) == null && Layouts.at(f, 4, y, null) == null) fl = y;
+        assertTrue(fl >= 0);
+        int floor = fl;
+        int stone = f.stock.getOrDefault("stone", 0);
+        act(f, m, T0, "type", "mark", "cells", List.of(List.of(4, floor), List.of(2, floor), List.of(3, floor)));
+        Sim.advance(f, T0 + 60, m);
+        assertTrue(f.dwarves.stream().anyMatch(d -> ("2," + floor).equals(d.dig)), "a miner digs the cell beside the shaft");
+        assertTrue(f.dwarves.stream().noneMatch(d -> ("4," + floor).equals(d.dig)), "the far cell can't be reached yet");
+        assertNull(Layouts.at(f, 2, floor, null));
+        Sim.advance(f, T0 + 4 * 3600, m);
+        for (int c = 2; c <= 4; c++) assertEquals("cave", Layouts.at(f, c, floor, null));
+        assertTrue(f.layout.marks.isEmpty());
+        assertTrue(f.stock.getOrDefault("stone", 0) >= stone + 3 * Rules.DIG_STONE, "every dug cell gives stone");
+        assertTrue(f.dwarves.stream().allMatch(d -> d.dig == null));
+        // building needs dug-out space
+        f.coins = 100000;
+        f.stock.put("stone", 5000);
+        Actions.GameException e = assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 4 * 3600, "type", "build", "building", "grindstone"));
+        assertTrue(e.getMessage().contains("Dig tool"), e.getMessage());
+    }
+
+    @Test
+    void oldEmptyCavesGetCritters() {
+        Fortress f = fresh(48);
+        Market m = Market.inMemory(48, T0);
+        for (Dwarf d : f.dwarves) if (d.job.equals("warrior")) d.job = "idle";
+        int[] r = rock(f, 3);
+        open(f, r[0], r[0] + 2, r[1]);
+        for (int c = r[0]; c <= r[0] + 2; c++) f.layout.caves.put(c + "," + r[1], T0 - 13 * 3600.0);
+        f.stock.put("food", 500);
+        double t = T0;
+        while (f.threats.stream().noneMatch(th -> th.cell != null) && t < T0 + 30 * 86400) { t += 3600; Sim.advance(f, t, m); }
+        Threat th = f.threats.stream().filter(x -> x.cell != null).findFirst().orElseThrow();
+        assertEquals(-1, th.layer);
+        int[] at = Layouts.cell(th.cell);
+        // filling the cave in drives it out
+        for (int c = r[0]; c <= r[0] + 2; c++) Layouts.fill(f, c, r[1]);
+        Sim.advance(f, t + 3600, m);
+        assertFalse(f.threats.contains(th));
+        assertEquals(r[1], at[1]);
     }
 
     @Test
@@ -280,6 +351,7 @@ class SimTest {
         f.layout.halls.clear();
         f.layout.stairs.add("40,6");
         f.layout.doors.add("41,6");
+        f.layout.version = 0;
         Layouts.ensure(f);
         assertTrue(f.layout.stairs.isEmpty() && f.layout.doors.isEmpty());
         assertTrue(f.layout.wells.containsAll(List.of("40,6", "40,7")));
@@ -296,6 +368,7 @@ class SimTest {
         f.stock.put("bar:copper", 500);
         f.stock.put("bar:bronze", 500);
         Building forge = Rules.building(f, "forge-1");
+        open(f, Layouts.SHAFT, Layouts.COLS - 1, 0, 1, 2, 3, 4, 5, 6, 7);
         while (forge.level < 3) { act(f, m, T0, "type", "upgrade", "building", forge.id); }
         assertEquals(3, Rules.machines(forge));
         List<Dwarf> ds = f.dwarves.stream().filter(d -> d.busy == null).limit(3).toList();
@@ -326,37 +399,17 @@ class SimTest {
     }
 
     @Test
-    void buildingInTheHoldCosts() {
-        Fortress f = fresh(44);
-        Market m = Market.inMemory(44, T0);
-        f.coins = 1000;
-        f.stock.put("stone", 100);
-        act(f, m, T0, "type", "dig", "col", 10, "floor", 6);
-        assertEquals(1000 - Rules.DIG_COST.coins(), f.coins, 1e-9);
-        act(f, m, T0, "type", "stairwell", "col", 12, "floor", 6);
-        assertEquals(100 - 20, f.stock.get("stone"));
-        // a dragged stroke: taken cells are skipped, the rest is dug while coins last
-        f.coins = Rules.DIG_COST.coins() * 3;
-        act(f, m, T0, "type", "digMany", "cells", List.of(List.of(10, 6), List.of(20, 7), List.of(21, 7), List.of(22, 7), List.of(23, 7)));
-        assertTrue(f.layout.halls.containsAll(List.of("20,7", "21,7", "22,7")));
-        assertFalse(f.layout.halls.contains("23,7"));
-        assertEquals(0, f.coins, 1e-9);
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 30, "floor", 7));
-        act(f, m, T0, "type", "fillMany", "cells", List.of(List.of(20, 7), List.of(21, 7)));
-        assertFalse(f.layout.halls.contains("20,7"));
-        // moving a room costs, an upgrade that has to move it does not
-        f.coins = 0;
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 30, "floor", 5));
-    }
-
-    @Test
     void newWorkshopsGetAPlace() {
         Fortress f = fresh(43);
         Market m = Market.inMemory(43, T0);
         f.coins = 10000;
         f.stock.put("stone", 500);
+        int[] r = rock(f, 6);
+        open(f, r[0], r[0] + 5, r[1]);
+        act(f, m, T0, "type", "hallMany", "cells", List.of(List.of(r[0], r[1])));
         act(f, m, T0, "type", "build", "building", "grindstone");
-        assertTrue(f.layout.rooms.containsKey("grindstone-1"));
+        assertArrayEquals(new int[]{r[0] + 1, r[1]}, f.layout.rooms.get("grindstone-1"), "on the dug-out ground, next to the hallway");
+        assertTrue(Rules.active(f, Rules.building(f, "grindstone-1")));
     }
 
     @Test
@@ -366,6 +419,9 @@ class SimTest {
         f.coins = 10000;
         f.stock.put("stone", 500);
         f.stock.put("food", 200);
+        int[] r = rock(f, 7);
+        open(f, r[0], r[0] + 6, r[1]);
+        act(f, m, T0, "type", "hallMany", "cells", List.of(List.of(r[0], r[1])));
         act(f, m, T0, "type", "build", "building", "tailor");
         Dwarf w = f.dwarves.get(0);
         act(f, m, T0, "type", "assign", "dwarf", w.id, "job", "worker", "building", "tailor-1");

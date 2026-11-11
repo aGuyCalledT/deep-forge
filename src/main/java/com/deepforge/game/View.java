@@ -91,6 +91,7 @@ public final class View {
             m.put("machines", machines(b));
             m.put("maxMachines", maxMachines(b));
             m.put("cells", Layouts.hasRoom(b) ? Layouts.width(b) : 0);
+            m.put("active", b.level <= 0 || active(f, b));
             if (isWorkshop(b) && machines(b) < MAX_MACHINES)
                 m.put("canGrow", Layouts.hasRoom(b) && f.layout.rooms.containsKey(b.id) && Layouts.spaceToGrow(f, b) != null);
             List<String> jobNames = new ArrayList<>();
@@ -114,7 +115,13 @@ public final class View {
         for (Content.BuildingType t : Content.BUILDINGS.values())
             if (t.multi()) build.put(t.id(), buildCost(f, t.id()));
         d.put("buildCosts", build);
-        d.put("layoutCosts", Map.of("dig", DIG_COST, "stairwell", STAIRWELL_COST, "move", MOVE_COST));
+        d.put("layoutCosts", Map.of("hall", HALL_COST, "stairwell", STAIRWELL_COST, "move", MOVE_COST));
+        List<Double> digTimes = new ArrayList<>();
+        for (int fl = 0; fl < Layouts.FLOORS; fl++) digTimes.add(digSeconds(fl));
+        int diggers = 0;
+        for (Dwarf x : f.dwarves) if (x.job.equals("miner") && x.busy == null) diggers++;
+        d.put("dig", Map.of("seconds", digTimes, "overgrowHours", OVERGROW_HOURS, "critterHours", CRITTER_AFTER_HOURS,
+                "stone", DIG_STONE, "miners", diggers));
 
         // provisions per hour
         double eat = 0, drink = 0;

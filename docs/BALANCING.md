@@ -83,9 +83,20 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
   Wachstum: Lager, Lift, Kaserne, Mauern, Tresor, Handelsposten 1,7 · Expeditionshalle 1,75 · Taverne 1,65 · Rest 1,55–1,6.
 - Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener Werkstatt dieser Art.
 - Schichten: Grey Veins 800 Münzen, Silver Halls 4 000, Golden Deep 15 000 + Erkundung, Crystal Abyss 50 000 + Erkundung.
-- Bauen in der Festung (`Rules.DIG_COST` usw.): Gang 10 Münzen je Zelle, Treppenhaus (2 Zellen) 40 Münzen + 20 Stein,
-  Raum versetzen 30 Münzen + 10 Stein. Zuschütten ist frei. Zieht ein Raum beim Ausbau um, weil er wächst,
-  kostet das nichts extra, auch nicht der Gang oder das Treppenhaus, das er dort dazu braucht.
+- Graben (`Rules.DIG_SECONDS`, `DIG_DEPTH`, `DIG_STONE`): Fels markieren ist frei. Ein Bergarbeiter gräbt eine Zelle
+  in `300 s × Tiefenfaktor / (Arbeitstempo × Werkzeug)`; Faktor je zwei Etagen ×1 · ×1,5 · ×2,25 · ×3,25. Eine Zelle
+  gräbt nur ein Zwerg, und nur, wenn links oder rechts schon offen ist (Schacht, Höhle, Gang, Raum). Jede Zelle gibt
+  2 Stein. Wer gräbt, schürft in der Zeit kein Erz.
+- Bauen in der Festung (`Rules.HALL_COST` usw.): Gang 10 Münzen je Zelle, Treppenhaus (2 Zellen) 40 Münzen + 20 Stein,
+  Raum versetzen 30 Münzen + 10 Stein, Gang und Treppenhaus versetzen frei. Alles nur auf ausgegrabenem Boden.
+  Zuschütten ist frei (Gang → leere Höhle → Fels). Zieht ein Raum beim Ausbau um, weil er wächst, kostet das nichts extra.
+- Räume ohne Gang, Treppenhaus oder Schacht daneben stehen still (`Rules.active`): sie arbeiten nicht und zählen nicht
+  zur Stufe (Lager, Betten usw.).
+- Leere Höhlen (`Rules.OVERGROW_HOURS`, `CRITTER_AFTER_HOURS`, `CRITTERS_PER_DAY`, `MAX_CRITTERS`): Moos nach 2 h,
+  Pilze und Wurzeln nach 8 h, wild nach 24 h. Ab 12 h kann in jedem zusammenhängenden Höhlenstück ein Kriechtier
+  einziehen (1,5 pro Tag, höchstens 5): Ratten (Etage 1–2), Höhlenkriecher (3–4), Spinnen (ab 5), Stärke 60 % des
+  Minen-Monsters. Alle 4 h kämpfen die Krieger am Tor von selbst; sonst frisst es 1–3 Pilze und beißt vielleicht einen
+  Zwerg (6–14 Gesundheit, nie unter 10). Es verschwindet, wenn seine Höhle bebaut oder zugeschüttet wird.
 - Weg durchs Treppenhaus (nur Anzeige im Client): `0,6 s + (Abstand waagrecht + senkrecht in px) / 60 px/s`;
   Laufen sind 34 px/s.
 - Beute-Berichte (`Rules.MAX_REPORTS`): höchstens 20 warten aufs Einsammeln, sonst wird der älteste von selbst eingesammelt.

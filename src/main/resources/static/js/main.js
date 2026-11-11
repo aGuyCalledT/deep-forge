@@ -192,7 +192,13 @@ function alerts() {
   const a = [];
   if (f.siege) a.push(['bad', 'war', `Siege! ${f.siege.name} hold the gate. Workshops are shut.`]);
   if (f.raid) a.push(['bad', 'war', `${f.raid.name} (strength ${fmt(f.raid.power)}) arrive in ${dur(f.raid.arrivesAt - t)}. Gate: ${fmt(d.gatePower)}.`]);
-  for (const th of f.threats) a.push(['bad', 'war', `${th.name} in the ${G.data.layers[th.layer].name}! Mining stopped.`]);
+  for (const th of f.threats) a.push(th.cell
+    ? ['warn', 'war', `${th.name} in an overgrown cave on floor ${+th.cell.split(',')[1] + 1}. Send warriors or build there.`]
+    : ['bad', 'war', `${th.name} in the ${G.data.layers[th.layer].name}! Mining stopped.`]);
+  const still = f.buildings.filter((b) => d.buildings[b.id] && d.buildings[b.id].active === false);
+  if (still.length) a.push(['warn', 'fortress', `${byId.buildings[still[0].type].name} stands still: build a hallway beside it.`, still[0].id]);
+  const marks = (f.layout && f.layout.marks) || [];
+  if (marks.length && !(d.dig && d.dig.miners)) a.push(['warn', 'dwarves', `${marks.length} cell(s) marked to dig, but no miners. Make a dwarf a miner.`]);
   if (f.noFood) a.push(['bad', 'work', 'No food! Dwarves are starving. Staff the mushroom farm or buy food.']);
   if (f.noAle) a.push(['warn', 'work', 'Out of ale. Dwarves are unhappy.']);
   if (f.storageFull) a.push(['warn', 'fortress', 'Warehouse full - mining stopped.']);
@@ -325,10 +331,11 @@ function onPick(q, at) {
 
 // ------------------------------------------------------------------ toolbar over the hold
 
-const TOOLS = [['move', 'hand', 'Move rooms', 'Click a room, then click where it should go. Every room needs a hallway or stairwell beside it.', 'move'],
-  ['dig', 'dig', 'Dig hallway', 'Drag over rock to dig a hallway, one cell or a whole row at once.', 'dig'],
-  ['stairwell', 'well', 'Stairwell', 'A hallway two cells wide with a way into the mountain. Dwarves walk in and come out of any stairwell on another floor.', 'stairwell'],
-  ['fill', 'fill', 'Fill in', 'Drag over hallways or click a stairwell to fill it back in. Free, unless a room needs it.', null]];
+const TOOLS = [['move', 'hand', 'Move', 'Click a room, hallway or stairwell, then click where it should go. Only on dug-out ground. A room with no hallway beside it stands still.', 'move'],
+  ['dig', 'dig', 'Dig out', 'Drag over rock to mark it. Your miners dig it out with their picks, one cell each. Deeper rock takes longer. Drag over marks to take them off.', null],
+  ['hall', 'hall', 'Hallway', 'Drag over dug-out cells to build a hallway. Rooms need one beside them.', 'hall'],
+  ['stairwell', 'well', 'Stairwell', 'Two dug-out cells side by side. Dwarves walk in and come out of any stairwell on another floor.', 'stairwell'],
+  ['fill', 'fill', 'Fill in', 'Hallways and stairwells become empty caves, empty caves become rock. Empty caves overgrow, and critters move in.', null]];
 
 function renderToolbar() {
   const bar = $('scene-tools');
@@ -350,6 +357,8 @@ function renderToolbar() {
       time),
     b ? h('div', { class: 'tool-row' }, TOOLS.map(([id, icon, label]) => h('button', { class: 'tool' + (b.tool === id ? ' on' : ''), onclick: () => { b.tool = id; b.held = null; renderToolbar(); } }, img(S.icon(icon), 'icon s'), label))) : null,
     b ? toolCost(b) : null,
+    b && G.state.cheats && b.tool === 'dig' && ((F().layout || {}).marks || []).length
+      ? h('div', { class: 'tool-row' }, h('button', { class: 'tool', onclick: () => G.act({ type: 'cheatDig' }) }, img(S.icon('cheat'), 'icon s'), 'Dig now (cheat)')) : null,
     b && helpOn() ? h('div', { class: 'tool-hint' }, b.held ? 'Now click where the room should go. Right click or Esc to cancel.' : TOOLS.find((x) => x[0] === b.tool)[3]) : null].filter(Boolean));
 }
 
@@ -358,7 +367,7 @@ function toolCost(b) {
   const key = TOOLS.find((x) => x[0] === b.tool)[4];
   const cost = key && (D().layoutCosts || {})[key];
   if (!cost) return null;
-  return h('div', { class: 'tool-cost' }, h('span', null, b.tool === 'dig' ? 'Per cell' : 'Costs'), costChips(cost));
+  return h('div', { class: 'tool-cost' }, h('span', null, b.tool === 'hall' ? 'Per cell' : 'Costs'), costChips(cost));
 }
 
 // ------------------------------------------------------------------ timers

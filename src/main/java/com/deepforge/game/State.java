@@ -59,8 +59,12 @@ public final class State {
         public Map<String, int[]> rooms = new TreeMap<>();  // building id -> [col, floor]
         public Set<String> halls = new TreeSet<>();         // "col,floor"
         public Set<String> wells = new TreeSet<>();         // "col,floor": left cell of a stairwell (2 cells wide)
+        public Map<String, Double> caves = new TreeMap<>(); // dug out but empty: "col,floor" -> since when (it overgrows)
+        public List<String> marks = new ArrayList<>();      // rock the miners should dig out, in order
+        public Map<String, Double> digs = new TreeMap<>();  // dig progress in work seconds
         public Set<String> stairs = new TreeSet<>();        // old saves only: diagonal stairs, turned into stairwells
         public Set<String> doors = new TreeSet<>();         // old saves only: back doors, no longer used
+        public int version;                                 // 2: rooms may stand without a hallway (they stand still)
     }
 
     public static class Stats {
@@ -105,6 +109,7 @@ public final class State {
         public int machine = -1;      // worker: which machine (0-based); -1 = the first free one
         public String post = "fortress"; // warrior: fortress | mine
         public String busy;           // caravan:<id> | expedition:<id>
+        public String dig;            // miner: the cell ("col,floor") being dug out in the hold, or null
         public String weapon;
         public String helm;
         public String armor;
@@ -233,6 +238,7 @@ public final class State {
         public double power;
         public double since;
         public double nextHarm;
+        public String cell;           // a critter in an overgrown cave of the hold ("col,floor"); null: a monster in the mine
     }
 
     public static class Raid {

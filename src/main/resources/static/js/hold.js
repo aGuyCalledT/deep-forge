@@ -34,7 +34,7 @@ const ftop = (f) => SURF + f * RH;
 
 function grid() {
   plan = G.data.plan;
-  const f = F(), L = f.layout || { rooms: {}, halls: [], wells: [] };
+  const f = F(), L = f.layout || { rooms: {}, halls: [], wells: [], caves: {}, marks: [], digs: {} };
   const cells = new Map();    // "c,f" -> {kind, id?}
   const rooms = [];
   for (const [id, [c, fl]] of Object.entries(L.rooms)) {
@@ -45,12 +45,18 @@ function grid() {
     for (let x = c; x < c + w; x++) cells.set(x + ',' + fl, { kind: 'room', id });
   }
   for (const k of L.halls) cells.set(k, { kind: 'hall' });
+  for (const [k, since] of Object.entries(L.caves || {})) cells.set(k, { kind: 'cave', since });
+  const marks = new Map((L.marks || []).map((k) => [k, (L.digs || {})[k] || 0]));   // rock to dig: cell -> work done
+  const critters = (f.threats || []).filter((th) => th.cell).map((th) => { const [c, fl] = th.cell.split(',').map(Number); return { th, c, f: fl }; });
   // stairwells: two cells wide, the way in is an arch in the middle of the back wall
   const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + CELL }; });
   for (const w of wells) for (let dx = 0; dx < 2; dx++) cells.set((w.c + dx) + ',' + w.f, { kind: 'well', well: w });
   for (let fl = 0; fl < plan.floors; fl++) for (let c = 0; c < plan.shaft; c++) cells.set(c + ',' + fl, { kind: 'shaft' });
-  return { cells, rooms, wells };
+  return { cells, rooms, wells, marks, critters };
 }
+
+/** The rock band of a floor: every two floors the stone gets harder (Rules.rockBand). */
+const band = (fl) => Math.max(0, Math.min(3, Math.floor(fl / 2)));
 
 function walkable(g, c, fl) {
   if (fl === -1) return c >= -VC && c < 0;
@@ -152,7 +158,7 @@ function want(g, d, ctx) {
     if (r < 6 && ctx.seats.length) { const s = ctx.seats.shift(); return { f: s.f, x: s.x, pose: s.pose }; }
     const chat = S.hash('chat' + d.id + sch.k) % 2 ? 'talk' : 'idle';     // half of them stand and chat
     if (r < 8) {
-      const cells = [...g.cells.entries()].filter(([, v]) => v.kind === 'hall' || v.kind === 'well' || v.kind === 'room');
+      const cells = [...g.cells.entries()].filter(([, v]) => (v.kind === 'hall' || v.kind === 'well' || v.kind === 'room') && !(v.kind === 'room' && !roomActive(v.id)));
       if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + CELL / 2, pose: chat }; }
     }
     return { f: -1, x: SURFACE.wall + 110 + (S.hash('stroll' + d.id) % (-FACE - 40 - SURFACE.wall - 110)), pose: chat };
@@ -172,6 +178,12 @@ function want(g, d, ctx) {
       return { f: r.f, x: r.x + 10 + (S.hash('wait' + d.id) % 20), pose: 'idle', face: 1 };
     }
     return free();
+  }
+  if (d.job === 'miner' && d.dig && !sch.off) {
+    // digging out marked rock: stand beside it in the open cell and swing the pick
+    const [c, fl] = d.dig.split(',').map(Number);
+    const left = walkable(g, c - 1, fl);
+    return { f: fl, x: left ? c * CELL - 7 : (c + 1) * CELL + 7, pose: 'work', tool: 'pick', face: left ? 1 : -1, digging: d.dig };
   }
   if (d.job === 'miner') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 8, hidden: true };
   if (d.job === 'warrior') {
@@ -493,14 +505,14 @@ function depthLayers(g) {
 
   // rock: tiles in a few variants, gentle strata, darker and cooler with depth
   const rock = S.mk(w, h), rc = rock.getContext('2d');
-  for (let y = 0; y < h; y += 32) for (let x = 0; x < w; x += 32) S.draw(rc, rockTile(x, y), x, y);
-  const r = S.rand(77);
-  for (let y = 0, i = 0; y < h; i++) {
-    const bh = 20 + Math.floor(r() * 30);
-    rc.fillStyle = i % 2 ? 'rgba(255,214,170,0.05)' : 'rgba(40,26,52,0.08)';
-    rc.fillRect(0, y, w, bh);
-    y += bh;
+  // each band of stone fills its own two floors (the top band also everything above the hold)
+  for (let bd = 0; bd < 4; bd++) {
+    const y0 = bd === 0 ? 0 : ftop(bd * 2), y1 = bd === 3 ? h : ftop(bd * 2 + 2);
+    rc.save(); rc.beginPath(); rc.rect(0, y0, w, y1 - y0); rc.clip();
+    for (let y = y0 - ((y0 - SURF) % 64 + 64) % 64; y < y1; y += 64) for (let x = 0; x < w; x += 64) S.draw(rc, 'stone_' + bd + '_' + (S.hash('rock' + x + ',' + y) % 3), x, y);
+    rc.restore();
   }
+  const r = S.rand(77);
   const fade = rc.createLinearGradient(0, GROUND, 0, h);
   fade.addColorStop(0, 'rgba(20,12,30,0)'); fade.addColorStop(1, 'rgba(14,10,30,0.45)');
   rc.fillStyle = fade; rc.fillRect(0, GROUND, w, h - GROUND);
@@ -517,7 +529,7 @@ function depthLayers(g) {
     const wx = x - VW, y = mtop(wx);
     if (!isFinite(y)) continue;
     const slope = Math.abs(mtop(wx + 2) - mtop(wx - 2)) / 4;
-    rim(x, y, '#9a8478', 2); rim(x, y + 2, 'rgba(29,20,32,0.25)', 3);
+    rim(x, y, '#a6abbe', 2); rim(x, y + 2, 'rgba(29,20,32,0.25)', 3);
     if (y < SURF - 160) rim(x, y, '#f4f6fb', 3 + Math.round((SURF - 160 - y) / 3));
     else if (slope < 1.2) { rim(x, y - 1, '#5b8350', 3); rim(x, y - 1, '#86b06a', 1); }
     if (slope < 0.8 && y > SURF - 150 && S.hash('pine' + Math.floor(wx / 9)) % 5 === 0 && ((wx % 9) + 9) % 9 === 0) {
@@ -534,22 +546,22 @@ function depthLayers(g) {
   for (let fl = 0; fl < plan.floors; fl++) hc.fillRect(VW + (fl === ENTRY ? 0 : 3), ftop(fl), plan.shaft * CELL - (fl === ENTRY ? 3 : 6), RH);
   for (let x = -FACE; x < 0; x += CELL) S.draw(hc, 'hall_a', VW + x, ftop(ENTRY));
   for (const [k, v] of g.cells) {
-    if (v.kind !== 'hall') continue;
+    if (v.kind !== 'hall' && v.kind !== 'cave') continue;
     const [c, fl] = k.split(',').map(Number);
-    S.draw(hc, 'hall_a', VW + c * CELL, ftop(fl));
+    S.draw(hc, v.kind === 'hall' ? 'hall_a' : caveSprite(k, fl), VW + c * CELL, ftop(fl));
   }
   for (const s of g.wells) S.draw(hc, 'well', VW + s.c * CELL, ftop(s.f));
   for (const rm of g.rooms) hc.drawImage(S.roomImage(rm.b), VW + rm.x, rm.y);
   hc.globalCompositeOperation = 'destination-out';
   for (const [k, v] of g.cells) {
-    if (v.kind !== 'hall') continue;
+    if (v.kind !== 'hall' && v.kind !== 'cave') continue;
     const [c, fl] = k.split(',').map(Number);
-    if (!walkable(g, c - 1, fl)) S.draw(hc, 'hall_cap_l', VW + c * CELL, ftop(fl));
-    if (!walkable(g, c + 1, fl)) S.draw(hc, 'hall_cap_r', VW + c * CELL + CELL - 8, ftop(fl));
+    if (!walkable(g, c - 1, fl)) S.draw(hc, 'cap_l_0', VW + c * CELL, ftop(fl));
+    if (!walkable(g, c + 1, fl)) S.draw(hc, 'cap_r_0', VW + c * CELL + CELL - 8, ftop(fl));
   }
   for (const s of g.wells) {
-    if (!walkable(g, s.c - 1, s.f)) S.draw(hc, 'hall_cap_l', VW + s.c * CELL, ftop(s.f));
-    if (!walkable(g, s.c + 2, s.f)) S.draw(hc, 'hall_cap_r', VW + s.c * CELL + 2 * CELL - 8, ftop(s.f));
+    if (!walkable(g, s.c - 1, s.f)) S.draw(hc, 'cap_l_0', VW + s.c * CELL, ftop(s.f));
+    if (!walkable(g, s.c + 2, s.f)) S.draw(hc, 'cap_r_0', VW + s.c * CELL + 2 * CELL - 8, ftop(s.f));
   }
   const solid = S.mk(w, h), sc = solid.getContext('2d');
   sc.drawImage(shape, 0, 0); sc.globalCompositeOperation = 'destination-out'; sc.drawImage(hole, 0, 0);
@@ -576,11 +588,19 @@ function depthLayers(g) {
   return depth;
 }
 
-/** Which rock tile goes where: a few variants so the pattern does not repeat every 32 px. */
-function rockTile(x, y) {
-  const k = S.hash('rock' + x + ',' + y) % 7;
-  return k < 3 ? 'rock' : k < 5 ? 'rock_b' : k < 6 ? 'rock_c' : 'rock_d';
+/** A dug-out cell: rough walls in the stone of its depth. */
+function caveSprite(k, fl) { return 'cave_' + band(fl) + '_' + (S.hash(k) % 2); }
+
+/** How overgrown an empty cave is: 0 fresh, 1 moss, 2 mushrooms and roots, 3 a wild cave. */
+function overgrowth(since) {
+  const hrs = (now() - since) / 3600, steps = (D().dig || {}).overgrowHours || [2, 8, 24];
+  let s = 0;
+  for (const h of steps) if (hrs >= h) s++;
+  return s;
 }
+
+/** A room that stands still because no hallway, stairwell or shaft is beside it. */
+export function roomActive(id) { const i = D().buildings[id]; return !i || i.active !== false; }
 
 function drawUnderground(ctx, t, view, g) {
   const dl = depthLayers(g);
@@ -591,22 +611,68 @@ function drawUnderground(ctx, t, view, g) {
   for (let x = -FACE, i = 0; x < 0; x += CELL, i++) S.draw(ctx, ['hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_d', 'hall_a'][i % 6], x, ftop(ENTRY));
   // hallways with rounded ends where they meet rock
   for (const [k, v] of g.cells) {
-    if (v.kind !== 'hall') continue;
+    if (v.kind !== 'hall' && v.kind !== 'cave') continue;
     const [c, fl] = k.split(',').map(Number);
-    const variant = ['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8];
-    S.draw(ctx, variant, c * CELL, ftop(fl));
-    if (!walkable(g, c - 1, fl)) S.draw(ctx, 'hall_cap_l', c * CELL, ftop(fl));
-    if (!walkable(g, c + 1, fl)) S.draw(ctx, 'hall_cap_r', c * CELL + CELL - 8, ftop(fl));
+    if (v.kind === 'cave') {
+      S.draw(ctx, caveSprite(k, fl), c * CELL, ftop(fl));
+      const st = overgrowth(v.since);
+      if (st) S.draw(ctx, 'grow_' + st + '_' + (S.hash('g' + k) % 2), c * CELL, ftop(fl));
+    } else S.draw(ctx, ['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8], c * CELL, ftop(fl));
+    if (!walkable(g, c - 1, fl)) S.draw(ctx, 'cap_l_' + band(fl), c * CELL, ftop(fl));
+    if (!walkable(g, c + 1, fl)) S.draw(ctx, 'cap_r_' + band(fl), c * CELL + CELL - 8, ftop(fl));
   }
   const nowMs = performance.now();
   for (const s of g.wells) {
     S.draw(ctx, (wellLit.get(wellKey(s)) || 0) > nowMs ? 'well_lit' : 'well', s.c * CELL, ftop(s.f));
-    if (!walkable(g, s.c - 1, s.f)) S.draw(ctx, 'hall_cap_l', s.c * CELL, ftop(s.f));
-    if (!walkable(g, s.c + 2, s.f)) S.draw(ctx, 'hall_cap_r', s.c * CELL + 2 * CELL - 8, ftop(s.f));
+    if (!walkable(g, s.c - 1, s.f)) S.draw(ctx, 'cap_l_' + band(s.f), s.c * CELL, ftop(s.f));
+    if (!walkable(g, s.c + 2, s.f)) S.draw(ctx, 'cap_r_' + band(s.f), s.c * CELL + 2 * CELL - 8, ftop(s.f));
   }
   for (const r of g.rooms) drawRoom(ctx, t, r);
   ctx.drawImage(dl.shadow, -VW, 0);
+  drawMarks(ctx, t, g);
+  drawCritters(ctx, t, g);
   S.draw(ctx, 'gate', SURFACE.gate + 6, GROUND - 71);
+}
+
+/** Rock marked for digging: a chalk outline, cracks that spread as the miner works, and how far along it is. */
+function drawMarks(ctx, t, g) {
+  const secs = (D().dig || {}).seconds || [];
+  const order = [...g.marks.keys()];
+  for (const [k, work] of g.marks) {
+    const [c, fl] = k.split(',').map(Number);
+    const x = c * CELL, y = ftop(fl), p = Math.min(1, work / (secs[fl] || 300));
+    // a dashed chalk outline around the marked stretch (no lines between marked neighbours), marching slowly
+    ctx.fillStyle = 'rgba(251,244,230,0.75)';
+    const off = Math.floor(t * 6) % 6;
+    const dash = (x0, y0, len, horiz) => { for (let i = -off; i < len; i += 6) { const a = Math.max(0, i), b = Math.min(len, i + 3); if (b > a) horiz ? ctx.fillRect(x0 + a, y0, b - a, 1) : ctx.fillRect(x0, y0 + a, 1, b - a); } };
+    dash(x, y + 4, CELL, true); dash(x, y + RH - 5, CELL, true);
+    if (!g.marks.has((c - 1) + ',' + fl)) dash(x + 1, y + 4, RH - 8, false);
+    if (!g.marks.has((c + 1) + ',' + fl)) dash(x + CELL - 2, y + 4, RH - 8, false);
+    if (p > 0) {
+      S.draw(ctx, 'dig_crack_' + Math.min(2, Math.floor(p * 3)), x, y);
+      ctx.fillStyle = 'rgba(20,14,30,0.7)'; ctx.fillRect(x + 3, y + 10, CELL - 6, 3);
+      ctx.fillStyle = '#e3c06e'; ctx.fillRect(x + 4, y + 11, Math.round((CELL - 8) * p), 1);
+    } else text(ctx, String(order.indexOf(k) + 1), x + CELL / 2 - 2, y + 44, 'rgba(251,244,230,0.8)');
+  }
+}
+
+/** Critters living in overgrown caves: they scuttle back and forth in their cave. */
+const critterHits = [];
+function drawCritters(ctx, t, g) {
+  critterHits.length = 0;
+  for (const cr of g.critters) {
+    // the stretch of cave it lives in
+    let a = cr.c, b = cr.c;
+    while (g.cells.get((a - 1) + ',' + cr.f)?.kind === 'cave') a--;
+    while (g.cells.get((b + 1) + ',' + cr.f)?.kind === 'cave') b++;
+    const span = (b - a + 1) * CELL - 24, ph = t * 0.35 + cr.th.id;
+    const k = (Math.sin(ph) + 1) / 2, face = Math.cos(ph) > 0 ? 1 : -1;
+    const spr = S.monster(cr.th.monster, Math.floor(t * 5));
+    if (!spr) continue;
+    const sx = Math.round(a * CELL + 12 + k * span - spr.width / 2), sy = fy(cr.f) - spr.height + 1;
+    S.draw(ctx, `mon_${cr.th.monster}_${Math.floor(t * 5) % 2}`, sx, sy, face < 0);
+    critterHits.push({ x: sx, y: sy, w: spr.width, h: spr.height });
+  }
 }
 
 /** A room and everything that moves in it (fire, wheels, smoke). Also used by the workshop screen. */
@@ -770,6 +836,7 @@ export const holdScreen = {
       if (x >= d.sx && x < d.sx + d.spr.width && y >= d.sy && y < d.sy + d.spr.height && opaque(d.spr, x - d.sx, y - d.sy)) return { kind: 'dwarf', id: d.id, sprite: d.spr, sx: d.sx, sy: d.sy };
     }
     if (!G_) return null;
+    for (const c of critterHits) if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return { kind: 'tab', id: 'war', rect: [c.x, c.y, c.w, c.h], round: true };
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return machineHit(r, x, y) || { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
     if (x < -FACE && y < GRASS + 2 && y > GRASS - 62) {
       const X = SURFACE;
@@ -788,6 +855,11 @@ export const holdScreen = {
     for (const r of G_.rooms) {
       const name = byId.buildings[r.b.type].name.split(' ')[0].replace("'s", '');
       sign(ctx, name + (r.b.level > 1 ? ' ' + r.b.level : ''), r.x + r.pw / 2, r.y + 9, G.ws === r.b.id ? '#e3c06e' : '#fbf4e6');
+      if (!roomActive(r.b.id)) {
+        ctx.fillStyle = 'rgba(20,14,30,0.35)'; ctx.fillRect(r.x, r.y + 12, r.pw, RH - 12);
+        S.draw(ctx, 'ui_warn', r.x + r.pw / 2 - 8, r.y + 17 + Math.round(Math.sin(t * 3)));
+        continue;
+      }
       if (canRun(r.b, idle)) S.draw(ctx, 'arrow_' + (Math.floor(t * 3) % 2), r.x + r.pw / 2 - 5, r.y + 18);
       machineOverlay(ctx, t, r);
       if (f.siege && byId.buildings[r.b.type].kind !== 'passive') { ctx.fillStyle = 'rgba(169,71,60,0.25)'; ctx.fillRect(r.x, r.y, r.pw, RH); }
@@ -799,7 +871,7 @@ export const holdScreen = {
     if (G.build) buildOverlay(ctx, t, mouse);
   },
   click(x, y, hit) { return G.build ? buildClick(x, y, hit) : false; },
-  dragging(p) { return !!(G.build && (G.build.tool === 'dig' || G.build.tool === 'fill') && p && cellAt(p.x, p.y)); },
+  dragging(p) { return !!(G.build && ['dig', 'hall', 'fill'].includes(G.build.tool) && p && cellAt(p.x, p.y)); },
   paint(p, phase) { buildPaint(p, phase); },
   cancel() { if (G.build) { G.build.held = null; if (G.onBuildChange) G.onBuildChange(); } },
 };
@@ -906,18 +978,36 @@ function buildHit(x, y) {
   const tool = G.build.tool;
   if (tool === 'move' && !G.build.held) {
     const r = G_ && G_.rooms.find((q) => q.f === cell.f && cell.c >= q.c && cell.c < q.c + q.w);
-    return r ? { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true } : null;
+    if (r) return { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
+    const v = G_ && G_.cells.get(cell.c + ',' + cell.f);
+    if (v && v.kind === 'well') return { kind: 'cell', c: v.well.c, f: cell.f, rect: [v.well.c * CELL, ftop(cell.f), 2 * CELL, RH] };
+    if (v && v.kind === 'hall') return { kind: 'cell', c: cell.c, f: cell.f, rect: [cell.c * CELL, ftop(cell.f), CELL, RH] };
+    return null;
   }
   return { kind: 'cell', c: cell.c, f: cell.f };
 }
 
-function fits(c, f, w, ignore) {
-  if (c < plan.shaft || c + w > plan.cols || f < 0 || f >= plan.floors) return false;
+/** What a cell holds: 'rock', 'cave', 'hall', 'well', 'room', 'shaft' or null (outside the plan). */
+function kindAt(c, f) {
+  if (f < 0 || f >= plan.floors || c < 0 || c >= plan.cols) return null;
+  const v = G_.cells.get(c + ',' + f);
+  return v ? v.kind : 'rock';
+}
+
+/**
+ * Can something w cells wide stand at c, f? 'ok', 'rock' (not dug out yet) or 'taken'.
+ * `own` cells (the thing being moved) count as free.
+ */
+function ground(c, f, w, own) {
+  if (c < plan.shaft || c + w > plan.cols || f < 0 || f >= plan.floors) return 'taken';
+  let rock = false;
   for (let x = c; x < c + w; x++) {
     const v = G_.cells.get(x + ',' + f);
-    if (v && v.kind !== 'hall' && !(v.kind === 'room' && v.id === ignore)) return false;
+    if (own && own(x, f, v)) continue;
+    if (!v) { rock = true; continue; }
+    if (v.kind !== 'hall' && v.kind !== 'cave') return 'taken';
   }
-  return true;
+  return rock ? 'rock' : 'ok';
 }
 
 /** A room there would touch a hallway, a stairwell or the shaft on its left or right (the server checks too). */
@@ -926,27 +1016,45 @@ function besideHall(c, f, w) {
   return leads(c - 1) || leads(c + w);
 }
 
+/** What the player has picked up with the move tool: a room, a hallway cell or a stairwell. */
+function held() {
+  const h = G.build && G.build.held;
+  if (!h) return null;
+  if (h.startsWith('hall:') || h.startsWith('well:')) { const [c, f] = h.slice(5).split(',').map(Number); return { kind: h.slice(0, 4), c, f, w: h[0] === 'w' ? 2 : 1 }; }
+  const r = G_.rooms.find((q) => q.b.id === h);
+  return r ? { kind: 'room', c: r.c, f: r.f, w: r.w, room: r } : null;
+}
+
+/** The outline under the pointer. ok: green, warn: yellow (allowed, but the room will stand still), else red. */
 function ghostFor(mouse) {
   if (!mouse || !G_) return null;
   const cell = cellAt(mouse.x, mouse.y);
   if (!cell || cell.f >= plan.floors) return null;
   const tool = G.build.tool;
+  const k = kindAt(cell.c, cell.f);
   if (tool === 'move' && G.build.held) {
-    const r = G_.rooms.find((q) => q.b.id === G.build.held);
-    if (!r) return null;
-    const c = Math.round(mouse.x / CELL - r.w / 2);
-    return { c, f: cell.f, w: r.w, h: 1, ok: fits(c, cell.f, r.w, r.b.id) && besideHall(c, cell.f, r.w), room: r };
+    const hd = held();
+    if (!hd) return null;
+    const c = hd.kind === 'room' ? Math.round(mouse.x / CELL - hd.w / 2) : hd.kind === 'well' ? Math.round(mouse.x / CELL - 1) : cell.c;
+    const own = (x, f) => f === hd.f && x >= hd.c && x < hd.c + hd.w;
+    const gr = ground(c, cell.f, hd.w, own);
+    const okHall = hd.kind === 'hall' ? gr === 'ok' && kindAt(c, cell.f) === 'cave' : gr === 'ok';
+    const warn = hd.kind === 'room' && gr === 'ok' && !besideHall(c, cell.f, hd.w);
+    return { c, f: cell.f, w: hd.w, h: 1, ok: okHall && !warn, warn, room: hd.room, why: gr === 'rock' ? 'DIG IT OUT FIRST' : !okHall ? 'IN THE WAY' : warn ? 'NO HALLWAY: IT WILL STAND STILL' : null };
   }
-  if (tool === 'dig') return { c: cell.c, f: cell.f, w: 1, h: 1, ok: cell.c >= plan.shaft && !G_.cells.has(cell.c + ',' + cell.f) };
+  if (tool === 'dig') {
+    const marked = G_.marks.has(cell.c + ',' + cell.f);
+    return { c: cell.c, f: cell.f, w: 1, h: 1, ok: k === 'rock' && cell.c >= plan.shaft && !marked, warn: marked, why: marked ? 'CLICK TO TAKE THE MARK OFF' : k === 'rock' ? null : 'ALREADY OPEN' };
+  }
+  if (tool === 'hall') return { c: cell.c, f: cell.f, w: 1, h: 1, ok: k === 'cave', why: k === 'rock' ? 'DIG IT OUT FIRST' : k === 'cave' ? null : 'NOT EMPTY' };
   if (tool === 'stairwell') {
-    let ok = cell.c >= plan.shaft && cell.c + 1 < plan.cols;
-    for (let dx = 0; dx < 2 && ok; dx++) { const v = G_.cells.get((cell.c + dx) + ',' + cell.f); if (v && v.kind !== 'hall') ok = false; }
-    return { c: cell.c, f: cell.f, w: 2, h: 1, ok };
+    const gr = ground(cell.c, cell.f, 2);
+    return { c: cell.c, f: cell.f, w: 2, h: 1, ok: gr === 'ok', why: gr === 'rock' ? 'DIG IT OUT FIRST' : gr === 'ok' ? null : 'IN THE WAY' };
   }
   if (tool === 'fill') {
     const v = G_.cells.get(cell.c + ',' + cell.f);
     if (v && v.kind === 'well') return { c: v.well.c, f: cell.f, w: 2, h: 1, ok: true };
-    return { c: cell.c, f: cell.f, w: 1, h: 1, ok: !!v && v.kind === 'hall' };
+    return { c: cell.c, f: cell.f, w: 1, h: 1, ok: k === 'hall' || k === 'cave' || G_.marks.has(cell.c + ',' + cell.f) };
   }
   return null;
 }
@@ -957,40 +1065,46 @@ function buildOverlay(ctx, t, mouse) {
   for (let c = 0; c <= plan.cols; c++) ctx.fillRect(c * CELL, SURF, 1, plan.floors * RH);
   for (let f = 0; f <= plan.floors; f++) ctx.fillRect(0, SURF + f * RH, W(), 1);
   const g = ghostFor(mouse);
-  if (g) {
+  if (g && !G.build.stroke) {
     const x = g.c * CELL, y = ftop(g.f), w = g.w * CELL, h = g.h * RH;
     if (g.room) { ctx.globalAlpha = 0.55; ctx.drawImage(S.roomImage(g.room.b), x, y); ctx.globalAlpha = 1; }
-    ctx.fillStyle = g.ok ? 'rgba(144,224,140,0.28)' : 'rgba(217,112,74,0.3)';
+    const col = g.ok ? [144, 224, 140] : g.warn ? [240, 168, 90] : [217, 112, 74];
+    ctx.fillStyle = `rgba(${col},0.28)`;
     ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = g.ok ? '#9ee08e' : '#d9704a';
+    ctx.fillStyle = `rgb(${col})`;
     ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
+    if (g.why) text(ctx, g.why, x, y - 8, `rgb(${col})`);
   }
   const st = G.build.stroke;
   if (st) {
-    const cost = (D().layoutCosts || {}).dig, n = st.cells.size;
-    ctx.fillStyle = G.build.tool === 'dig' ? 'rgba(144,224,140,0.35)' : 'rgba(217,112,74,0.35)';
+    const n = st.cells.size, tool = G.build.tool;
+    ctx.fillStyle = tool === 'fill' || st.unmark ? 'rgba(217,112,74,0.35)' : 'rgba(144,224,140,0.35)';
     for (const c of st.cells.keys()) ctx.fillRect(c * CELL + 1, ftop(st.f) + 1, CELL - 2, RH - 2);
-    if (G.build.tool === 'dig' && cost && n) {
-      const can = Math.floor(F().coins / cost.coins);
-      text(ctx, n + ' CELLS ' + Math.round(n * cost.coins) + ' COINS' + (can < n ? ' - ONLY ' + can : ''), (st.last ?? st.from) * CELL, ftop(st.f) - 8, can < n ? '#ff9a7a' : '#fbf4e6');
+    const at = (st.last ?? st.from) * CELL, ty = ftop(st.f) - 8;
+    if (tool === 'hall' && n) {
+      const cost = (D().layoutCosts || {}).hall, can = cost ? Math.floor(F().coins / cost.coins) : n;
+      text(ctx, n + ' CELLS ' + Math.round(n * (cost ? cost.coins : 0)) + ' COINS' + (can < n ? ' - ONLY ' + can : ''), at, ty, can < n ? '#ff9a7a' : '#fbf4e6');
+    }
+    if (tool === 'dig' && n && !st.unmark) {
+      const dig = D().dig || {}, secs = (dig.seconds || [])[st.f] || 300, m = Math.max(1, dig.miners || 0);
+      text(ctx, n + ' CELLS ABOUT ' + Math.ceil(n * secs / Math.min(m, n) / 60) + ' MIN' + (dig.miners ? '' : ' - NO MINERS'), at, ty, dig.miners ? '#fbf4e6' : '#ff9a7a');
     }
   }
-  if (G.build.held && G_) {
-    const r = G_.rooms.find((q) => q.b.id === G.build.held);
-    if (r) { ctx.fillStyle = 'rgba(227,192,110,0.25)'; ctx.fillRect(r.x, r.y, r.pw, RH); }
-  }
+  const hd = G_ && held();
+  if (hd) { ctx.fillStyle = 'rgba(227,192,110,0.25)'; ctx.fillRect(hd.c * CELL, ftop(hd.f), hd.w * CELL, RH); }
 }
 
 /**
- * Digging (or filling) by dragging: every cell the pointer crosses joins the stroke, on the floor where the stroke
- * started, and goes to the server in one action when the pointer lets go.
+ * Dragging with the dig, hallway or fill tool: every cell the pointer crosses joins the stroke, on the floor where
+ * the stroke started, and goes to the server in one action when the pointer lets go. A dig stroke that starts on a
+ * marked cell takes marks off instead.
  */
 function buildPaint(p, phase) {
   const b = G.build;
   if (!b) return;
   if (phase === 'cancel') { b.stroke = null; return; }
   const cell = p && cellAt(p.x, p.y);
-  if (phase === 'start') { b.stroke = cell ? { f: cell.f, from: cell.c, cells: new Map() } : null; }
+  if (phase === 'start') b.stroke = cell ? { f: cell.f, from: cell.c, cells: new Map(), unmark: b.tool === 'dig' && G_.marks.has(cell.c + ',' + cell.f) } : null;
   const st = b.stroke;
   if (!st) return;
   if (cell) {
@@ -998,16 +1112,21 @@ function buildPaint(p, phase) {
     const last = st.last === undefined ? cell.c : st.last;
     for (let c = Math.min(last, cell.c); c <= Math.max(last, cell.c); c++) {
       if (c < plan.shaft || c >= plan.cols) continue;
-      const v = G_ && G_.cells.get(c + ',' + st.f);
-      const ok = b.tool === 'dig' ? !v : !!v && v.kind === 'hall';
+      const k = kindAt(c, st.f), marked = G_.marks.has(c + ',' + st.f);
+      const ok = b.tool === 'dig' ? (st.unmark ? marked : k === 'rock' && !marked)
+        : b.tool === 'hall' ? k === 'cave'
+        : k === 'hall' || k === 'cave' || marked;
       if (ok) st.cells.set(c, true);
     }
     st.last = cell.c;
   }
   if (phase !== 'end') return;
   b.stroke = null;
-  const cells = [...st.cells.keys()].sort((x, y) => (st.from <= (st.last ?? st.from) ? x - y : y - x)).map((c) => [c, st.f]);
-  if (cells.length) G.act({ type: b.tool === 'dig' ? 'digMany' : 'fillMany', cells });
+  let cells = [...st.cells.keys()].sort((x, y) => (st.from <= (st.last ?? st.from) ? x - y : y - x)).map((c) => [c, st.f]);
+  // nothing fitted: send the first cell anyway, so the server can say what is wrong there
+  if (!cells.length) cells = [[st.from, st.f]];
+  const type = b.tool === 'dig' ? (st.unmark ? 'unmark' : 'mark') : b.tool === 'hall' ? 'hallMany' : 'fillMany';
+  G.act({ type, cells });
 }
 
 function buildClick(x, y, hit) {
@@ -1015,14 +1134,24 @@ function buildClick(x, y, hit) {
   const cell = cellAt(x, y);
   if (!cell || cell.f >= plan.floors) return true;
   if (b.tool === 'move') {
-    if (!b.held) { if (hit && hit.kind === 'room') { b.held = hit.id; if (G.onBuildChange) G.onBuildChange(); } return true; }
-    const g = ghostFor({ x, y });
-    if (g && g.ok) G.act({ type: 'moveRoom', building: b.held, col: g.c, floor: g.f });
+    if (!b.held) {
+      if (hit && hit.kind === 'room') b.held = hit.id;
+      else if (hit && hit.kind === 'cell') b.held = (kindAt(hit.c, hit.f) === 'well' ? 'well:' : 'hall:') + hit.c + ',' + hit.f;
+      if (G.onBuildChange) G.onBuildChange();
+      return true;
+    }
+    const hd = held(), g = ghostFor({ x, y });
+    // a wrong spot is sent as well: the server explains what is wrong (rock to dig out, something in the way)
+    if (hd && g && (g.c !== hd.c || g.f !== hd.f)) {
+      if (hd.kind === 'room') G.act({ type: 'moveRoom', building: b.held, col: g.c, floor: g.f });
+      else G.act({ type: hd.kind === 'well' ? 'moveWell' : 'moveHall', col: hd.c, floor: hd.f, col2: g.c, floor2: g.f });
+    }
     b.held = null;
     if (G.onBuildChange) G.onBuildChange();
     return true;
   }
-  if (b.tool === 'dig') G.act({ type: 'dig', col: cell.c, floor: cell.f });   // only reached when dragging is off
+  if (b.tool === 'dig') G.act({ type: G_.marks.has(cell.c + ',' + cell.f) ? 'unmark' : 'mark', cells: [[cell.c, cell.f]] });   // only reached when dragging is off
+  if (b.tool === 'hall') G.act({ type: 'hallMany', cells: [[cell.c, cell.f]] });
   if (b.tool === 'stairwell') G.act({ type: 'stairwell', col: cell.c, floor: cell.f });
   if (b.tool === 'fill') G.act({ type: 'fill', col: cell.c, floor: cell.f });
   return true;
