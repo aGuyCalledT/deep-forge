@@ -8,7 +8,22 @@ icon("trade", (c) => { c.circ(5, 8, 4, "O"); c.circ(5, 8, 3, "j"); c.circ(9, 5, 
 icon("explore", (c) => { c.rect(1, 2, 12, 10, "c"); c.box(1, 2, 12, 10, "u"); c.line(3, 9, 6, 5, "f"); c.line(6, 5, 9, 7, "f"); c.px(10, 4, "f"); c.px(11, 4, "f"); c.px(10, 5, "f"); c.px(11, 5, "f"); });
 icon("war", (c) => { c.ellipse(7, 7, 6, 6, "B"); c.ellipse(7, 7, 4, 4, "n"); c.vline(7, 2, 10, "j"); c.hline(2, 7, 10, "j"); });
 icon("more", (c) => { c.rect(2, 1, 10, 12, "c"); c.rect(2, 1, 10, 2, "u"); for (const y of [5, 8, 11]) c.hline(4, y, 6, "V"); });
-icon("warn", (c) => { c.poly([7, 1, 13, 13, 1, 13], "y"); c.vline(7, 5, 4, "w"); c.px(7, 11, "w"); });
+// warn: left half, mirrored, so the triangle and the ! are exactly symmetric
+sprite("ui_warn", { mx: true, outline: "k" }, `
+  ......y
+  ......y
+  .....yy
+  .....yy
+  ....yyw
+  ....yyw
+  ...yyyw
+  ...yyyw
+  ..yyyyy
+  ..yyyyw
+  .yyyyyw
+  .yyyyyy
+  yyyyyyy
+  yyyyyyy`);
 icon("skull", (c) => { c.ellipse(7, 6, 5, 5, "C"); c.rect(4, 10, 6, 3, "C"); c.rect(4, 5, 2, 2, "w"); c.rect(8, 5, 2, 2, "w"); c.px(7, 8, "w"); c.vline(6, 11, 2, "6"); c.vline(8, 11, 2, "6"); });
 icon("heart", (c) => { c.circ(4, 5, 3, "P"); c.circ(10, 5, 3, "P"); c.poly([1, 6, 13, 6, 7, 13], "P"); c.px(3, 3, "9"); });
 icon("mood", (c) => { c.circ(7, 7, 6, "j"); c.px(5, 5, "w"); c.px(9, 5, "w"); c.line(4, 9, 7, 11, "w"); c.line(7, 11, 10, 9, "w"); c.px(3, 8, "P"); c.px(11, 8, "P"); });

@@ -150,9 +150,12 @@ anim("torch", { w: 6, h: 11, frames: 3, fps: 8 }, (c) => {
   c.rect(1, 1 + (f === 1 ? 1 : 0), 4, 4, "F"); c.rect(2, 2, 2, 3, "y"); c.px(2 + (f === 2 ? 1 : 0), 0 + f % 2, "Y");
 });
 
-anim("arrow", { w: 9, h: 11, outline: "k", frames: 2, fps: 3 }, (c) => {
+// the left half up to the middle column, mirrored (mx: "c"), so the arrow is symmetric
+anim("arrow", { w: 9, h: 11, mx: "c", outline: "k", frames: 2, fps: 3 }, (c) => {
   const y = c.frame;
-  c.rect(3, y, 3, 5, "h"); c.poly([0, y + 5, 9, y + 5, 4.5, y + 10], "h"); c.vline(3, y, 5, "H"); c.px(4, y + 8, "J");
+  c.rect(3, y, 2, 5, "h"); c.vline(4, y, 5, "H");
+  for (let r = 0; r < 5; r++) c.hline(r, y + 5 + r, 5 - r, "h");
+  c.px(4, y + 8, "J");
 });
 sprite("zzz", { w: 7, h: 7 }, (c) => { c.text(0, 2, "Z", "N"); c.px(5, 0, "N"); c.px(6, 0, "N"); c.px(6, 1, "N"); c.px(5, 2, "N"); c.px(6, 2, "N"); });
 sprite("heart", { w: 7, h: 6, outline: "k" }, "PP.PP\nP9PPP\nPPPPP\n.PPP.\n..P..");
