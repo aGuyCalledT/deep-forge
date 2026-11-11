@@ -75,33 +75,38 @@ hall("hall_e", (c) => { for (const x of [2, 19]) { c.rect(x, 11, 3, 79, "v"); c.
 sprite("hall_cap_l", { w: 8, h: 96 }, (c) => { for (let y = 7; y < 96; y++) { const d = y < 22 ? Math.round((22 - y) * 0.55) : 0; c.hline(0, y, Math.min(8, 2 + d), "("); } });
 sprite("hall_cap_r", { base: "hall_cap_l", flip: "x" });
 
-// ---------------------------------------------------------------- stairs: 48 wide, two floors (192) tall, going down to the right
-sprite("stairs", { w: 48, h: 192 }, (c) => {
-  // the cut: the same timbered tunnel as the hallways, sloping down. Ceiling and floor both drop 2 px per px.
-  c.poly([0, 7, 48, 103, 48, 186, 0, 90], "W");
-  for (let x = 0; x < 48; x += 12) {                              // wall timbers, every 12 px like in the hallway
-    for (let y = 11 + 2 * x; y < 90 + 2 * x; y++) { c.px(x, y, "w"); c.px(x + 1, y, "v"); }
-  }
-  for (let x = 0; x < 48; x++) {                                  // ceiling beam following the slope
-    const y = 7 + 2 * x;
-    c.px(x, y, "u"); c.px(x, y + 1, "V"); c.px(x, y + 2, "V"); c.px(x, y + 3, "V"); c.px(x, y + 4, "w");
-  }
-  // 16 sturdy steps, 3 px deep and 6 px high, on a dark stringer
-  for (let i = 0; i < 16; i++) {
-    const x = i * 3, y = 90 + i * 6;
-    c.rect(x, y, 3, 12, "v"); c.hline(x, y, 3, "u"); c.hline(x, y + 1, 3, "V"); c.px(x, y + 6, "w");
-  }
-  for (let x = 0; x < 48; x++) c.px(x, 102 + 2 * x, "w");         // underside of the stringer
-  // handrail with posts
-  for (let x = 2; x < 47; x++) { c.px(x, 62 + 2 * x, "V"); c.px(x, 63 + 2 * x, "v"); }
-  for (const x of [8, 20, 32, 44]) c.vline(x, 64 + 2 * x, 26, "W");
-  // posts that frame the openings to the hallways above and below
-  c.rect(0, 7, 3, 83, "v"); c.vline(0, 7, 83, "V"); c.rect(0, 7, 4, 3, "V");
-  c.rect(45, 103, 3, 83, "v"); c.vline(47, 103, 83, "w"); c.rect(44, 103, 4, 3, "V");
-  // a lantern halfway down
-  c.vline(24, 55, 4, "4"); c.rect(21, 59, 7, 1, "2"); c.rect(21, 60, 7, 7, "y"); c.rect(22, 61, 5, 5, "Y"); c.rect(23, 62, 3, 3, "0");
-  c.vline(21, 60, 7, "2"); c.vline(27, 60, 7, "2"); c.rect(22, 67, 5, 1, "2");
-});
+// ---------------------------------------------------------------- stairwell: a hallway two cells wide (48 x 96) with an
+// arch in the back wall. Dwarves walk in and come out of a stairwell on another floor; the way behind is not shown.
+function well(name, glowing) {
+  sprite(name, { w: 48, h: 96 }, (c) => {
+    c.rect(0, 10, 48, 80, "W");                                     // timbered back wall, as in the hallway
+    for (let x = 0; x < 48; x += 12) { c.vline(x, 10, 80, "w"); c.vline(x + 1, 10, 80, "v"); }
+    c.px(5, 30, "w"); c.px(44, 62, "w"); c.px(8, 70, "w");
+    c.rect(0, 7, 48, 4, "V"); c.hline(0, 7, 48, "u"); c.hline(0, 11, 48, "w");          // lintel
+    c.rect(0, 90, 48, 6, "W"); c.hline(0, 90, 48, "V"); c.hline(0, 91, 48, "v");        // floor
+    // the arch: cut stone around a dark way into the mountain
+    c.ellipse(24, 46, 15, 13, "4"); c.rect(9, 46, 31, 44, "4");
+    c.ellipse(24, 47, 11, 10, "s"); c.rect(13, 47, 23, 43, "s");
+    for (let i = 0; i < 9; i++) { const a = Math.PI + (i / 8) * Math.PI; c.px(Math.round(24 + Math.cos(a) * 14), Math.round(46 + Math.sin(a) * 12), "5"); }   // keystones
+    c.rect(22, 32, 5, 4, "6"); c.hline(22, 32, 5, "7");               // the top stone
+    for (const y of [54, 66, 78]) { c.hline(9, y, 4, "3"); c.hline(36, y, 4, "3"); }   // joints in the jambs
+    c.vline(9, 46, 44, "5"); c.vline(39, 46, 44, "3");
+    // a little depth inside: the passage turns away, lit from somewhere far off
+    c.rect(15, 60, 19, 30, "1"); c.rect(18, 70, 13, 20, "s");
+    if (glowing) { c.rect(26, 62, 6, 12, "o"); c.rect(27, 63, 4, 10, "y"); c.vline(28, 64, 8, "Y"); }
+    else { c.rect(27, 64, 4, 8, "o"); c.vline(28, 65, 6, "y"); }
+    c.rect(9, 89, 31, 1, "3"); c.hline(11, 88, 27, "2");               // worn threshold
+    // a sign with arrows up and down, and a lantern on the other side
+    c.rect(2, 40, 6, 1, "v"); c.rect(1, 41, 7, 14, "u"); c.box(1, 41, 7, 14, "v");
+    c.px(4, 43, "w"); c.hline(3, 44, 3, "w"); c.hline(2, 45, 5, "w"); c.vline(4, 46, 2, "w");     // up
+    c.vline(4, 49, 2, "w"); c.hline(2, 51, 5, "w"); c.hline(3, 52, 3, "w"); c.px(4, 53, "w");     // down
+    c.vline(44, 26, 4, "4"); c.rect(41, 30, 7, 1, "2"); c.rect(41, 31, 7, 7, "y"); c.rect(42, 32, 5, 5, "Y"); c.rect(43, 33, 3, 3, "0");
+    c.vline(41, 31, 7, "2"); c.vline(47, 31, 7, "2"); c.rect(42, 38, 5, 1, "2");
+    c.line(10, 86, 6, 89, "w"); c.px(40, 89, "w");                     // scuffs where the dwarves walk in
+  });
+}
+well("well", false);
+well("well_lit", true);
 
 // ---------------------------------------------------------------- mine shaft with ladder: 48 x 96
 sprite("shaft", { w: 48, h: 96 }, (c) => {
@@ -268,26 +273,6 @@ sprite("lock_sign", { w: 26, h: 18, outline: "k" }, (c) => {
   c.rect(10, 7, 6, 6, "j"); c.ring(13, 6, 2, "4"); c.px(13, 9, "o"); c.px(13, 10, "o");
 });
 
-// ---------------------------------------------------------------- back doors: every room has one, and hallways can get one.
-// Behind it is a stairwell (you see a step or two through the gap). 18 x 34, the bottom row stands on the floor line.
-function backDoor(name, open) {
-  sprite(name, { w: 18, h: 34 }, (c) => {
-    c.ellipse(9, 7, 9, 7, "4"); c.rect(0, 7, 18, 27, "4");            // stone arch
-    c.ellipse(9, 8, 7, 6, "s"); c.rect(2, 8, 14, 26, "s");            // dark stairwell
-    for (let i = 0; i < 5; i++) { c.hline(4 + i * 2, 31 - i * 5, 5, "w"); c.hline(4 + i * 2, 30 - i * 5, 5, "W"); }   // steps going up
-    c.px(13, 12, "y"); c.px(13, 13, "f");                             // a lamp up the stairs
-    if (!open) {                                                      // the door stands ajar
-      c.ellipse(7, 9, 5, 5, "v"); c.rect(2, 9, 11, 25, "v");
-      for (const x of [5, 8, 11]) c.vline(x, 6, 28, "W");
-      c.vline(12, 9, 25, "V"); c.hline(2, 15, 11, "W"); c.hline(2, 26, 11, "W");
-      c.px(10, 20, "j");                                              // ring
-    }
-    for (let i = 0; i < 7; i++) { const a = Math.PI + (i / 6) * Math.PI; c.px(Math.round(9 + Math.cos(a) * 8), Math.round(7 + Math.sin(a) * 6), "5"); }   // keystones
-    c.rect(0, 33, 18, 1, "3");                                        // threshold
-  });
-}
-backDoor("bdoor", false);
-backDoor("bdoor_open", true);
 
 // ---------------------------------------------------------------- the gate in the mountain face: 48 x 72, an arch of cut stone, doors open
 sprite("gate", { w: 48, h: 72, outline: "k" }, (c) => {

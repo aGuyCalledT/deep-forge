@@ -58,8 +58,9 @@ public final class State {
     public static class Layout {
         public Map<String, int[]> rooms = new TreeMap<>();  // building id -> [col, floor]
         public Set<String> halls = new TreeSet<>();         // "col,floor"
-        public Set<String> stairs = new TreeSet<>();        // "col,floor": 2 wide, from floor down to floor + 1
-        public Set<String> doors = new TreeSet<>();         // "col,floor": a door in a hallway to the stairwell behind
+        public Set<String> wells = new TreeSet<>();         // "col,floor": left cell of a stairwell (2 cells wide)
+        public Set<String> stairs = new TreeSet<>();        // old saves only: diagonal stairs, turned into stairwells
+        public Set<String> doors = new TreeSet<>();         // old saves only: back doors, no longer used
     }
 
     public static class Stats {

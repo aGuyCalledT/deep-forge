@@ -4,7 +4,7 @@ import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
 import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips } from './ui.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
-import { holdScreen, roomCenter, roomAt, roomRect } from './hold.js';
+import { holdScreen, roomCenter, roomAt, roomRect, agents } from './hold.js';
 import { minesScreen, drawLoginArt } from './views.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
@@ -325,11 +325,10 @@ function onPick(q, at) {
 
 // ------------------------------------------------------------------ toolbar over the hold
 
-const TOOLS = [['move', 'hand', 'Move rooms', 'Click a room, then click where it should go.', 'move'],
+const TOOLS = [['move', 'hand', 'Move rooms', 'Click a room, then click where it should go. Every room needs a hallway or stairwell beside it.', 'move'],
   ['dig', 'dig', 'Dig hallway', 'Drag over rock to dig a hallway, one cell or a whole row at once.', 'dig'],
-  ['door', 'door', 'Door', 'Click a hallway to put a door in its back wall, or take one out. Dwarves use doors to reach the floors above and below.', 'door'],
-  ['stairs', 'stairs', 'Stairs', 'Click where the top of the stairs should be. They lead one floor down to the right.', 'stairs'],
-  ['fill', 'fill', 'Fill in', 'Drag over hallways or click stairs to fill them back in. Free.', null]];
+  ['stairwell', 'well', 'Stairwell', 'A hallway two cells wide with a way into the mountain. Dwarves walk in and come out of any stairwell on another floor.', 'stairwell'],
+  ['fill', 'fill', 'Fill in', 'Drag over hallways or click a stairwell to fill it back in. Free, unless a room needs it.', null]];
 
 function renderToolbar() {
   const bar = $('scene-tools');
@@ -438,5 +437,5 @@ G.tab = null;
 G.heat = currentHeat;
 G.act = (a) => bus.act(a).then(() => renderToolbar());
 G.onBuildChange = () => renderToolbar();
-window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom };
+window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom, agents };
 boot();

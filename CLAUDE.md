@@ -37,11 +37,11 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/View.java` | was der Client sieht (Spielstand + abgeleitete Zahlen) |
 | `game/GameService.java` | Laden, Weiterrechnen, Speichern, Minuten-Takt für alle Festungen |
 | `auth/` | Name + Passwort (BCrypt), Token-Sitzungen, Einladungscode, Admins |
-| `game/Layouts.java` | Grundriss: Räume, Gänge, Treppen auf einem Raster (48 × 8 Zellen à 24 × 96 px, Schacht links) |
+| `game/Layouts.java` | Grundriss: Räume, Gänge, Treppenhäuser auf einem Raster (48 × 8 Zellen à 24 × 96 px, Schacht links). Jeder Raum grenzt links oder rechts an einen Gang, ein Treppenhaus (2 Zellen) oder den Schacht |
 | `game/Cheats.java` | Test-Hilfen (Ressourcen, Zwerge, Aussehen, Zeit überspringen), nur Admins oder `CHEATS=true` |
 | `art-src/` | Grafik-Quellen für pxl, `shared.js` mit Raum-Ankern und Palette; Ergebnis in `static/art/`. `figure.js` baut alle Figuren und wird als `static/js/figure.js` ins Spiel kopiert |
 | `static/js/canvas.js` | Kamera (ziehen, Mausrad, Pinch), Licht, Hover-Umriss, Klicks |
-| `static/js/hold.js` | Festung im Berg: links das Tal (Straße, Händlerstand, Reisende, Tor), Tunnel zum Schacht, Himmel und Sonne über Essen, Plan, Räume, Hintertüren, Zwerge mit Wegen (Dijkstra, Türen bevorzugt) und 12-Minuten-Zyklus, Blasebalg/Abschreckfass zum Anklicken, Bau-Modus, grüne Pfeile |
+| `static/js/hold.js` | Festung im Berg: links das Tal (Straße, Händlerstand, Reisende, Tor), Tunnel zum Schacht, Himmel und Sonne über Essen, Plan, Räume, Treppenhäuser (Bogen in der Rückwand, unsichtbarer Weg zu jedem Treppenhaus auf einer anderen Etage, Dauer nach Entfernung), Zwerge mit Wegen (Dijkstra) und 12-Minuten-Zyklus, Blasebalg/Abschreckfass zum Anklicken, Bau-Modus, grüne Pfeile |
 | `static/js/views.js` | Minen-Screen, Login-Bild (Werkstätten haben keinen eigenen Screen, sie sind Räume der Festung) |
 | `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen (öffnen sich neben dem Objekt), Cheat-Werkzeuge |
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |

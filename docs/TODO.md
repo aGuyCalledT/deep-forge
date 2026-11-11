@@ -69,9 +69,16 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 
 - [x] Gänge per Ziehen am Stück graben und zuschütten (eine Aktion, Kosten werden vorher angezeigt).
 - [x] Zwerge liegen beim Schlafen jetzt richtig im Bett (Liege-Pose).
-- [x] Bauen kostet: Gang 10 Münzen, Treppe 40 + 20 Stein, Tür 15 + 5 Stein, Raum versetzen 30 + 10 Stein.
+- [x] Bauen kostet: Gang 10 Münzen, Treppenhaus 40 + 20 Stein, Raum versetzen 30 + 10 Stein.
 - [x] **Festung im Berg:** links ein Tal mit Straße, Händlerstand und Tor; die Festung liegt im Berg und reicht über
   den Talboden hinaus nach oben, der Eingangstunnel führt vom Tor zum Schacht.
+- [x] **Treppenhäuser statt Treppen und Hintertüren:** Jeder Raum muss links oder rechts an einen Gang, ein
+  Treppenhaus oder den Schacht grenzen. Ein Treppenhaus ist ein Gang, zwei Zellen breit, mit einem Bogen in der
+  Rückwand; wer hineingeht, kommt aus einem Treppenhaus auf einer anderen Etage wieder heraus, je weiter weg, desto
+  später. Alte Treppen werden zu Treppenhäusern auf beiden Etagen, Türen fallen weg, Räume ohne Gang bekommen einen.
+- [ ] Der freie Streifen rechts in jedem Raum (früher für die Hintertür) könnte wegfallen; dann würden alle Räume
+  eine Zelle schmaler.
+- [ ] Vom Eingangstunnel führt nur die Leiter im Schacht zu den Räumen; ein Treppenhaus am Tunnel wäre schöner.
 
 ## Aus früheren Runden
 

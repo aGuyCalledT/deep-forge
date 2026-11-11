@@ -87,9 +87,8 @@ public final class Actions {
             case "rename" -> rename(f, a);
             case "moveRoom" -> Layouts.moveRoom(f, str(a, "building"), num(a, "col", -1), num(a, "floor", -1));
             case "dig" -> Layouts.dig(f, num(a, "col", -1), num(a, "floor", -1));
-            case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
+            case "stairwell" -> Layouts.stairwell(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
-            case "door" -> Layouts.door(f, num(a, "col", -1), num(a, "floor", -1));
             case "collect" -> {
                 int id = num(a, "id", -1);
                 Report rep = f.reports.stream().filter(x -> x.id == id || id == -1).findFirst().orElse(null);
@@ -210,8 +209,7 @@ public final class Actions {
         int[] spot = Layouts.spaceToGrow(f, b);
         check(spot != null, "No floor has space for a wider " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ". Dig out more of the hold.");
         pay(f, c);
-        Layouts.place(f, b.id, spot[0], spot[1], false);
-        Layouts.grow(f, b);
+        Layouts.growTo(f, b, spot);
         b.machines = machines(b) + 1;
         log(f, "info", "A new machine stands in the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
     }
@@ -313,8 +311,7 @@ public final class Actions {
         if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
             int[] p = f.layout.rooms.get(b.id);
             moved = p[1] != spot[1] || Math.abs(p[0] - spot[0]) > Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
-            Layouts.place(f, b.id, spot[0], spot[1], false);
-            Layouts.grow(f, b);
+            Layouts.growTo(f, b, spot);
             b.machines = machines(b) + 1;
         }
         b.level++;

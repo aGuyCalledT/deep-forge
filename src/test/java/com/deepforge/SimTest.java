@@ -174,7 +174,9 @@ class SimTest {
         for (Map.Entry<String, int[]> e : f.layout.rooms.entrySet()) {
             int w = Layouts.ROOM_CELLS.get(Rules.building(f, e.getKey()).type);
             for (int c = e.getValue()[0]; c < e.getValue()[0] + w; c++) assertTrue(used.add(c + "," + e.getValue()[1]));
+            assertTrue(Layouts.connected(f, e.getValue()[0], e.getValue()[1], w), e.getKey() + " has no hallway beside it");
         }
+        assertFalse(f.layout.wells.isEmpty(), "the start plan has stairwells");
     }
 
     @Test
@@ -183,6 +185,7 @@ class SimTest {
         Market m = Market.inMemory(12, T0);
         f.stock.put("bar:copper", 30);
         f.stock.put("coal", 50);
+        act(f, m, T0, "type", "dig", "col", 19, "floor", 5);
         act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
         Building forge = f.buildings.stream().filter(x -> x.id.equals("forge-1")).findFirst().orElseThrow();
         assertEquals(1, Rules.maxMachines(forge));
@@ -248,24 +251,40 @@ class SimTest {
     }
 
     @Test
-    void roomsHallsAndStairsCanBePlaced() {
+    void roomsNeedAHallwayAndStairwellsAreHallwaysTwoCellsWide() {
         Fortress f = fresh(42);
         Market m = Market.inMemory(42, T0);
+        f.coins = 10000;
+        f.stock.put("stone", 500);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5),
+                "no hallway beside it");
+        act(f, m, T0, "type", "dig", "col", 19, "floor", 5);
         act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
         assertArrayEquals(new int[]{20, 5}, f.layout.rooms.get("forge-1"));
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "smelter-1", "col", 22, "floor", 5));
-        act(f, m, T0, "type", "dig", "col", 10, "floor", 6);
-        assertTrue(f.layout.halls.contains("10,6"));
-        act(f, m, T0, "type", "stairs", "col", 12, "floor", 6);
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 13, "floor", 7));
-        act(f, m, T0, "type", "fill", "col", 13, "floor", 7);
-        assertTrue(f.layout.stairs.isEmpty());
+        // the forge needs its hallway
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "fill", "col", 19, "floor", 5));
+        act(f, m, T0, "type", "stairwell", "col", 12, "floor", 6);
+        assertTrue(f.layout.wells.contains("12,6"));
+        assertEquals("well", Layouts.at(f, 13, 6, null));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 13, "floor", 6));
+        act(f, m, T0, "type", "fill", "col", 13, "floor", 6);
+        assertTrue(f.layout.wells.isEmpty() || !f.layout.wells.contains("12,6"));
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 0, "floor", 1));
-        act(f, m, T0, "type", "door", "col", 10, "floor", 6);
-        assertTrue(f.layout.doors.contains("10,6"));
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "door", "col", 30, "floor", 7));
-        act(f, m, T0, "type", "fill", "col", 10, "floor", 6);
-        assertFalse(f.layout.doors.contains("10,6"));
+    }
+
+    @Test
+    void oldStairsBecomeStairwellsAndLonelyRoomsGetAHallway() {
+        Fortress f = fresh(46);
+        f.layout.wells.clear();
+        f.layout.halls.clear();
+        f.layout.stairs.add("40,6");
+        f.layout.doors.add("41,6");
+        Layouts.ensure(f);
+        assertTrue(f.layout.stairs.isEmpty() && f.layout.doors.isEmpty());
+        assertTrue(f.layout.wells.containsAll(List.of("40,6", "40,7")));
+        for (Map.Entry<String, int[]> e : f.layout.rooms.entrySet())
+            assertTrue(Layouts.connected(f, e.getValue()[0], e.getValue()[1], Layouts.width(Rules.building(f, e.getKey()))), e.getKey());
     }
 
     @Test
@@ -314,7 +333,7 @@ class SimTest {
         f.stock.put("stone", 100);
         act(f, m, T0, "type", "dig", "col", 10, "floor", 6);
         assertEquals(1000 - Rules.DIG_COST.coins(), f.coins, 1e-9);
-        act(f, m, T0, "type", "stairs", "col", 12, "floor", 6);
+        act(f, m, T0, "type", "stairwell", "col", 12, "floor", 6);
         assertEquals(100 - 20, f.stock.get("stone"));
         // a dragged stroke: taken cells are skipped, the rest is dug while coins last
         f.coins = Rules.DIG_COST.coins() * 3;

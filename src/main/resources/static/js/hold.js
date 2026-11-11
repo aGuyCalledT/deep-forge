@@ -1,4 +1,4 @@
-// The hold: surface, rock, mine shaft, hallways, stairs and rooms where the player placed them,
+// The hold: surface, rock, mine shaft, hallways, stairwells and rooms where the player placed them,
 // and the dwarves walking between them.
 import { G, F, D, byId, now, stock, fullName } from './data.js';
 import * as S from './sprites.js';
@@ -34,7 +34,7 @@ const ftop = (f) => SURF + f * RH;
 
 function grid() {
   plan = G.data.plan;
-  const f = F(), L = f.layout || { rooms: {}, halls: [], stairs: [] };
+  const f = F(), L = f.layout || { rooms: {}, halls: [], wells: [] };
   const cells = new Map();    // "c,f" -> {kind, id?}
   const rooms = [];
   for (const [id, [c, fl]] of Object.entries(L.rooms)) {
@@ -45,23 +45,11 @@ function grid() {
     for (let x = c; x < c + w; x++) cells.set(x + ',' + fl, { kind: 'room', id });
   }
   for (const k of L.halls) cells.set(k, { kind: 'hall' });
-  const stairs = L.stairs.map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl }; });
-  for (const s of stairs) for (let dx = 0; dx < 2; dx++) for (let dy = 0; dy < 2; dy++) cells.set((s.c + dx) + ',' + (s.f + dy), { kind: 'stair' });
+  // stairwells: two cells wide, the way in is an arch in the middle of the back wall
+  const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + CELL }; });
+  for (const w of wells) for (let dx = 0; dx < 2; dx++) cells.set((w.c + dx) + ',' + w.f, { kind: 'well', well: w });
   for (let fl = 0; fl < plan.floors; fl++) for (let c = 0; c < plan.shaft; c++) cells.set(c + ',' + fl, { kind: 'shaft' });
-  // back doors: one in every room, and the ones the player put into hallways. Each leads to a stairwell
-  // that reaches the doors on the floors just above and below whose room (or hallway cell) overlaps it.
-  const doors = [];
-  for (const r of rooms) {
-    const a = S.META.ROOMS[r.b.type] || {};
-    const x = r.x + (a.door || r.pw - 12);
-    doors.push({ x, c: Math.floor(x / CELL), f: r.f, c0: r.c, c1: r.c + r.w - 1, room: r.b.id });
-  }
-  for (const k of L.doors || []) {
-    if (!(L.halls || []).includes(k)) continue;
-    const [c, fl] = k.split(',').map(Number);
-    doors.push({ x: c * CELL + CELL / 2, c, f: fl, c0: c, c1: c, hall: true });
-  }
-  return { cells, rooms, stairs, doors };
+  return { cells, rooms, wells };
 }
 
 function walkable(g, c, fl) {
@@ -76,14 +64,17 @@ function zone(g, c, fl) {
   return !v ? null : v.kind === 'room' ? 'room:' + v.id : 'open';
 }
 
-const SIDE_WALL = 10;   // dwarves would rather take a door than squeeze through the side of a room
+const SIDE_WALL = 10;   // dwarves would rather take a hallway than squeeze through the side of a room
+const WELL_SPEED = 60;  // px per second on the hidden way behind the stairwell arches (walking is 34)
 
-/** Cheapest path over cells: walking, the shaft ladder, stairs, and doors to the stairwells behind the rooms. */
+/** Seconds from one stairwell to another: the way behind the wall is as long as the distance between them. */
+function wellTime(a, b) {
+  return 0.6 + (Math.abs(a.x - b.x) + Math.abs(fy(a.f) - fy(b.f))) / WELL_SPEED;
+}
+
+/** Cheapest path over cells: walking, the shaft ladder, and the stairwells to every other floor. */
 function path(g, from, to) {
   const key = (c, f) => c + ',' + f;
-  const stairAt = new Map(g.stairs.map((s) => [s.c + ',' + s.f, s]));
-  const doorsAt = new Map();
-  for (const d of g.doors) { const k = key(d.c, d.f); if (!doorsAt.has(k)) doorsAt.set(k, []); doorsAt.get(k).push(d); }
   const dist = new Map([[key(from.c, from.f), 0]]), prev = new Map();
   const open = [{ c: from.c, f: from.f, d: 0 }];
   const goal = key(to.c, to.f);
@@ -105,10 +96,10 @@ function path(g, from, to) {
     // the gate tunnel joins the valley to the shaft on the entry floor
     if (n.f === -1 && n.c === -1) next.push([0, ENTRY, 'walk', 1]);
     if (n.f === ENTRY && n.c === 0) next.push([-1, -1, 'walk', 1]);
-    if (stairAt.get(nk)) next.push([n.c + 1, n.f + 1, 'stairs', 3]);
-    if (stairAt.get(key(n.c - 1, n.f - 1))) next.push([n.c - 1, n.f - 1, 'stairs', 3]);
-    for (const d of doorsAt.get(nk) || []) for (const e of g.doors)
-      if (Math.abs(e.f - d.f) === 1 && e.c0 <= d.c1 && d.c0 <= e.c1) next.push([e.c, e.f, 'door', 4, d, e]);
+    // into a stairwell, out of any stairwell on another floor; the cost is the time behind the wall, in walking cells
+    const here = n.f >= 0 && g.cells.get(nk);
+    if (here && here.kind === 'well') for (const e of g.wells)
+      if (e.f !== here.well.f) next.push([e.c, e.f, 'well', (wellTime(here.well, e) + 0.5) / 0.7, here.well, e]);
     for (const [c, f, m, cost, d0, d1] of next) {
       const k = key(c, f), nd = n.d + cost;
       if (nd < (dist.get(k) ?? Infinity)) { dist.set(k, nd); prev.set(k, { c: n.c, f: n.f, m, d0, d1 }); open.push({ c, f, d: nd }); }
@@ -121,30 +112,24 @@ function path(g, from, to) {
   const out = [];
   for (const s of steps) {
     const a = s, b = s.to;
-    if (s.m === 'stairs') {
-      // follow the steps: in at the top left corner, out at the bottom right (or the other way round)
-      const sc = Math.min(a.c, b.c), top = Math.min(a.f, b.f), down = b.f > a.f;
-      const hi = { x: sc * CELL + 1, y: fy(top), f: top }, lo = { x: sc * CELL + 2 * CELL - 1, y: fy(top + 1), f: top + 1 };
-      const [p0, p1] = down ? [hi, lo] : [lo, hi];
-      out.push({ ...p0, mode: 'walk' }, { ...p1, mode: 'stairs' });
-    }
-    if (s.m === 'door') {
-      // walk to the door, go through it, come out of the other one
+    if (s.m === 'well') {
+      // walk to the arch, go in, and come out of the other stairwell's arch after a while
       out.push({ x: s.d0.x, y: fy(a.f), f: a.f, mode: 'walk' });
-      out.push({ x: s.d1.x, y: fy(b.f), f: b.f, mode: 'door', from: s.d0, to: s.d1 });
+      out.push({ x: s.d1.x, y: fy(b.f), f: b.f, mode: 'well', from: s.d0, to: s.d1, ms: wellTime(s.d0, s.d1) * 1000 });
       continue;
     }
-    out.push({ x: b.c * CELL + CELL / 2, y: fy(b.f), f: b.f, mode: s.m === 'stairs' ? 'walk' : s.m });
+    out.push({ x: b.c * CELL + CELL / 2, y: fy(b.f), f: b.f, mode: s.m });
   }
   return out;
 }
 
-const doorOpen = new Map();   // door key -> time until it stays open
-const doorKey = (d) => d.x + ',' + d.f;
+const wellLit = new Map();   // stairwell -> time until its arch glows (someone just went in or came out)
+const wellKey = (w) => w.c + ',' + w.f;
+const FADE = 350;            // ms to step into (or out of) the dark of an arch
 
 // ------------------------------------------------------------------ dwarves on the move
 
-const agents = new Map();   // dwarf id -> agent
+export const agents = new Map();   // dwarf id -> agent (exported for tests)
 const CYCLE = 12, WORK = 9; // minutes: 9 at work, 3 off
 
 function schedule(d) {
@@ -167,7 +152,7 @@ function want(g, d, ctx) {
     if (r < 6 && ctx.seats.length) { const s = ctx.seats.shift(); return { f: s.f, x: s.x, pose: s.pose }; }
     const chat = S.hash('chat' + d.id + sch.k) % 2 ? 'talk' : 'idle';     // half of them stand and chat
     if (r < 8) {
-      const cells = [...g.cells.entries()].filter(([, v]) => v.kind === 'hall' || v.kind === 'room');
+      const cells = [...g.cells.entries()].filter(([, v]) => v.kind === 'hall' || v.kind === 'well' || v.kind === 'room');
       if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + CELL / 2, pose: chat }; }
     }
     return { f: -1, x: SURFACE.wall + 110 + (S.hash('stroll' + d.id) % (-FACE - 40 - SURFACE.wall - 110)), pose: chat };
@@ -242,7 +227,7 @@ function updateAgents(g, dt) {
   for (const d of f.dwarves) {
     alive.add(d.id);
     let a = agents.get(d.id);
-    if ((replan || !a) && !(a && a.inDoor)) {
+    if ((replan || !a) && !(a && a.inWell)) {
       const w = want(g, d, plan_());
       if (!a) {
         a = { id: d.id, x: w.x, y: w.feet || fy(w.f), f: w.f, path: [], want: w, face: w.face || 1, hidden: !!w.hidden, frameT: Math.random() * 10 };
@@ -267,17 +252,17 @@ function updateAgents(g, dt) {
     let step = dt;
     while (a.path.length && step > 0) {
       const p = a.path[0];
-      if (p.mode === 'door') {
-        // inside the stairwell: gone for a moment, then out of the other door
+      if (p.mode === 'well') {
+        // behind the wall: gone for as long as the way to the other stairwell takes, then out of its arch
         const now_ = performance.now();
-        if (!a.inDoor) { a.inDoor = now_ + 700 + Math.abs(p.f - a.f) * 300; doorOpen.set(doorKey(p.from), now_ + 500); }
-        a.mode = 'door';
-        if (now_ < a.inDoor) { step = 0; break; }
-        a.inDoor = 0; doorOpen.set(doorKey(p.to), now_ + 500);
+        if (!a.inWell) { a.inWell = now_ + p.ms; a.wellAt = now_; wellLit.set(wellKey(p.from), now_ + 900); }
+        a.mode = 'well';
+        if (now_ < a.inWell) { step = 0; break; }
+        a.inWell = 0; a.emerge = now_; wellLit.set(wellKey(p.to), now_ + 900);
         a.x = p.x; a.y = p.y; a.f = p.f; a.path.shift(); a.mode = 'walk';
         continue;
       }
-      const sp = p.mode === 'ladder' ? 22 : p.mode === 'stairs' ? 26 : 34;
+      const sp = p.mode === 'ladder' ? 22 : 34;
       const dx = p.x - a.x, dy = p.y - a.y, dist = Math.hypot(dx, dy);
       const can = sp * step;
       a.mode = p.mode;
@@ -300,7 +285,7 @@ function updateAgents(g, dt) {
 }
 
 function agentSprite(d, a) {
-  const moving = a.mode === 'walk' || a.mode === 'stairs';
+  const moving = a.mode === 'walk' || a.mode === 'well';
   const climbing = a.mode === 'ladder';
   let pose = climbing ? 'climb' : moving ? 'walk' : (a.want && a.want.pose) || 'idle';
   const fps = { walk: 8, climb: 5, work: 5, talk: 3, sitTalk: 3, eat: 1.6, drink: 0.5, sleep: 0.7 }[pose] || 1.2;
@@ -498,7 +483,7 @@ let depth = { key: '', rock: null, shadow: null, lips: null };
 
 function depthLayers(g) {
   const w = W() + VW, h = H();
-  const key = [w, h, [...g.cells.keys()].sort().join(';'), g.stairs.map((s) => s.c + ',' + s.f).join(';')].join('|');
+  const key = [w, h, [...g.cells.keys()].sort().join(';'), g.wells.map(wellKey).join(';')].join('|');
   if (depth.key === key) return depth;
   // where there is rock: the mountain, and everything under the valley's soil
   const shape = S.mk(w, h), shp = shape.getContext('2d');
@@ -553,7 +538,7 @@ function depthLayers(g) {
     const [c, fl] = k.split(',').map(Number);
     S.draw(hc, 'hall_a', VW + c * CELL, ftop(fl));
   }
-  for (const s of g.stairs) S.draw(hc, 'stairs', VW + s.c * CELL, ftop(s.f));
+  for (const s of g.wells) S.draw(hc, 'well', VW + s.c * CELL, ftop(s.f));
   for (const rm of g.rooms) hc.drawImage(S.roomImage(rm.b), VW + rm.x, rm.y);
   hc.globalCompositeOperation = 'destination-out';
   for (const [k, v] of g.cells) {
@@ -561,6 +546,10 @@ function depthLayers(g) {
     const [c, fl] = k.split(',').map(Number);
     if (!walkable(g, c - 1, fl)) S.draw(hc, 'hall_cap_l', VW + c * CELL, ftop(fl));
     if (!walkable(g, c + 1, fl)) S.draw(hc, 'hall_cap_r', VW + c * CELL + CELL - 8, ftop(fl));
+  }
+  for (const s of g.wells) {
+    if (!walkable(g, s.c - 1, s.f)) S.draw(hc, 'hall_cap_l', VW + s.c * CELL, ftop(s.f));
+    if (!walkable(g, s.c + 2, s.f)) S.draw(hc, 'hall_cap_r', VW + s.c * CELL + 2 * CELL - 8, ftop(s.f));
   }
   const solid = S.mk(w, h), sc = solid.getContext('2d');
   sc.drawImage(shape, 0, 0); sc.globalCompositeOperation = 'destination-out'; sc.drawImage(hole, 0, 0);
@@ -609,10 +598,13 @@ function drawUnderground(ctx, t, view, g) {
     if (!walkable(g, c - 1, fl)) S.draw(ctx, 'hall_cap_l', c * CELL, ftop(fl));
     if (!walkable(g, c + 1, fl)) S.draw(ctx, 'hall_cap_r', c * CELL + CELL - 8, ftop(fl));
   }
-  for (const s of g.stairs) S.draw(ctx, 'stairs', s.c * CELL, ftop(s.f));
-  for (const r of g.rooms) drawRoom(ctx, t, r);
   const nowMs = performance.now();
-  for (const d of g.doors) S.draw(ctx, (doorOpen.get(doorKey(d)) || 0) > nowMs ? 'bdoor_open' : 'bdoor', Math.round(d.x - 9), ftop(d.f) + WALK - 33);
+  for (const s of g.wells) {
+    S.draw(ctx, (wellLit.get(wellKey(s)) || 0) > nowMs ? 'well_lit' : 'well', s.c * CELL, ftop(s.f));
+    if (!walkable(g, s.c - 1, s.f)) S.draw(ctx, 'hall_cap_l', s.c * CELL, ftop(s.f));
+    if (!walkable(g, s.c + 2, s.f)) S.draw(ctx, 'hall_cap_r', s.c * CELL + 2 * CELL - 8, ftop(s.f));
+  }
+  for (const r of g.rooms) drawRoom(ctx, t, r);
   ctx.drawImage(dl.shadow, -VW, 0);
   S.draw(ctx, 'gate', SURFACE.gate + 6, GROUND - 71);
 }
@@ -713,13 +705,18 @@ export const holdScreen = {
     drawStrangers(ctx, t, 'road');
     drawn.length = 0;
     const f = F();
-    const list = [...agents.values()].filter((a) => !a.hidden && a.mode !== 'door').sort((a, b) => a.y - b.y);
+    const nowMs = performance.now();
+    const list = [...agents.values()].filter((a) => !a.hidden && !(a.mode === 'well' && nowMs - a.wellAt > FADE)).sort((a, b) => a.y - b.y);
     for (const a of list) {
       const d = f.dwarves.find((x) => x.id === a.id);
       if (!d) continue;
       const spr = agentSprite(d, a);
+      // stepping into the dark of an arch, or out of it
+      const k = a.mode === 'well' ? 1 - (nowMs - a.wellAt) / FADE : a.emerge && nowMs - a.emerge < FADE ? (nowMs - a.emerge) / FADE : 1;
+      ctx.globalAlpha = Math.max(0, Math.min(1, k));
       const p = S.placeDwarf(ctx, spr, a.x, a.y, a.face < 0);
-      drawn.push({ id: a.id, sx: p.sx, sy: p.sy, spr: a.face < 0 ? flipped(spr) : spr, a });
+      ctx.globalAlpha = 1;
+      if (a.mode !== 'well') drawn.push({ id: a.id, sx: p.sx, sy: p.sy, spr: a.face < 0 ? flipped(spr) : spr, a });
     }
     drawParticles(ctx, dt);
   },
@@ -750,7 +747,10 @@ export const holdScreen = {
       if (['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8] === 'hall_b') out.push({ x: c * CELL + CELL / 2, y: ftop(fl) + 19, r: 32, color: '#ffd98e', flicker: 1 });
     }
     for (let fl = 0; fl < plan.floors; fl++) out.push({ x: plan.shaft * CELL / 2, y: ftop(fl) + 40, r: 24, color: '#ffd98e' });
-    for (const st of G_.stairs) out.push({ x: st.c * CELL + 24, y: ftop(st.f) + 64, r: 34, color: '#ffd98e', flicker: 1 });
+    for (const w of G_.wells) {
+      out.push({ x: w.c * CELL + 44, y: ftop(w.f) + 34, r: 30, color: '#ffd98e', flicker: 1 });
+      if ((wellLit.get(wellKey(w)) || 0) > performance.now()) out.push({ x: w.c * CELL + 29, y: ftop(w.f) + 68, r: 22, color: '#ffb070', power: 0.8 });
+    }
     const day = daylight(sun().elev);
     if (day < 0.8) {
       out.push({ x: SURFACE.stall + 36, y: GRASS - 38, r: 44, color: '#ffd98e', power: 0.8 });
@@ -920,6 +920,12 @@ function fits(c, f, w, ignore) {
   return true;
 }
 
+/** A room there would touch a hallway, a stairwell or the shaft on its left or right (the server checks too). */
+function besideHall(c, f, w) {
+  const leads = (x) => { const v = G_.cells.get(x + ',' + f); return !!v && (v.kind === 'hall' || v.kind === 'well' || v.kind === 'shaft'); };
+  return leads(c - 1) || leads(c + w);
+}
+
 function ghostFor(mouse) {
   if (!mouse || !G_) return null;
   const cell = cellAt(mouse.x, mouse.y);
@@ -929,16 +935,19 @@ function ghostFor(mouse) {
     const r = G_.rooms.find((q) => q.b.id === G.build.held);
     if (!r) return null;
     const c = Math.round(mouse.x / CELL - r.w / 2);
-    return { c, f: cell.f, w: r.w, h: 1, ok: fits(c, cell.f, r.w, r.b.id), room: r };
+    return { c, f: cell.f, w: r.w, h: 1, ok: fits(c, cell.f, r.w, r.b.id) && besideHall(c, cell.f, r.w), room: r };
   }
   if (tool === 'dig') return { c: cell.c, f: cell.f, w: 1, h: 1, ok: cell.c >= plan.shaft && !G_.cells.has(cell.c + ',' + cell.f) };
-  if (tool === 'stairs') {
-    let ok = cell.c >= plan.shaft && cell.c + 1 < plan.cols && cell.f + 1 < plan.floors;
-    for (let dx = 0; dx < 2 && ok; dx++) for (let dy = 0; dy < 2 && ok; dy++) { const v = G_.cells.get((cell.c + dx) + ',' + (cell.f + dy)); if (v && v.kind !== 'hall') ok = false; }
-    return { c: cell.c, f: cell.f, w: 2, h: 2, ok };
+  if (tool === 'stairwell') {
+    let ok = cell.c >= plan.shaft && cell.c + 1 < plan.cols;
+    for (let dx = 0; dx < 2 && ok; dx++) { const v = G_.cells.get((cell.c + dx) + ',' + cell.f); if (v && v.kind !== 'hall') ok = false; }
+    return { c: cell.c, f: cell.f, w: 2, h: 1, ok };
   }
-  if (tool === 'door') { const v = G_.cells.get(cell.c + ',' + cell.f); return { c: cell.c, f: cell.f, w: 1, h: 1, ok: !!v && v.kind === 'hall' }; }
-  if (tool === 'fill') { const v = G_.cells.get(cell.c + ',' + cell.f); return { c: cell.c, f: cell.f, w: 1, h: 1, ok: !!v && (v.kind === 'hall' || v.kind === 'stair') }; }
+  if (tool === 'fill') {
+    const v = G_.cells.get(cell.c + ',' + cell.f);
+    if (v && v.kind === 'well') return { c: v.well.c, f: cell.f, w: 2, h: 1, ok: true };
+    return { c: cell.c, f: cell.f, w: 1, h: 1, ok: !!v && v.kind === 'hall' };
+  }
   return null;
 }
 
@@ -1014,9 +1023,8 @@ function buildClick(x, y, hit) {
     return true;
   }
   if (b.tool === 'dig') G.act({ type: 'dig', col: cell.c, floor: cell.f });   // only reached when dragging is off
-  if (b.tool === 'stairs') G.act({ type: 'stairs', col: cell.c, floor: cell.f });
+  if (b.tool === 'stairwell') G.act({ type: 'stairwell', col: cell.c, floor: cell.f });
   if (b.tool === 'fill') G.act({ type: 'fill', col: cell.c, floor: cell.f });
-  if (b.tool === 'door') G.act({ type: 'door', col: cell.c, floor: cell.f });
   return true;
 }
 
