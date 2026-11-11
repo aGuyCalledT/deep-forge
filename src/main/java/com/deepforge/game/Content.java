@@ -39,7 +39,8 @@ public final class Content {
 
     public record Trait(String id, String name, String note, String conflicts) {}
 
-    public record City(String id, String name, double hours, double danger, boolean start,
+    /** share: this city's part of the world market (all cities add up to 1). */
+    public record City(String id, String name, double hours, double danger, boolean start, double share,
                        Map<String, Double> bias, String note) {}
 
     public record Tradition(String id, String name, String note, int maxRank) {}
@@ -80,7 +81,7 @@ public final class Content {
     }
 
     private static void ore(String id, String name, String color, String metal, String bonus, double chance) {
-        ORES.put(id, new Ore(id, name, color, metal, bonus, chance, Math.round(METALS.get(metal).value() * 0.45 * 10) / 10.0));
+        ORES.put(id, new Ore(id, name, color, metal, bonus, chance, Math.round(METALS.get(metal).value() * 0.45)));
     }
 
     private static void raw(String id, String name, String color, double value, String cat, String note) {
@@ -113,57 +114,57 @@ public final class Content {
     }
 
     static {
-        // --- base metals (value = coins per bar at market index 1.0)
-        metal("copper", "Copper", "#b5653b", 10, 2, false, 1.0, false,
+        // --- base metals. All money is in Jots: 1 Mark = 100 Talents = 1000 Jots. value = Jots per bar at the base price
+        metal("copper", "Copper", "#b5653b", 1000, 2, false, 1.0, false,
                 "Copper flows warm and willing.", "Copper takes the water calmly.", 3, 6);
-        metal("tin", "Tin", "#9fb7b3", 12, 1, false, 0.6, false,
+        metal("tin", "Tin", "#9fb7b3", 1200, 1, false, 0.6, false,
                 "Tin melts almost the moment it sees fire.", "Tin hisses happily - quench it early.", 1.5, 6);
-        metal("zinc", "Zinc", "#a7b5b5", 12, 1, false, 0.8, false,
+        metal("zinc", "Zinc", "#a7b5b5", 1200, 1, false, 0.8, false,
                 "Zinc fumes a little. Mind the beard.", "Zinc wants a quick dip.", 2, 5);
-        metal("lead", "Lead", "#5d544b", 8, 1, false, 0.6, false,
+        metal("lead", "Lead", "#5d544b", 800, 1, false, 0.6, false,
                 "Lead slumps into the crucible like a tired miner.", "Lead barely cares when you quench it.", 1, 8);
-        metal("bismuth", "Bismuth", "#a874b8", 18, 1, false, 0.8, false,
+        metal("bismuth", "Bismuth", "#a874b8", 1800, 1, false, 0.8, false,
                 "Bismuth shimmers in rainbow colours as it melts.", "Bismuth blooms into crystals if you wait a moment.", 4, 5);
-        metal("iron", "Iron", "#8c8c8c", 14, 4, false, 1.5, false,
+        metal("iron", "Iron", "#8c8c8c", 1400, 4, false, 1.5, false,
                 "Iron needs a roaring fire and patience.", "Iron wants a cherry-red glow before the water.", 5, 4.5);
-        metal("nickel", "Nickel", "#93b0ac", 20, 3, false, 1.3, false,
+        metal("nickel", "Nickel", "#93b0ac", 2000, 3, false, 1.3, false,
                 "Nickel glows a stubborn white.", "Nickel likes a late quench.", 6, 4.5);
-        metal("silver", "Silver", "#c9cbd0", 30, 2, true, 1.0, false,
+        metal("silver", "Silver", "#c9cbd0", 3000, 2, true, 1.0, false,
                 "Silver turns liquid like moonlight.", "Silver cools fast - be quick.", 2, 4);
-        metal("gold", "Gold", "#d6a43a", 60, 1, true, 1.1, false,
+        metal("gold", "Gold", "#d6a43a", 6000, 1, true, 1.1, false,
                 "Gold melts like honey on a hearth.", "Gold forgives almost any timing.", 2, 8);
-        metal("platinum", "Platinum", "#d9dae2", 90, 3, true, 2.0, false,
+        metal("platinum", "Platinum", "#d9dae2", 9000, 3, true, 2.0, false,
                 "Platinum barely glows, even with the bellows roaring.", "Platinum holds its heat a long time.", 7, 5);
-        metal("aluminum", "Aluminum", "#cfd2d6", 120, 2, true, 2.2, false,
+        metal("aluminum", "Aluminum", "#cfd2d6", 12000, 2, true, 2.2, false,
                 "Aluminum is strange, light and hard to coax from stone.", "Aluminum gives no warning colour - trust your count.", 5, 4);
         // --- alloys
-        metal("bronze", "Bronze", "#8f5a3f", 16, 4, false, 0.9, true,
+        metal("bronze", "Bronze", "#8f5a3f", 1600, 4, false, 0.9, true,
                 "Bronze pours with a golden-brown sheen.", "Bronze likes a steady hand.", 3, 5);
-        metal("bismuth_bronze", "Bismuth bronze", "#a99877", 24, 5, false, 1.0, true,
+        metal("bismuth_bronze", "Bismuth bronze", "#a99877", 2400, 5, false, 1.0, true,
                 "Bismuth bronze swirls with faint purple streaks.", "Bismuth bronze rings like a bell in the water.", 4, 4.5);
-        metal("black_bronze", "Black bronze", "#3d3a3a", 40, 4, true, 1.0, true,
+        metal("black_bronze", "Black bronze", "#3d3a3a", 4000, 4, true, 1.0, true,
                 "Black bronze drinks the light of the forge.", "Black bronze darkens beautifully when quenched late.", 5, 4.5);
-        metal("brass", "Brass", "#b9a052", 18, 3, false, 0.9, true,
+        metal("brass", "Brass", "#b9a052", 1800, 3, false, 0.9, true,
                 "Brass gleams like a dwarf's best buckle.", "Brass is happy with an early dip.", 2.5, 5);
-        metal("billon", "Billon", "#8b7a6d", 22, 2, true, 1.0, true,
+        metal("billon", "Billon", "#8b7a6d", 2200, 2, true, 1.0, true,
                 "Billon - silver that went to the tavern with copper.", "Billon takes the water without complaint.", 3, 6);
-        metal("electrum", "Electrum", "#ba8a2c", 55, 2, true, 1.05, true,
+        metal("electrum", "Electrum", "#ba8a2c", 5500, 2, true, 1.05, true,
                 "Electrum glows pale gold, older than kingdoms.", "Electrum wants a gentle, quick quench.", 2.5, 5);
-        metal("fine_pewter", "Fine pewter", "#a3a3a7", 15, 1, false, 0.7, true,
+        metal("fine_pewter", "Fine pewter", "#a3a3a7", 1500, 1, false, 0.7, true,
                 "Fine pewter melts soft and bright.", "Pewter barely needs the water at all.", 1.5, 7);
-        metal("lay_pewter", "Lay pewter", "#c5c6ca", 13, 1, false, 0.7, true,
+        metal("lay_pewter", "Lay pewter", "#c5c6ca", 1300, 1, false, 0.7, true,
                 "Lay pewter - everyday metal for everyday dwarves.", "Pewter barely needs the water at all.", 1.5, 7);
-        metal("trifle_pewter", "Trifle pewter", "#5e5248", 12, 1, false, 0.7, true,
+        metal("trifle_pewter", "Trifle pewter", "#5e5248", 1200, 1, false, 0.7, true,
                 "Trifle pewter, dark and humble.", "Pewter barely needs the water at all.", 1.5, 7);
-        metal("nickel_silver", "Nickel silver", "#a9abae", 22, 3, false, 1.1, true,
+        metal("nickel_silver", "Nickel silver", "#a9abae", 2200, 3, false, 1.1, true,
                 "Nickel silver - no silver in it, don't tell the buyers.", "Nickel silver likes a mid quench.", 4, 4.5);
-        metal("pig_iron", "Pig iron", "#5b5149", 18, 3, false, 1.4, true,
+        metal("pig_iron", "Pig iron", "#5b5149", 1800, 3, false, 1.4, true,
                 "Pig iron comes out heavy and brittle.", "Pig iron cracks if you rush it.", 5, 4.5);
-        metal("steel", "Steel", "#a5a9b6", 32, 6, false, 1.6, true,
+        metal("steel", "Steel", "#a5a9b6", 3200, 6, false, 1.6, true,
                 "Steel: iron that listened to a master.", "Steel wants a straw-yellow glow, then the water.", 6, 3.5);
-        metal("rose_gold", "Rose gold", "#c97473", 60, 2, true, 1.1, true,
+        metal("rose_gold", "Rose gold", "#c97473", 6000, 2, true, 1.1, true,
                 "Rose gold blushes in the crucible.", "Rose gold is patient with you.", 3, 7);
-        metal("sterling_silver", "Sterling silver", "#d2d3d6", 36, 2, true, 1.0, true,
+        metal("sterling_silver", "Sterling silver", "#d2d3d6", 3600, 2, true, 1.0, true,
                 "Sterling silver - silver with a backbone.", "Sterling cools fast - be quick.", 2, 4.5);
 
         // --- alloy recipes (bars in -> bars out). Flux = 1 limestone. Every smelt also burns 1 coal.
@@ -201,14 +202,14 @@ public final class Content {
         ore("native_aluminum", "Native aluminum", "#d4d7db", "aluminum", null, 0);
 
         // --- other raw goods
-        raw("coal", "Coal", "#2b2b2e", 2, "materials", "Fuel. Every smelt and every forging burns one.");
-        raw("limestone", "Limestone", "#d8d2bd", 2, "materials", "Flux for pig iron and steel.");
-        raw("stone", "Stone", "#7d7a73", 1, "materials", "For building and upgrades.");
-        raw("rough_gem", "Rough gem", "#5fb7a6", 25, "gems", "Cut it at the jeweler.");
-        raw("cut_gem", "Cut gem", "#6fe0c8", 60, "gems", "Set it into rings, crowns and goblets.");
-        raw("cloth", "Cloth", "#c9b28a", 4, "materials", "Woven from mushroom fibre at the tailor. Sew it into clothes.");
-        raw("food", "Cave mushrooms", "#b48a5a", 2, "provisions", "Every dwarf eats.");
-        raw("ale", "Ale", "#d9a94a", 3, "provisions", "Every dwarf drinks. Happy dwarves drink more.");
+        raw("coal", "Coal", "#2b2b2e", 200, "materials", "Fuel. Every smelt and every forging burns one.");
+        raw("limestone", "Limestone", "#d8d2bd", 200, "materials", "Flux for pig iron and steel.");
+        raw("stone", "Stone", "#7d7a73", 100, "materials", "For building and upgrades.");
+        raw("rough_gem", "Rough gem", "#5fb7a6", 2500, "gems", "Cut it at the jeweler.");
+        raw("cut_gem", "Cut gem", "#6fe0c8", 6000, "gems", "Set it into rings, crowns and goblets.");
+        raw("cloth", "Cloth", "#c9b28a", 400, "materials", "Woven from mushroom fibre at the tailor. Sew it into clothes.");
+        raw("food", "Cave mushrooms", "#b48a5a", 200, "provisions", "Every dwarf eats.");
+        raw("ale", "Ale", "#d9a94a", 300, "provisions", "Every dwarf drinks. Happy dwarves drink more.");
 
         // --- item types. rule: hard = hardness >= 3 (not pig iron), precious = precious metals only, any = all
         ITEMS.put("pickaxe", new ItemType("pickaxe", "Pickaxe", 2, 1.5, "tools", "hard", "tool", List.of("s", "e"), null,
@@ -250,58 +251,60 @@ public final class Content {
         LAYERS.add(new Layer(1, "Grey Veins", "#5a5a5e", 10, 0.4,
                 goods("hematite", 18, "limonite", 14, "galena", 12, "sphalerite", 12, "tetrahedrite", 10, "coal", 18,
                         "limestone", 8, "stone", 10),
-                List.of("cave_spider", "goblin_scouts"), 800, goods("stone", 150, "bar:copper", 20), false,
+                List.of("cave_spider", "goblin_scouts"), 80000, goods("stone", 150, "bar:copper", 20), false,
                 "Iron, lead, zinc - and silver hidden in galena."));
         LAYERS.add(new Layer(2, "Silver Halls", "#4a4d5c", 8, 0.55,
                 goods("native_silver", 12, "horn_silver", 10, "magnetite", 16, "garnierite", 14, "bismuthinite", 10,
                         "coal", 14, "rough_gem", 4, "stone", 10),
-                List.of("cave_spider", "rock_troll"), 4000, goods("stone", 300, "bar:bronze", 30), false,
+                List.of("cave_spider", "rock_troll"), 400000, goods("stone", 300, "bar:bronze", 30), false,
                 "Silver, nickel, bismuth and the first gems."));
         LAYERS.add(new Layer(3, "Golden Deep", "#5a4a32", 6.5, 0.75,
                 goods("native_gold", 14, "tetrahedrite", 8, "magnetite", 14, "galena", 10, "coal", 12, "rough_gem", 8,
                         "stone", 10),
-                List.of("magma_crab", "blind_ogre"), 15000, goods("stone", 500, "bar:iron", 40, "bar:steel", 20), true,
+                List.of("magma_crab", "blind_ogre"), 1500000, goods("stone", 500, "bar:iron", 40, "bar:steel", 20), true,
                 "Gold. Must be found by an expedition first."));
         LAYERS.add(new Layer(4, "Crystal Abyss", "#3c3556", 5, 1.0,
                 goods("native_platinum", 10, "native_aluminum", 6, "native_gold", 8, "rough_gem", 14, "garnierite", 10,
                         "bismuthinite", 10, "stone", 8),
-                List.of("crystal_golem", "deep_wyrm"), 50000, goods("stone", 800, "bar:steel", 60), true,
+                List.of("crystal_golem", "deep_wyrm"), 5000000, goods("stone", 800, "bar:steel", 60), true,
                 "Platinum, aluminum, gems. Must be found by an expedition first."));
 
         // --- buildings. kind: queue (recipes), continuous (constant output), passive (effect only)
-        building("warehouse", "Warehouse", "passive", null, false, 0, goods(), 250, 60, 1.7, 1,
+        building("warehouse", "Warehouse", "passive", null, false, 0, goods(), 25000, 60, 1.7, 1,
                 "Storage for ore, stone, bars and goods. When full, mining stops.");
-        building("lift", "Mine lift", "passive", null, false, 0, goods(), 300, 30, 1.7, 1,
+        building("lift", "Mine lift", "passive", null, false, 0, goods(), 30000, 30, 1.7, 1,
                 "Brings ore up. Miners cannot dig faster than the lift can carry.");
-        building("quarters", "Quarters", "passive", null, false, 0, goods(), 200, 50, 1.6, 1,
+        building("quarters", "Quarters", "passive", null, false, 0, goods(), 20000, 50, 1.6, 1,
                 "Beds. Dwarves without a bed are unhappy, and new dwarves only come if there is room.");
-        building("tavern", "Tavern", "passive", null, false, 0, goods(), 300, 40, 1.65, 1,
+        building("tavern", "Tavern", "passive", null, false, 0, goods(), 30000, 40, 1.65, 1,
                 "Makes dwarves happy. Needs ale.");
-        building("smelter", "Smelter", "queue", "smelting", true, 300, goods("stone", 40), 200, 20, 1.6, 1,
+        building("smelter", "Smelter", "queue", "smelting", true, 30000, goods("stone", 40), 20000, 20, 1.6, 1,
                 "Ore into bars, bars into alloys. Pump the bellows to go faster.");
-        building("forge", "Forge", "queue", "smithing", true, 400, goods("stone", 40, "bar:copper", 10), 220, 20, 1.6, 1,
+        building("forge", "Forge", "queue", "smithing", true, 40000, goods("stone", 40, "bar:copper", 10), 22000, 20, 1.6, 1,
                 "Bars into goods. Quench at the right moment for better quality.");
-        building("grindstone", "Grindstone", "queue", "crafting", true, 350, goods("stone", 30), 200, 20, 1.6, 0,
+        building("grindstone", "Grindstone", "queue", "crafting", true, 35000, goods("stone", 30), 20000, 20, 1.6, 0,
                 "Sharpens axes and pickaxes.");
-        building("engraver", "Engraver's bench", "queue", "crafting", true, 600, goods("stone", 30, "bar:bronze", 10), 260, 20, 1.6, 0,
+        building("engraver", "Engraver's bench", "queue", "crafting", true, 60000, goods("stone", 30, "bar:bronze", 10), 26000, 20, 1.6, 0,
                 "Engraves goods. Engraved goods sell for more.");
-        building("jeweler", "Jeweler", "queue", "crafting", true, 900, goods("stone", 30, "bar:silver", 10), 320, 20, 1.6, 0,
+        building("jeweler", "Jeweler", "queue", "crafting", true, 90000, goods("stone", 30, "bar:silver", 10), 32000, 20, 1.6, 0,
                 "Cuts gems and sets them into rings, crowns and goblets.");
-        building("tailor", "Tailor", "queue", "crafting", true, 300, goods("stone", 20), 200, 20, 1.6, 0,
+        building("tailor", "Tailor", "queue", "crafting", true, 30000, goods("stone", 20), 20000, 20, 1.6, 0,
                 "Weaves cloth from mushroom fibre and sews dyed clothes. Dress your dwarves or sell them.");
-        building("farm", "Mushroom farm", "continuous", "farming", true, 200, goods("stone", 20), 150, 20, 1.55, 1,
+        building("farm", "Mushroom farm", "continuous", "farming", true, 20000, goods("stone", 20), 15000, 20, 1.55, 1,
                 "Grows cave mushrooms.");
-        building("brewery", "Brewery", "continuous", "farming", true, 250, goods("stone", 20, "bar:copper", 5), 180, 20, 1.55, 1,
+        building("brewery", "Brewery", "continuous", "farming", true, 25000, goods("stone", 20, "bar:copper", 5), 18000, 20, 1.55, 1,
                 "Brews ale from mushrooms.");
-        building("barracks", "Barracks", "passive", null, false, 0, goods(), 400, 40, 1.7, 1,
+        building("barracks", "Barracks", "passive", null, false, 0, goods(), 40000, 40, 1.7, 1,
                 "Warriors train here and get stronger over time.");
-        building("walls", "Walls", "passive", null, false, 0, goods(), 500, 100, 1.7, 0,
-                "Adds defence against raids.");
-        building("vault", "Vault", "passive", null, false, 0, goods(), 600, 60, 1.7, 0,
+        building("gate", "Gate", "passive", null, false, 0, goods(), 50000, 100, 1.7, 1,
+                "The great gate of the hold. Every level makes it stronger against raids.");
+        building("entrance_hall", "Entrance hall", "passive", null, false, 0, goods(), 40000, 60, 1.7, 1,
+                "Guards stand watch here. They defend the gate and chase off critters on their own.");
+        building("vault", "Vault", "passive", null, false, 0, goods(), 60000, 60, 1.7, 0,
                 "Raiders cannot steal what is locked away.");
-        building("trading_post", "Trading post", "passive", null, false, 0, goods(), 400, 40, 1.7, 1,
-                "More caravans, bigger loads.");
-        building("expedition_hall", "Expedition hall", "passive", null, false, 0, goods(), 500, 40, 1.75, 1,
+        building("trade_depot", "Trade depot", "passive", null, false, 0, goods(), 40000, 40, 1.7, 1,
+                "Caravans leave from here. Set rules that send goods on their own, and post what you want to buy.");
+        building("expedition_hall", "Expedition hall", "passive", null, false, 0, goods(), 50000, 40, 1.75, 1,
                 "More expeditions at once, bigger parties, more offers.");
 
         // --- personality traits
@@ -322,18 +325,18 @@ public final class Content {
         trait("claustro", "Claustrophobic", "-25% mining, +10% other work", null);
         trait("firekin", "Fire-Kin", "+20% smelting speed", null);
 
-        // --- cities (prices are global; each city adds its own demand on top)
-        CITIES.put("stonebridge", new City("stonebridge", "Stonebridge", 1.0, 0.04, true,
+        // --- cities: each has its own prices, tied loosely to a world price; share = its part of the world market
+        CITIES.put("stonebridge", new City("stonebridge", "Stonebridge", 1.0, 0.04, true, 0.22,
                 bias("provisions", 1.1, "materials", 1.1, "clothing", 1.1), "A busy market town at the foot of the mountain."));
-        CITIES.put("ironmarch", new City("ironmarch", "Ironmarch", 1.5, 0.08, true,
+        CITIES.put("ironmarch", new City("ironmarch", "Ironmarch", 1.5, 0.08, true, 0.2,
                 bias("weapons", 1.15, "armor", 1.15, "bars", 1.05, "ore", 0.9), "A fortress city always at war with someone."));
-        CITIES.put("amberfall", new City("amberfall", "Amberfall", 2.0, 0.10, true,
+        CITIES.put("amberfall", new City("amberfall", "Amberfall", 2.0, 0.10, true, 0.18,
                 bias("jewelry", 1.15, "tableware", 1.1, "clothing", 1.2), "Rich merchants, richer tastes."));
-        CITIES.put("highcrag", new City("highcrag", "Highcrag Monastery", 2.5, 0.12, false,
+        CITIES.put("highcrag", new City("highcrag", "Highcrag Monastery", 2.5, 0.12, false, 0.12,
                 bias("tableware", 1.2, "jewelry", 1.1, "gems", 1.2), "Monks who love chalices and gems."));
-        CITIES.put("saltreach", new City("saltreach", "Saltreach Harbor", 3.0, 0.15, false,
+        CITIES.put("saltreach", new City("saltreach", "Saltreach Harbor", 3.0, 0.15, false, 0.16,
                 bias("hardware", 1.25, "tools", 1.15, "provisions", 1.15), "Ships need chains, anchors and food."));
-        CITIES.put("emberton", new City("emberton", "Emberton", 4.0, 0.22, false,
+        CITIES.put("emberton", new City("emberton", "Emberton", 4.0, 0.22, false, 0.12,
                 bias("weapons", 1.25, "armor", 1.25, "ore", 1.1), "A border town. Dangerous road, great prices for arms."));
 
         // --- traditions (specialisations). One point per fortress level.
@@ -387,9 +390,44 @@ public final class Content {
         return r == null ? "materials" : r.category();
     }
 
-    /** Market index key: items share one index per category, everything else has its own. */
+    /** Market key: one price per item type (all axes together), one for all clothes, everything else its own. */
     public static String marketKey(String key) {
-        return isItem(key) || isWear(key) ? "cat:" + category(key) : key;
+        if (isWear(key)) return "cat:clothing";
+        if (isItem(key)) return "type:" + parseItem(key)[0];
+        return key;
+    }
+
+    /** The metal a market price for an item type is quoted in: bronze for hard goods, silver for precious, else copper. */
+    public static String refMetal(ItemType t) {
+        return switch (t.rule()) {
+            case "hard" -> "bronze";
+            case "precious" -> "silver";
+            default -> "copper";
+        };
+    }
+
+    /** The good a market price is quoted for: a common item of the reference metal, a linen shirt for clothes. */
+    public static String refGood(String marketKey) {
+        if (marketKey.equals("cat:clothing")) return wearKey("shirt_linen", "cream");
+        if (marketKey.startsWith("type:")) {
+            ItemType t = ITEMS.get(marketKey.substring(5));
+            return itemKey(t.id(), refMetal(t), 1, "");
+        }
+        return marketKey;
+    }
+
+    /** Does this stock key belong to the market key (for rules like "all battle axes")? */
+    public static boolean inMarket(String key, String marketKey) {
+        return (isItem(key) || isWear(key) || ORES.containsKey(key) || RAWS.containsKey(key) || isBar(key)) && marketKey(key).equals(marketKey);
+    }
+
+    public static String marketName(String marketKey) {
+        if (marketKey.equals("cat:clothing")) return "Clothes";
+        if (marketKey.startsWith("type:")) {
+            String n = ITEMS.get(marketKey.substring(5)).name();
+            return n.endsWith("s") ? n : n + "s";
+        }
+        return goodName(marketKey);
     }
 
     /** Base value of one unit (before market index and city demand). */
@@ -442,14 +480,22 @@ public final class Content {
         l.addAll(ORES.keySet());
         l.addAll(RAWS.keySet());
         for (String m : METALS.keySet()) l.add("bar:" + m);
-        for (String c : List.of("tools", "weapons", "armor", "hardware", "tableware", "jewelry", "clothing")) l.add("cat:" + c);
+        for (String t : ITEMS.keySet()) l.add("type:" + t);
+        l.add("cat:clothing");
         return l;
     }
 
-    /** Liquidity: how many units it takes to move the price by ~63%. */
+    public static boolean isMarketKey(String k) {
+        if (k == null) return false;
+        if (k.startsWith("type:")) return ITEMS.containsKey(k.substring(5));
+        if (k.equals("cat:clothing")) return true;
+        return ORES.containsKey(k) || RAWS.containsKey(k) || isBar(k) && METALS.containsKey(k.substring(4));
+    }
+
+    /** Liquidity: how many units one city takes before its price moves by ~63% (for a small player). */
     public static double liquidity(String marketKey) {
-        if (marketKey.startsWith("cat:")) return 180;
-        double v = baseValue(marketKey);
+        if (marketKey.startsWith("type:") || marketKey.startsWith("cat:")) return 150;
+        double v = baseValue(marketKey) / 100;
         return 2000 / Math.sqrt(Math.max(1, v));
     }
 
@@ -472,25 +518,25 @@ public final class Content {
 
     static {
         for (Cloth c : List.of(
-                new Cloth("shirt_linen", "Linen shirt", "top", "linen", 12, 2),
-                new Cloth("shirt_knit", "Knitted jumper", "top", "knit", 16, 2),
-                new Cloth("shirt_embroid", "Embroidered tunic", "top", "embroid", 26, 3),
-                new Cloth("shirt_patched", "Patched shirt", "top", "patched", 6, 1),
-                new Cloth("vest", "Leather vest", "top", "vest", 20, 2),
-                new Cloth("dress", "Dress", "top", "dress", 20, 2),
-                new Cloth("trousers", "Trousers", "legs", "seam", 10, 2),
-                new Cloth("trousers_patched", "Patched trousers", "legs", "patch", 6, 1),
-                new Cloth("trousers_rolled", "Rolled-up trousers", "legs", "cuff", 10, 2),
-                new Cloth("boots", "Boots", "feet", "boots", 14, 2),
-                new Cloth("hood", "Hood", "hat", "hood", 10, 1),
-                new Cloth("miner_helmet", "Miner's helmet", "hat", "miner", 9, 0),
-                new Cloth("beanie", "Beanie", "hat", "beanie", 8, 1),
-                new Cloth("felt_cap", "Felt cap", "hat", "pointy", 10, 1),
-                new Cloth("flower_crown", "Flower crown", "hat", "flower", 6, 1),
-                new Cloth("bandana", "Bandana", "hat", "bandana", 6, 1),
-                new Cloth("glasses", "Glasses", "face", "glasses", 14, 0),
-                new Cloth("earrings", "Earrings", "ears", "earrings", 16, 0),
-                new Cloth("apron", "Apron", "apron", "apron", 10, 2)))
+                new Cloth("shirt_linen", "Linen shirt", "top", "linen", 1200, 2),
+                new Cloth("shirt_knit", "Knitted jumper", "top", "knit", 1600, 2),
+                new Cloth("shirt_embroid", "Embroidered tunic", "top", "embroid", 2600, 3),
+                new Cloth("shirt_patched", "Patched shirt", "top", "patched", 600, 1),
+                new Cloth("vest", "Leather vest", "top", "vest", 2000, 2),
+                new Cloth("dress", "Dress", "top", "dress", 2000, 2),
+                new Cloth("trousers", "Trousers", "legs", "seam", 1000, 2),
+                new Cloth("trousers_patched", "Patched trousers", "legs", "patch", 600, 1),
+                new Cloth("trousers_rolled", "Rolled-up trousers", "legs", "cuff", 1000, 2),
+                new Cloth("boots", "Boots", "feet", "boots", 1400, 2),
+                new Cloth("hood", "Hood", "hat", "hood", 1000, 1),
+                new Cloth("miner_helmet", "Miner's helmet", "hat", "miner", 900, 0),
+                new Cloth("beanie", "Beanie", "hat", "beanie", 800, 1),
+                new Cloth("felt_cap", "Felt cap", "hat", "pointy", 1000, 1),
+                new Cloth("flower_crown", "Flower crown", "hat", "flower", 600, 1),
+                new Cloth("bandana", "Bandana", "hat", "bandana", 600, 1),
+                new Cloth("glasses", "Glasses", "face", "glasses", 1400, 0),
+                new Cloth("earrings", "Earrings", "ears", "earrings", 1600, 0),
+                new Cloth("apron", "Apron", "apron", "apron", 1000, 2)))
             CLOTHES.put(c.id(), c);
         String[][] dyes = { {"blue", "#5f84bb"}, {"green", "#6f9a72"}, {"rose", "#c76a86"}, {"ochre", "#c99a3e"}, {"brown", "#8a6046"},
             {"grey", "#8a8a94"}, {"violet", "#8a6ab8"}, {"red", "#b8483e"}, {"cream", "#e8dcc0"}, {"teal", "#4f9aa0"}, {"black", "#3e383e"} };

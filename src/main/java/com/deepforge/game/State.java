@@ -10,14 +10,14 @@ public final class State {
     private State() {}
 
     public static class Fortress {
-        public int version = 1;
+        public int version = 1;         // 2: money in Jots, gate and trade depot instead of walls and trading post
         public long userId;
         public String owner;
         public String name;
         public long rng;
         public double t;                // simulated up to this time
         public double created;
-        public double coins;
+        public double coins;            // in Jots: 1 Mark = 100 Talents = 1000 Jots
         public Map<String, Integer> stock = new TreeMap<>();
         public List<Dwarf> dwarves = new ArrayList<>();
         public int nextId = 1;
@@ -52,6 +52,61 @@ public final class State {
         public Map<String, Integer> traditions = new TreeMap<>();
         public Stats stats = new Stats();
         public Layout layout;
+        // trade depot
+        public Map<String, Double> traded = new TreeMap<>();   // market key -> value traded, fading over a week (Jots)
+        public double tradedAt;
+        public List<Double> shareHist = new ArrayList<>();      // own market share, one sample every 2 hours
+        public double shareAt;
+        public List<CaravanPlan> plans = new ArrayList<>();
+        public List<DepotRule> rules = new ArrayList<>();
+        public List<BuyOrder> orders = new ArrayList<>();
+        public List<Delivery> deliveries = new ArrayList<>();
+    }
+
+    /** A saved caravan: how many merchants and guards, and what to load (market key -> how many to keep at home). */
+    public static class CaravanPlan {
+        public int id;
+        public String name;
+        public int merchants = 1;
+        public int guards;
+        public Map<String, Integer> load = new TreeMap<>();
+    }
+
+    /** IF stock of good (a market key) >= atLeast THEN send plan to city. Fires again once that caravan is back. */
+    public static class DepotRule {
+        public int id;
+        public String good;
+        public int atLeast;
+        public int plan;
+        public String city;
+        public boolean on = true;
+        public int caravan;           // the caravan it sent that is still on the road (0 = none)
+        public double firedAt;
+        public int fired;             // how often it sent a caravan
+        public String status;         // why it waits
+    }
+
+    /** Posted to the cities: we buy this good up to maxPrice (Jots each), left more, while we keep keepCoins. */
+    public static class BuyOrder {
+        public int id;
+        public String good;
+        public double maxPrice;
+        public int left;
+        public double keepCoins;
+        public int bought;
+        public double spent;
+        public String status;
+    }
+
+    /** City traders on their way with goods for a buy order. Paid on arrival. */
+    public static class Delivery {
+        public int id;
+        public int order;
+        public String city;
+        public String good;
+        public int qty;
+        public double cost;
+        public double arriveAt;
     }
 
     /** Where rooms, hallways and stairs are in the hold. Cells are (col, floor); floor 0 is right under the surface. */
@@ -107,7 +162,7 @@ public final class State {
         public int layer;             // miner: layer index
         public String building;       // worker: building id
         public int machine = -1;      // worker: which machine (0-based); -1 = the first free one
-        public String post = "fortress"; // warrior: fortress | mine
+        public String post = "hall";  // warrior: hall (entrance hall guard) | mine (patrol); old saves: fortress
         public String busy;           // caravan:<id> | expedition:<id>
         public String dig;            // miner: the cell ("col,floor") being dug out in the hold, or null
         public String weapon;
@@ -174,6 +229,7 @@ public final class State {
         public double arriveAt;
         public double returnAt;
         public String state = "outbound";  // outbound | returning
+        public int rule;                    // the depot rule that sent it (0 = sent by hand)
         public double revenue;
         public double spent;
         public Map<String, Integer> bought = new TreeMap<>();
@@ -239,6 +295,9 @@ public final class State {
         public double since;
         public double nextHarm;
         public String cell;           // a critter in an overgrown cave of the hold ("col,floor"); null: a monster in the mine
+        public double fightAt;        // critters: when the guards from the entrance hall get there (0 = nobody on the way)
+        public List<Integer> guards = new ArrayList<>();   // who is on the way
+        public double retryAt;        // critters: guards try again from this time on (after a lost fight)
     }
 
     public static class Raid {
@@ -296,14 +355,19 @@ public final class State {
         }
     }
 
-    /** Shared world: market indices, city demand. One row for the whole server. */
+    /** Shared world: prices of every good in every city, city demand. One row for the whole server. */
     public static class World {
+        public int version;           // 2: world level + city levels in log space
         public double t;
         public long seed;
         public long rng;
-        public Map<String, Double> idx = new TreeMap<>();        // market index per good (1.0 = normal)
-        public Map<String, List<Double>> hist = new TreeMap<>(); // index history, one sample per 30 min
+        public Map<String, Double> idx = new TreeMap<>();        // old worlds: market index per good
+        public Map<String, Double> g = new TreeMap<>();          // world level per market key (log of the multiplier)
+        public Map<String, Map<String, Double>> c = new TreeMap<>(); // city -> market key -> city level (log)
+        public Map<String, List<Double>> hist = new TreeMap<>(); // world multiplier, one sample per 30 min, 7 days
         public double histAt;
+        public Map<String, Map<String, List<Double>>> chist = new TreeMap<>(); // city multipliers, one per 2 h, 7 days
+        public double chistAt;
         public long demandEpoch = -1;
         public Map<String, Map<String, Double>> demand = new TreeMap<>(); // city -> category -> multiplier
         public Map<String, String> news = new TreeMap<>();

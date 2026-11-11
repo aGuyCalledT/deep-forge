@@ -29,7 +29,8 @@ public final class Factory {
         f.rng = seed;
         f.t = now;
         f.created = now;
-        f.coins = 300;
+        f.version = 2;
+        f.coins = 30_000;   // 30 Marks
         f.stock.put("food", 80);
         f.stock.put("ale", 80);
         f.stock.put("coal", 30);
@@ -138,6 +139,16 @@ public final class Factory {
 
     /** Old saves: give every dwarf a face, beard in the hair colour and clothes as items. Safe to call on every load. */
     public static void upgrade(Fortress f) {
+        if (f.version < 2) toVersion2(f);
+        // buildings that came later (entrance hall, gate)
+        for (Content.BuildingType t : Content.BUILDINGS.values()) {
+            if (t.multi() || Rules.building(f, t.id()) != null) continue;
+            Building b = new Building();
+            b.type = t.id();
+            b.id = t.id();
+            b.level = t.startLevel();
+            f.buildings.add(b);
+        }
         for (Dwarf d : f.dwarves) {
             if (d.looks >= 2) continue;
             Rng r = new Rng(d.id * 7919L + f.userId * 31L + 17);
@@ -155,5 +166,27 @@ public final class Factory {
             dress(d, r, false);
             face(d, r);
         }
+    }
+
+    /**
+     * Money became Gold Marks, Silver Talents and Copper Jots: one old coin is 100 Jots (a copper bar, 10 coins,
+     * is now 1 Mark). Walls became the gate (one level more: the plain wooden gate is level 1), the trading post became the trade depot, gate warriors guard the
+     * entrance hall.
+     */
+    static void toVersion2(Fortress f) {
+        final double k = 100;
+        f.coins *= k;
+        f.stats.coinsEarned *= k;
+        for (Report r : f.reports) r.coins *= k;
+        for (Caravan c : f.caravans) { c.budget *= k; c.revenue *= k; c.spent *= k; for (Artifact a : c.artifacts) a.value *= k; }
+        for (Expedition e : f.expeditions) { e.coins *= k; for (Artifact a : e.artifacts) a.value *= k; }
+        for (Report r : f.reports) for (Artifact a : r.artifacts) a.value *= k;
+        for (Artifact a : f.artifacts) a.value *= k;
+        for (Building b : f.buildings) {
+            if (b.type.equals("walls")) { b.type = "gate"; b.id = "gate"; b.level = b.level + 1; }
+            if (b.type.equals("trading_post")) { b.type = "trade_depot"; b.id = "trade_depot"; }
+        }
+        for (Dwarf d : f.dwarves) if ("fortress".equals(d.post)) d.post = "hall";
+        f.version = 2;
     }
 }

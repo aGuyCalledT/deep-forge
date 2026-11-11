@@ -90,7 +90,7 @@ public final class Rules {
 
     /** What another machine costs when it is put back after being taken out. */
     public static Cost machineCost(Building b) {
-        return new Cost(60 * b.level, Map.of("stone", 15 * b.level));
+        return new Cost(6000 * b.level, Map.of("stone", 15 * b.level));
     }
 
     /** Everyone assigned to the building, in a stable order (by id). */
@@ -268,9 +268,36 @@ public final class Rules {
         return l;
     }
 
+    /** Defence of the gate itself: it cannot be hurt. The plain wooden gate (level 1) adds nothing. */
     public static double wallPower(Fortress f) {
-        return 15 * level(f, "walls");
+        return 15 * Math.max(0, level(f, "gate") - 1);
     }
+
+    // ------------------------------------------------------------ entrance hall
+
+    /** How many guards the entrance hall has room for. */
+    public static int hallSeats(Fortress f) {
+        int l = level(f, "entrance_hall");
+        return l <= 0 ? 0 : 2 + 2 * l;
+    }
+
+    /** Guards fight better at home: +8% per hall level. */
+    public static double hallBonus(Fortress f) {
+        return 1 + 0.08 * level(f, "entrance_hall");
+    }
+
+    /** Guards posted in the entrance hall (they defend the gate and chase critters). */
+    public static List<Dwarf> guards(Fortress f) {
+        return warriors(f, "hall");
+    }
+
+    /** Power of the guards at home, with the hall bonus. */
+    public static double guardPower(Fortress f, Collection<Dwarf> ds) {
+        return power(f, ds) * hallBonus(f);
+    }
+
+    public static final double GUARD_XP_PER_H = 1.5;     // standing watch and sparring: slow
+    public static final double CRITTER_WALK = 180;       // seconds until guards reach a critter
 
     public static double vaultProtect(Fortress f) {
         int v = level(f, "vault");
@@ -280,11 +307,76 @@ public final class Rules {
     // ------------------------------------------------------------ trade & expeditions
 
     public static int caravanSlots(Fortress f) {
-        return 1 + level(f, "trading_post") / 3;
+        return 1 + level(f, "trade_depot") / 3;
     }
 
     public static int caravanCapacity(Fortress f) {
-        return 40 + 10 * (level(f, "trading_post") - 1);
+        return 40 + 10 * (level(f, "trade_depot") - 1);
+    }
+
+    // ------------------------------------------------------------ trade depot
+
+    public static int maxPlans(Fortress f) { return 1 + level(f, "trade_depot"); }
+
+    public static int maxRules(Fortress f) { return level(f, "trade_depot"); }
+
+    public static int maxOrders(Fortress f) { return level(f, "trade_depot"); }
+
+    /** Goods city traders bring per delivery for a buy order. */
+    public static int deliveryLot(Fortress f) { return 10 + 10 * level(f, "trade_depot"); }
+
+    /** All stock of a market key (all battle axes, all clothes, or just copper bars). */
+    public static int stockOf(Fortress f, String marketKey) {
+        int n = 0;
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) if (Content.inMarket(e.getKey(), marketKey)) n += e.getValue();
+        return n;
+    }
+
+    // ------------------------------------------------------------ market share
+
+    public static final double SHARE_DAYS = 7;           // what you traded fades out over about a week
+    public static final double START_SHARE = 0.01;
+
+    /** What the rest of the world trades of a good in a week (Jots). */
+    public static double worldVolume(String marketKey) {
+        return Content.liquidity(marketKey) * SHARE_DAYS * Content.baseValue(Content.refGood(marketKey));
+    }
+
+    /** Let old trade fade to time t. */
+    public static void fadeTrade(Fortress f, double t) {
+        if (t <= f.tradedAt) return;
+        double k = Math.exp(-(t - f.tradedAt) / (SHARE_DAYS * 86400));
+        f.traded.replaceAll((key, v) -> v * k);
+        f.traded.values().removeIf(v -> v < 1);
+        f.tradedAt = t;
+    }
+
+    /** Count a sale or purchase towards the market share. */
+    public static void recordTrade(Fortress f, double t, String key, double jots) {
+        fadeTrade(f, t);
+        f.traded.merge(Content.marketKey(key), Math.max(0, jots), Double::sum);
+    }
+
+    /** Your share of one good's market: starts at 1%, grows with what you trade. */
+    public static double share(Fortress f, String marketKey) {
+        double w = worldVolume(marketKey), b = w * START_SHARE / (1 - START_SHARE), v = f.traded.getOrDefault(marketKey, 0.0);
+        return (v + b) / (v + b + w);
+    }
+
+    /** Your share of the whole market. */
+    public static double share(Fortress f) {
+        double v = 0, all = 0;
+        for (String k : Content.marketGoods()) {
+            double w = worldVolume(k), b = w * START_SHARE / (1 - START_SHARE), x = f.traded.getOrDefault(k, 0.0);
+            v += x + b;
+            all += x + b + w;
+        }
+        return v / all;
+    }
+
+    /** How hard your trades move a price: 1 at the start, up to 5 when you own a quarter of the market. */
+    public static double marketPower(Fortress f, String key) {
+        return Math.max(1, Math.min(5, Math.sqrt(share(f, Content.marketKey(key)) / START_SHARE)));
     }
 
     public static double sellBonus(Fortress f, Collection<Dwarf> merchants) {
@@ -303,6 +395,22 @@ public final class Rules {
 
     public static int partyMax(Fortress f) {
         return Math.min(6, 3 + level(f, "expedition_hall") / 3);
+    }
+
+    // ------------------------------------------------------------ money
+
+    public static final int JOTS_PER_TALENT = 10, JOTS_PER_MARK = 1000;
+
+    /** Money for log texts: "2 Marks 35 Talents", "4 Talents 5 Jots". */
+    public static String money(double jots) {
+        long j = Math.round(Math.abs(jots));
+        long m = j / JOTS_PER_MARK, t = (j % JOTS_PER_MARK) / JOTS_PER_TALENT, k = j % JOTS_PER_TALENT;
+        List<String> p = new ArrayList<>();
+        if (m > 0) p.add(m + (m == 1 ? " Mark" : " Marks"));
+        if (t > 0) p.add(t + (t == 1 ? " Talent" : " Talents"));
+        if (k > 0 && m == 0) p.add(k + (k == 1 ? " Jot" : " Jots"));
+        if (p.isEmpty()) p.add("0 Jots");
+        return (jots < 0 ? "-" : "") + String.join(" ", p);
     }
 
     public static double xpNeed(int level) {
@@ -367,9 +475,9 @@ public final class Rules {
 
     // building in the hold: miners dig the rock out (for free, it takes time), a hallway cell costs coins for the
     // timber, a stairwell and moving a room also need stone
-    public static final Cost HALL_COST = new Cost(10, Map.of());
-    public static final Cost STAIRWELL_COST = new Cost(40, Map.of("stone", 20));
-    public static final Cost MOVE_COST = new Cost(30, Map.of("stone", 10));
+    public static final Cost HALL_COST = new Cost(1000, Map.of());
+    public static final Cost STAIRWELL_COST = new Cost(4000, Map.of("stone", 20));
+    public static final Cost MOVE_COST = new Cost(3000, Map.of("stone", 10));
 
     /** Seconds of work to dig one cell out: 5 minutes near the top, harder rock every two floors down. */
     public static final double DIG_SECONDS = 300;
@@ -411,7 +519,7 @@ public final class Rules {
         Map<String, Integer> goods = new LinkedHashMap<>();
         goods.put("stone", (int) Math.round(40 * (l.index + 1) * Math.pow(1.3, l.level - 1)));
         goods.put(Content.upgradeBar(l.level + 1), 4 + 3 * l.level);
-        return new Cost(Math.round(250 * (l.index + 1) * Math.pow(1.6, l.level - 1)), goods);
+        return new Cost(Math.round(25000 * (l.index + 1) * Math.pow(1.6, l.level - 1)), goods);
     }
 
     public static Cost layerUnlockCost(int idx) {

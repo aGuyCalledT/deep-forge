@@ -15,7 +15,7 @@ public final class Cheats {
 
     static final Set<String> TIME_FIELDS = Set.of("t", "created", "offersAt", "nextRaidAt", "nextMigrantsAt", "griefUntil",
             "heatT", "quenchStart", "departAt", "arriveAt", "returnAt", "expires", "at", "since", "nextHarm", "arrivesAt",
-            "announcedAt", "until", "arrived");
+            "announcedAt", "until", "arrived", "fightAt", "retryAt", "tradedAt", "shareAt", "firedAt", "histAt");
 
     public static Fortress apply(Fortress f, Map<String, Object> a, double now, Market market, ObjectMapper om, Rng r) {
         switch (str(a, "type")) {
@@ -23,16 +23,16 @@ public final class Cheats {
                 String key = str(a, "key");
                 int n = num(a, "amount", 0);
                 check(key != null && n != 0 && Math.abs(n) <= 1_000_000, "Choose something and an amount.");
-                if (key.equals("coins")) f.coins = Math.max(0, f.coins + n);
+                if (key.equals("coins")) f.coins = Math.max(0, f.coins + n * (double) Rules.JOTS_PER_MARK);   // coins: n Marks
                 else {
                     check(Content.baseValue(key) > 0 || Content.RAWS.containsKey(key), "Unknown good: " + key);
                     check(!Content.isWear(key) || n > 0 || Rules.stock(f, key) + n >= 0, "Not that many in store.");
                     Rules.add(f, key, n);
                 }
-                Rules.log(f, now, "info", "[cheat] " + (n > 0 ? "+" : "") + n + " " + (key.equals("coins") ? "coins" : Content.goodName(key)));
+                Rules.log(f, now, "info", "[cheat] " + (n > 0 ? "+" : "") + n + " " + (key.equals("coins") ? "Marks" : Content.goodName(key)));
             }
             case "cheatStarter" -> {
-                f.coins += 5000;
+                f.coins += 500_000;
                 for (String k : List.of("stone", "coal", "limestone")) Rules.add(f, k, 300);
                 for (String k : List.of("food", "ale")) Rules.add(f, k, 200);
                 for (String m : List.of("copper", "tin", "iron", "bronze", "steel", "silver", "gold")) Rules.add(f, "bar:" + m, 40);

@@ -42,6 +42,7 @@ public final class Sim {
         critters(f, dt, r, t + dt);
         raids(f, r, t + dt);
         caravans(f, r, t + dt, market);
+        Depot.step(f, r, t + dt, market);
         Expeditions.step(f, r, t + dt);
         migrants(f, r, t + dt);
         Expeditions.refreshOffers(f, r, t + dt);
@@ -272,14 +273,16 @@ public final class Sim {
             f.threats.add(th);
             have++;
             log(f, t, "warn", m.name() + " moved into an overgrown cave on floor " + (fl + 1)
-                    + ". Put a hallway or room there, fill it in, or send warriors.");
-            critterFight(f, th, r, t);
+                    + (guards(f).isEmpty() ? ". Post guards in the entrance hall, put a hallway or room there, or fill it in." : "."));
+        }
+        for (Threat th : new ArrayList<>(f.threats)) {
+            if (th.cell == null) continue;
+            if (th.fightAt > 0 && t >= th.fightAt) critterFight(f, th, r, t);
+            else if (th.fightAt <= 0 && t >= th.retryAt) sendGuards(f, th, t);
         }
         for (Threat th : new ArrayList<>(f.threats)) {
             if (th.cell == null || t < th.nextHarm) continue;
             th.nextHarm = t + 4 * H;
-            critterFight(f, th, r, t);
-            if (!f.threats.contains(th)) continue;
             int food = Math.min(stock(f, "food"), 1 + r.nextInt(3));
             if (food > 0) add(f, "food", -food);
             List<Dwarf> home = new ArrayList<>();
@@ -291,17 +294,44 @@ public final class Sim {
                 bit = " " + fullName(v) + " got bitten.";
             }
             log(f, t, "warn", "The " + th.name.toLowerCase() + " raided the larder" + (food > 0 ? " (-" + food + " food)" : "") + "." + bit
-                    + " Send warriors, or put a hallway or room into the cave.");
+                    + " Post more guards in the entrance hall, or put a hallway or room into the cave.");
         }
     }
 
     static final String[] CRITTERS = {"giant_rat", "cave_crawler", "cave_spider", "cave_spider"};
 
-    /** Fortress warriors chase critters off on their own. */
+    /** Guards from the entrance hall run to a critter: the strongest first, until they are clearly stronger (at most 3). */
+    static void sendGuards(Fortress f, Threat th, double t) {
+        List<Dwarf> free = new ArrayList<>(guards(f));
+        for (Threat o : f.threats) if (o != th && o.fightAt > 0) free.removeIf(d -> o.guards.contains(d.id));
+        if (free.isEmpty()) return;
+        free.sort(Comparator.comparingDouble((Dwarf d) -> -power(f, d)));
+        th.guards.clear();
+        double p = 0;
+        for (Dwarf d : free) {
+            if (th.guards.size() >= 3 || p >= th.power * 1.5) break;
+            th.guards.add(d.id);
+            p += power(f, d) * hallBonus(f);
+        }
+        th.fightAt = t + CRITTER_WALK;
+        List<String> names = new ArrayList<>();
+        for (int id : th.guards) names.add(fullName(dwarf(f, id)));
+        log(f, t, "info", String.join(" and ", names) + (names.size() == 1 ? " runs" : " run") + " from the entrance hall to the "
+                + th.name.toLowerCase() + ".");
+    }
+
+    /** The guards that ran to a critter fight it. */
     static void critterFight(Fortress f, Threat th, Rng r, double t) {
-        List<Dwarf> guards = warriors(f, "fortress");
-        if (guards.isEmpty()) return;
-        fightThreat(f, th, guards, r, t);
+        List<Dwarf> party = new ArrayList<>();
+        for (int id : th.guards) {
+            Dwarf d = dwarf(f, id);
+            if (d != null && d.busy == null && d.job.equals("warrior") && d.post.equals("hall")) party.add(d);
+        }
+        th.fightAt = 0;
+        th.guards.clear();
+        if (party.isEmpty()) return;
+        Battle b = fightThreat(f, th, party, r, t);
+        if (!b.win) th.retryAt = t + H;
     }
 
     // ------------------------------------------------------------ workshops
@@ -496,10 +526,15 @@ public final class Sim {
         b.job = null;
     }
 
+    /** Warriors train in the barracks; guards in the entrance hall also learn a little while they stand watch and spar. */
     static void training(Fortress f, double dt) {
         int lvl = level(f, "barracks");
-        for (Dwarf d : f.dwarves)
-            if (d.job.equals("warrior") && d.busy == null) addXp(d, "combat", (6 + 4 * lvl) * dt / H);
+        boolean hall = level(f, "entrance_hall") > 0;
+        for (Dwarf d : f.dwarves) {
+            if (!d.job.equals("warrior") || d.busy != null) continue;
+            addXp(d, "combat", (6 + 4 * lvl) * dt / H);
+            if (hall && d.post.equals("hall")) addXp(d, "combat", GUARD_XP_PER_H * dt / H);
+        }
     }
 
     // ------------------------------------------------------------ threats
@@ -550,15 +585,17 @@ public final class Sim {
     }
 
     public static Battle fightThreat(Fortress f, Threat th, List<Dwarf> party, Rng r, double t) {
-        Battle b = battle(f, party, 0, th.power, r, t, th.name, th.cell != null ? "killed in an overgrown cave" : "killed in the mine");
+        boolean home = th.cell != null && party.stream().allMatch(d -> d.post.equals("hall"));
+        double bonus = home ? power(f, party) * (hallBonus(f) - 1) : 0;
+        Battle b = battle(f, party, bonus, th.power, r, t, th.name, th.cell != null ? "killed in an overgrown cave" : "killed in the mine");
         if (b.win) {
             clearThreat(f, th);
-            int coins = (int) Math.round(th.power * r.range(1.5, 3));
+            int coins = (int) Math.round(th.power * r.range(150, 300));
             f.coins += coins;
             f.stats.monstersSlain++;
             fortressXp(f, th.power / 2);
             log(f, t, "good", "The " + th.name.toLowerCase() + " was slain! " + (th.cell != null ? "The cave is quiet again." : "The " + Content.LAYERS.get(th.layer).name()
-                    + " is safe again.") + " (+" + coins + " coins from its hoard)");
+                    + " is safe again.") + " (+" + money(coins) + " from its hoard)");
         } else {
             log(f, t, "bad", "The warriors were beaten back by the " + th.name.toLowerCase() + ".");
         }
@@ -585,20 +622,21 @@ public final class Sim {
             raid.arrivesAt = t + 3 * H;
             f.raid = raid;
             log(f, t, "bad", "Scouts report: " + raid.name + " (strength " + (int) raid.power
-                    + ") marching on the fortress! They arrive in 3 hours. Post warriors at the gate or build walls!");
+                    + ") marching on the fortress! They arrive in 3 hours. Post guards in the entrance hall or upgrade the gate!");
         }
         if (f.raid != null && t >= f.raid.arrivesAt) {
             Raid raid = f.raid;
             f.raid = null;
             f.nextRaidAt = t + r.range(20, 40) * H;
-            List<Dwarf> defenders = warriors(f, "fortress");
-            Battle b = battle(f, defenders, wallPower(f), raid.power, r, t, raid.name, "fell defending the gate");
+            List<Dwarf> defenders = guards(f);
+            double bonus = wallPower(f) + power(f, defenders) * (hallBonus(f) - 1);
+            Battle b = battle(f, defenders, bonus, raid.power, r, t, raid.name, "fell defending the gate");
             if (b.win) {
-                int loot = (int) Math.round(raid.power * r.range(2, 4));
+                int loot = (int) Math.round(raid.power * r.range(200, 400));
                 f.coins += loot;
                 f.stats.raidsRepelled++;
                 fortressXp(f, raid.power);
-                log(f, t, "good", "The " + raid.name.toLowerCase() + " was driven off! (+" + loot + " coins of plunder)");
+                log(f, t, "good", "The " + raid.name.toLowerCase() + " was driven off! (+" + money(loot) + " of plunder)");
             } else {
                 double frac = 0.3 * (1 - vaultProtect(f));
                 int stolenCoins = (int) Math.floor(f.coins * frac);
@@ -618,8 +656,8 @@ public final class Sim {
                 s.power = Math.round(raid.power * 0.7);
                 s.until = t + 8 * H;
                 f.siege = s;
-                log(f, t, "bad", "The " + raid.name.toLowerCase() + " broke through! They stole " + stolenCoins
-                        + " coins and " + stolenGoods + " goods and now camp at the gate. The workshops are shut until you break the siege.");
+                log(f, t, "bad", "The " + raid.name.toLowerCase() + " broke through! They stole " + money(stolenCoins)
+                        + " and " + stolenGoods + " goods and now camp at the gate. The workshops are shut until you break the siege.");
             }
         }
     }
@@ -647,7 +685,7 @@ public final class Sim {
                     c.cargo.clear();
                     c.artifacts.clear();
                 } else {
-                    sellAndBuy(f, c, city, market);
+                    sellAndBuy(f, c, city, market, t);
                 }
                 c.state = "returning";
                 if (c.merchants.isEmpty() && c.guards.isEmpty()) {
@@ -657,7 +695,7 @@ public final class Sim {
             } else if (c.state.equals("returning") && t >= c.returnAt) {
                 double coins = c.revenue + (c.budget - c.spent);
                 if (bandits(f, c, city, r, t)) {
-                    c.report.add("Bandits struck on the way home! They took everything that was bought and half the coins.");
+                    c.report.add("Bandits struck on the way home! They took everything that was bought and half the money.");
                     c.bought.clear();
                     coins = coins / 2;
                 }
@@ -670,7 +708,7 @@ public final class Sim {
                     Dwarf d = dwarf(f, id);
                     if (d != null) {
                         d.busy = null;
-                        addXp(d, "trading", 20 + c.revenue / 20);
+                        addXp(d, "trading", 20 + c.revenue / 2000);
                     }
                 }
                 for (int id : c.guards) {
@@ -678,10 +716,10 @@ public final class Sim {
                     if (d != null) d.busy = null;
                 }
                 f.stats.coinsEarned += c.revenue;
-                fortressXp(f, c.revenue / 10);
+                fortressXp(f, c.revenue / 1000);
                 log(f, t, c.report.stream().anyMatch(s -> s.startsWith("Bandits")) ? "bad" : "good",
                         "Caravan back from " + city.name() + ": " + String.join(" ", c.report)
-                                + " Brought home " + Math.round(coins) + " coins. Collect it in Trade.");
+                                + " Brought home " + money(coins) + ". Collect it in Trade.");
                 f.caravans.remove(c);
             }
         }
@@ -698,7 +736,7 @@ public final class Sim {
         return !b.win;
     }
 
-    static void sellAndBuy(Fortress f, Caravan c, Content.City city, Market market) {
+    static void sellAndBuy(Fortress f, Caravan c, Content.City city, Market market, double t) {
         List<Dwarf> ms = new ArrayList<>();
         for (int id : c.merchants) if (dwarf(f, id) != null) ms.add(dwarf(f, id));
         double bonus = sellBonus(f, ms);
@@ -706,13 +744,15 @@ public final class Sim {
         double revenue = 0;
         int units = 0;
         for (Map.Entry<String, Integer> e : c.cargo.entrySet()) {
-            revenue += market.sell(c.city, e.getKey(), e.getValue(), bonus);
+            double got = market.sell(c.city, e.getKey(), e.getValue(), bonus, marketPower(f, e.getKey()));
+            recordTrade(f, t, e.getKey(), got);
+            revenue += got;
             units += e.getValue();
         }
         for (Artifact a : c.artifacts) revenue += a.value * market.demand(c.city, "jewelry") * bonus;
         c.revenue = revenue;
         c.report.add("Sold " + units + " goods" + (c.artifacts.isEmpty() ? "" : " and " + c.artifacts.size() + " artifacts")
-                + " in " + city.name() + " for " + Math.round(revenue) + " coins.");
+                + " in " + city.name() + " for " + money(revenue) + ".");
         c.cargo.clear();
         c.artifacts.clear();
         double budget = c.budget;
@@ -721,8 +761,9 @@ public final class Sim {
             int want = Math.min(e.getValue(), cap);
             if (want <= 0) continue;
             double[] spent = new double[1];
-            int got = market.buy(c.city, e.getKey(), want, budget, buyBonus, spent);
+            int got = market.buy(c.city, e.getKey(), want, budget, buyBonus, marketPower(f, e.getKey()), spent);
             if (got > 0) {
+                recordTrade(f, t, e.getKey(), spent[0]);
                 c.bought.merge(e.getKey(), got, Integer::sum);
                 budget -= spent[0];
                 c.spent += spent[0];
@@ -733,7 +774,7 @@ public final class Sim {
             List<String> parts = new ArrayList<>();
             for (Map.Entry<String, Integer> e : c.bought.entrySet())
                 parts.add(e.getValue() + " " + Content.goodName(e.getKey()).toLowerCase());
-            c.report.add("Bought " + String.join(", ", parts) + " for " + Math.round(c.spent) + " coins.");
+            c.report.add("Bought " + String.join(", ", parts) + " for " + money(c.spent) + ".");
         }
     }
 

@@ -335,10 +335,10 @@ public final class Expeditions {
                 }
             }
             default -> {
-                double c = Math.round(r.range(30, 80) * e.danger);
+                double c = Math.round(r.range(3000, 8000) * e.danger);
                 e.coins += c;
                 e.bonus -= 0.1;
-                e.log.add("They pocket " + (int) c + " coins. Something feels wrong.");
+                e.log.add("They pocket " + Rules.money(c) + ". Something feels wrong.");
             }
         }
     }
@@ -398,9 +398,9 @@ public final class Expeditions {
                 e.log.add("They gather " + food + " mushrooms and find " + ale + " barrels of mushroom ale.");
             }
             case "ruins", "cellar" -> {
-                double c = Math.round(r.range(40, 120) * e.danger * mult);
+                double c = Math.round(r.range(4000, 12000) * e.danger * mult);
                 e.coins += c;
-                e.log.add("Old coins lie scattered in the dust: " + (int) c + ".");
+                e.log.add("Old coins lie scattered in the dust: " + Rules.money(c) + ".");
             }
             case "lair" -> {
                 int g = 1 + r.nextInt(2 + e.danger);
@@ -432,7 +432,7 @@ public final class Expeditions {
         Artifact a = new Artifact();
         a.id = f.nextId++;
         a.name = Names.artifact(r);
-        a.value = Math.round(r.range(300, 900) * e.danger);
+        a.value = Math.round(r.range(30000, 90000) * e.danger);
         a.desc = "Found during " + e.name + ".";
         e.artifacts.add(a);
         return a;
@@ -463,7 +463,7 @@ public final class Expeditions {
                 if (combat(f, e, r, t, e.danger + 1, "the beast in its lair")) {
                     int g = 2 + r.nextInt(3 + e.danger);
                     e.loot.merge("rough_gem", g, Integer::sum);
-                    e.coins += Math.round(r.range(80, 160) * e.danger);
+                    e.coins += Math.round(r.range(8000, 16000) * e.danger);
                     if (r.chance(0.3)) artifact(f, e, r);
                     e.log.add("The beast is dead. Its hoard: " + g + " gems, coins and more.");
                 } else {
@@ -523,7 +523,7 @@ public final class Expeditions {
         }
         if (e.coins > 0) {
             rep.coins = Math.round(e.coins);
-            got.add(Math.round(e.coins) + " coins");
+            got.add(Rules.money(e.coins));
         }
         for (Artifact a : e.artifacts) {
             rep.artifacts.add(a);
