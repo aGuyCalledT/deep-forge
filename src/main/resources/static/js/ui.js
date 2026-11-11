@@ -70,6 +70,7 @@ export function openSheet(render, anchor = null) {
   const el = sheetEl();
   if (el.hidden) A.sfx('open');
   el.classList.toggle('pop', !!anchor);
+  el.classList.remove('peek');
   const c = document.getElementById('sheet-content');
   c.replaceChildren(render());
   el.hidden = false;
@@ -123,6 +124,14 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetOpe
 // a pop-over closes when you press somewhere else, except on the scene (the scene decides itself)
 document.addEventListener('pointerdown', (e) => {
   if (popOpen() && !e.target.closest('.sheet-body, #scene')) closeSheet();
+  // on a phone, touching the scene folds the pop-over down so the dwarves below it show
+  if (popOpen() && e.target.closest('#scene') && !window.matchMedia('(min-width: 700px)').matches) sheetEl().classList.add('peek');
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.sheet-grip')) return;
+  const el = sheetEl();
+  el.classList.toggle('peek');
+  el.querySelector('.sheet-body').scrollTop = 0;
 });
 
 // ------------------------------------------------------------------ help

@@ -47,15 +47,17 @@ export function goodName(k) {
 }
 
 export function category(k) {
+  if (k.startsWith('wear:')) return 'clothing';
   if (isItem(k)) return byId.items[parseItem(k).type].category;
   if (isBar(k)) return 'bars';
   if (byId.ores[k]) return 'ore';
   return byId.raws[k] ? byId.raws[k].category : 'materials';
 }
 
-export function marketKey(k) { return isItem(k) ? 'cat:' + category(k) : k; }
+export function marketKey(k) { return isItem(k) || k.startsWith('wear:') ? 'cat:' + category(k) : k; }
 
 export function baseValue(k) {
+  if (k.startsWith('wear:')) { const c = byId.clothes[k.split(':')[1]]; return c ? c.value : 0; }
   if (isItem(k)) {
     const p = parseItem(k), t = byId.items[p.type], m = byId.metals[p.metal];
     let v = m.value * t.bars * t.factor * G.data.qualities[p.q].mult;
@@ -181,6 +183,7 @@ export function contextResources() {
       if (t === 'forge') return [{ title: 'Bars', keys: bars, empty: 'No bars. Smelt some ore first.' }, { title: 'Fuel', keys: ['coal'] }, { title: 'Forged goods', keys: items(() => true).slice(0, 12), empty: 'Nothing forged yet.' }];
       if (t === 'grindstone') return [{ title: 'Can be sharpened', keys: items((p) => byId.items[p.type].mods.includes('s') && !p.mods.includes('s')), empty: 'No axes or pickaxes to sharpen.' }];
       if (t === 'engraver') return [{ title: 'Can be engraved', keys: items((p) => byId.items[p.type].mods.includes('e') && !p.mods.includes('e')).slice(0, 14), empty: 'Nothing to engrave.' }];
+      if (t === 'tailor') return [{ title: 'Fibre and cloth', keys: ['food', 'cloth'] }, { title: 'Sewn clothes', keys: stockKeys((k) => k.startsWith('wear:')).slice(0, 12), empty: 'Nothing sewn yet.' }];
       if (t === 'jeweler') return [{ title: 'Gems', keys: ['rough_gem', 'cut_gem'] }, { title: 'Can take a gem', keys: items((p) => byId.items[p.type].mods.includes('g') && !p.mods.includes('g')).slice(0, 12), empty: 'No rings, crowns or goblets.' }];
       return [prov];
     }

@@ -13,8 +13,8 @@ node scripts/build-art.mjs --preview  # zusätzlich vergrößerte Vorschauen in 
 | `art-src/shared.js` | Palette, Austauschfarben, Raum-Anker (Arbeitsplatz, Feuer, Licht, Sitzplätze, Betten), Zwergen-Posen, Erze, Minen-Schichten. Wird von pxl **und** vom Spiel gelesen (`meta.json`) |
 | `art-src/palette.px.js` | Palette und Farbtreppen |
 | `art-src/figure.js` | Figuren-Baukasten für Zwerge, Zwerginnen, NPCs und menschenähnliche Monster (Kobolde, Trolle, Oger) und die Tiere der Tiefe. Wird von pxl eingebunden **und** als `static/js/figure.js` ins Spiel kopiert, das die Zwerge zur Laufzeit mit ihrem Aussehen und ihrer Kleidung baut |
-| `art-src/rooms.px.js` | die 12 Räume (96 px hoch, Breite = Zellen × 24), Möbel in Zwergengröße, Feuer- und Rad-Animationen |
-| `art-src/world.px.js` | Fels, Gänge, Treppen, Schacht, Oberfläche, Wagen, Fackel, Pfeil, Minen-Teile |
+| `art-src/rooms.px.js` | die 13 Räume (96 px hoch, Breite = Zellen × 24), Möbel in Zwergengröße, Feuer- und Rad-Animationen |
+| `art-src/world.px.js` | Fels, Gänge, Treppenhäuser, Schacht, Oberfläche, Wagen, Fackel, Pfeil, Minen-Teile |
 | `art-src/goods.px.js` | Erze, Barren, Waren, Rohstoffe, Münze, Artefakt |
 | `art-src/monsters.px.js` | 9 Monster mit 2 Bildern |
 | `art-src/ui.px.js` | Symbole der Oberfläche |
@@ -36,9 +36,10 @@ Alle Namen stehen in `static/art/atlas.json`. Neu laden reicht.
 
 ## Räume: Stufen, Varianten, Maschinen
 
-Jeder Raum gibt es dreimal: `room_<typ>_<stufe>_<variante>`. Stufe 0 „ausgehöhlt“ (Fels, Fackeln, Fässer als Tisch) ab
+Jeden Raum gibt es viermal: `room_<typ>_<stufe>_<variante>`. Stufe 0 „ausgehöhlt“ (Fels, Fackeln, Fässer als Tisch) ab
 Gebäudestufe 1, Stufe 1 „eingerichtet“ (Bretter, Ziegel, Stein, Laternen) ab Stufe 2, Stufe 2 „prächtig“
-(Täfelung, Goldfries, Fliesen, Kronleuchter) ab Stufe 3 (`ROOM_TIERS` in `shared.js`). Je zwei Varianten pro Stufe,
+(Täfelung, Goldfries, Fliesen, Kronleuchter) ab Stufe 3, Stufe 3 „Königshalle“ (dunkler Stein, Goldfries, Runentafeln,
+Marmorboden, Kristall-Lampen; Möbel wie Stufe 2) ab Stufe 5 (`ROOM_TIERS` in `shared.js`). Je zwei Varianten pro Stufe,
 das Spiel wählt sie fest nach der Gebäude-ID, damit zwei Schmieden nicht gleich aussehen.
 
 Werkstätten bekommen pro zusätzlicher Maschine eine Erweiterung `bay_<typ>_<stufe>_<variante>`, die rechts angesetzt
@@ -54,13 +55,11 @@ damit Möbel sie verdecken.
 | Was | Größe | Hinweis |
 |---|---|---|
 | Raster-Zelle | 24 × 96 | `CELL` in `shared.js` und `hold.js`; der Grundriss in `Layouts.java` zählt Zellen |
-| Raum | Zellen × 24 breit, 96 hoch; die letzte Zelle ist der Tür-Streifen (Möbel werden mit `w - 24` gezeichnet, `doorStrip` in `rooms.px.js`) | Füße der Zwerge auf y = 90; Tisch ca. 13 px hoch, Sitz 7 px, Etagenbett 51 px |
+| Raum | Zellen × 24 breit, 96 hoch; die letzte Zelle ist ein freier Streifen mit Haken und Umhang (Möbel werden mit `w - 24` gezeichnet, `doorStrip` in `rooms.px.js`) | Füße der Zwerge auf y = 90; Tisch ca. 13 px hoch, Sitz 7 px, Etagenbett 51 px |
 | Maschinen-Erweiterung | `BAYS[type].w` × 24 breit, 96 hoch | beginnt mit einem Pfeiler (x 0–5), eigene Anker in `BAYS` |
 | Zwerg | Leinwand 44 × 52, Figur ca. 33 px hoch | Anker unten Mitte (x 22, y 50); liegend 34 × 20 |
 | Gang | 24 × 96 | runde Enden `hall_cap_l/r` 8 × 96 |
-| Hintertür | `bdoor` / `bdoor_open` 18 × 34 | unten auf y = 90 (Boden), Mitte bei `ROOMS[type].door` bzw. Gangmitte; dahinter angedeutete Stufen |
-| Treppe | 48 × 192 | zwei Etagen; Wand, Balken und Pfosten wie im Gang (Bretter alle 12 px), 16 Stufen à 3 × 6 |
-| Treppe | 48 × 192 | zwei Spalten, zwei Stockwerke, nach rechts unten; Zwerge laufen die Stufen entlang |
+| Treppenhaus | `well` / `well_lit` 48 × 96 | Gang zwei Zellen breit, in der Mitte der Rückwand ein Steinbogen ins Dunkle (Mitte bei x = 24), Schild mit Pfeilen, Laterne; `well_lit` leuchtet, wenn gerade jemand hinein- oder herausgeht. Keine Stufen zu sehen |
 | Schacht | 48 × 96 | zwei Spalten links |
 | Oberfläche | Bäume 44 × 62, Stand 70 × 52, Zelt 60 × 46 | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE` |
 | Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
@@ -82,9 +81,13 @@ Posen: `idle talk sit sitTalk eat drink walk work climb sleep`, Stimmung `happy 
 
 ## Tiefe
 
-- Der Fels ist die vordere Ebene: abgerundete Steine mit Licht oben links (`rock`), dazu im Spiel leichte Schichten,
-  Wurzeln unter der Erde und nach unten dunkler, kühler werdendes Gestein (`depthLayers` in `hold.js`).
-- Räume, Gänge, Treppen und Schacht sind hineingeschnitten: der Fels wirft einen weichen Schatten nach rechts unten
+- Die Festung liegt in einem Berg: links das Tal (Markt, Zelt, Winde, Mauer, Karawanen), ein Tor (`gate`) mit Tunnel
+  führt auf Etage `ENTRY` (2) zum Schacht, darüber zwei Etagen über dem Talboden. Die Bergform kommt aus `mtop(x)` in
+  `hold.js` (Steilwand am Tor, Hang, Gipfel mit Schnee, Gras und kleine Tannen am Rand).
+- Der Fels ist die vordere Ebene: abgerundete Steine mit Licht oben links in vier Kacheln (`rock`, `rock_b`, `rock_c`,
+  `rock_d`, gleicher Rand, andere Steine innen, gewählt per Hash), dazu leichte Schichten, Wurzeln unter dem Tal und
+  nach unten dunkler, kühler werdendes Gestein (`depthLayers` in `hold.js`).
+- Räume, Gänge, Treppenhäuser und Schacht sind hineingeschnitten: der Fels wirft einen weichen Schatten nach rechts unten
   hinein, die untere und rechte Kante jeder Öffnung fängt Licht. Beide Ebenen werden je Grundriss einmal gezeichnet.
 - Am Himmel ziehen Berge (mit Schnee) und bewaldete Hügel beim Verschieben langsamer mit als die Welt (Parallaxe),
   dazu Dunst über dem Horizont.

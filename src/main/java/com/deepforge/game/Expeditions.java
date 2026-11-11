@@ -515,29 +515,35 @@ public final class Expeditions {
             addXp(d, "mining", 10 * e.danger);
         }
         List<String> got = new ArrayList<>();
+        Report rep = Rules.report(f, "expedition", e.id, "Back from " + e.name, t);
+        rep.bad = p.size() < e.size;
         for (Map.Entry<String, Integer> x : e.loot.entrySet()) {
-            add(f, x.getKey(), x.getValue());
+            rep.goods.merge(x.getKey(), x.getValue(), Integer::sum);
             got.add(x.getValue() + " " + Content.goodName(x.getKey()).toLowerCase());
         }
         if (e.coins > 0) {
-            f.coins += e.coins;
+            rep.coins = Math.round(e.coins);
             got.add(Math.round(e.coins) + " coins");
         }
         for (Artifact a : e.artifacts) {
-            f.artifacts.add(a);
+            rep.artifacts.add(a);
             got.add(a.name);
         }
+        int before = got.size();
         for (String b : e.blueprints) {
             f.blueprints.add(b);
             got.add("blueprint: " + Content.BLUEPRINT_NAMES.get(b));
+            rep.extras.add("Blueprint: " + Content.BLUEPRINT_NAMES.get(b));
         }
         for (String d : e.discoveries) {
             if (d.startsWith("layer:")) {
                 f.discovered.add(d.substring(6));
                 got.add("the way to the " + Content.LAYERS.get(Integer.parseInt(d.substring(6))).name());
+                rep.extras.add("Found the way to the " + Content.LAYERS.get(Integer.parseInt(d.substring(6))).name());
             } else if (d.startsWith("city:")) {
                 f.cities.add(d.substring(5));
                 got.add("a trade route to " + Content.CITIES.get(d.substring(5)).name());
+                rep.extras.add("A trade route to " + Content.CITIES.get(d.substring(5)).name());
             }
         }
         for (int i = 0; i < e.recruits; i++) {
@@ -545,6 +551,7 @@ public final class Expeditions {
             d.health = 70;
             f.dwarves.add(d);
             got.add(fullName(d) + " (new dwarf)");
+            rep.extras.add(fullName(d) + " joined the hold");
         }
         if (e.type.equals("cellar") || e.type.startsWith("scout") && !e.discoveries.isEmpty()
                 || e.type.startsWith("route-") && !e.discoveries.isEmpty()) f.doneOnce.add(e.type);
@@ -552,6 +559,8 @@ public final class Expeditions {
         f.stats.expeditions++;
         fortressXp(f, 30 * e.danger);
         e.log.add("Home again. " + (got.isEmpty() ? "They brought nothing back." : "Brought back: " + String.join(", ", got) + "."));
+        rep.lines.add(p.size() + " of " + e.size + " dwarves came home.");
+        if (before == 0 && rep.extras.isEmpty()) rep.lines.add("They brought nothing back.");
         log(f, t, "good", "The expedition to " + e.name + " returned with " + p.size() + " of " + e.size
                 + " dwarves. " + (got.isEmpty() ? "No loot." : "Loot: " + String.join(", ", got) + "."));
     }

@@ -25,6 +25,7 @@ public final class State {
         public List<LayerState> layers = new ArrayList<>();
         public List<Caravan> caravans = new ArrayList<>();
         public List<Expedition> expeditions = new ArrayList<>();
+        public List<Report> reports = new ArrayList<>();   // returned caravans and expeditions whose loot waits to be collected
         public List<Offer> offers = new ArrayList<>();
         public double offersAt;
         public List<Threat> threats = new ArrayList<>();
@@ -57,8 +58,9 @@ public final class State {
     public static class Layout {
         public Map<String, int[]> rooms = new TreeMap<>();  // building id -> [col, floor]
         public Set<String> halls = new TreeSet<>();         // "col,floor"
-        public Set<String> stairs = new TreeSet<>();        // "col,floor": 2 wide, from floor down to floor + 1
-        public Set<String> doors = new TreeSet<>();         // "col,floor": a door in a hallway to the stairwell behind
+        public Set<String> wells = new TreeSet<>();         // "col,floor": left cell of a stairwell (2 cells wide)
+        public Set<String> stairs = new TreeSet<>();        // old saves only: diagonal stairs, turned into stairwells
+        public Set<String> doors = new TreeSet<>();         // old saves only: back doors, no longer used
     }
 
     public static class Stats {
@@ -100,6 +102,7 @@ public final class State {
         public String job = "idle";   // idle | miner | worker | warrior | merchant
         public int layer;             // miner: layer index
         public String building;       // worker: building id
+        public int machine = -1;      // worker: which machine (0-based); -1 = the first free one
         public String post = "fortress"; // warrior: fortress | mine
         public String busy;           // caravan:<id> | expedition:<id>
         public String weapon;
@@ -120,6 +123,7 @@ public final class State {
         public double acc;        // continuous production accumulator
         public String status;     // human readable why idle
         public int machines = 1;  // workstations in the room; each one needs its own worker
+        public boolean machinesByHand;   // the player took a machine out: the hold no longer adds them back on its own
         public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
     }
 
@@ -242,6 +246,21 @@ public final class State {
         public String name;
         public double power;
         public double until;
+    }
+
+    /** What a caravan or expedition brought home. The goods, coins and artifacts are added when the player collects. */
+    public static class Report {
+        public int id;
+        public String kind;                 // caravan | expedition
+        public int ref;                     // caravan or expedition id
+        public String title;
+        public boolean bad;                 // things went wrong (bandits, deaths)
+        public double at;
+        public List<String> lines = new ArrayList<>();
+        public Map<String, Integer> goods = new TreeMap<>();
+        public double coins;
+        public List<Artifact> artifacts = new ArrayList<>();
+        public List<String> extras = new ArrayList<>();   // things that already happened: new dwarves, routes, blueprints
     }
 
     public static class Artifact {

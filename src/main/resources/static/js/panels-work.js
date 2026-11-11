@@ -2,9 +2,9 @@
 import { G, F, D, byId, fmt, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info } from './ui.js';
 import * as A from './audio.js';
-const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'farm', 'brewery', 'barracks'];
+const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'tailor', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
-import { upgradeBtn } from './panels-base.js';
+import { upgradeBtn, costBtn } from './panels-base.js';
 import { jobOf } from './hold.js';
 import { api } from './api.js';
 
@@ -17,6 +17,8 @@ export function orderLabel(e) {
     case 'alloy': return [goodIcon('bar:' + e.mat, 'icon s'), ` ${byId.metals[e.mat].name} ${n}`];
     case 'craft': return [img(S.item(e.itype, e.mat), 'icon s'), ` ${byId.metals[e.mat].name} ${byId.items[e.itype].name.toLowerCase()} ${n}`];
     case 'cutgem': return [goodIcon('cut_gem', 'icon s'), ` Cut gems ${n}`];
+    case 'weave': return [goodIcon('cloth', 'icon s'), ` Weave cloth ${n}`];
+    case 'sew': return [goodIcon(`wear:${e.itype}:${e.mat}`, 'icon s'), ` ${goodName(`wear:${e.itype}:${e.mat}`)} ${n}`];
     default: return [img(S.item(e.itype, e.mat || 'iron'), 'icon s'),
       ` ${e.recipe[0].toUpperCase() + e.recipe.slice(1)} ${e.mat ? byId.metals[e.mat].name.toLowerCase() + ' ' : 'any '}${byId.items[e.itype].name.toLowerCase()}s ${n}`];
   }
@@ -94,17 +96,18 @@ export function workCard(b) {
   return out;
 }
 
-/** One row per machine: who works there and what it makes. Plus the button for another machine. */
+/** One row per machine: who works there and what it makes. Each machine can get its own dwarf or be taken out. */
 function machinesBlock(b) {
   const f = F(), t = byId.buildings[b.type], bi = D().buildings[b.id] || {};
-  const n = bi.machines || 1, ids = bi.workers || [];
+  const n = bi.machines || 1, seats = bi.seats || bi.workers || [];
   const rows = [];
   for (let i = 0; i < n; i++) {
-    const w = ids[i] != null ? f.dwarves.find((x) => x.id === ids[i]) : null;
+    const w = seats[i] != null ? f.dwarves.find((x) => x.id === seats[i]) : null;
     const j = jobOf(b, i);
     const what = !w ? h('span', { class: 'small bad-t' }, 'Nobody here')
       : j ? (j.quenching ? h('span', { class: 'small gold-t' }, 'Quench now!') : h('span', { class: 'small muted' }, (bi.jobNames || [])[i] || 'Working'))
         : h('span', { class: 'small muted' }, t.kind === 'continuous' ? 'Working' : 'Waiting for an order');
+    const busyJob = j && t.kind !== 'continuous';
     rows.push(h('div', { class: 'machine' + (w ? '' : ' empty') },
       h('span', { class: 'machine-no' }, String(i + 1)),
       w ? img(S.portrait(w), 'icon') : h('span', { class: 'machine-seat' }, ico('dwarf')),
@@ -112,13 +115,18 @@ function machinesBlock(b) {
         h('div', null, w ? w.first + ' ' + w.clan : 'Free machine', w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
         what,
         j && !j.quenching ? h('div', { class: 'bar thin' }, h('i', { 'data-job': b.id, 'data-machine': i })) : null),
-      w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free')
-        : h('button', { class: 'btn small', onclick: () => assignSheet(b) }, 'Assign')));
+      h('div', { class: 'machine-btns' },
+        h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
+        w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
+        n > 1 ? h('button', { class: 'btn small ghost', disabled: !!busyJob, title: busyJob ? 'Wait until this machine is done.' : 'Take this machine out. The room gets narrower.',
+          onclick: () => { if (confirm('Take machine ' + (i + 1) + ' out? ' + (w ? w.first + ' will rest. ' : '') + 'Putting it back costs coins and stone.')) bus.act({ type: 'removeMachine', building: b.id, machine: i }); } }, 'Remove') : null)));
   }
   const waiting = (bi.waiting || []).map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
   return h('div', { class: 'machines' },
-    h('div', { class: 'row between' }, h('h3', null, 'Machines', info('One dwarf per machine. Upgrade the workshop for another machine (up to 5).')), h('span', { class: 'small muted' }, `${ids.length} of ${n} staffed`)),
+    h('div', { class: 'row between' }, h('h3', null, 'Machines', info('One dwarf per machine. Upgrade the workshop for another machine (up to 5). Pick who works where, or take a machine out to make the room narrower.')),
+      h('span', { class: 'small muted' }, `${seats.filter((x) => x != null).length} of ${n} staffed`)),
     rows,
+    bi.machineCost ? costBtn('Put back a machine', bi.machineCost, { type: 'addMachine', building: b.id }, bi.canGrow === false ? 'No floor has space for a wider room. Dig out more of the hold.' : null) : null,
     waiting.length ? h('p', { class: 'small warn-t' }, waiting.map((x) => x.first).join(', ') + ' waiting for a free machine. Upgrade the workshop or give them other work.') : null);
 }
 
@@ -213,22 +221,25 @@ export function animateWork() {
 
 // ------------------------------------------------------------------ sheets
 
-function assignSheet(b) {
+function assignSheet(b, machine = -1) {
   openSheet(() => {
     const f = F(), skill = byId.buildings[b.type].skill;
+    const multi = (b.machines || 1) > 1, seats = (D().buildings[b.id] || {}).seats || [];
     const free = f.dwarves.filter((x) => !x.busy).sort((a, c) => (D().dwarves[c.id].skills[skill] || 0) - (D().dwarves[a.id].skills[skill] || 0));
-    return h('div', null, h('h2', null, 'Who works at the ' + buildingName(b).toLowerCase() + '?'),
-      h('p', { class: 'small muted' }, `Sorted by ${skill} skill. ` + ((b.machines || 1) > 1
-        ? `Each of the ${b.machines} machines takes one dwarf.` : 'The current worker becomes idle.')),
-      free.filter((x) => !(x.job === 'worker' && x.building === b.id)).map((x) => h('button', { class: 'pick', style: { width: '100%' }, onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, job: 'worker', building: b.id }); closeSheet(); } },
-        img(S.portrait(x)), h('span', { class: 'grow', style: { textAlign: 'left' } }, x.first + ' ' + x.clan, h('br'), h('span', { class: 'small muted' }, (x.job === 'idle' ? 'Idle' : 'now: ' + x.job) + ` · ${skill} ${D().dwarves[x.id].skills[skill]}`)))));
+    // for one machine of several: dwarves of this workshop can swap places, so they stay in the list
+    const pickable = free.filter((x) => (multi && machine >= 0) ? seats[machine] !== x.id : !(x.job === 'worker' && x.building === b.id));
+    return h('div', null, h('h2', null, multi && machine >= 0 ? `Who works at machine ${machine + 1}?` : 'Who works at the ' + buildingName(b).toLowerCase() + '?'),
+      h('p', { class: 'small muted' }, `Sorted by ${skill} skill. ` + (multi
+        ? (machine >= 0 ? 'Whoever works there now rests, or swaps places with a dwarf from another machine here.' : `Each of the ${b.machines} machines takes one dwarf.`) : 'The current worker becomes idle.')),
+      pickable.map((x) => h('button', { class: 'pick', style: { width: '100%' }, onclick: async () => { await bus.act({ type: 'assign', dwarf: x.id, job: 'worker', building: b.id, machine: multi ? machine : -1 }); closeSheet(); } },
+        img(S.portrait(x)), h('span', { class: 'grow', style: { textAlign: 'left' } }, x.first + ' ' + x.clan, h('br'), h('span', { class: 'small muted' }, (x.job === 'idle' ? 'Idle' : x.job === 'worker' && x.building === b.id && seats.indexOf(x.id) >= 0 ? 'at machine ' + (seats.indexOf(x.id) + 1) : 'now: ' + x.job) + ` · ${skill} ${D().dwarves[x.id].skills[skill]}`)))));
   });
 }
 
 const COUNTS = [1, 5, 10, 25, -1];
 
 function orderSheet(b) {
-  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : 'cutgem', mat: null, itype: null, count: -1 };
+  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : 'cutgem', mat: null, itype: null, count: -1 };
   const send = async () => {
     try {
       await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count }, false, true);
@@ -273,6 +284,19 @@ function orderSheet(b) {
         for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
         if (!metals.length) parts.push(h('p', { class: 'muted' }, 'No metal fits.'));
       }
+    } else if (b.type === 'tailor') {
+      parts.push(h('div', { class: 'row' }, ['weave', 'sew'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'weave' ? 'Weave cloth' : 'Sew clothes'))));
+      if (st.recipe === 'weave') parts.push(h('p', null, goodIcon('food'), ' 3 mushrooms → ', goodIcon('cloth'), ` 2 cloth. You have ${stock('cloth')} cloth.`));
+      else {
+        parts.push(h('div', { class: 'row' }, G.data.clothes.filter((c) => c.cloth > 0).map((c) => h('button', { class: 'btn small' + (st.itype === c.id ? ' primary' : ''), onclick: () => { st.itype = c.id; refreshSheet(); } },
+          goodIcon(`wear:${c.id}:${st.mat || 'cream'}`, 'icon s'), c.name))));
+        if (st.itype) {
+          const c = byId.clothes[st.itype];
+          parts.push(h('p', { class: 'small muted' }, `${c.cloth} cloth each. Pick a colour.`));
+          parts.push(h('div', { class: 'row' }, Object.keys(G.data.dyes).map((d) => h('button', { class: 'btn small' + (st.mat === d ? ' primary' : ''), onclick: () => { st.mat = d; refreshSheet(); } },
+            goodIcon(`wear:${c.id}:${d}`, 'icon s'), d[0].toUpperCase() + d.slice(1)))));
+        }
+      }
     } else {
       if (b.type === 'jeweler') parts.push(h('div', { class: 'row' }, ['cutgem', 'setgem'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; refreshSheet(); } }, r === 'cutgem' ? 'Cut gems' : 'Set gems'))));
       if (st.recipe === 'cutgem') parts.push(h('p', null, goodIcon('rough_gem'), ' 1 rough gem → ', goodIcon('cut_gem'), ` 1 cut gem. You have ${stock('rough_gem')} rough gems.`));
@@ -296,7 +320,7 @@ function orderSheet(b) {
         h('div', { class: 'small ' + (can > 0 ? 'good-t' : 'bad-t') }, can > 0 ? `You have enough for ${fmt(can)}.` : 'You have not got enough yet - the order waits until you do.')));
     }
     parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c ? ' primary' : ''), onclick: () => { st.count = c; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
-    const ready = st.recipe === 'cutgem' || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
+    const ready = st.recipe === 'cutgem' || st.recipe === 'weave' || (st.recipe === 'sew' && st.itype && st.mat) || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
     parts.push(h('button', { class: 'btn big primary', style: { marginTop: '12px' }, disabled: !ready, onclick: send }, 'Add to queue'));
     return h('div', null, parts);
   });
@@ -313,6 +337,8 @@ function orderInputs(st) {
   }
   if (st.recipe === 'craft' && st.itype && st.mat) return { ['bar:' + st.mat]: byId.items[st.itype].bars, coal: 1 };
   if (st.recipe === 'cutgem') return { rough_gem: 1 };
+  if (st.recipe === 'weave') return { food: 3 };
+  if (st.recipe === 'sew' && st.itype) return { cloth: byId.clothes[st.itype].cloth };
   if (st.recipe === 'setgem' && st.itype) return { cut_gem: 1 };
   return null;
 }

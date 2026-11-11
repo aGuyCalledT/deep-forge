@@ -16,7 +16,7 @@ public final class Sim {
     public static final double STEP = 60;
     public static final double MAX_CATCHUP = 7 * 86400;
     public static final double QUENCH_WAIT = 12;
-    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "farm", "brewery");
+    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "tailor", "farm", "brewery");
     static final List<String> RAIDERS = List.of("Goblin warband", "Bandit gang", "Orc raiders", "Kobold swarm", "Troll pack");
 
     public static void advance(Fortress f, double now, Market market) {
@@ -206,10 +206,12 @@ public final class Sim {
             }
             // every machine runs its own job from the shared queue; machine 1 is b.job, the others live in b.more
             String status = null;
-            for (int i = 0; i < ws.size(); i++) {
-                Dwarf w = ws.get(i);
+            Dwarf[] seats = seats(f, b);
+            for (int i = 0; i < seats.length; i++) {
+                Dwarf w = seats[i];
+                if (w == null) continue;
                 onMachine(b, i, () -> queue(f, b, w, dt, r, t));
-                if (i == 0) status = b.status;
+                if (status == null) status = b.status;
             }
             b.status = status;
         }
@@ -300,6 +302,8 @@ public final class Sim {
             case "craft" -> "forging " + Content.METALS.get(j.mat).name().toLowerCase() + " "
                     + Content.ITEMS.get(j.itype).name().toLowerCase();
             case "cutgem" -> "cutting a gem";
+            case "weave" -> "weaving cloth";
+            case "sew" -> "sewing a " + Content.goodName(Content.wearKey(j.itype, j.mat)).toLowerCase();
             default -> j.recipe + "ing " + (j.inItem == null ? "" : Content.goodName(j.inItem));
         };
     }
@@ -340,6 +344,8 @@ public final class Sim {
         } else if (j.recipe.equals("alloy")) {
             f.stats.barsSmelted += Content.ALLOYS.get(j.mat).out();
             fortressXp(f, 2);
+        } else if (j.recipe.equals("weave")) {
+            fortressXp(f, 1);
         } else {
             fortressXp(f, 3);
         }
@@ -532,8 +538,11 @@ public final class Sim {
                     c.bought.clear();
                     coins = coins / 2;
                 }
-                f.coins += coins;
-                for (Map.Entry<String, Integer> e : c.bought.entrySet()) add(f, e.getKey(), e.getValue());
+                Report rep = Rules.report(f, "caravan", c.id, "Caravan back from " + city.name(), t);
+                rep.coins = Math.round(coins);
+                rep.goods.putAll(c.bought);
+                rep.lines.addAll(c.report);
+                rep.bad = c.report.stream().anyMatch(s -> s.startsWith("Bandits"));
                 for (int id : c.merchants) {
                     Dwarf d = dwarf(f, id);
                     if (d != null) {
@@ -549,7 +558,7 @@ public final class Sim {
                 fortressXp(f, c.revenue / 10);
                 log(f, t, c.report.stream().anyMatch(s -> s.startsWith("Bandits")) ? "bad" : "good",
                         "Caravan back from " + city.name() + ": " + String.join(" ", c.report)
-                                + " Brought home " + Math.round(coins) + " coins.");
+                                + " Brought home " + Math.round(coins) + " coins. Collect it in Trade.");
                 f.caravans.remove(c);
             }
         }

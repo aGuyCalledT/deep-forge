@@ -46,6 +46,7 @@ const RAW = {
   rough_gem: (c) => { lumpShape(c, "}", "]", "6"); c.poly([5, 9, 7, 3, 10, 9], "h"); c.px(7, 5, "J"); c.px(7, 4, "C"); },
   cut_gem: (c) => { c.poly([2, 5, 5, 2, 9, 2, 12, 5, 7, 12], "H"); c.hline(4, 5, 7, "J"); c.poly([5, 2, 9, 2, 7, 5], "J"); c.px(6, 3, "C"); c.line(2, 5, 7, 12, "h"); },
   food: (c) => { c.ellipse(7, 5, 6, 4, "Z"); c.rect(1, 6, 13, 1, "z"); c.px(4, 3, "C"); c.px(9, 4, "C"); c.px(6, 2, "9"); c.rect(5, 7, 4, 6, "c"); c.vline(5, 8, 5, "C"); },
+  cloth: (c) => { c.rect(1, 4, 10, 8, "c"); c.hline(1, 4, 10, "C"); c.hline(1, 7, 10, "U"); c.hline(1, 10, 10, "U"); c.ellipse(11, 8, 2, 4, "u"); c.px(11, 8, "V"); c.line(3, 12, 1, 13, "c"); },
   ale: (c) => { c.rect(2, 3, 8, 10, "u"); c.rect(2, 2, 8, 2, "C"); c.px(3, 1, "C"); c.px(7, 1, "C"); c.rect(3, 5, 6, 7, "y"); c.vline(4, 5, 7, "Y"); c.box(10, 5, 3, 5, "V"); c.hline(2, 12, 8, "V"); },
 };
 for (const [k, fn] of Object.entries(RAW)) sprite("raw_" + k, { w: 14, h: 14, outline: "k" }, fn);

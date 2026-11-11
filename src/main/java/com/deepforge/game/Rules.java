@@ -64,11 +64,33 @@ public final class Rules {
         return ws.isEmpty() ? null : ws.get(0);
     }
 
-    /** Dwarves at their machines, machine 1 first. Workers beyond the number of machines wait. */
+    /** Dwarves at their machines, machine 1 first (empty machines are skipped). Workers beyond the machines wait. */
     public static List<Dwarf> workers(Fortress f, Building b) {
         List<Dwarf> out = new ArrayList<>();
-        for (Dwarf d : assigned(f, b)) if (d.busy == null && out.size() < machines(b)) out.add(d);
+        for (Dwarf d : seats(f, b)) if (d != null) out.add(d);
         return out;
+    }
+
+    /**
+     * Who sits at which machine (null = free). A dwarf with a chosen machine gets it if nobody with a lower id
+     * claimed it first; everyone else takes the first free machine in id order. Away dwarves leave their seat empty.
+     */
+    public static Dwarf[] seats(Fortress f, Building b) {
+        Dwarf[] out = new Dwarf[machines(b)];
+        List<Dwarf> rest = new ArrayList<>();
+        for (Dwarf d : assigned(f, b)) {
+            if (d.busy != null) continue;
+            if (d.machine >= 0 && d.machine < out.length && out[d.machine] == null) out[d.machine] = d;
+            else rest.add(d);
+        }
+        for (Dwarf d : rest)
+            for (int i = 0; i < out.length; i++) if (out[i] == null) { out[i] = d; break; }
+        return out;
+    }
+
+    /** What another machine costs when it is put back after being taken out. */
+    public static Cost machineCost(Building b) {
+        return new Cost(60 * b.level, Map.of("stone", 15 * b.level));
     }
 
     /** Everyone assigned to the building, in a stable order (by id). */
@@ -293,6 +315,32 @@ public final class Rules {
         }
     }
 
+    // ------------------------------------------------------------ reports to collect
+
+    public static final int MAX_REPORTS = 20;
+
+    /** A new report waiting to be collected. The oldest is collected on its own when too many pile up. */
+    public static Report report(Fortress f, String kind, int ref, String title, double t) {
+        while (f.reports.size() >= MAX_REPORTS) collect(f, f.reports.get(0));
+        Report r = new Report();
+        r.id = f.nextId++;
+        r.kind = kind;
+        r.ref = ref;
+        r.title = title;
+        r.at = t;
+        f.reports.add(r);
+        return r;
+    }
+
+    /** Put a report's goods, coins and artifacts into the hold. */
+    public static void collect(Fortress f, Report r) {
+        f.coins += r.coins;
+        for (Map.Entry<String, Integer> e : r.goods.entrySet()) add(f, e.getKey(), e.getValue());
+        f.artifacts.addAll(r.artifacts);
+        f.reports.remove(r);
+        if (r.kind.equals("expedition")) f.expeditions.removeIf(e -> e.id == r.ref && !e.state.equals("active"));
+    }
+
     // ------------------------------------------------------------ costs
 
     public record Cost(double coins, Map<String, Integer> goods) {}
@@ -306,6 +354,19 @@ public final class Rules {
         goods.put("stone", (int) Math.round(t.upStone() * Math.pow(1.3, b.level - 1)));
         goods.put(Content.upgradeBar(target), 4 + 3 * b.level);
         return new Cost(Math.round(t.upCoins() * g), goods);
+    }
+
+    // digging and building in the hold: a hallway cell costs coins (the rubble is carted out), a stairwell and
+    // moving a room also need stone
+    public static final Cost DIG_COST = new Cost(10, Map.of());
+    public static final Cost STAIRWELL_COST = new Cost(40, Map.of("stone", 20));
+    public static final Cost MOVE_COST = new Cost(30, Map.of("stone", 10));
+
+    /** Cost times n (for digging several cells at once). */
+    public static Cost times(Cost c, int n) {
+        Map<String, Integer> goods = new LinkedHashMap<>();
+        c.goods().forEach((k, v) -> goods.put(k, v * n));
+        return new Cost(c.coins() * n, goods);
     }
 
     public static Cost buildCost(Fortress f, String type) {

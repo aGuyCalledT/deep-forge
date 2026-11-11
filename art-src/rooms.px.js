@@ -1,7 +1,7 @@
 // Rooms of the hold. 96 px tall, ROOMS[type].w * 24 wide. Floor surface at y = 90 (dwarves stand there).
 // Furniture is sized for the 33 px tall dwarves: a table reaches their belt, a seat their knee.
 //
-// Every room exists in three tiers (dug out, settled, grand; ROOM_TIERS in shared.js) and two variants, so rooms
+// Every room exists in four tiers (dug out, settled, grand, king's hall; ROOM_TIERS in shared.js) and two variants, so rooms
 // change clearly when they are upgraded and no two look the same. Workshops get extra machine bays
 // ("bay_<type>_<tier>_<variant>", BAYS in shared.js) that the game appends on the right.
 // Sprites here are NOT carved: the game rounds the vault and corners of the finished room (sprites.js, roomImage),
@@ -155,14 +155,40 @@ function grandStone(c, x, w, rng) {
   for (let px = x; px < x + w; px += 8) { c.line(px, 19, px + 4, 13, "O"); c.line(px + 4, 13, px + 8, 19, "O"); c.px(px + 4, 16, "j"); }   // knotwork
 }
 
+/**
+ * Tier 3, the king's hall (level 5): dark dressed stone with gold veins, a gold frieze, carved runes that glow
+ * faintly blue, and a wainscot in the room's own material, so a tavern still reads as a tavern.
+ */
+function royalWall(type, c, x, w, rng) {
+  const fam = FAMILY[type];
+  cutStone(c, x, 5, w, FY - 5, "2", "1", "3", rng, ["3", "q"]);
+  c.rect(x, 10, w, 11, "1"); c.hline(x, 10, w, "j"); c.hline(x, 20, w, "o");          // frieze
+  for (let px = x; px < x + w; px += 8) { c.line(px, 18, px + 4, 12, "O"); c.line(px + 4, 12, px + 8, 18, "O"); c.px(px + 4, 16, "8"); }
+  for (let px = x + 7; px < x + w; px += 24) {                                       // a carved rune plate per stretch of wall
+    const k = Math.floor(rng() * 3);
+    c.rect(px, 29, 9, 12, "1"); c.hline(px, 41, 9, "3"); c.vline(px + 9, 29, 13, "3");
+    c.vline(px + 4, 31, 8, "n");
+    if (k === 0) { c.line(px + 4, 31, px + 6, 33, "N"); c.line(px + 4, 34, px + 6, 36, "N"); }        // two branches
+    else if (k === 1) { c.line(px + 2, 33, px + 4, 31, "N"); c.line(px + 4, 31, px + 6, 33, "N"); }   // an arrow
+    else { c.line(px + 2, 32, px + 6, 36, "N"); c.line(px + 6, 32, px + 2, 36, "N"); }              // a cross
+  }
+  const top = 58;
+  if (fam === "wood") { c.rect(x, top, w, FY - top, "q"); for (let px = x + 2; px < x + w; px += 12) { c.rect(px, top + 4, 9, FY - top - 8, "Q"); c.box(px, top + 4, 9, FY - top - 8, "q"); c.px(px + 4, top + 14, "j"); } }
+  else if (fam === "brick") bricks(c, x, top, w, FY - top, "q", BRICK[type][0], BRICK[type][1], rng);
+  else if (fam === "stone") cutStone(c, x, top, w, FY - top, "5", "3", "6", rng, ["4", "7"]);
+  else { cutStone(c, x, top, w, FY - top, "4", "2", "5", rng); for (let px = x + 3; px < x + w; px += 9) { c.vline(px, top - 6, 6 + Math.floor(rng() * 10), "h"); c.px(px + 1, top - 2, "H"); } }   // ivy over the farm's wall
+  c.rect(x, top - 2, w, 3, "o"); c.hline(x, top - 2, w, "j");                       // a gold rail
+}
+
 const FAMILY = {
-  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood",
+  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood", tailor: "wood",
   smelter: "brick", forge: "brick", jeweler: "brick", vault: "stone", grindstone: "stone", barracks: "stone", farm: "earth",
 };
 const BRICK = { smelter: ["z", "Z"], forge: ["Q", "z"], jeweler: ["p", "P"] };
 
 function wall(type, c, x, w, T, rng) {
   const fam = FAMILY[type];
+  if (T === 3) { royalWall(type, c, x, w, rng); return; }
   if (T === 0) {
     if (fam === "earth") { earth(c, x, 5, w, FY - 5, rng); c.rect(x, 5, w, 6, "w"); return; }
     roughWall(c, x, w, rng);
@@ -187,6 +213,7 @@ function wall(type, c, x, w, T, rng) {
 
 /** Damp, cracks: one or two per wall, where the cause would put them. */
 function weather(c, x, w, T, rng) {
+  if (T === 3) { if (rng() < 0.4) crack(c, x + 8 + Math.floor(rng() * (w - 16)), 40, 8, "1", rng); return; }   // the king's hall is kept, but old
   const n = 1 + Math.floor(rng() * 2);
   for (let i = 0; i < n; i++) {
     const cx = x + 8 + Math.floor(rng() * (w - 16));
@@ -199,6 +226,11 @@ function weather(c, x, w, T, rng) {
 
 function floor(type, c, x, w, T, rng) {
   const fam = FAMILY[type];
+  if (T === 3) {                                     // polished marble with gold seams
+    for (let px = x; px < x + w; px += 12) { c.rect(px, FY, 12, H - FY, (px / 12) % 2 ? "7" : "6"); c.vline(px, FY, H - FY, "o"); c.px(px + 4, FY + 2, "C"); }
+    c.hline(x, FY, w, "j"); c.hline(x, FY + 1, w, "8");
+    return;
+  }
   if (T === 0) {                                     // packed earth with pebbles
     c.rect(x, FY, w, H - FY, "w"); c.hline(x, FY, w, "W"); c.hline(x, FY + 1, w, "v");
     for (let i = 0; i < w / 10; i++) c.px(x + Math.floor(rng() * w), FY + 2 + Math.floor(rng() * 3), rng() < 0.5 ? "4" : "V");
@@ -237,6 +269,12 @@ function ceiling(c, x, w, T) {
     for (let px = x + 8; px < x + w; px += 24) { c.rect(px, 6, 4, 3, "W"); c.px(px + 1, 9, "w"); c.px(px + 2, 9, "w"); }
     return;
   }
+  if (T === 3) {                                     // carved ribs with gold bosses and little crystals hanging down
+    c.rect(x, 2, w, 7, "2"); c.hline(x, 2, w, "4"); c.hline(x, 8, w, "j"); c.hline(x, 9, w, "1");
+    for (let px = x + 6; px < x + w; px += 24) { c.rect(px, 3, 5, 5, "O"); c.px(px + 2, 5, "8"); }
+    for (let px = x + 18; px < x + w; px += 24) { c.vline(px, 10, 3, "N"); c.px(px, 13, "n"); }
+    return;
+  }
   c.rect(x, 2, w, 5, "4"); c.hline(x, 2, w, "6"); c.hline(x, 6, w, "o"); c.hline(x, 7, w, "2");
   for (let px = x + 8; px < x + w; px += 24) { c.rect(px, 7, 6, 3, "4"); c.hline(px, 9, 6, "O"); }
 }
@@ -245,6 +283,12 @@ function ceiling(c, x, w, T) {
 function divider(c, x, T) {
   if (T === 0) { c.rect(x, 3, 4, FY - 3, "W"); c.vline(x, 3, FY - 3, "v"); c.vline(x + 3, 3, FY - 3, "w"); c.rect(x - 2, 3, 8, 3, "W"); return; }
   if (T === 1) { c.rect(x, 2, 5, FY - 2, "V"); c.vline(x, 2, FY - 2, "u"); c.vline(x + 4, 2, FY - 2, "v"); c.rect(x - 1, FY - 4, 7, 4, "v"); c.rect(x - 1, 7, 7, 3, "v"); return; }
+  if (T === 3) {                                     // a dark column with a gold capital, a rune and a crystal
+    c.rect(x, 2, 6, FY - 2, "2"); c.vline(x, 2, FY - 2, "4"); c.vline(x + 5, 2, FY - 2, "1");
+    c.rect(x - 2, 8, 10, 5, "O"); c.hline(x - 2, 8, 10, "8"); c.rect(x - 2, FY - 6, 10, 6, "o"); c.hline(x - 2, FY - 6, 10, "j");
+    c.vline(x + 3, 34, 8, "B"); c.px(x + 3, 33, "N"); c.px(x + 2, 37, "n"); c.px(x + 4, 37, "n");
+    return;
+  }
   c.rect(x, 2, 6, FY - 2, "5"); c.vline(x, 2, FY - 2, "6"); c.vline(x + 5, 2, FY - 2, "3");
   c.rect(x - 2, 8, 10, 4, "O"); c.hline(x - 2, 8, 10, "j"); c.rect(x - 2, FY - 5, 10, 5, "4"); c.hline(x - 2, FY - 5, 10, "6");
 }
@@ -571,9 +615,22 @@ function kettle(c, kx, r, T) {
 
 // ------------------------------------------------------------------ rooms
 
+/** Hanging crystal lamp for the king's hall. */
+function crystalLamp(c, x, y) {
+  c.vline(x, 10, y - 10, "o");
+  c.rect(x - 3, y, 7, 2, "O"); c.hline(x - 3, y, 7, "j");
+  c.rect(x - 2, y + 2, 5, 6, "n"); c.rect(x - 1, y + 3, 3, 5, "N"); c.px(x, y + 4, "C"); c.px(x, y + 8, "n"); c.px(x, y + 9, "N");
+}
+
+/** Extra splendour of the king's hall: banners and crystal lamps between the furniture's own lights. */
+function royalTouches(c, w, v, rng) {
+  for (let x = 30 + (v ? 12 : 0); x < w - 10; x += 72) crystalLamp(c, x, 24);
+  if (w > 100) { banner(c, v ? w - 28 : 10, 24, "b", "j"); }
+}
+
 function room(type, draw) {
   const w = ROOMS[type].w * CELL;
-  for (let T = 0; T < 3; T++) for (let v = 0; v < ROOM_VARIANTS; v++) {
+  for (let T = 0; T < 4; T++) for (let v = 0; v < ROOM_VARIANTS; v++) {
     sprite("room_" + type + "_" + T + "_" + v, { w, h: H }, (c) => {
       const rng = c.rng(1 + v * 101 + T * 7 + type.length * 13);
       wall(type, c, 0, w, T, rng);
@@ -582,7 +639,8 @@ function room(type, draw) {
       floor(type, c, 0, w, T, rng);
       // furniture fills all but the last cell; that one stays free for the back door (drawn by the game)
       webShift = { from: w - CELL - 12, by: CELL };
-      draw(c, w - CELL, ROOMS[type], T, v, rng);
+      if (T === 3) royalTouches(c, w - CELL, v, rng);
+      draw(c, w - CELL, ROOMS[type], Math.min(T, 2), v, rng);   // the king's hall keeps the grand furniture
       webShift = { from: Infinity, by: 0 };
       doorStrip(c, w - CELL, T);
     }, glow("yY0", { r: 8, strength: 0.3 }));
@@ -591,22 +649,24 @@ function room(type, draw) {
 
 /** The strip by the back door: a worn path on the floor and a hook by the frame. */
 function doorStrip(c, x, T) {
-  const mat = T === 2 ? "f" : T === 1 ? "v" : "W";
-  c.rect(x + 4, FY, 16, 2, mat); c.hline(x + 4, FY, 16, T === 2 ? "F" : "V");
-  c.rect(x + 1, 52, 2, 2, "4"); c.px(x + 2, 54, "4");                               // a hook
-  if (T > 0) { c.rect(x, 54, 4, 7, T === 2 ? "f" : "R"); c.hline(x, 54, 4, T === 2 ? "F" : "t"); }   // a cloak on it
+  const mat = T === 3 ? "b" : T === 2 ? "f" : T === 1 ? "v" : "W";
+  c.rect(x + 4, FY, 16, 2, mat); c.hline(x + 4, FY, 16, T === 3 ? "B" : T === 2 ? "F" : "V");
+  if (T === 3) { c.hline(x + 4, FY + 2, 16, "j"); }
+  c.rect(x + 1, 52, 2, 2, T === 3 ? "O" : "4"); c.px(x + 2, 54, T === 3 ? "O" : "4");   // a hook
+  if (T > 0) { c.rect(x, 54, 4, 7, T === 3 ? "b" : T === 2 ? "f" : "R"); c.hline(x, 54, 4, T === 3 ? "j" : T === 2 ? "F" : "t"); }   // a cloak on it
 }
 
 function bay(type, draw) {
   const w = BAYS[type].w * CELL;
-  for (let T = 0; T < 3; T++) for (let v = 0; v < ROOM_VARIANTS; v++) {
+  for (let T = 0; T < 4; T++) for (let v = 0; v < ROOM_VARIANTS; v++) {
     sprite("bay_" + type + "_" + T + "_" + v, { w, h: H }, (c) => {
       const rng = c.rng(3 + v * 211 + T * 17 + type.length * 5);
       wall(type, c, 0, w, T, rng);
       if (rng() < 0.7) weather(c, 6, w - 6, T, rng);
       ceiling(c, 0, w, T);
       floor(type, c, 0, w, T, rng);
-      draw(c, w, BAYS[type], T, v, rng);
+      if (T === 3) crystalLamp(c, Math.floor(w / 2) + (v ? 8 : -8), 24);
+      draw(c, w, BAYS[type], Math.min(T, 2), v, rng);
       divider(c, 0, T);
     }, glow("yY0", { r: 8, strength: 0.3 }));
   }
@@ -834,6 +894,72 @@ bay("jeweler", (c, w, A, T, v, rng) => {
   workbench(c, 4, 32, T, "p");
   c.vline(22, 48, 22, "4"); c.rect(16, 46, 13, 4, "5"); c.rect(18, 50, 9, 2, "Y");
   c.px(10, 68, v ? "P" : "N"); c.px(12, 68, "j");
+});
+
+/** A loom: two posts, a top beam, cream warp threads and the woven cloth growing at the bottom. */
+function loom(c, x, w, T, cloth = "B", stripe = "n") {
+  const post = T === 0 ? "v" : T === 2 ? "q" : "W", lite = T === 2 ? "j" : "V";
+  c.rect(x, 38, 4, FY - 38, post); c.rect(x + w - 4, 38, 4, FY - 38, post);
+  c.vline(x + 1, 38, FY - 40, lite); c.vline(x + w - 3, 38, FY - 40, lite);
+  c.rect(x - 2, 36, w + 4, 4, post); c.hline(x - 2, 36, w + 4, lite);            // top beam
+  for (let i = x + 6; i < x + w - 5; i += 3) c.vline(i, 40, 18, "c");             // warp threads
+  c.rect(x + 4, 52, w - 8, 3, "V"); c.hline(x + 4, 52, w - 8, "u");               // the beater
+  c.rect(x + 5, 56, w - 10, 10, cloth);                                           // woven cloth
+  for (let y = 58; y < 66; y += 3) c.hline(x + 5, y, w - 10, stripe);
+  c.rect(x + 2, 66, w - 4, 4, post); c.hline(x + 2, 66, w - 4, lite);            // cloth beam
+  c.line(x + 6, FY - 1, x + w - 10, FY - 5, "w");                                 // treadle
+  c.rect(x + w - 14, 61, 7, 2, "u"); c.px(x + w - 15, 61, "U");                   // the shuttle, left in the warp
+}
+
+/** A bolt of cloth lying on a shelf: a rolled end and its colour. */
+function bolt(c, x, b, col, dark) {
+  c.rect(x, b - 5, 10, 5, col); c.hline(x, b - 5, 10, dark); c.ellipse(x + 10, b - 3, 1, 2, dark); c.px(x + 10, b - 3, col);
+}
+
+/** A dress form on its stand, with a half-sewn piece pinned on. */
+function dressForm(c, x, T, dye = "p", lite = "P") {
+  c.vline(x, 70, FY - 70, T === 2 ? "o" : "W"); c.hline(x - 5, B, 11, T === 2 ? "O" : "W"); c.px(x - 6, B, "w"); c.px(x + 6, B, "w");
+  c.ellipse(x, 52, 6, 8, "U"); c.rect(x - 3, 42, 7, 3, "U"); c.rect(x - 1, 39, 3, 3, "V");
+  c.ellipse(x, 56, 6, 5, dye); c.hline(x - 6, 54, 13, lite);                      // the piece on it
+  for (const px of [x - 3, x + 1, x + 4]) c.px(px, 53, "7");                        // pins
+  c.hline(x - 4, 61, 9, dye); c.vline(x - 6, 57, 4, dye); c.vline(x + 6, 57, 4, dye);
+}
+
+/** A tape measure hanging from a hook, and a spool. */
+function spool(c, x, b, col) { c.rect(x, b - 4, 5, 5, "V"); c.rect(x, b - 3, 5, 3, col); c.hline(x, b - 4, 5, "u"); c.hline(x, b, 5, "u"); }
+
+room("tailor", (c, w, R, T, v, rng) => {
+  const cloth = v ? "h" : "B", stripe = v ? "H" : "n";
+  loom(c, 8, 40, T, cloth, stripe);
+  if (T === 0) {                                     // a heap of mushroom fibre and a basket
+    c.ellipse(64, B - 3, 10, 4, "u"); c.ellipse(64, B - 5, 7, 3, "U"); for (const px of [58, 63, 69]) c.px(px, B - 7, "V");
+    c.rect(78, B - 9, 14, 10, "v"); for (let y = B - 8; y < B; y += 2) c.hline(78, y, 14, "V"); c.hline(77, B - 9, 16, "u");
+    c.ellipse(85, B - 10, 5, 2, "c");
+    shelf(c, 78, 50, 30, 0); bolt(c, 80, 50, "c", "u"); bolt(c, 94, 50, "u", "V");
+    c.line(102, 30, 104, 44, "c"); c.px(101, 29, "4");                            // a thread hanging from a nail
+  } else {
+    shelf(c, 76, 34, 40, T); shelf(c, 74, 52, 26, T);
+    const cols = [["p", "q"], ["B", "b"], ["h", "G"], ["y", "F"], ["c", "u"], ["P", "p"]];
+    for (let i = 0; i < 3; i++) { const [a, d] = cols[(i + v) % 6]; bolt(c, 78 + i * 12, 34, a, d); }
+    for (let i = 0; i < 2; i++) { const [a, d] = cols[(i + 3 + v) % 6]; bolt(c, 76 + i * 12, 52, a, d); }
+    if (T === 2) { for (let i = 0; i < 3; i++) { const [a, d] = cols[(i + 2) % 6]; bolt(c, 80 + i * 12, 29, a, d); } }
+    dressForm(c, 110, T, v ? "f" : "p", v ? "F" : "P");
+    spool(c, 56, B, "f"); spool(c, 62, B, "j");
+    c.vline(72, 58, 14, "y"); c.px(72, 57, "4"); for (let y = 60; y < 72; y += 3) c.px(72, y, "w");   // a tape measure
+  }
+  if (T === 2) {                                     // a tapestry the tailor is proud of
+    c.rect(50, 14, 20, 16, "f"); c.box(50, 14, 20, 16, "j"); c.hline(48, 13, 24, "o");
+    c.rect(56, 18, 8, 8, "B"); c.px(59, 21, "j"); c.px(60, 22, "j"); c.px(59, 23, "j");
+    rug(c, 6, 60, "p", "P");
+  }
+  lights(c, T, [[60, 10]], v);
+  cobweb(c, v ? w - 6 : 6, 8, !v, 6);
+  c.px(30, FY - 1, "c"); c.px(33, FY - 2, "c"); c.px(44, FY - 1, "u");            // loose threads on the floor
+});
+
+bay("tailor", (c, w, A, T, v, rng) => {
+  loom(c, 4, 26, T, v ? "f" : "p", v ? "F" : "P");
+  if (v) spool(c, 36, B, "B"); else { c.ellipse(40, B - 2, 5, 2, "u"); c.px(38, B - 4, "U"); }
 });
 
 room("farm", (c, w, R, T, v, rng) => {

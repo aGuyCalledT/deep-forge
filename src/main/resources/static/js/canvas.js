@@ -21,7 +21,7 @@ export function initCanvas(c, w, s, pick) {
   canvas.addEventListener('pointerdown', down);
   canvas.addEventListener('pointermove', move);
   canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); drag = null; });
+  canvas.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); if (drag && drag.paint && screen.paint) screen.paint(null, 'cancel'); drag = null; });
   canvas.addEventListener('pointerleave', () => { hover = null; mouse = null; canvas.style.cursor = ''; });
   canvas.addEventListener('wheel', wheel, { passive: false });
   canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (screen && screen.cancel) screen.cancel(); });
@@ -49,10 +49,11 @@ function setZoom(z, sx, sy) {
 function clamp() {
   if (!screen) return;
   const { w, h } = screen.size();
+  const b = screen.bounds ? screen.bounds() : { x0: 0, y0: -20, x1: w, y1: h + 20 };
   const r = wrap.getBoundingClientRect();
   const vw = r.width / cam.zoom, vh = r.height / cam.zoom;
-  cam.x = vw >= w ? (w - vw) / 2 : Math.max(0, Math.min(w - vw, cam.x));
-  cam.y = vh >= h ? (h - vh) / 2 : Math.max(-20, Math.min(h - vh + 20, cam.y));
+  cam.x = vw >= b.x1 - b.x0 ? (b.x0 + b.x1 - vw) / 2 : Math.max(b.x0, Math.min(b.x1 - vw, cam.x));
+  cam.y = vh >= b.y1 - b.y0 ? (b.y0 + b.y1 - vh) / 2 : Math.max(b.y0, Math.min(b.y1 - vh, cam.y));
 }
 
 /** Screen pixels -> world pixels. */
@@ -70,10 +71,18 @@ function fitScale() {
 }
 
 function down(e) {
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* a pointer the browser no longer tracks */ }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: 0, t: performance.now() };
-  if (pointers.size === 2) drag = { pinch: dist(), zoom: cam.zoom };
+  if (pointers.size === 1) {
+    drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: 0, t: performance.now() };
+    // tools that paint (digging a row of hallway): the stroke follows the pointer instead of the camera
+    const p = toWorld(e);
+    if (screen && screen.paint && screen.dragging && screen.dragging(p)) { drag.paint = true; screen.paint(p, 'start'); }
+  }
+  if (pointers.size === 2) {
+    if (drag && drag.paint && screen.paint) screen.paint(null, 'cancel');
+    drag = { pinch: dist(), zoom: cam.zoom };
+  }
 }
 
 function dist() {
@@ -89,6 +98,7 @@ function move(e) {
     setZoom(drag.zoom * dist() / drag.pinch, r.width / 2, r.height / 2);
     return;
   }
+  if (drag && drag.paint && pointers.size === 1) { screen.paint(mouse, 'move'); return; }
   if (drag && !drag.pinch && pointers.size === 1) {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
@@ -109,6 +119,7 @@ function up(e) {
   const d = drag;
   if (pointers.size === 0) drag = null;
   canvas.style.cursor = hover ? 'pointer' : '';
+  if (d && d.paint && screen && screen.paint) { screen.paint(toWorld(e), 'end'); return; }
   if (!d || d.pinch || d.moved > 6 || !screen) return;
   const p = toWorld(e);
   const q = screen.hit(p.x, p.y);
@@ -196,8 +207,12 @@ function lighting(t, view, scale) {
   const ox = Math.floor(view.x), oy = Math.floor(view.y);
   lctx.globalCompositeOperation = 'source-over';
   lctx.clearRect(0, 0, W, H);
-  const zones = screen.ambient(t, view);   // [{y0, y1, color, a}]
-  for (const z of zones) { lctx.fillStyle = z.color; lctx.globalAlpha = z.a; lctx.fillRect(0, z.y0 - oy, W, z.y1 - z.y0); }
+  const zones = screen.ambient(t, view);   // [{y0, y1, color, a, x0?, x1?}]
+  for (const z of zones) {
+    const x0 = z.x0 === undefined ? 0 : Math.max(0, z.x0 - ox), x1 = z.x1 === undefined ? W : Math.min(W, z.x1 - ox);
+    if (x1 <= x0) continue;
+    lctx.fillStyle = z.color; lctx.globalAlpha = z.a; lctx.fillRect(x0, z.y0 - oy, x1 - x0, z.y1 - z.y0);
+  }
   lctx.globalAlpha = 1;
   const lights = screen.lights(t).filter((l) => l.x + l.r > view.x && l.x - l.r < view.x + view.w && l.y + l.r > view.y && l.y - l.r < view.y + view.h);
   lctx.globalCompositeOperation = 'destination-out';

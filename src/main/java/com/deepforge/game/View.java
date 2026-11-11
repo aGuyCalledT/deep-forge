@@ -81,6 +81,10 @@ public final class View {
             List<Integer> wids = new ArrayList<>();
             for (Dwarf x : workers(f, b)) wids.add(x.id);
             m.put("workers", wids);
+            List<Integer> seatIds = new ArrayList<>();
+            for (Dwarf x : seats(f, b)) seatIds.add(x == null ? null : x.id);
+            m.put("seats", seatIds);
+            if (isWorkshop(b) && machines(b) < maxMachines(b)) m.put("machineCost", machineCost(b));
             List<Integer> waiting = new ArrayList<>();
             for (Dwarf x : assigned(f, b)) if (!wids.contains(x.id)) waiting.add(x.id);
             m.put("waiting", waiting);
@@ -110,6 +114,7 @@ public final class View {
         for (Content.BuildingType t : Content.BUILDINGS.values())
             if (t.multi()) build.put(t.id(), buildCost(f, t.id()));
         d.put("buildCosts", build);
+        d.put("layoutCosts", Map.of("dig", DIG_COST, "stairwell", STAIRWELL_COST, "move", MOVE_COST));
 
         // provisions per hour
         double eat = 0, drink = 0;

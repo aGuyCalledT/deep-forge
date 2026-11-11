@@ -87,11 +87,33 @@ public final class Actions {
             case "rename" -> rename(f, a);
             case "moveRoom" -> Layouts.moveRoom(f, str(a, "building"), num(a, "col", -1), num(a, "floor", -1));
             case "dig" -> Layouts.dig(f, num(a, "col", -1), num(a, "floor", -1));
-            case "stairs" -> Layouts.stairs(f, num(a, "col", -1), num(a, "floor", -1));
+            case "stairwell" -> Layouts.stairwell(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
-            case "door" -> Layouts.door(f, num(a, "col", -1), num(a, "floor", -1));
+            case "collect" -> {
+                int id = num(a, "id", -1);
+                Report rep = f.reports.stream().filter(x -> x.id == id || id == -1).findFirst().orElse(null);
+                check(rep != null, "Nothing to collect.");
+                if (id == -1) for (Report x : new ArrayList<>(f.reports)) collect(f, x);
+                else collect(f, rep);
+            }
+            case "removeMachine" -> removeMachine(f, a);
+            case "addMachine" -> addMachine(f, a);
+            case "digMany" -> Layouts.digMany(f, cells(a));
+            case "fillMany" -> Layouts.fillMany(f, cells(a));
             default -> throw new GameException("Unknown action: " + type);
         }
+    }
+
+    /** A list of [col, floor] pairs from the client. */
+    static List<int[]> cells(Map<String, Object> a) {
+        check(a.get("cells") instanceof List<?>, "Choose some cells.");
+        List<int[]> out = new ArrayList<>();
+        for (Object o : (List<?>) a.get("cells")) {
+            check(o instanceof List<?> l && l.size() == 2 && l.get(0) instanceof Number && l.get(1) instanceof Number, "Bad cell.");
+            List<?> l = (List<?>) o;
+            out.add(new int[]{((Number) l.get(0)).intValue(), ((Number) l.get(1)).intValue()});
+        }
+        return out;
     }
 
     // ------------------------------------------------------------ dwarves
@@ -119,19 +141,77 @@ public final class Actions {
                 check(b != null && b.level > 0, "No such building.");
                 String kind = Content.BUILDINGS.get(b.type).kind();
                 check(!kind.equals("passive"), "Nobody works there.");
-                if (!(d.job.equals("worker") && b.id.equals(d.building))) {
+                int m = num(a, "machine", -1);
+                check(m < machines(b), "That machine does not exist.");
+                boolean here = d.job.equals("worker") && b.id.equals(d.building);
+                if (m >= 0) {
+                    // a chosen machine: pin everyone where they sit, then the one sitting there swaps with the
+                    // newcomer (if the newcomer already had a machine here) or rests
+                    Dwarf[] now = seats(f, b);
+                    int old = -1;
+                    for (int k = 0; k < now.length; k++) if (now[k] != null) { now[k].machine = k; if (now[k] == d) old = k; }
+                    Dwarf o = now[m];
+                    if (o != null && o != d) {
+                        if (old >= 0) o.machine = old;
+                        else { o.job = "idle"; o.machine = -1; }
+                    }
+                    d.machine = m;
+                } else if (!here) {
                     List<Dwarf> at = assigned(f, b);
                     if (at.size() >= machines(b)) {
                         // all machines taken: with one machine the newcomer takes over, otherwise say what to do
                         check(machines(b) == 1, "All " + machines(b) + " machines are taken. Add a machine or free a worker first.");
                         for (Dwarf o : at) o.job = "idle";
                     }
+                    d.machine = -1;
                 }
                 d.job = "worker";
                 d.building = b.id;
             }
             default -> throw new GameException("Unknown job.");
         }
+    }
+
+    /** Take one machine out of a workshop: its dwarf rests, the room gets narrower, the space becomes hallway. */
+    static void removeMachine(Fortress f, Map<String, Object> a) {
+        Building b = building(f, str(a, "building"));
+        check(b != null && isWorkshop(b), "No such workshop.");
+        int i = num(a, "machine", -1);
+        check(machines(b) > 1, "A workshop keeps at least one machine.");
+        check(i >= 0 && i < machines(b), "That machine does not exist.");
+        Job j = i == 0 ? b.job : (i - 1 < b.more.size() ? b.more.get(i - 1) : null);
+        check(j == null, "Machine " + (i + 1) + " is still working. Wait until it is done, or take out another one.");
+        Layouts.ensure(f);
+        int[] p = f.layout.rooms.get(b.id);
+        int w = Layouts.width(b), extra = Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
+        Dwarf[] seats = seats(f, b);
+        for (int k = 0; k < seats.length; k++) if (seats[k] != null) seats[k].machine = k;   // keep the others in place
+        for (Dwarf d : assigned(f, b)) {
+            if (d.machine == i) { d.job = "idle"; d.machine = -1; }
+            else if (d.machine > i) d.machine--;
+        }
+        if (i == 0) b.job = b.more.isEmpty() ? null : b.more.remove(0);
+        else if (i - 1 < b.more.size()) b.more.remove(i - 1);
+        b.machines = machines(b) - 1;
+        b.machinesByHand = true;
+        if (p != null) for (int x = p[0] + w - extra; x < p[0] + w; x++) f.layout.halls.add(Layouts.key(x, p[1]));
+        log(f, "info", "A machine was taken out of the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
+    }
+
+    /** Put a machine back that was taken out (up to one per level, at most 5). */
+    static void addMachine(Fortress f, Map<String, Object> a) {
+        Building b = building(f, str(a, "building"));
+        check(b != null && isWorkshop(b), "No such workshop.");
+        check(machines(b) < maxMachines(b), "Upgrade the workshop for another machine.");
+        Cost c = machineCost(b);
+        check(canPay(f, c), "Not enough coins or stone for another machine.");
+        Layouts.ensure(f);
+        int[] spot = Layouts.spaceToGrow(f, b);
+        check(spot != null, "No floor has space for a wider " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ". Dig out more of the hold.");
+        pay(f, c);
+        Layouts.growTo(f, b, spot);
+        b.machines = machines(b) + 1;
+        log(f, "info", "A new machine stands in the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
     }
 
     static void equip(Fortress f, Map<String, Object> a) {
@@ -231,8 +311,7 @@ public final class Actions {
         if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
             int[] p = f.layout.rooms.get(b.id);
             moved = p[1] != spot[1] || Math.abs(p[0] - spot[0]) > Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
-            Layouts.moveRoom(f, b.id, spot[0], spot[1]);
-            Layouts.grow(f, b);
+            Layouts.growTo(f, b, spot);
             b.machines = machines(b) + 1;
         }
         b.level++;
@@ -324,8 +403,7 @@ public final class Actions {
         check(b != null, "Nothing to quench right now.");
         int i = Math.max(0, num(a, "machine", 0));
         check(i < machines(b), "Nothing to quench right now.");
-        List<Dwarf> ws = workers(f, b);
-        Dwarf w = i < ws.size() ? ws.get(i) : null;
+        Dwarf w = seats(f, b)[i];
         Sim.onMachine(b, i, () -> quenchJob(f, b, w, t, r));
     }
 
@@ -364,7 +442,6 @@ public final class Actions {
         int units = 0;
         for (Map.Entry<String, Integer> e : cargo.entrySet()) {
             check(stock(f, e.getKey()) >= e.getValue(), "Not enough " + Content.goodName(e.getKey()) + ".");
-            check(!Content.isWear(e.getKey()), "Clothes aren't traded yet. Keep them for your dwarves.");
             units += e.getValue();
         }
         int cap = caravanCapacity(f) * ms.size();

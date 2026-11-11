@@ -187,6 +187,7 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
 .tool.on { background: linear-gradient(180deg, #8fbf82, #76a86b); color: #18241a; }
 .clock { display: inline-flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 999px; background: rgba(42, 32, 35, 0.7); color: var(--muted); font-size: 12.5px; pointer-events: auto; font-variant-numeric: tabular-nums; }
 .tool-hint { pointer-events: none; align-self: flex-start; max-width: 420px; padding: 7px 12px; border-radius: 12px; background: rgba(42, 32, 35, 0.86); color: var(--ink); font-size: 12.5px; box-shadow: var(--shadow-s); }
+.tool-cost { align-self: flex-start; display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 12px; background: rgba(42, 32, 35, 0.86); color: var(--muted); font-size: 12.5px; box-shadow: var(--shadow-s); }
 
 .tabs {
   position: relative; z-index: 30; display: flex; flex: none;
@@ -243,6 +244,15 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
 .sheet.pop .sheet-body { pointer-events: auto; max-height: 50vh; padding: 14px 14px calc(16px + env(safe-area-inset-bottom)); bottom: var(--tabs-h); }
 @media (min-width: 700px) {
   .sheet.pop .sheet-body { position: fixed; bottom: auto; width: 380px; max-height: min(78vh, 640px); border-radius: 18px; box-shadow: 0 12px 34px rgba(14, 8, 10, 0.55); }
+}
+/* phones: the pop-over folds down to a strip while you look around the hold; the grip opens it again */
+.sheet-grip { display: none; }
+@media (max-width: 699px) {
+  .sheet.pop .sheet-body { max-height: 42vh; transition: max-height 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+  .sheet.pop .sheet-grip { display: block; position: sticky; top: -14px; z-index: 2; width: calc(100% + 28px); height: 24px; margin: -14px -14px 2px; padding: 0; border: 0; background: linear-gradient(180deg, #45363a 70%, rgba(69, 54, 58, 0)); cursor: pointer; }
+  .sheet.pop .sheet-grip::before { content: ""; display: block; width: 44px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: var(--dim); }
+  .sheet.pop.peek .sheet-body { max-height: 84px; overflow: hidden; }
+  .sheet.pop.peek .sheet-grip::before { background: var(--gold); }
 }
 .sheet.pop .room-pic { display: none; }
 .sheet.pop h2 { font-size: 18px; margin: 2px 44px 4px 0; }
@@ -342,6 +352,8 @@ td.num, th.num { text-align: right; }
 .machine-no { font-family: 'Pixelify Sans', sans-serif; color: var(--gold); width: 18px; text-align: center; flex: none; }
 .machine-seat { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px dashed var(--dim); opacity: 0.7; }
 .machine .btn { min-height: 40px; flex: none; }
+.machine-btns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; flex: none; max-width: 52%; }
+.machine-btns .btn { padding-left: 10px; padding-right: 10px; }
 .bar.thin { height: 6px; margin-top: 2px; }
 
 /* mines */
@@ -380,3 +392,20 @@ label.color { display: inline-flex; flex-direction: column; align-items: flex-st
 .ws-row.on { box-shadow: 0 0 0 2px rgba(240, 195, 106, 0.5), var(--shadow-s); }
 .ws-row .thumb { width: 66px; height: 44px; object-fit: contain; image-rendering: pixelated; border-radius: 8px; flex: none; }
 .ws-row .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+/* ---------- loot to collect */
+.report { border: 1px solid rgba(227, 192, 110, 0.35); background: linear-gradient(180deg, rgba(227, 192, 110, 0.12), rgba(227, 192, 110, 0.03)); }
+.report.bad { border-color: rgba(236, 133, 119, 0.35); }
+.report h3 { color: var(--gold); }
+.loot { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.loot-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 999px; background: rgba(255, 240, 220, 0.07); }
+.loot-item .icon { width: 24px; height: 24px; }
+.btn.collect { width: 100%; background: linear-gradient(180deg, #f0c66e, #d9a24a); color: #3a2414; font-weight: 600; }
+.btn.collect.pop { animation: collect-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes collect-pop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.report.collected { animation: report-out 0.6s 0.25s ease-in forwards; }
+@keyframes report-out { to { opacity: 0; transform: translateY(-6px) scale(0.98); } }
+.fly { position: fixed; z-index: 100; pointer-events: none; image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(255, 217, 142, 0.9)); }
+#res.gain { animation: res-gain 0.4s ease-out; }
+@keyframes res-gain { 40% { filter: brightness(1.6) drop-shadow(0 0 6px rgba(255, 217, 142, 0.8)); } }
+@media (prefers-reduced-motion: reduce) { .btn.collect.pop, .report.collected, #res.gain { animation: none; } }

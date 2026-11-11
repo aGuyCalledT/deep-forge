@@ -268,6 +268,25 @@ export function dwarfSprite(d, pose = 'idle', frame = 0, tool = null, opts = {})
   return c;
 }
 
+/**
+ * A stranger who is not one of your dwarves (the merchant at the stall, travellers in the valley): built from a
+ * plain spec {id, body, skin, hair, eye, hairStyle, beard, wear, tool, tall}. Same figure kit as the dwarves.
+ */
+export function npcSprite(n, pose = 'idle', frame = 0) {
+  frame = frame % (FRAMES[pose] || 1);
+  const key = 'npc|' + n.id + '|' + pose + '|' + frame;
+  if (cache.has(key)) return cache.get(key);
+  const img = Figure.person({
+    body: n.body, bodyOverride: n.tall ? { legLen: 7, torsoH: 13 } : null, skin: n.skin, hair: n.hair, eye: n.eye,
+    hairStyle: n.hairStyle, beard: n.beard || null, nose: Figure.NOSES[n.nose || 0],
+    brows: Figure.BROWS[0], mouth: Figure.MOUTHS[0],
+    wear: n.wear, pose, frame, mood: 'happy', tool: n.tool ? { kind: n.tool, carry: true } : null, toolMetal: '#9a9aa6', blink: n.id,
+  });
+  const c = toCanvas(img); c.ax = img.ax; c.ay = img.ay;
+  cache.set(key, c);
+  return c;
+}
+
 /** Draw a dwarf sprite with its feet at (x, y), with a ground shadow; returns where it went (for hit tests). */
 export function placeDwarf(ctx, spr, x, y, flip = false, shadow = true) {
   const sx = Math.round(x - (flip ? spr.width - spr.ax : spr.ax)), sy = Math.round(y - spr.ay);
@@ -310,7 +329,7 @@ export function torch(frame) { return sprite(`torch_${((frame % 3) + 3) % 3}`); 
 // ------------------------------------------------------------------ rooms
 
 
-/** Look tier of a room: 0 dug out, 1 settled, 2 grand (ROOM_TIERS gives the level each one starts at). */
+/** Look tier of a room: 0 dug out, 1 settled, 2 grand, 3 king's hall (ROOM_TIERS gives the level each one starts at). */
 export function roomTier(b) {
   const t = META.ROOM_TIERS || [1, 2, 3], lv = b.level || 1;
   let k = 0; for (let i = 0; i < t.length; i++) if (lv >= t[i]) k = i;

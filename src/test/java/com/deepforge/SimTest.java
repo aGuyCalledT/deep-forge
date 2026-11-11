@@ -66,6 +66,11 @@ class SimTest {
         assertEquals("caravan:" + f.caravans.get(0).id, merchant.busy);
         Sim.advance(f, T0 + 2.1 * 3600, m);
         assertTrue(f.caravans.isEmpty(), "caravan should be home after 2 hours");
+        // the coins wait in a report until they are collected
+        assertEquals(1, f.reports.size());
+        assertEquals(before - 50, f.coins, 1e-9);
+        act(f, m, T0 + 2.1 * 3600, "type", "collect", "id", f.reports.get(0).id);
+        assertTrue(f.reports.isEmpty());
         // robbed caravans bring half; a normal one sells 30 bars for ~300 coins
         if (f.log.stream().noneMatch(l -> l.text.contains("Bandits")))
             assertTrue(f.coins > before + 150, "coins " + f.coins + " before " + before);
@@ -122,6 +127,13 @@ class SimTest {
             Expedition e = f.expeditions.get(0);
             assertNotEquals("active", e.state);
             if (f.blueprints.contains("steelmaking")) ok++;
+            // a report waits; collecting it also clears the finished expedition
+            if (e.state.equals("done")) {
+                assertEquals(1, f.reports.size());
+                act(f, m, T0 + 4 * 3600, "type", "collect", "id", -1);
+                assertTrue(f.reports.isEmpty());
+                assertTrue(f.expeditions.isEmpty());
+            }
         }
         assertTrue(ok >= 7, "most cellar runs should succeed, got " + ok);
     }
@@ -162,7 +174,9 @@ class SimTest {
         for (Map.Entry<String, int[]> e : f.layout.rooms.entrySet()) {
             int w = Layouts.ROOM_CELLS.get(Rules.building(f, e.getKey()).type);
             for (int c = e.getValue()[0]; c < e.getValue()[0] + w; c++) assertTrue(used.add(c + "," + e.getValue()[1]));
+            assertTrue(Layouts.connected(f, e.getValue()[0], e.getValue()[1], w), e.getKey() + " has no hallway beside it");
         }
+        assertFalse(f.layout.wells.isEmpty(), "the start plan has stairwells");
     }
 
     @Test
@@ -171,6 +185,7 @@ class SimTest {
         Market m = Market.inMemory(12, T0);
         f.stock.put("bar:copper", 30);
         f.stock.put("coal", 50);
+        act(f, m, T0, "type", "dig", "col", 19, "floor", 5);
         act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
         Building forge = f.buildings.stream().filter(x -> x.id.equals("forge-1")).findFirst().orElseThrow();
         assertEquals(1, Rules.maxMachines(forge));
@@ -236,24 +251,102 @@ class SimTest {
     }
 
     @Test
-    void roomsHallsAndStairsCanBePlaced() {
+    void roomsNeedAHallwayAndStairwellsAreHallwaysTwoCellsWide() {
         Fortress f = fresh(42);
         Market m = Market.inMemory(42, T0);
+        f.coins = 10000;
+        f.stock.put("stone", 500);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5),
+                "no hallway beside it");
+        act(f, m, T0, "type", "dig", "col", 19, "floor", 5);
         act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 20, "floor", 5);
         assertArrayEquals(new int[]{20, 5}, f.layout.rooms.get("forge-1"));
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "smelter-1", "col", 22, "floor", 5));
-        act(f, m, T0, "type", "dig", "col", 10, "floor", 6);
-        assertTrue(f.layout.halls.contains("10,6"));
-        act(f, m, T0, "type", "stairs", "col", 12, "floor", 6);
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 13, "floor", 7));
-        act(f, m, T0, "type", "fill", "col", 13, "floor", 7);
-        assertTrue(f.layout.stairs.isEmpty());
+        // the forge needs its hallway
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "fill", "col", 19, "floor", 5));
+        act(f, m, T0, "type", "stairwell", "col", 12, "floor", 6);
+        assertTrue(f.layout.wells.contains("12,6"));
+        assertEquals("well", Layouts.at(f, 13, 6, null));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 13, "floor", 6));
+        act(f, m, T0, "type", "fill", "col", 13, "floor", 6);
+        assertTrue(f.layout.wells.isEmpty() || !f.layout.wells.contains("12,6"));
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 0, "floor", 1));
-        act(f, m, T0, "type", "door", "col", 10, "floor", 6);
-        assertTrue(f.layout.doors.contains("10,6"));
-        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "door", "col", 30, "floor", 7));
-        act(f, m, T0, "type", "fill", "col", 10, "floor", 6);
-        assertFalse(f.layout.doors.contains("10,6"));
+    }
+
+    @Test
+    void oldStairsBecomeStairwellsAndLonelyRoomsGetAHallway() {
+        Fortress f = fresh(46);
+        f.layout.wells.clear();
+        f.layout.halls.clear();
+        f.layout.stairs.add("40,6");
+        f.layout.doors.add("41,6");
+        Layouts.ensure(f);
+        assertTrue(f.layout.stairs.isEmpty() && f.layout.doors.isEmpty());
+        assertTrue(f.layout.wells.containsAll(List.of("40,6", "40,7")));
+        for (Map.Entry<String, int[]> e : f.layout.rooms.entrySet())
+            assertTrue(Layouts.connected(f, e.getValue()[0], e.getValue()[1], Layouts.width(Rules.building(f, e.getKey()))), e.getKey());
+    }
+
+    @Test
+    void machinesAreAssignedAndRemovedOneByOne() {
+        Fortress f = fresh(45);
+        Market m = Market.inMemory(45, T0);
+        f.coins = 100000;
+        f.stock.put("stone", 5000);
+        f.stock.put("bar:copper", 500);
+        f.stock.put("bar:bronze", 500);
+        Building forge = Rules.building(f, "forge-1");
+        while (forge.level < 3) { act(f, m, T0, "type", "upgrade", "building", forge.id); }
+        assertEquals(3, Rules.machines(forge));
+        List<Dwarf> ds = f.dwarves.stream().filter(d -> d.busy == null).limit(3).toList();
+        for (Dwarf d : ds) act(f, m, T0, "type", "assign", "dwarf", d.id, "job", "idle");
+        // put the first dwarf at machine 3, the second at machine 1
+        act(f, m, T0, "type", "assign", "dwarf", ds.get(0).id, "job", "worker", "building", forge.id, "machine", 2);
+        act(f, m, T0, "type", "assign", "dwarf", ds.get(1).id, "job", "worker", "building", forge.id, "machine", 0);
+        Dwarf[] seats = Rules.seats(f, forge);
+        assertSame(ds.get(1), seats[0]);
+        assertNull(seats[1]);
+        assertSame(ds.get(0), seats[2]);
+        // swapping: the dwarf at 3 moves to 1, the one at 1 takes 3
+        act(f, m, T0, "type", "assign", "dwarf", ds.get(0).id, "job", "worker", "building", forge.id, "machine", 0);
+        seats = Rules.seats(f, forge);
+        assertSame(ds.get(0), seats[0]);
+        assertSame(ds.get(1), seats[2]);
+        // take out machine 1: its dwarf rests, the one at 3 is now at 2, the room is narrower
+        int w = Layouts.width(forge);
+        act(f, m, T0, "type", "removeMachine", "building", forge.id, "machine", 0);
+        assertEquals(2, Rules.machines(forge));
+        assertEquals("idle", ds.get(0).job);
+        assertSame(ds.get(1), Rules.seats(f, forge)[1]);
+        assertEquals(w - Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
+        // and put it back
+        act(f, m, T0, "type", "addMachine", "building", forge.id);
+        assertEquals(3, Rules.machines(forge));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "addMachine", "building", forge.id));
+    }
+
+    @Test
+    void buildingInTheHoldCosts() {
+        Fortress f = fresh(44);
+        Market m = Market.inMemory(44, T0);
+        f.coins = 1000;
+        f.stock.put("stone", 100);
+        act(f, m, T0, "type", "dig", "col", 10, "floor", 6);
+        assertEquals(1000 - Rules.DIG_COST.coins(), f.coins, 1e-9);
+        act(f, m, T0, "type", "stairwell", "col", 12, "floor", 6);
+        assertEquals(100 - 20, f.stock.get("stone"));
+        // a dragged stroke: taken cells are skipped, the rest is dug while coins last
+        f.coins = Rules.DIG_COST.coins() * 3;
+        act(f, m, T0, "type", "digMany", "cells", List.of(List.of(10, 6), List.of(20, 7), List.of(21, 7), List.of(22, 7), List.of(23, 7)));
+        assertTrue(f.layout.halls.containsAll(List.of("20,7", "21,7", "22,7")));
+        assertFalse(f.layout.halls.contains("23,7"));
+        assertEquals(0, f.coins, 1e-9);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "dig", "col", 30, "floor", 7));
+        act(f, m, T0, "type", "fillMany", "cells", List.of(List.of(20, 7), List.of(21, 7)));
+        assertFalse(f.layout.halls.contains("20,7"));
+        // moving a room costs, an upgrade that has to move it does not
+        f.coins = 0;
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "moveRoom", "building", "forge-1", "col", 30, "floor", 5));
     }
 
     @Test
@@ -264,6 +357,33 @@ class SimTest {
         f.stock.put("stone", 500);
         act(f, m, T0, "type", "build", "building", "grindstone");
         assertTrue(f.layout.rooms.containsKey("grindstone-1"));
+    }
+
+    @Test
+    void theTailorWeavesSewsAndClothesSell() {
+        Fortress f = fresh(47);
+        Market m = Market.inMemory(47, T0);
+        f.coins = 10000;
+        f.stock.put("stone", 500);
+        f.stock.put("food", 200);
+        act(f, m, T0, "type", "build", "building", "tailor");
+        Dwarf w = f.dwarves.get(0);
+        act(f, m, T0, "type", "assign", "dwarf", w.id, "job", "worker", "building", "tailor-1");
+        act(f, m, T0, "type", "queueAdd", "building", "tailor-1", "recipe", "weave", "count", 2);
+        act(f, m, T0, "type", "queueAdd", "building", "tailor-1", "recipe", "sew", "itype", "shirt_knit", "mat", "teal", "count", 1);
+        assertThrows(RuntimeException.class, () -> act(f, m, T0, "type", "queueAdd", "building", "tailor-1",
+                "recipe", "sew", "itype", "glasses", "mat", "teal", "count", 1));
+        Sim.advance(f, T0 + 3600, m);
+        String shirt = Content.wearKey("shirt_knit", "teal");
+        assertEquals(1, f.stock.getOrDefault(shirt, 0));
+        assertTrue(Content.baseValue(shirt) > 2 * Content.baseValue("cloth"), "sewing adds value");
+        // clothes go with a caravan now
+        Dwarf merchant = f.dwarves.get(1);
+        act(f, m, T0 + 3600, "type", "assign", "dwarf", merchant.id, "job", "merchant");
+        act(f, m, T0 + 3600, "type", "caravan", "city", "amberfall", "merchants", List.of(merchant.id),
+                "cargo", Map.of(shirt, 1), "buy", Map.of(), "budget", 0);
+        assertEquals(0, f.stock.getOrDefault(shirt, 0));
+        assertTrue(m.sellPrice("amberfall", shirt, 1) > 0);
     }
 
     @Test
