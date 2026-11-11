@@ -76,6 +76,14 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
   Treppenhaus oder den Schacht grenzen. Ein Treppenhaus ist ein Gang, zwei Zellen breit, mit einem Bogen in der
   Rückwand; wer hineingeht, kommt aus einem Treppenhaus auf einer anderen Etage wieder heraus, je weiter weg, desto
   später. Alte Treppen werden zu Treppenhäusern auf beiden Etagen, Türen fallen weg, Räume ohne Gang bekommen einen.
+- [x] **Graben, Höhlen und Bewuchs:** Fels wird mit dem Dig-Werkzeug markiert, Bergarbeiter graben ihn mit der
+  Spitzhacke aus (5 min je Zelle, tiefer länger, Cheat „Dig now“). Räume, Gänge und Treppenhäuser nur auf
+  ausgegrabenem Boden und alle frei versetzbar; ein Raum ohne Gang daneben steht still (gelbes Warndreieck). Der Berg
+  ist grauer Naturstein, alle zwei Etagen eine andere Gesteinsart. Leere Höhlen überwuchern mit Moos, Pilzen und
+  Wurzeln, nach 12 h ziehen Kriechtiere ein.
+- [ ] Graben geht nur von einem offenen Ende aus, eine Zelle nach der anderen. Mehrere Bergarbeiter helfen erst, wenn
+  mehrere Enden offen sind. Vielleicht später: zwei Zwerge an einer Zelle.
+- [ ] Kriechtiere haben noch keine eigenen kleinen Sprites (es sind die Minen-Monster) und keine eigenen Sounds.
 - [ ] Der freie Streifen rechts in jedem Raum (früher für die Hintertür) könnte wegfallen; dann würden alle Räume
   eine Zelle schmaler.
 - [ ] Vom Eingangstunnel führt nur die Leiter im Schacht zu den Räumen; ein Treppenhaus am Tunnel wäre schöner.

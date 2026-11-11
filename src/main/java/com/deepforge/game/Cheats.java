@@ -74,6 +74,11 @@ public final class Cheats {
                     d.lowMoodHours = 0;
                 }
             }
+            case "cheatDig" -> {
+                int n = Layouts.digAll(f, now);
+                check(n > 0, "Nothing is marked for digging.");
+                Rules.log(f, now, "info", "[cheat] " + n + " cell" + (n == 1 ? "" : "s") + " dug out at once.");
+            }
             case "cheatSkip" -> {
                 double h = Math.max(0.25, Math.min(24, ((Number) a.getOrDefault("hours", 1)).doubleValue()));
                 f = shift(f, h * 3600, om);
@@ -102,6 +107,7 @@ public final class Cheats {
 
     /** Move every timestamp of the fortress back, so the next advance plays out that much time. */
     static Fortress shift(Fortress f, double dt, ObjectMapper om) {
+        if (f.layout != null) f.layout.caves.replaceAll((k, v) -> v - dt);   // map values have no field name to find
         JsonNode n = om.valueToTree(f);
         walk(n, dt);
         try {

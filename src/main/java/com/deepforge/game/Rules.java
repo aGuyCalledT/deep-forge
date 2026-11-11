@@ -132,10 +132,19 @@ public final class Rules {
         return null;
     }
 
+    /** Highest level of a building type that is working (rooms cut off from the hallways count for nothing). */
     public static int level(Fortress f, String type) {
         int l = 0;
-        for (Building b : f.buildings) if (b.type.equals(type)) l = Math.max(l, b.level);
+        for (Building b : f.buildings) if (b.type.equals(type) && active(f, b)) l = Math.max(l, b.level);
         return l;
+    }
+
+    /** A building works if it has no room, or its room stands next to a hallway, stairwell or the shaft. */
+    public static boolean active(Fortress f, Building b) {
+        if (b.level <= 0) return false;
+        if (!Layouts.hasRoom(b) || f.layout == null) return true;
+        int[] p = f.layout.rooms.get(b.id);
+        return p != null && Layouts.connected(f, p[0], p[1], Layouts.width(b));
     }
 
     public static int count(Fortress f, String type) {
@@ -356,11 +365,30 @@ public final class Rules {
         return new Cost(Math.round(t.upCoins() * g), goods);
     }
 
-    // digging and building in the hold: a hallway cell costs coins (the rubble is carted out), a stairwell and
-    // moving a room also need stone
-    public static final Cost DIG_COST = new Cost(10, Map.of());
+    // building in the hold: miners dig the rock out (for free, it takes time), a hallway cell costs coins for the
+    // timber, a stairwell and moving a room also need stone
+    public static final Cost HALL_COST = new Cost(10, Map.of());
     public static final Cost STAIRWELL_COST = new Cost(40, Map.of("stone", 20));
     public static final Cost MOVE_COST = new Cost(30, Map.of("stone", 10));
+
+    /** Seconds of work to dig one cell out: 5 minutes near the top, harder rock every two floors down. */
+    public static final double DIG_SECONDS = 300;
+    public static final double[] DIG_DEPTH = {1, 1.5, 2.25, 3.25};
+    public static final int DIG_STONE = 2;   // stone each dug cell gives
+
+    public static int rockBand(int floor) {
+        return Math.max(0, Math.min(DIG_DEPTH.length - 1, floor / 2));
+    }
+
+    public static double digSeconds(int floor) {
+        return DIG_SECONDS * DIG_DEPTH[rockBand(floor)];
+    }
+
+    /** Empty caves overgrow: moss, then mushrooms, then a wild cave where critters may nest (hours since dug out). */
+    public static final double[] OVERGROW_HOURS = {2, 8, 24};
+    public static final double CRITTER_AFTER_HOURS = 12;   // a cave this old may get critters
+    public static final double CRITTERS_PER_DAY = 1.5;     // chance per cave region and day
+    public static final int MAX_CRITTERS = 5;
 
     /** Cost times n (for digging several cells at once). */
     public static Cost times(Cost c, int n) {

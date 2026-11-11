@@ -10,7 +10,10 @@ export function openRoomSheet(b, at) {
   openSheet(() => {
     const cur = F().buildings.find((x) => x.id === b.id) || b;
     const t = byId.buildings[cur.type];
-    if (t.kind !== 'passive') return workCard(cur);
+    const still = D().buildings[cur.id] && D().buildings[cur.id].active === false
+      ? h('div', { class: 'card sub warn' }, h('b', null, ico('warn'), ' Stands still. '),
+        h('span', { class: 'small' }, 'No hallway, stairwell or shaft beside it, so nobody can get in. Build a hallway next to it, or move it (Build mode).')) : null;
+    if (t.kind !== 'passive') return still ? h('div', null, still, workCard(cur)) : workCard(cur);
     const f = F();
     const extra = [];
     if (cur.type === 'tavern') {
@@ -23,6 +26,7 @@ export function openRoomSheet(b, at) {
     if (cur.type === 'barracks') extra.push(h('button', { class: 'btn small ghost', onclick: () => { closeSheet(); bus.go('war'); } }, 'Warriors and defence'));
     return h('div', null,
       h('h2', null, buildingName(cur), info(t.note)), h('p', { class: 'small muted' }, 'Level ' + cur.level),
+      still,
       EFFECT[cur.type] ? h('p', null, EFFECT[cur.type](cur)) : null,
       ...extra,
       upgradeBtn(cur));

@@ -1,55 +1,6 @@
 // Tiles and props for the hold, the surface and the mines.
 
-// ---------------------------------------------------------------- rock around the rooms (warm, cut by hand)
-// rows: [y, height, [[x, width, kind], ...]], kind 0 = plain, 1 = dark, 2 = odd (a warmer stone), 3 = cracked
-function rockTile(name, rows) {
-  sprite(name, { w: 32, h: 32 }, (c) => {
-    // rounded stones set in dark crevices, lit from the top left; wraps on all sides so it tiles
-    c.rect(0, 0, 32, 32, "(");
-    const px = (x, y, k) => c.px(((x % 32) + 32) % 32, ((y % 32) + 32) % 32, k);
-    for (const [y0, h, stones] of rows) for (const [x0, w0, kind] of stones) {
-      const w = w0 - 1, hh = h - 1;   // one pixel crevice right and below
-      const dark = kind === 1;
-      const fill = dark ? ")" : kind === 2 ? "Q" : "[", lit = dark ? "[" : kind === 2 ? "z" : "]", shade = dark ? "(" : ")";
-      for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) {
-        const corner = (i === 0 || i === w - 1) && (j === 0 || j === hh - 1);
-        if (corner) continue;                                  // rounded corners
-        let k = fill;
-        if (j === 0 || (i === 0 && j < hh - 2)) k = lit;       // light on the top and left
-        if (j === hh - 1 || (i === w - 1 && j > 1)) k = shade; // shade on the bottom and right
-        px(x0 + i, y0 + j, k);
-      }
-      if (kind === 0 && w > 6) { px(x0 + 2, y0 + 1, "{"); px(x0 + 3, y0 + 1, "{"); }   // a glint on the big stones
-      if (kind === 3) for (let j = 1; j < hh - 1; j++) px(x0 + Math.floor(w / 2) + (j % 3 === 0 ? 1 : 0), y0 + j, "(");   // a hairline crack
-    }
-  });
-}
-rockTile("rock", [
-  [0, 8, [[1, 9, 0], [11, 7, 1], [19, 13, 0]]],
-  [8, 9, [[5, 11, 1], [17, 8, 0], [26, 11, 0]]],
-  [17, 7, [[0, 6, 0], [7, 12, 0], [20, 9, 1], [30, 2, 0]]],
-  [24, 8, [[3, 8, 0], [12, 6, 1], [19, 12, 0]]],
-]);
-// same rhythm at the tile edges (so they fit next to "rock"), different stones inside
-rockTile("rock_b", [
-  [0, 8, [[1, 9, 0], [11, 7, 0], [19, 13, 1]]],
-  [8, 9, [[5, 6, 0], [11, 6, 1], [17, 14, 0], [31, 6, 0]]],
-  [17, 7, [[0, 6, 0], [7, 7, 1], [14, 10, 0], [24, 8, 0]]],
-  [24, 8, [[3, 8, 0], [12, 6, 0], [19, 12, 1]]],
-]);
-rockTile("rock_c", [
-  [0, 8, [[1, 9, 1], [11, 7, 0], [19, 13, 0]]],
-  [8, 9, [[5, 11, 0], [17, 8, 2], [26, 11, 0]]],
-  [17, 7, [[0, 6, 0], [7, 12, 3], [20, 9, 0], [30, 2, 0]]],
-  [24, 8, [[3, 8, 0], [12, 6, 0], [19, 12, 0]]],
-]);
-rockTile("rock_d", [
-  [0, 8, [[1, 9, 0], [11, 7, 1], [19, 13, 3]]],
-  [8, 9, [[5, 11, 0], [17, 8, 1], [26, 11, 0]]],
-  [17, 7, [[0, 6, 2], [7, 12, 0], [20, 9, 0], [30, 2, 0]]],
-  [24, 8, [[3, 8, 1], [12, 6, 0], [19, 12, 0]]],
-]);
-sprite("rock_dark", { base: "rock", swap: { "]": "[", "[": ")", ")": "(" } });
+// The rock around the rooms (grey stone by depth), caves and their caps are in cave.px.js.
 
 // ---------------------------------------------------------------- hallway: a timbered tunnel, 24 x 96, as tall as the rooms' walls
 function hall(name, extra) {
@@ -70,10 +21,6 @@ hall("hall_b", (c) => {                                          // lamp
 hall("hall_c", (c) => { c.rect(4, 76, 14, 14, "V"); c.box(4, 76, 14, 14, "v"); c.box(5, 77, 12, 12, "u"); c.line(6, 78, 15, 87, "v"); });                   // crate
 hall("hall_d", (c) => { c.rect(5, 46, 13, 10, "u"); c.box(5, 46, 13, 10, "v"); c.hline(7, 49, 9, "W"); c.hline(7, 52, 6, "W"); c.px(11, 44, "4"); c.px(11, 45, "4"); });   // notice
 hall("hall_e", (c) => { for (const x of [2, 19]) { c.rect(x, 11, 3, 79, "v"); c.vline(x, 11, 79, "V"); } c.rect(1, 11, 5, 4, "V"); c.rect(18, 11, 5, 4, "V"); });   // posts
-
-// rounded tunnel ends (placed by the game where a hallway meets rock)
-sprite("hall_cap_l", { w: 8, h: 96 }, (c) => { for (let y = 7; y < 96; y++) { const d = y < 22 ? Math.round((22 - y) * 0.55) : 0; c.hline(0, y, Math.min(8, 2 + d), "("); } });
-sprite("hall_cap_r", { base: "hall_cap_l", flip: "x" });
 
 // ---------------------------------------------------------------- stairwell: a hallway two cells wide (48 x 96) with an
 // arch in the back wall. Dwarves walk in and come out of a stairwell on another floor; the way behind is not shown.

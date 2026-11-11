@@ -234,8 +234,11 @@ export function renderWar() {
   }
   for (const th of f.threats) {
     out.push(h('div', { class: 'card bad' },
-      h('div', { class: 'row' }, img(S.monster(th.monster, 0), 'icon l'), h('div', { class: 'grow' }, h('h3', null, th.name), h('span', { class: 'small' }, G.data.layers[th.layer].name))),
-      h('p', null, 'Strength ', h('b', null, fmt(th.power)), '. Mining there has stopped. It may kill a hiding miner in ', h('b', { 'data-until': th.nextHarm }, dur(th.nextHarm - t)), '.'),
+      h('div', { class: 'row' }, img(S.monster(th.monster, 0), 'icon l'), h('div', { class: 'grow' }, h('h3', null, th.name), h('span', { class: 'small' }, th.cell ? 'Overgrown cave, floor ' + (+th.cell.split(',')[1] + 1) : G.data.layers[th.layer].name))),
+      th.cell
+        ? h('p', null, 'Strength ', h('b', null, fmt(th.power)), '. It raids the larder and bites dwarves, next in ', h('b', { 'data-until': th.nextHarm }, dur(th.nextHarm - t)),
+          '. Warriors at the gate chase it on their own. Or put a hallway or room into its cave, or fill the cave in.')
+        : h('p', null, 'Strength ', h('b', null, fmt(th.power)), '. Mining there has stopped. It may kill a hiding miner in ', h('b', { 'data-until': th.nextHarm }, dur(th.nextHarm - t)), '.'),
       h('button', { class: 'btn danger', onclick: () => fightSheet('Fight the ' + th.name.toLowerCase(), th.power, (ids) => ({ type: 'fightThreat', threat: th.id, warriors: ids })) }, 'Send warriors')));
   }
   if (!f.raid && !f.siege && !f.threats.length) out.push(h('p', { class: 'muted' }, 'All quiet. For now.'));

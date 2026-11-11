@@ -34,10 +34,12 @@ public final class Sim {
         double t = f.t;
         needs(f, dt, t);
         happiness(f, dt, t);
+        digging(f, dt, t);
         mining(f, dt, r);
         buildings(f, dt, r, t);
         training(f, dt);
         threats(f, dt, r, t + dt);
+        critters(f, dt, r, t + dt);
         raids(f, r, t + dt);
         caravans(f, r, t + dt, market);
         Expeditions.step(f, r, t + dt);
@@ -151,7 +153,7 @@ public final class Sim {
         int[] miners = new int[f.layers.size()];
         double total = 0;
         for (Dwarf d : f.dwarves) {
-            if (!d.job.equals("miner") || d.busy != null) continue;
+            if (!d.job.equals("miner") || d.busy != null || d.dig != null) continue;
             LayerState l = f.layers.get(d.layer);
             if (!l.unlocked || l.threat != null) continue;
             double v = minerRate(f, d, l) * dt / H;
@@ -185,12 +187,133 @@ public final class Sim {
         }
     }
 
+    // ------------------------------------------------------------ digging out the hold
+
+    /** Miners dig out the marked rock of the hold first (one miner per cell), then go back to the mine. */
+    static void digging(Fortress f, double dt, double t) {
+        if (f.layout == null) {
+            for (Dwarf d : f.dwarves) d.dig = null;
+            return;
+        }
+        Layout l = f.layout;
+        Set<String> taken = new HashSet<>();
+        for (Dwarf d : f.dwarves) {
+            boolean can = d.job.equals("miner") && d.busy == null;
+            if (d.dig != null && (!can || !l.marks.contains(d.dig))) d.dig = null;
+            if (d.dig != null) taken.add(d.dig);
+        }
+        for (Dwarf d : f.dwarves) {
+            if (!d.job.equals("miner") || d.busy != null || d.dig != null) continue;
+            for (String k : l.marks) {
+                if (taken.contains(k)) continue;
+                int[] c = Layouts.cell(k);
+                if (!Layouts.reachable(f, c[0], c[1])) continue;
+                d.dig = k;
+                taken.add(k);
+                break;
+            }
+        }
+        int dug = 0;
+        for (Dwarf d : new ArrayList<>(f.dwarves)) {
+            if (d.dig == null) continue;
+            String k = d.dig;
+            int[] c = Layouts.cell(k);
+            double work = l.digs.getOrDefault(k, 0.0) + dt * workSpeed(f, d, "mining") * toolBonus(d);
+            addXp(d, "mining", 10 * dt / H);
+            if (work >= digSeconds(c[1])) {
+                Layouts.dugOut(f, k, t + dt);
+                dug++;
+            } else l.digs.put(k, work);
+        }
+        if (dug > 0 && l.marks.isEmpty()) log(f, t, "good", "The miners have dug out everything you marked. They're back in the mine.");
+    }
+
+    // ------------------------------------------------------------ critters in overgrown caves
+
+    /** Stretches of empty cave on one floor: each list holds the cells left to right. */
+    static List<List<String>> caveRuns(Fortress f) {
+        List<List<String>> runs = new ArrayList<>();
+        if (f.layout == null) return runs;
+        for (int fl = 0; fl < Layouts.FLOORS; fl++) {
+            List<String> run = null;
+            for (int c = Layouts.SHAFT; c <= Layouts.COLS; c++) {
+                String k = Layouts.key(c, fl);
+                if (c < Layouts.COLS && f.layout.caves.containsKey(k)) {
+                    if (run == null) runs.add(run = new ArrayList<>());
+                    run.add(k);
+                } else run = null;
+            }
+        }
+        return runs;
+    }
+
+    /** Old empty caves overgrow, and small critters move in. Fortress warriors chase them off; else they steal food and bite. */
+    static void critters(Fortress f, double dt, Rng r, double t) {
+        if (f.layout == null) return;
+        f.threats.removeIf(th -> th.cell != null && !f.layout.caves.containsKey(th.cell));
+        long have = f.threats.stream().filter(th -> th.cell != null).count();
+        for (List<String> run : caveRuns(f)) {
+            if (have >= MAX_CRITTERS) break;
+            if (f.threats.stream().anyMatch(th -> th.cell != null && run.contains(th.cell))) continue;
+            String oldest = run.stream().min(Comparator.comparingDouble(k -> f.layout.caves.get(k))).orElseThrow();
+            if (t - f.layout.caves.get(oldest) < CRITTER_AFTER_HOURS * H) continue;
+            if (!r.chance(CRITTERS_PER_DAY * dt / 86400)) continue;
+            int fl = Layouts.cell(oldest)[1];
+            Content.Monster m = Content.MONSTERS.get(CRITTERS[Math.min(CRITTERS.length - 1, rockBand(fl))]);
+            Threat th = new Threat();
+            th.id = f.nextId++;
+            th.layer = -1;
+            th.cell = oldest;
+            th.monster = m.id();
+            th.name = m.name();
+            th.power = Math.round(m.power() * 0.6 * r.range(0.85, 1.2) * (1 + 0.04 * (f.level - 1)));
+            th.since = t;
+            th.nextHarm = t + 4 * H;
+            f.threats.add(th);
+            have++;
+            log(f, t, "warn", m.name() + " moved into an overgrown cave on floor " + (fl + 1)
+                    + ". Put a hallway or room there, fill it in, or send warriors.");
+            critterFight(f, th, r, t);
+        }
+        for (Threat th : new ArrayList<>(f.threats)) {
+            if (th.cell == null || t < th.nextHarm) continue;
+            th.nextHarm = t + 4 * H;
+            critterFight(f, th, r, t);
+            if (!f.threats.contains(th)) continue;
+            int food = Math.min(stock(f, "food"), 1 + r.nextInt(3));
+            if (food > 0) add(f, "food", -food);
+            List<Dwarf> home = new ArrayList<>();
+            for (Dwarf d : f.dwarves) if (d.busy == null && !d.job.equals("miner")) home.add(d);
+            String bit = "";
+            if (!home.isEmpty() && r.chance(0.4)) {
+                Dwarf v = r.pick(home);
+                v.health = Math.max(10, v.health - r.range(6, 14));
+                bit = " " + fullName(v) + " got bitten.";
+            }
+            log(f, t, "warn", "The " + th.name.toLowerCase() + " raided the larder" + (food > 0 ? " (-" + food + " food)" : "") + "." + bit
+                    + " Send warriors, or put a hallway or room into the cave.");
+        }
+    }
+
+    static final String[] CRITTERS = {"giant_rat", "cave_crawler", "cave_spider", "cave_spider"};
+
+    /** Fortress warriors chase critters off on their own. */
+    static void critterFight(Fortress f, Threat th, Rng r, double t) {
+        List<Dwarf> guards = warriors(f, "fortress");
+        if (guards.isEmpty()) return;
+        fightThreat(f, th, guards, r, t);
+    }
+
     // ------------------------------------------------------------ workshops
 
     static void buildings(Fortress f, double dt, Rng r, double t) {
         for (Building b : f.buildings) {
             Content.BuildingType type = Content.BUILDINGS.get(b.type);
             if (type.kind().equals("passive") || b.level <= 0) continue;
+            if (!active(f, b)) {
+                b.status = "No hallway beside it: build one next to it.";
+                continue;
+            }
             if (f.siege != null && SURFACE.contains(b.type)) {
                 b.status = "Besieged! The raiders hold the gate.";
                 continue;
@@ -403,7 +526,7 @@ public final class Sim {
             }
         }
         for (Threat th : new ArrayList<>(f.threats)) {
-            if (t < th.nextHarm) continue;
+            if (th.cell != null || t < th.nextHarm) continue;
             th.nextHarm = t + 4 * H;
             guardFight(f, th, r, t);
             if (!f.threats.contains(th)) continue;
@@ -427,15 +550,15 @@ public final class Sim {
     }
 
     public static Battle fightThreat(Fortress f, Threat th, List<Dwarf> party, Rng r, double t) {
-        Battle b = battle(f, party, 0, th.power, r, t, th.name, "killed in the mine");
+        Battle b = battle(f, party, 0, th.power, r, t, th.name, th.cell != null ? "killed in an overgrown cave" : "killed in the mine");
         if (b.win) {
             clearThreat(f, th);
             int coins = (int) Math.round(th.power * r.range(1.5, 3));
             f.coins += coins;
             f.stats.monstersSlain++;
             fortressXp(f, th.power / 2);
-            log(f, t, "good", "The " + th.name.toLowerCase() + " was slain! The " + Content.LAYERS.get(th.layer).name()
-                    + " is safe again. (+" + coins + " coins from its hoard)");
+            log(f, t, "good", "The " + th.name.toLowerCase() + " was slain! " + (th.cell != null ? "The cave is quiet again." : "The " + Content.LAYERS.get(th.layer).name()
+                    + " is safe again.") + " (+" + coins + " coins from its hoard)");
         } else {
             log(f, t, "bad", "The warriors were beaten back by the " + th.name.toLowerCase() + ".");
         }
@@ -444,7 +567,7 @@ public final class Sim {
 
     static void clearThreat(Fortress f, Threat th) {
         f.threats.remove(th);
-        f.layers.get(th.layer).threat = null;
+        if (th.cell == null) f.layers.get(th.layer).threat = null;
     }
 
     // ------------------------------------------------------------ raids

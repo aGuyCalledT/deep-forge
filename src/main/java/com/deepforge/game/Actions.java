@@ -86,7 +86,8 @@ public final class Actions {
             case "tradition" -> tradition(f, a);
             case "rename" -> rename(f, a);
             case "moveRoom" -> Layouts.moveRoom(f, str(a, "building"), num(a, "col", -1), num(a, "floor", -1));
-            case "dig" -> Layouts.dig(f, num(a, "col", -1), num(a, "floor", -1));
+            case "moveHall" -> Layouts.moveHall(f, num(a, "col", -1), num(a, "floor", -1), num(a, "col2", -1), num(a, "floor2", -1));
+            case "moveWell" -> Layouts.moveWell(f, num(a, "col", -1), num(a, "floor", -1), num(a, "col2", -1), num(a, "floor2", -1));
             case "stairwell" -> Layouts.stairwell(f, num(a, "col", -1), num(a, "floor", -1));
             case "fill" -> Layouts.fill(f, num(a, "col", -1), num(a, "floor", -1));
             case "collect" -> {
@@ -98,7 +99,9 @@ public final class Actions {
             }
             case "removeMachine" -> removeMachine(f, a);
             case "addMachine" -> addMachine(f, a);
-            case "digMany" -> Layouts.digMany(f, cells(a));
+            case "mark" -> { Layouts.mark(f, cells(a)); Sim.digging(f, 0, t); }   // miners pick their cells at once
+            case "unmark" -> { Layouts.unmark(f, cells(a)); Sim.digging(f, 0, t); }
+            case "hallMany" -> Layouts.hallMany(f, cells(a));
             case "fillMany" -> Layouts.fillMany(f, cells(a));
             default -> throw new GameException("Unknown action: " + type);
         }
@@ -194,7 +197,7 @@ public final class Actions {
         else if (i - 1 < b.more.size()) b.more.remove(i - 1);
         b.machines = machines(b) - 1;
         b.machinesByHand = true;
-        if (p != null) for (int x = p[0] + w - extra; x < p[0] + w; x++) f.layout.halls.add(Layouts.key(x, p[1]));
+        if (p != null) for (int x = p[0] + w - extra; x < p[0] + w; x++) f.layout.caves.put(Layouts.key(x, p[1]), f.t);
         log(f, "info", "A machine was taken out of the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
     }
 
@@ -207,7 +210,8 @@ public final class Actions {
         check(canPay(f, c), "Not enough coins or stone for another machine.");
         Layouts.ensure(f);
         int[] spot = Layouts.spaceToGrow(f, b);
-        check(spot != null, "No floor has space for a wider " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ". Dig out more of the hold.");
+        check(spot != null, "There is no dug-out space for a wider " + Content.BUILDINGS.get(b.type).name().toLowerCase()
+                + ": it needs " + Layouts.MACHINE_CELLS.getOrDefault(b.type, 0) + " more cells beside it. Mark rock with the Dig tool, and your miners dig it out.");
         pay(f, c);
         Layouts.growTo(f, b, spot);
         b.machines = machines(b) + 1;
@@ -282,6 +286,7 @@ public final class Actions {
         check(count(f, type) < 6, "That's enough of those.");
         Cost c = buildCost(f, type);
         check(canPay(f, c), "Not enough coins or materials.");
+        int[] spot = Layouts.ROOM_CELLS.containsKey(type) ? Layouts.spotForNew(f, type) : null;
         pay(f, c);
         int n = 1;
         while (building(f, type + "-" + n) != null) n++;
@@ -290,6 +295,7 @@ public final class Actions {
         b.type = type;
         b.level = 1;
         f.buildings.add(b);
+        if (spot != null) Layouts.place(f, b, spot);
         Layouts.ensure(f);
         log(f, "info", "Built a new " + bt.name().toLowerCase() + ".");
     }
@@ -304,9 +310,12 @@ public final class Actions {
         boolean grows = isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
         String name = Content.BUILDINGS.get(b.type).name();
         int[] spot = grows ? Layouts.spaceToGrow(f, b) : null;
-        check(!grows || spot != null, "The " + name.toLowerCase() + " gets wider when upgraded, but no floor has space for it. "
-                + "Dig out more of the hold or move rooms closer together.");
+        check(!grows || spot != null, "The " + name.toLowerCase() + " gets wider when upgraded, but there is no dug-out space for it. "
+                + "Mark rock beside it with the Dig tool, and your miners dig it out.");
+        boolean fresh = b.level == 0 && Layouts.ROOM_CELLS.containsKey(b.type) && !f.layout.rooms.containsKey(b.id);
+        int[] newSpot = fresh ? Layouts.spotForNew(f, b.type) : null;
         pay(f, c);
+        if (fresh) Layouts.place(f, b, newSpot);
         boolean moved = false;
         if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
             int[] p = f.layout.rooms.get(b.id);
