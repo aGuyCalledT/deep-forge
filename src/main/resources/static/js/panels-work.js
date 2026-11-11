@@ -2,7 +2,7 @@
 import { G, F, D, byId, fmt, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info } from './ui.js';
 import * as A from './audio.js';
-const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'farm', 'brewery', 'barracks'];
+const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'tailor', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
 import { upgradeBtn, costBtn } from './panels-base.js';
 import { jobOf } from './hold.js';
@@ -17,6 +17,8 @@ export function orderLabel(e) {
     case 'alloy': return [goodIcon('bar:' + e.mat, 'icon s'), ` ${byId.metals[e.mat].name} ${n}`];
     case 'craft': return [img(S.item(e.itype, e.mat), 'icon s'), ` ${byId.metals[e.mat].name} ${byId.items[e.itype].name.toLowerCase()} ${n}`];
     case 'cutgem': return [goodIcon('cut_gem', 'icon s'), ` Cut gems ${n}`];
+    case 'weave': return [goodIcon('cloth', 'icon s'), ` Weave cloth ${n}`];
+    case 'sew': return [goodIcon(`wear:${e.itype}:${e.mat}`, 'icon s'), ` ${goodName(`wear:${e.itype}:${e.mat}`)} ${n}`];
     default: return [img(S.item(e.itype, e.mat || 'iron'), 'icon s'),
       ` ${e.recipe[0].toUpperCase() + e.recipe.slice(1)} ${e.mat ? byId.metals[e.mat].name.toLowerCase() + ' ' : 'any '}${byId.items[e.itype].name.toLowerCase()}s ${n}`];
   }
@@ -237,7 +239,7 @@ function assignSheet(b, machine = -1) {
 const COUNTS = [1, 5, 10, 25, -1];
 
 function orderSheet(b) {
-  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : 'cutgem', mat: null, itype: null, count: -1 };
+  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : 'cutgem', mat: null, itype: null, count: -1 };
   const send = async () => {
     try {
       await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count }, false, true);
@@ -282,6 +284,19 @@ function orderSheet(b) {
         for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
         if (!metals.length) parts.push(h('p', { class: 'muted' }, 'No metal fits.'));
       }
+    } else if (b.type === 'tailor') {
+      parts.push(h('div', { class: 'row' }, ['weave', 'sew'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'weave' ? 'Weave cloth' : 'Sew clothes'))));
+      if (st.recipe === 'weave') parts.push(h('p', null, goodIcon('food'), ' 3 mushrooms → ', goodIcon('cloth'), ` 2 cloth. You have ${stock('cloth')} cloth.`));
+      else {
+        parts.push(h('div', { class: 'row' }, G.data.clothes.filter((c) => c.cloth > 0).map((c) => h('button', { class: 'btn small' + (st.itype === c.id ? ' primary' : ''), onclick: () => { st.itype = c.id; refreshSheet(); } },
+          goodIcon(`wear:${c.id}:${st.mat || 'cream'}`, 'icon s'), c.name))));
+        if (st.itype) {
+          const c = byId.clothes[st.itype];
+          parts.push(h('p', { class: 'small muted' }, `${c.cloth} cloth each. Pick a colour.`));
+          parts.push(h('div', { class: 'row' }, Object.keys(G.data.dyes).map((d) => h('button', { class: 'btn small' + (st.mat === d ? ' primary' : ''), onclick: () => { st.mat = d; refreshSheet(); } },
+            goodIcon(`wear:${c.id}:${d}`, 'icon s'), d[0].toUpperCase() + d.slice(1)))));
+        }
+      }
     } else {
       if (b.type === 'jeweler') parts.push(h('div', { class: 'row' }, ['cutgem', 'setgem'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; refreshSheet(); } }, r === 'cutgem' ? 'Cut gems' : 'Set gems'))));
       if (st.recipe === 'cutgem') parts.push(h('p', null, goodIcon('rough_gem'), ' 1 rough gem → ', goodIcon('cut_gem'), ` 1 cut gem. You have ${stock('rough_gem')} rough gems.`));
@@ -305,7 +320,7 @@ function orderSheet(b) {
         h('div', { class: 'small ' + (can > 0 ? 'good-t' : 'bad-t') }, can > 0 ? `You have enough for ${fmt(can)}.` : 'You have not got enough yet - the order waits until you do.')));
     }
     parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c ? ' primary' : ''), onclick: () => { st.count = c; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
-    const ready = st.recipe === 'cutgem' || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
+    const ready = st.recipe === 'cutgem' || st.recipe === 'weave' || (st.recipe === 'sew' && st.itype && st.mat) || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
     parts.push(h('button', { class: 'btn big primary', style: { marginTop: '12px' }, disabled: !ready, onclick: send }, 'Add to queue'));
     return h('div', null, parts);
   });
@@ -322,6 +337,8 @@ function orderInputs(st) {
   }
   if (st.recipe === 'craft' && st.itype && st.mat) return { ['bar:' + st.mat]: byId.items[st.itype].bars, coal: 1 };
   if (st.recipe === 'cutgem') return { rough_gem: 1 };
+  if (st.recipe === 'weave') return { food: 3 };
+  if (st.recipe === 'sew' && st.itype) return { cloth: byId.clothes[st.itype].cloth };
   if (st.recipe === 'setgem' && st.itype) return { cut_gem: 1 };
   return null;
 }

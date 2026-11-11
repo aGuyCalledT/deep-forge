@@ -341,6 +341,33 @@ class SimTest {
     }
 
     @Test
+    void theTailorWeavesSewsAndClothesSell() {
+        Fortress f = fresh(47);
+        Market m = Market.inMemory(47, T0);
+        f.coins = 10000;
+        f.stock.put("stone", 500);
+        f.stock.put("food", 200);
+        act(f, m, T0, "type", "build", "building", "tailor");
+        Dwarf w = f.dwarves.get(0);
+        act(f, m, T0, "type", "assign", "dwarf", w.id, "job", "worker", "building", "tailor-1");
+        act(f, m, T0, "type", "queueAdd", "building", "tailor-1", "recipe", "weave", "count", 2);
+        act(f, m, T0, "type", "queueAdd", "building", "tailor-1", "recipe", "sew", "itype", "shirt_knit", "mat", "teal", "count", 1);
+        assertThrows(RuntimeException.class, () -> act(f, m, T0, "type", "queueAdd", "building", "tailor-1",
+                "recipe", "sew", "itype", "glasses", "mat", "teal", "count", 1));
+        Sim.advance(f, T0 + 3600, m);
+        String shirt = Content.wearKey("shirt_knit", "teal");
+        assertEquals(1, f.stock.getOrDefault(shirt, 0));
+        assertTrue(Content.baseValue(shirt) > 2 * Content.baseValue("cloth"), "sewing adds value");
+        // clothes go with a caravan now
+        Dwarf merchant = f.dwarves.get(1);
+        act(f, m, T0 + 3600, "type", "assign", "dwarf", merchant.id, "job", "merchant");
+        act(f, m, T0 + 3600, "type", "caravan", "city", "amberfall", "merchants", List.of(merchant.id),
+                "cargo", Map.of(shirt, 1), "buy", Map.of(), "budget", 0);
+        assertEquals(0, f.stock.getOrDefault(shirt, 0));
+        assertTrue(m.sellPrice("amberfall", shirt, 1) > 0);
+    }
+
+    @Test
     void dwarvesWearClothesFromTheStore() {
         Fortress f = fresh(45);
         Market m = Market.inMemory(45, T0);

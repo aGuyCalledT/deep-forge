@@ -65,7 +65,7 @@ public final class Content {
             new Quality(3, "Superior", 1.9), new Quality(4, "Exceptional", 2.6), new Quality(5, "Masterwork", 4.0));
     public static final List<String> SKILLS = List.of("mining", "smelting", "smithing", "crafting", "farming", "combat", "trading");
     public static final List<String> CATEGORIES = List.of("ore", "materials", "gems", "provisions", "bars",
-            "tools", "weapons", "armor", "hardware", "tableware", "jewelry");
+            "tools", "weapons", "armor", "hardware", "tableware", "jewelry", "clothing");
     public static final List<String> BLUEPRINTS = List.of("steelmaking", "mail", "crown");
     public static final Map<String, String> BLUEPRINT_NAMES = Map.of(
             "steelmaking", "Steelmaking (pig iron and steel)",
@@ -206,6 +206,7 @@ public final class Content {
         raw("stone", "Stone", "#7d7a73", 1, "materials", "For building and upgrades.");
         raw("rough_gem", "Rough gem", "#5fb7a6", 25, "gems", "Cut it at the jeweler.");
         raw("cut_gem", "Cut gem", "#6fe0c8", 60, "gems", "Set it into rings, crowns and goblets.");
+        raw("cloth", "Cloth", "#c9b28a", 4, "materials", "Woven from mushroom fibre at the tailor. Sew it into clothes.");
         raw("food", "Cave mushrooms", "#b48a5a", 2, "provisions", "Every dwarf eats.");
         raw("ale", "Ale", "#d9a94a", 3, "provisions", "Every dwarf drinks. Happy dwarves drink more.");
 
@@ -286,6 +287,8 @@ public final class Content {
                 "Engraves goods. Engraved goods sell for more.");
         building("jeweler", "Jeweler", "queue", "crafting", true, 900, goods("stone", 30, "bar:silver", 10), 320, 20, 1.6, 0,
                 "Cuts gems and sets them into rings, crowns and goblets.");
+        building("tailor", "Tailor", "queue", "crafting", true, 300, goods("stone", 20), 200, 20, 1.6, 0,
+                "Weaves cloth from mushroom fibre and sews dyed clothes. Dress your dwarves or sell them.");
         building("farm", "Mushroom farm", "continuous", "farming", true, 200, goods("stone", 20), 150, 20, 1.55, 1,
                 "Grows cave mushrooms.");
         building("brewery", "Brewery", "continuous", "farming", true, 250, goods("stone", 20, "bar:copper", 5), 180, 20, 1.55, 1,
@@ -321,11 +324,11 @@ public final class Content {
 
         // --- cities (prices are global; each city adds its own demand on top)
         CITIES.put("stonebridge", new City("stonebridge", "Stonebridge", 1.0, 0.04, true,
-                bias("provisions", 1.1, "materials", 1.1), "A busy market town at the foot of the mountain."));
+                bias("provisions", 1.1, "materials", 1.1, "clothing", 1.1), "A busy market town at the foot of the mountain."));
         CITIES.put("ironmarch", new City("ironmarch", "Ironmarch", 1.5, 0.08, true,
                 bias("weapons", 1.15, "armor", 1.15, "bars", 1.05, "ore", 0.9), "A fortress city always at war with someone."));
         CITIES.put("amberfall", new City("amberfall", "Amberfall", 2.0, 0.10, true,
-                bias("jewelry", 1.15, "tableware", 1.1), "Rich merchants, richer tastes."));
+                bias("jewelry", 1.15, "tableware", 1.1, "clothing", 1.2), "Rich merchants, richer tastes."));
         CITIES.put("highcrag", new City("highcrag", "Highcrag Monastery", 2.5, 0.12, false,
                 bias("tableware", 1.2, "jewelry", 1.1, "gems", 1.2), "Monks who love chalices and gems."));
         CITIES.put("saltreach", new City("saltreach", "Saltreach Harbor", 3.0, 0.15, false,
@@ -376,6 +379,7 @@ public final class Content {
     }
 
     public static String category(String key) {
+        if (isWear(key)) return "clothing";
         if (isItem(key)) return ITEMS.get(parseItem(key)[0]).category();
         if (isBar(key)) return "bars";
         if (ORES.containsKey(key)) return "ore";
@@ -385,7 +389,7 @@ public final class Content {
 
     /** Market index key: items share one index per category, everything else has its own. */
     public static String marketKey(String key) {
-        return isItem(key) ? "cat:" + category(key) : key;
+        return isItem(key) || isWear(key) ? "cat:" + category(key) : key;
     }
 
     /** Base value of one unit (before market index and city demand). */
@@ -438,7 +442,7 @@ public final class Content {
         l.addAll(ORES.keySet());
         l.addAll(RAWS.keySet());
         for (String m : METALS.keySet()) l.add("bar:" + m);
-        for (String c : List.of("tools", "weapons", "armor", "hardware", "tableware", "jewelry")) l.add("cat:" + c);
+        for (String c : List.of("tools", "weapons", "armor", "hardware", "tableware", "jewelry", "clothing")) l.add("cat:" + c);
         return l;
     }
 
@@ -458,34 +462,35 @@ public final class Content {
     }
 
     // ------------------------------------------------------------------ clothes
-    // Worn in slots, kept in the warehouse as "wear:<cloth>:<dye>". They can't be made yet (see docs/TODO.md).
+    // Worn in slots, kept in the warehouse as "wear:<cloth>:<dye>". The tailor sews them from cloth
+    // (cloth = bolts per piece; 0 means it can't be sewn: glasses, earrings and helmets come from elsewhere).
 
-    public record Cloth(String id, String name, String slot, String look, double value) {}
+    public record Cloth(String id, String name, String slot, String look, double value, int cloth) {}
     public static final Map<String, Cloth> CLOTHES = new LinkedHashMap<>();
     public static final Map<String, String> DYES = new LinkedHashMap<>();
     public static final List<String> WEAR_SLOTS = List.of("hat", "top", "legs", "feet", "face", "ears", "apron");
 
     static {
         for (Cloth c : List.of(
-                new Cloth("shirt_linen", "Linen shirt", "top", "linen", 6),
-                new Cloth("shirt_knit", "Knitted jumper", "top", "knit", 8),
-                new Cloth("shirt_embroid", "Embroidered tunic", "top", "embroid", 12),
-                new Cloth("shirt_patched", "Patched shirt", "top", "patched", 3),
-                new Cloth("vest", "Leather vest", "top", "vest", 10),
-                new Cloth("dress", "Dress", "top", "dress", 10),
-                new Cloth("trousers", "Trousers", "legs", "seam", 5),
-                new Cloth("trousers_patched", "Patched trousers", "legs", "patch", 3),
-                new Cloth("trousers_rolled", "Rolled-up trousers", "legs", "cuff", 5),
-                new Cloth("boots", "Boots", "feet", "boots", 6),
-                new Cloth("hood", "Hood", "hat", "hood", 5),
-                new Cloth("miner_helmet", "Miner's helmet", "hat", "miner", 9),
-                new Cloth("beanie", "Beanie", "hat", "beanie", 4),
-                new Cloth("felt_cap", "Felt cap", "hat", "pointy", 5),
-                new Cloth("flower_crown", "Flower crown", "hat", "flower", 3),
-                new Cloth("bandana", "Bandana", "hat", "bandana", 3),
-                new Cloth("glasses", "Glasses", "face", "glasses", 14),
-                new Cloth("earrings", "Earrings", "ears", "earrings", 16),
-                new Cloth("apron", "Apron", "apron", "apron", 5)))
+                new Cloth("shirt_linen", "Linen shirt", "top", "linen", 12, 2),
+                new Cloth("shirt_knit", "Knitted jumper", "top", "knit", 16, 2),
+                new Cloth("shirt_embroid", "Embroidered tunic", "top", "embroid", 26, 3),
+                new Cloth("shirt_patched", "Patched shirt", "top", "patched", 6, 1),
+                new Cloth("vest", "Leather vest", "top", "vest", 20, 2),
+                new Cloth("dress", "Dress", "top", "dress", 20, 2),
+                new Cloth("trousers", "Trousers", "legs", "seam", 10, 2),
+                new Cloth("trousers_patched", "Patched trousers", "legs", "patch", 6, 1),
+                new Cloth("trousers_rolled", "Rolled-up trousers", "legs", "cuff", 10, 2),
+                new Cloth("boots", "Boots", "feet", "boots", 14, 2),
+                new Cloth("hood", "Hood", "hat", "hood", 10, 1),
+                new Cloth("miner_helmet", "Miner's helmet", "hat", "miner", 9, 0),
+                new Cloth("beanie", "Beanie", "hat", "beanie", 8, 1),
+                new Cloth("felt_cap", "Felt cap", "hat", "pointy", 10, 1),
+                new Cloth("flower_crown", "Flower crown", "hat", "flower", 6, 1),
+                new Cloth("bandana", "Bandana", "hat", "bandana", 6, 1),
+                new Cloth("glasses", "Glasses", "face", "glasses", 14, 0),
+                new Cloth("earrings", "Earrings", "ears", "earrings", 16, 0),
+                new Cloth("apron", "Apron", "apron", "apron", 10, 2)))
             CLOTHES.put(c.id(), c);
         String[][] dyes = { {"blue", "#5f84bb"}, {"green", "#6f9a72"}, {"rose", "#c76a86"}, {"ochre", "#c99a3e"}, {"brown", "#8a6046"},
             {"grey", "#8a8a94"}, {"violet", "#8a6ab8"}, {"red", "#b8483e"}, {"cream", "#e8dcc0"}, {"teal", "#4f9aa0"}, {"black", "#3e383e"} };

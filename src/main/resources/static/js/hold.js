@@ -204,7 +204,7 @@ function want(g, d, ctx) {
 export function jobOf(b, i) { return i === 0 ? b.job : (b.more || [])[i - 1] || null; }
 
 /** What each workshop's worker holds while working (the same work animation for all). */
-export const TOOL_OF = { forge: 'hammer', smelter: 'shovel', brewery: 'paddle', farm: 'hoe', engraver: 'chisel', jeweler: 'chisel', grindstone: 'hammer' };
+export const TOOL_OF = { forge: 'hammer', smelter: 'shovel', brewery: 'paddle', farm: 'hoe', engraver: 'chisel', jeweler: 'chisel', grindstone: 'hammer', tailor: 'chisel' };
 
 function placeCtx(g) {
   const seats = [], beds = [];
@@ -887,6 +887,7 @@ function hasInputs(b) {
     case 'forge': return stock('coal') > 0 && keys.some((k) => k.startsWith('bar:'));
     case 'grindstone': return keys.some((k) => /^item:(axe|pickaxe):/.test(k) && !k.split(':')[4].includes('s'));
     case 'engraver': return keys.some((k) => k.startsWith('item:') && !k.split(':')[4].includes('e') && !/^item:chain/.test(k));
+    case 'tailor': return stock('food') >= 3 || stock('cloth') > 0;
     case 'jeweler': return stock('rough_gem') > 0 || (stock('cut_gem') > 0 && keys.some((k) => /^item:(ring|crown|goblet):/.test(k)));
     default: return false;
   }

@@ -15,7 +15,11 @@ public final class Recipes {
             "forge", List.of("craft"),
             "grindstone", List.of("sharpen"),
             "engraver", List.of("engrave"),
-            "jeweler", List.of("cutgem", "setgem"));
+            "jeweler", List.of("cutgem", "setgem"),
+            "tailor", List.of("weave", "sew"));
+
+    /** Mushrooms for one weave and the cloth it gives. */
+    public static final int WEAVE_FOOD = 3, WEAVE_CLOTH = 2;
 
     static final Map<String, String> MOD_OF = Map.of("sharpen", "s", "engrave", "e", "setgem", "g");
 
@@ -47,7 +51,13 @@ public final class Recipes {
                 if (!t.mods().contains(MOD_OF.get(e.recipe))) return t.name() + " cannot be " + e.recipe + "ed.";
                 if (e.mat != null && !Content.METALS.containsKey(e.mat)) return "Unknown metal.";
             }
-            case "cutgem" -> {
+            case "cutgem", "weave" -> {
+            }
+            case "sew" -> {
+                Content.Cloth c = Content.CLOTHES.get(e.itype);
+                if (c == null) return "Choose what to sew.";
+                if (c.cloth() <= 0) return c.name() + " can't be sewn.";
+                if (!Content.DYES.containsKey(e.mat)) return "Choose a colour.";
             }
             default -> {
                 return "Unknown recipe.";
@@ -76,6 +86,8 @@ public final class Recipes {
             }
             case "cutgem" -> in.put("rough_gem", 1);
             case "setgem" -> in.put("cut_gem", 1);
+            case "weave" -> in.put("food", WEAVE_FOOD);
+            case "sew" -> in.put("cloth", Content.CLOTHES.get(e.itype).cloth());
             default -> {
             }
         }
@@ -144,6 +156,14 @@ public final class Recipes {
             case "cutgem" -> {
                 j.time = 180;
                 j.out.put("cut_gem", 1);
+            }
+            case "weave" -> {
+                j.time = 120;
+                j.out.put("cloth", WEAVE_CLOTH);
+            }
+            case "sew" -> {
+                j.time = 80 * Content.CLOTHES.get(e.itype).cloth();
+                j.out.put(Content.wearKey(e.itype, e.mat), 1);
             }
             case "sharpen", "engrave", "setgem" -> {
                 String item = findItem(f, e);

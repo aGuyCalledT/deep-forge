@@ -181,7 +181,7 @@ function royalWall(type, c, x, w, rng) {
 }
 
 const FAMILY = {
-  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood",
+  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood", tailor: "wood",
   smelter: "brick", forge: "brick", jeweler: "brick", vault: "stone", grindstone: "stone", barracks: "stone", farm: "earth",
 };
 const BRICK = { smelter: ["z", "Z"], forge: ["Q", "z"], jeweler: ["p", "P"] };
@@ -894,6 +894,72 @@ bay("jeweler", (c, w, A, T, v, rng) => {
   workbench(c, 4, 32, T, "p");
   c.vline(22, 48, 22, "4"); c.rect(16, 46, 13, 4, "5"); c.rect(18, 50, 9, 2, "Y");
   c.px(10, 68, v ? "P" : "N"); c.px(12, 68, "j");
+});
+
+/** A loom: two posts, a top beam, cream warp threads and the woven cloth growing at the bottom. */
+function loom(c, x, w, T, cloth = "B", stripe = "n") {
+  const post = T === 0 ? "v" : T === 2 ? "q" : "W", lite = T === 2 ? "j" : "V";
+  c.rect(x, 38, 4, FY - 38, post); c.rect(x + w - 4, 38, 4, FY - 38, post);
+  c.vline(x + 1, 38, FY - 40, lite); c.vline(x + w - 3, 38, FY - 40, lite);
+  c.rect(x - 2, 36, w + 4, 4, post); c.hline(x - 2, 36, w + 4, lite);            // top beam
+  for (let i = x + 6; i < x + w - 5; i += 3) c.vline(i, 40, 18, "c");             // warp threads
+  c.rect(x + 4, 52, w - 8, 3, "V"); c.hline(x + 4, 52, w - 8, "u");               // the beater
+  c.rect(x + 5, 56, w - 10, 10, cloth);                                           // woven cloth
+  for (let y = 58; y < 66; y += 3) c.hline(x + 5, y, w - 10, stripe);
+  c.rect(x + 2, 66, w - 4, 4, post); c.hline(x + 2, 66, w - 4, lite);            // cloth beam
+  c.line(x + 6, FY - 1, x + w - 10, FY - 5, "w");                                 // treadle
+  c.rect(x + w - 14, 61, 7, 2, "u"); c.px(x + w - 15, 61, "U");                   // the shuttle, left in the warp
+}
+
+/** A bolt of cloth lying on a shelf: a rolled end and its colour. */
+function bolt(c, x, b, col, dark) {
+  c.rect(x, b - 5, 10, 5, col); c.hline(x, b - 5, 10, dark); c.ellipse(x + 10, b - 3, 1, 2, dark); c.px(x + 10, b - 3, col);
+}
+
+/** A dress form on its stand, with a half-sewn piece pinned on. */
+function dressForm(c, x, T, dye = "p", lite = "P") {
+  c.vline(x, 70, FY - 70, T === 2 ? "o" : "W"); c.hline(x - 5, B, 11, T === 2 ? "O" : "W"); c.px(x - 6, B, "w"); c.px(x + 6, B, "w");
+  c.ellipse(x, 52, 6, 8, "U"); c.rect(x - 3, 42, 7, 3, "U"); c.rect(x - 1, 39, 3, 3, "V");
+  c.ellipse(x, 56, 6, 5, dye); c.hline(x - 6, 54, 13, lite);                      // the piece on it
+  for (const px of [x - 3, x + 1, x + 4]) c.px(px, 53, "7");                        // pins
+  c.hline(x - 4, 61, 9, dye); c.vline(x - 6, 57, 4, dye); c.vline(x + 6, 57, 4, dye);
+}
+
+/** A tape measure hanging from a hook, and a spool. */
+function spool(c, x, b, col) { c.rect(x, b - 4, 5, 5, "V"); c.rect(x, b - 3, 5, 3, col); c.hline(x, b - 4, 5, "u"); c.hline(x, b, 5, "u"); }
+
+room("tailor", (c, w, R, T, v, rng) => {
+  const cloth = v ? "h" : "B", stripe = v ? "H" : "n";
+  loom(c, 8, 40, T, cloth, stripe);
+  if (T === 0) {                                     // a heap of mushroom fibre and a basket
+    c.ellipse(64, B - 3, 10, 4, "u"); c.ellipse(64, B - 5, 7, 3, "U"); for (const px of [58, 63, 69]) c.px(px, B - 7, "V");
+    c.rect(78, B - 9, 14, 10, "v"); for (let y = B - 8; y < B; y += 2) c.hline(78, y, 14, "V"); c.hline(77, B - 9, 16, "u");
+    c.ellipse(85, B - 10, 5, 2, "c");
+    shelf(c, 78, 50, 30, 0); bolt(c, 80, 50, "c", "u"); bolt(c, 94, 50, "u", "V");
+    c.line(102, 30, 104, 44, "c"); c.px(101, 29, "4");                            // a thread hanging from a nail
+  } else {
+    shelf(c, 76, 34, 40, T); shelf(c, 74, 52, 26, T);
+    const cols = [["p", "q"], ["B", "b"], ["h", "G"], ["y", "F"], ["c", "u"], ["P", "p"]];
+    for (let i = 0; i < 3; i++) { const [a, d] = cols[(i + v) % 6]; bolt(c, 78 + i * 12, 34, a, d); }
+    for (let i = 0; i < 2; i++) { const [a, d] = cols[(i + 3 + v) % 6]; bolt(c, 76 + i * 12, 52, a, d); }
+    if (T === 2) { for (let i = 0; i < 3; i++) { const [a, d] = cols[(i + 2) % 6]; bolt(c, 80 + i * 12, 29, a, d); } }
+    dressForm(c, 110, T, v ? "f" : "p", v ? "F" : "P");
+    spool(c, 56, B, "f"); spool(c, 62, B, "j");
+    c.vline(72, 58, 14, "y"); c.px(72, 57, "4"); for (let y = 60; y < 72; y += 3) c.px(72, y, "w");   // a tape measure
+  }
+  if (T === 2) {                                     // a tapestry the tailor is proud of
+    c.rect(50, 14, 20, 16, "f"); c.box(50, 14, 20, 16, "j"); c.hline(48, 13, 24, "o");
+    c.rect(56, 18, 8, 8, "B"); c.px(59, 21, "j"); c.px(60, 22, "j"); c.px(59, 23, "j");
+    rug(c, 6, 60, "p", "P");
+  }
+  lights(c, T, [[60, 10]], v);
+  cobweb(c, v ? w - 6 : 6, 8, !v, 6);
+  c.px(30, FY - 1, "c"); c.px(33, FY - 2, "c"); c.px(44, FY - 1, "u");            // loose threads on the floor
+});
+
+bay("tailor", (c, w, A, T, v, rng) => {
+  loom(c, 4, 26, T, v ? "f" : "p", v ? "F" : "P");
+  if (v) spool(c, 36, B, "B"); else { c.ellipse(40, B - 2, 5, 2, "u"); c.px(38, B - 4, "U"); }
 });
 
 room("farm", (c, w, R, T, v, rng) => {

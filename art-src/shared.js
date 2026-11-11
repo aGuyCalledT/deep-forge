@@ -53,6 +53,7 @@ var ROOMS = {
   grindstone: { w: 5, door: 108, worker: [62, 90], face: -1, wheel: [32, 66], lights: [[48, 18, 34, "#ffd98e"]] },
   engraver:   { w: 5, door: 108, worker: [64, 90], face: -1, work: [30, 66], lights: [[34, 54, 28, "#ffd98e"], [76, 20, 26, "#ffd98e"]] },
   jeweler:    { w: 6, door: 132, worker: [64, 90], face: -1, work: [34, 66], lights: [[36, 52, 32, "#fff0c0"], [92, 52, 28, "#aacde4"]] },
+  tailor:     { w: 6, door: 132, worker: [64, 90], face: -1, work: [30, 62], lights: [[60, 20, 34, "#ffd98e"], [28, 56, 22, "#ffe6b0"]] },
   farm:       { w: 7, door: 156, worker: [118, 90], face: -1, lights: [[22, 74, 36, "#90e0c8"], [58, 74, 32, "#90e0c8"], [94, 74, 32, "#90e0c8"], [72, 18, 32, "#ffd98e"]] },
   brewery:    { w: 6, door: 132, worker: [58, 90], face: -1, kettle: [28, 90], steam: [33, 30], lights: [[28, 62, 44, "#ffb070"], [67, 34, 30, "#ffd98e"]] },
   barracks:   { w: 7, door: 156, worker: [112, 90], seats: [[52, 90], [68, 90], [84, 90]], lights: [[98, 22, 44, "#ffd98e"]] },
@@ -66,6 +67,7 @@ var BAYS = {
   grindstone: { w: 2, worker: [38, 90], face: -1, wheel: [18, 66], lights: [[24, 20, 26, "#ffd98e"]] },
   engraver:   { w: 2, worker: [40, 90], face: -1, work: [20, 66], lights: [[20, 54, 24, "#ffd98e"]] },
   jeweler:    { w: 2, worker: [40, 90], face: -1, work: [20, 66], lights: [[20, 52, 26, "#fff0c0"]] },
+  tailor:     { w: 2, worker: [40, 90], face: -1, work: [16, 62], lights: [[18, 30, 22, "#ffd98e"]] },
   farm:       { w: 2, worker: [26, 90], face: 1, lights: [[24, 74, 30, "#90e0c8"]] },
   brewery:    { w: 2, worker: [40, 90], face: -1, kettle: [18, 90], steam: [21, 44], lights: [[18, 66, 32, "#ffb070"]] },
 };

@@ -16,7 +16,7 @@ public final class Sim {
     public static final double STEP = 60;
     public static final double MAX_CATCHUP = 7 * 86400;
     public static final double QUENCH_WAIT = 12;
-    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "farm", "brewery");
+    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "tailor", "farm", "brewery");
     static final List<String> RAIDERS = List.of("Goblin warband", "Bandit gang", "Orc raiders", "Kobold swarm", "Troll pack");
 
     public static void advance(Fortress f, double now, Market market) {
@@ -302,6 +302,8 @@ public final class Sim {
             case "craft" -> "forging " + Content.METALS.get(j.mat).name().toLowerCase() + " "
                     + Content.ITEMS.get(j.itype).name().toLowerCase();
             case "cutgem" -> "cutting a gem";
+            case "weave" -> "weaving cloth";
+            case "sew" -> "sewing a " + Content.goodName(Content.wearKey(j.itype, j.mat)).toLowerCase();
             default -> j.recipe + "ing " + (j.inItem == null ? "" : Content.goodName(j.inItem));
         };
     }
@@ -342,6 +344,8 @@ public final class Sim {
         } else if (j.recipe.equals("alloy")) {
             f.stats.barsSmelted += Content.ALLOYS.get(j.mat).out();
             fortressXp(f, 2);
+        } else if (j.recipe.equals("weave")) {
+            fortressXp(f, 1);
         } else {
             fortressXp(f, 3);
         }

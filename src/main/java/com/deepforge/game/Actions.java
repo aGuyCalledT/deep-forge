@@ -445,7 +445,6 @@ public final class Actions {
         int units = 0;
         for (Map.Entry<String, Integer> e : cargo.entrySet()) {
             check(stock(f, e.getKey()) >= e.getValue(), "Not enough " + Content.goodName(e.getKey()) + ".");
-            check(!Content.isWear(e.getKey()), "Clothes aren't traded yet. Keep them for your dwarves.");
             units += e.getValue();
         }
         int cap = caravanCapacity(f) * ms.size();
