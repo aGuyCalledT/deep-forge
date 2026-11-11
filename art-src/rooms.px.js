@@ -181,7 +181,7 @@ function royalWall(type, c, x, w, rng) {
 }
 
 const FAMILY = {
-  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood", tailor: "wood",
+  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood", tailor: "wood", trade_depot: "wood",
   smelter: "brick", forge: "brick", jeweler: "brick", vault: "stone", grindstone: "stone", barracks: "stone", farm: "earth",
 };
 const BRICK = { smelter: ["z", "Z"], forge: ["Q", "z"], jeweler: ["p", "P"] };
@@ -758,6 +758,69 @@ room("warehouse", (c, w, R, T, v, rng) => {
   lights(c, T, [[69, 10]], v);
   cobweb(c, v ? 6 : w - 6, v ? 8 : 30, !!0 + (v ? false : true), 7);
   c.px(w - 46, B, "c"); c.px(w - 44, B, "c");          // spilled grain
+});
+
+// ------------------------------------------------------------------ trade depot: crates for the caravans, the ledger, scales, a map of the cities
+
+/** A balance on a post: a beam with two pans, the left one a little lower (a coin in it). */
+function scales(c, x, b, T) {
+  const mat = T === 2 ? "o" : "4", lite = T === 2 ? "j" : "5";
+  c.vline(x, b - 22, 22, mat); c.rect(x - 3, b - 1, 7, 2, mat); c.hline(x - 3, b - 1, 7, lite);
+  c.line(x - 10, b - 20, x + 10, b - 22, mat); c.px(x, b - 23, lite);
+  for (const [px, dy] of [[x - 10, 0], [x + 10, -2]]) {
+    c.vline(px - 3, b - 20 + dy, 6, "6"); c.vline(px + 3, b - 20 + dy, 6, "6");
+    c.hline(px - 4, b - 14 + dy, 9, mat); c.hline(px - 3, b - 13 + dy, 7, lite);
+  }
+  c.hline(x - 11, b - 15, 3, "j"); c.px(x - 10, b - 16, "O");        // a coin weighed
+}
+
+/** A map of the valley with the cities as dots and the roads between them. */
+function cityMap(c, x, y, T) {
+  c.rect(x, y, 34, 22, T === 2 ? "C" : "c"); c.hline(x, y, 34, "u"); c.hline(x, y + 21, 34, "u");
+  c.px(x - 1, y + 1, "u"); c.px(x + 34, y + 20, "u");                    // curled corners
+  c.line(x + 4, y + 16, x + 12, y + 9, "u"); c.line(x + 12, y + 9, x + 22, y + 13, "u"); c.line(x + 22, y + 13, x + 29, y + 5, "u"); c.line(x + 12, y + 9, x + 15, y + 3, "u");
+  for (const [dx, dy, k] of [[4, 16, "f"], [12, 9, "B"], [22, 13, "f"], [29, 5, "B"], [15, 3, "f"]]) { c.px(x + dx, y + dy, k); c.px(x + dx + 1, y + dy, k); }
+  c.poly([x + 24, y + 19, x + 27, y + 15, x + 30, y + 19], "5");         // a mountain: home
+  c.px(x + 17, y - 1, "4"); c.px(x + 17, y, "6");                       // the nail
+}
+
+/** The ledger desk: a slanted lectern with an open book, ink and a quill. */
+function ledger(c, x, b, T) {
+  const wood = T === 0 ? "v" : "V";
+  c.rect(x + 2, b - 18, 3, 19, "W"); c.rect(x + 17, b - 18, 3, 19, "W");
+  c.poly([x, b - 18, x + 22, b - 22, x + 22, b - 19, x, b - 15], wood); c.line(x, b - 18, x + 22, b - 22, "u");
+  c.poly([x + 3, b - 19, x + 19, b - 22, x + 19, b - 20, x + 3, b - 17], "C"); c.vline(x + 11, b - 21, 3, "c");
+  c.line(x + 5, b - 18, x + 9, b - 19, "u"); c.line(x + 13, b - 20, x + 17, b - 21, "u");
+  c.rect(x + 20, b - 25, 3, 3, "2"); c.line(x + 21, b - 26, x + 24, b - 32, "C");   // ink pot and quill
+  if (T === 2) c.hline(x, b - 15, 22, "j");
+}
+
+/** A handcart with a load of crates. */
+function cart(c, x, b, T) {
+  c.rect(x, b - 14, 30, 4, "V"); c.hline(x, b - 14, 30, "u"); c.hline(x, b - 11, 30, "W");
+  c.line(x + 30, b - 13, x + 40, b - 6, "v");
+  for (const wx of [x + 7, x + 23]) { c.circ(wx, b - 5, 5, "v"); c.ring(wx, b - 5, 5, T ? "4" : "W"); c.px(wx, b - 5, "u"); }
+  crate(c, x + 2, b - 15, 12, "u"); crate(c, x + 15, b - 15, 12); if (T) sack(c, x + 8, b - 27);
+}
+
+room("trade_depot", (c, w, R, T, v, rng) => {
+  if (T === 0) {                                     // a counter of planks and crates to sort
+    table(c, 8, B, 34, 0); scales(c, 25, B - 13, 0);
+    crate(c, 52, B, 15); crate(c, 68, B, 13, "u"); crate(c, 56, B - 15, 11);
+    sack(c, 86, B); sack(c, 96, B, "u"); barrel(c, 112, B, 18);
+    c.rect(122, 30, 12, 14, "c"); c.hline(122, 30, 12, "u"); c.px(127, 29, "4"); c.hline(124, 34, 8, "u"); c.hline(124, 38, 6, "u");   // a tally sheet
+  } else {
+    ledger(c, 8, B, T); scales(c, 48, B - 13, T); table(c, 36, B, 26, T);
+    cityMap(c, 34, 22, T);
+    shelf(c, 76, 34, 56, T); for (let x = 79; x < 128; x += 13) crate(c, x, 33, 10, x % 2 ? "u" : "V");
+    cart(c, 72, B, T);
+    crate(c, 118, B, 15); crate(c, 120, B - 15, 12, "u");
+    if (T === 2) { c.hline(5, 14, 14, "o"); c.rect(6, 15, 12, 20, "h"); c.vline(7, 15, 20, "H"); c.poly([6, 35, 12, 39, 17, 35], "h"); coins(c, 8, 30, 2); chest(c, 98, B); coins(c, 100, B - 12, 3); }
+    else c.rect(10, 26, 10, 12, "c");                // a price list
+  }
+  lights(c, T, [[60, 10]], v);
+  cobweb(c, v ? 6 : w - 8, v ? 8 : 12, !v, 8);
+  c.line(46, FY - 1, 51, FY - 2, "u");               // a dragged crate's scratch
 });
 
 room("vault", (c, w, R, T, v, rng) => {

@@ -903,13 +903,14 @@ var Figure = (function () {
       const work = pose === "work";
       const hands = work ? [[cx - 3, torsoTop - 7], [cx + 2, torsoTop - 8], [cx + 8, torsoTop + 6], [cx + 6, torsoTop + 2]][frame] : arms.near.h;
       const ang = work ? [-2.6, -1.2, 0.9, 0.2][frame] : -1.9;          // direction the handle points from the hands
-      const len = { pick: 11, hammer: 8, shovel: 11, paddle: 11, hoe: 11, axe: 10, chisel: 6, saw: 9 }[tool.kind] || 9;
+      const len = { stick: 13, pick: 11, hammer: 8, shovel: 11, paddle: 11, hoe: 11, axe: 10, chisel: 6, saw: 9 }[tool.kind] || 9;
       const dx = Math.cos(ang), dy = Math.sin(ang);
       const ex = hands[0] + dx * len, ey = hands[1] + dy * len;
       F.line(hands[0] - dx * 2, hands[1] - dy * 2, ex, ey, 1, "wood"); F.next();
       const px = -dy, py = dx;     // across the handle
       const head = (a, b, w2) => F.line(ex + px * a, ey + py * a, ex + px * b, ey + py * b, w2, "metal");
-      if (tool.kind === "pick") { head(-4, 4, 1.6); F.set(ex + px * 4 + dx, ey + py * 4 + dy, "metal"); }
+      if (tool.kind === "stick") { /* a plain wooden practice stick */ }
+      else if (tool.kind === "pick") { head(-4, 4, 1.6); F.set(ex + px * 4 + dx, ey + py * 4 + dy, "metal"); }
       else if (tool.kind === "hammer" || tool.kind === "chisel") head(-2, 2, 2.6);
       else if (tool.kind === "axe") { head(0, 3, 3); }
       else if (tool.kind === "shovel" || tool.kind === "paddle") F.line(ex, ey, ex + dx * 4, ey + dy * 4, 3, tool.kind === "paddle" ? "wood" : "metal");
