@@ -13,7 +13,7 @@ node scripts/build-art.mjs --preview  # zusätzlich vergrößerte Vorschauen in 
 | `art-src/shared.js` | Palette, Austauschfarben, Raum-Anker (Arbeitsplatz, Feuer, Licht, Sitzplätze, Betten), Zwergen-Posen, Erze, Minen-Schichten. Wird von pxl **und** vom Spiel gelesen (`meta.json`) |
 | `art-src/palette.px.js` | Palette und Farbtreppen |
 | `art-src/figure.js` | Figuren-Baukasten für Zwerge, Zwerginnen, NPCs und menschenähnliche Monster (Kobolde, Trolle, Oger) und die Tiere der Tiefe. Wird von pxl eingebunden **und** als `static/js/figure.js` ins Spiel kopiert, das die Zwerge zur Laufzeit mit ihrem Aussehen und ihrer Kleidung baut |
-| `art-src/rooms.px.js` | die 12 Räume (96 px hoch, Breite = Zellen × 24), Möbel in Zwergengröße, Feuer- und Rad-Animationen |
+| `art-src/rooms.px.js` | die 13 Räume (96 px hoch, Breite = Zellen × 24), Möbel in Zwergengröße, Feuer- und Rad-Animationen |
 | `art-src/world.px.js` | Fels, Gänge, Treppen, Schacht, Oberfläche, Wagen, Fackel, Pfeil, Minen-Teile |
 | `art-src/goods.px.js` | Erze, Barren, Waren, Rohstoffe, Münze, Artefakt |
 | `art-src/monsters.px.js` | 9 Monster mit 2 Bildern |

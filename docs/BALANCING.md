@@ -32,11 +32,12 @@ und hier.
 | Lager | `500 × 1,4^(Stufe−1)` (Pilze und Bier zählen nicht) |
 | Gebäudestufe | `+25 %` Tempo pro Stufe |
 | Maschinen | jede Werkstatt hat `min(5, Stufe)` Maschinen, jede braucht einen eigenen Zwerg und arbeitet ihre eigene Bestellung ab (gemeinsame Warteschlange, gemeinsame Hitze im Schmelzofen) |
-| Maschine | kommt mit jedem Ausbau dazu (keine eigenen Kosten); der Raum wird um `MACHINE_CELLS` Zellen breiter. Ist rechts kein Platz, rückt er nach links oder zieht an die nächste freie Stelle (gleiche Etage zuerst) |
+| Maschine | kommt mit jedem Ausbau dazu (keine eigenen Kosten). Abgebaute Maschinen wieder aufstellen kostet `60 × Stufe` Münzen + `15 × Stufe` Stein (`Rules.machineCost`); der Raum wird um `MACHINE_CELLS` Zellen breiter. Ist rechts kein Platz, rückt er nach links oder zieht an die nächste freie Stelle (gleiche Etage zuerst) |
 | Schmelzen | 180 s × Hitzefaktor des Metalls, Blasebalg bis ×2 (+7 Hitze pro Tipp, −4 pro Sekunde) |
 | Legierung | 120 s × Hitzefaktor × max(1, Ausbeute/2) |
 | Schmieden | 100 s × Barren × √Hitzefaktor |
 | Schleifen / Gravieren / Edelstein | 90 / 150 / 150 s, Edelstein schleifen 180 s |
+| Schneiderei | Weben 120 s: 3 Pilze → 2 Stoff. Nähen 80 s je Stoff: Hüte 1, Hemden, Hosen, Stiefel 2, bestickte Tunika 3 Stoff |
 | Pilzfarm | 5 Pilze/h × Tempo × Stufe |
 | Brauerei | 5 Bier/h aus 2,5 Pilzen |
 | Verbrauch | 0,2 Pilze und 0,2 Bier pro Zwerg und Stunde (Ale Lover doppelt, Teetotaler kein Bier) |
@@ -55,6 +56,9 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
 ## Werte
 
 - Warenwert = `Metallwert × Barren × Typfaktor × Qualität × Veredelung` (geschärft ×1,3, graviert ×1,4, Edelstein ×1,8).
+- Kleidung: Stoff 4 Münzen, Kleidung 6–26 (Flickenhemd 6, Strickpullover 16, bestickte Tunika 26); also etwa das
+  Doppelte bis Dreifache des Stoffs. Eigene Markt-Kategorie `clothing` mit einem gemeinsamen Kurs; Stonebridge ×1,1,
+  Amberfall ×1,2. Brille, Ohrringe und Grubenhelm lassen sich nicht nähen.
 - Erz ist 45 % eines Barrens wert. Legierungen sind immer mehr wert als ihre Zutaten.
 - Verkauf: `Grundwert × globaler Kurs × Stadt-Nachfrage × Händlerbonus`.
   Menge: `Erlös = q × Preis × (1 − e^(−q/L)) / (q/L)`, danach Kurs × `e^(−q/L)`.
@@ -82,5 +86,6 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
 - Bauen in der Festung (`Rules.DIG_COST` usw.): Gang 10 Münzen je Zelle, Treppe 40 Münzen + 20 Stein, Tür 15 Münzen
   + 5 Stein, Raum versetzen 30 Münzen + 10 Stein. Zuschütten ist frei. Zieht ein Raum beim Ausbau um, weil er wächst,
   kostet das nichts extra.
+- Beute-Berichte (`Rules.MAX_REPORTS`): höchstens 20 warten aufs Einsammeln, sonst wird der älteste von selbst eingesammelt.
 - Festungsstufe: `150 × 1,5^(Stufe−1)` xp. Xp aus Verkäufen (1 pro 10 Münzen), Schmelzen, Schmieden, Expeditionen,
   Kämpfen, Ausbau.
