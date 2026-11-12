@@ -1,0 +1,73 @@
+{
+ "version": 1,
+ "type": "grindstone",
+ "part": "room",
+ "name": "starter",
+ "cells": 5,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "barrel",
+   "x": 35,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "grindstone",
+   "x": 110,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "crate",
+   "x": 195,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "shelf",
+   "x": 190,
+   "y": 90,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 60,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "wheel",
+   "x": 110,
+   "y": 113
+  },
+  {
+   "kind": "worker",
+   "face": -1,
+   "x": 134,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 60,
+   "y": 62
+  }
+ ]
+}

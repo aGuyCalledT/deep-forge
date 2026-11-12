@@ -1,0 +1,108 @@
+{
+ "barracks": {
+  "bay": [],
+  "room": [
+   "starter"
+  ]
+ },
+ "brewery": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "engraver": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "expedition_hall": {
+  "bay": [],
+  "room": [
+   "starter"
+  ]
+ },
+ "farm": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "forge": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "grindstone": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "jeweler": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "quarters": {
+  "bay": [],
+  "room": [
+   "starter"
+  ]
+ },
+ "smelter": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "tailor": {
+  "bay": [
+   "starter"
+  ],
+  "room": [
+   "starter"
+  ]
+ },
+ "tavern": {
+  "bay": [],
+  "room": [
+   "starter"
+  ]
+ },
+ "trade_depot": {
+  "bay": [],
+  "room": [
+   "starter"
+  ]
+ },
+ "vault": {
+  "bay": [],
+  "room": [
+   "starter"
+  ]
+ },
+ "warehouse": {
+  "bay": [],
+  "room": [
+   "starter"
+  ]
+ }
+}

@@ -168,7 +168,11 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Tal (Tag, Abend, Nacht), Fels je Minenschicht und Höhlen, 9 Monster, Kleintiere, Deko und Effekte.
 - [x] Export: `python3 art-src/props48/export.py` schreibt `static/art/props48/sheet.png`, `glow.png`, `sheet.json`
       (prüft die Pixel danach); Lader `static/js/art48.js` (Bilder, Anker, Umfärben, Spiegeln, Kacheln).
-- [ ] Standard-Einrichtung je Raumtyp (Wand, Boden, Möbel mit Position), daraus Betten, Sitze, Arbeitsplätze, Klickflächen.
+- [x] Raumvorlagen-Editor (`tools/room-editor/serve.py`), Format und Zeichnen in `static/js/rooms48.js`, Vorlage
+      „starter“ für alle 15 Raumtypen und 8 Erweiterungen, `Building.look` + Aktion `roomLook` (Server prüft).
+- [ ] Renderer: `hold.js` zeichnet Räume aus der Vorlage (`look`), Sitze, Betten, Arbeitsplätze und Klickflächen
+      aus den Punkten statt aus `shared.js` `ROOMS`/`BAYS`; Auswahl der Vorlage im Raumfenster (`popups.js`).
+- [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
 - [ ] Maßstab umstellen (`hold.js`: `CELL 48`, `RH 144`, Boden 135) zusammen mit den Zwergen 48 × 64.
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.

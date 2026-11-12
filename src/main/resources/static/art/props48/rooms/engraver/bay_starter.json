@@ -1,0 +1,33 @@
+{
+ "version": 1,
+ "type": "engraver",
+ "part": "bay",
+ "name": "starter",
+ "cells": 2,
+ "wall": "wall_ashlar",
+ "floor": "floor_planks",
+ "vault": false,
+ "props": [
+  {
+   "s": "engraver",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 38,
+   "y": 111
+  },
+  {
+   "kind": "worker",
+   "face": 0,
+   "x": 48,
+   "y": 135
+  }
+ ]
+}

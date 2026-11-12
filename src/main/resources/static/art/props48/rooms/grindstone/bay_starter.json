@@ -1,0 +1,33 @@
+{
+ "version": 1,
+ "type": "grindstone",
+ "part": "bay",
+ "name": "starter",
+ "cells": 2,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "grindstone",
+   "x": 40,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "wheel",
+   "x": 40,
+   "y": 113
+  },
+  {
+   "kind": "worker",
+   "face": -1,
+   "x": 64,
+   "y": 135
+  }
+ ]
+}

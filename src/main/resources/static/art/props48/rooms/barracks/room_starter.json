@@ -1,0 +1,99 @@
+{
+ "version": 1,
+ "type": "barracks",
+ "part": "room",
+ "name": "starter",
+ "cells": 7,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "weaponrack",
+   "x": 45,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "armorstand",
+   "x": 120,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "dummy",
+   "x": 200,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "bench",
+   "x": 270,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "stool",
+   "x": 310,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "banner",
+   "x": 270,
+   "y": 20,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 160,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "face": 1,
+   "x": 178,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 261,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 279,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 310,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 160,
+   "y": 62
+  }
+ ]
+}

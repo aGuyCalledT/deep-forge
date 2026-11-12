@@ -1,0 +1,33 @@
+{
+ "version": 1,
+ "type": "farm",
+ "part": "bay",
+ "name": "starter",
+ "cells": 2,
+ "wall": "wall_rock",
+ "floor": "floor_earth",
+ "vault": false,
+ "props": [
+  {
+   "s": "mushbed_2",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 48,
+   "y": 125
+  },
+  {
+   "kind": "worker",
+   "x": 48,
+   "y": 135,
+   "face": 0
+  }
+ ]
+}

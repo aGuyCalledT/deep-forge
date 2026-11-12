@@ -1,0 +1,106 @@
+{
+ "version": 1,
+ "type": "forge",
+ "part": "room",
+ "name": "starter",
+ "cells": 7,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "forge",
+   "x": 70,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "anvil",
+   "x": 175,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "quench",
+   "x": 240,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "coal_pile",
+   "x": 295,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "wallweapons",
+   "x": 280,
+   "y": 40,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 130,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ff9450",
+   "p": 0.95,
+   "x": 70,
+   "y": 99
+  },
+  {
+   "kind": "fire",
+   "w": 40,
+   "h": 8,
+   "x": 70,
+   "y": 102
+  },
+  {
+   "kind": "chimney",
+   "x": 70,
+   "y": 41
+  },
+  {
+   "kind": "anvil",
+   "x": 171,
+   "y": 112
+  },
+  {
+   "kind": "worker",
+   "face": 1,
+   "x": 153,
+   "y": 135
+  },
+  {
+   "kind": "quench",
+   "x": 240,
+   "y": 121
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 130,
+   "y": 62
+  }
+ ]
+}

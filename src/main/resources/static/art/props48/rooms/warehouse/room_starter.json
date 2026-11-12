@@ -1,0 +1,115 @@
+{
+ "version": 1,
+ "type": "warehouse",
+ "part": "room",
+ "name": "starter",
+ "cells": 7,
+ "wall": "wall_brick",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "rack",
+   "x": 45,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "rack",
+   "x": 112,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "goods",
+   "x": 180,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "crate",
+   "x": 240,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "crate",
+   "x": 244,
+   "y": 116,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "barrel",
+   "x": 285,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "barrel",
+   "x": 310,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "stool",
+   "x": 215,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "lantern",
+   "x": 160,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 250,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "seat",
+   "x": 215,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 160,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 250,
+   "y": 62
+  }
+ ]
+}

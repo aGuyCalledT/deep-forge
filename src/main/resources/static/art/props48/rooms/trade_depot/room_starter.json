@@ -1,0 +1,86 @@
+{
+ "version": 1,
+ "type": "trade_depot",
+ "part": "room",
+ "name": "starter",
+ "cells": 7,
+ "wall": "wall_brick",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "cart",
+   "x": 65,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "scales",
+   "x": 160,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "noticeboard",
+   "x": 235,
+   "y": 100,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "goods",
+   "x": 235,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "crate",
+   "x": 300,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "lantern",
+   "x": 160,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 110,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 160,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 110,
+   "y": 62
+  }
+ ]
+}

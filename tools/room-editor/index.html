@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deep Forge room editor</title>
+<style>
+  :root { --bg: #1b1418; --panel: #261c22; --line: #3d2e36; --text: #eadbc8; --dim: #a8968a; --gold: #f0c060; --bad: #ff7a6a; --good: #7fd07f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.35 system-ui, sans-serif; height: 100vh; display: grid;
+         grid-template-rows: auto 1fr; grid-template-columns: 230px 1fr 270px; grid-template-areas: "top top top" "pal stage side"; }
+  header { grid-area: top; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header .grow { flex: 1; }
+  header label { color: var(--dim); }
+  select, input, button { font: inherit; color: var(--text); background: #33262d; border: 1px solid var(--line); border-radius: 4px; padding: 4px 7px; }
+  input[type=number] { width: 64px; } input[type=checkbox] { padding: 0; }
+  button { cursor: pointer; } button:hover { border-color: var(--gold); }
+  button.primary { background: #6b4e1e; border-color: var(--gold); } button.danger:hover { border-color: var(--bad); }
+  button.on { background: #4a3a20; border-color: var(--gold); }
+  .dirty { color: var(--gold); }
+  #pal { grid-area: pal; overflow-y: auto; border-right: 1px solid var(--line); padding: 6px; }
+  #pal h3 { margin: 10px 2px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .tool { background: #2e2228; border: 1px solid transparent; border-radius: 4px; padding: 2px; cursor: pointer; text-align: center; font-size: 9px; color: var(--dim); overflow: hidden; }
+  .tool canvas { display: block; margin: 0 auto; image-rendering: pixelated; }
+  .tool:hover { border-color: var(--line); } .tool.on { border-color: var(--gold); color: var(--text); }
+  .spots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+  .spots .tool { text-align: left; padding: 4px 6px; font-size: 11px; color: var(--text); }
+  .dot { display: inline-block; width: 14px; height: 14px; border-radius: 3px; color: #111; font-weight: 700; font-size: 10px; text-align: center; line-height: 14px; margin-right: 4px; }
+  #stage { grid-area: stage; overflow: auto; position: relative; background: #120d10; }
+  #stage canvas { display: block; margin: 24px; image-rendering: pixelated; cursor: crosshair; }
+  #side { grid-area: side; overflow-y: auto; border-left: 1px solid var(--line); padding: 8px 10px; }
+  #side h3 { margin: 12px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  .row { display: flex; gap: 6px; align-items: center; margin: 4px 0; } .row > span:first-child { width: 58px; color: var(--dim); }
+  .need { margin: 2px 0; } .need.ok { color: var(--good); } .need.bad { color: var(--bad); }
+  .layers div { padding: 2px 6px; border-radius: 3px; cursor: pointer; display: flex; justify-content: space-between; }
+  .layers .dwarfline { color: var(--dim); justify-content: center; cursor: default; font-size: 11px; }
+  .layers div:hover { background: #33262d; } .layers div.on { background: #4a3a20; }
+  .help { color: var(--dim); font-size: 11px; margin-top: 14px; }
+  .help kbd { background: #33262d; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; font-size: 10px; }
+  #status { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); background: #33262d; border: 1px solid var(--gold); padding: 5px 12px; border-radius: 4px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #status.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <label>Room <select id="type"></select></label>
+  <label>Part <select id="part"><option value="room">room</option><option value="bay">machine bay</option></select></label>
+  <label>Template <select id="tpls"></select></label>
+  <button id="new">New</button><button id="dup">Duplicate</button><button id="del" class="danger">Delete</button>
+  <label>Name <input id="name" size="12" placeholder="e.g. cosy"></label>
+  <button id="save" class="primary">Save</button><span id="dirty"></span>
+  <span class="grow"></span>
+  <label>Wall <select id="wall"></select></label>
+  <label>Floor <select id="floor"></select></label>
+  <label><input type="checkbox" id="vault"> vault</label>
+  <button id="tLight" class="on">light</button><button id="tGhost" class="on">dwarves</button><button id="tFront" class="on" title="off: see through the front layer">front</button><button id="tAnim" class="on">animate</button><button id="tGrid">grid</button>
+  <label>Zoom <select id="zoom"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></label>
+</header>
+<aside id="pal"></aside>
+<main id="stage"><canvas id="cv"></canvas></main>
+<aside id="side"></aside>
+<div id="status"></div>
+<script type="module" src="editor.js"></script>
+</body>
+</html>

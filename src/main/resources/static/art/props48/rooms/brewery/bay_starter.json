@@ -1,0 +1,28 @@
+{
+ "version": 1,
+ "type": "brewery",
+ "part": "bay",
+ "name": "starter",
+ "cells": 2,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "vats",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 48,
+   "y": 135,
+   "face": 0
+  }
+ ]
+}

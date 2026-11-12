@@ -1,0 +1,62 @@
+{
+ "version": 1,
+ "type": "forge",
+ "part": "bay",
+ "name": "starter",
+ "cells": 3,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "anvil",
+   "x": 60,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "quench",
+   "x": 112,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 120,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "anvil",
+   "x": 56,
+   "y": 112
+  },
+  {
+   "kind": "worker",
+   "face": 1,
+   "x": 38,
+   "y": 135
+  },
+  {
+   "kind": "quench",
+   "x": 112,
+   "y": 121
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 120,
+   "y": 62
+  }
+ ]
+}

@@ -1,0 +1,119 @@
+{
+ "version": 1,
+ "type": "quarters",
+ "part": "room",
+ "name": "starter",
+ "cells": 7,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "rug",
+   "x": 200,
+   "y": 133,
+   "flip": false,
+   "z": -1,
+   "frame": null
+  },
+  {
+   "s": "bunk",
+   "x": 50,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "bunk",
+   "x": 130,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "bed",
+   "x": 230,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chest",
+   "x": 300,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "lantern",
+   "x": 130,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 185,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "shelf",
+   "x": 300,
+   "y": 90,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "bed",
+   "x": 50,
+   "y": 125
+  },
+  {
+   "kind": "bed",
+   "x": 50,
+   "y": 99
+  },
+  {
+   "kind": "bed",
+   "x": 130,
+   "y": 125
+  },
+  {
+   "kind": "bed",
+   "x": 130,
+   "y": 99
+  },
+  {
+   "kind": "bed",
+   "x": 230,
+   "y": 125
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 130,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 185,
+   "y": 62
+  }
+ ]
+}

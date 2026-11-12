@@ -185,6 +185,7 @@ public final class State {
         public int machines = 1;  // workstations in the room; each one needs its own worker
         public boolean machinesByHand;   // the player took a machine out: the hold no longer adds them back on its own
         public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
+        public String look = "";  // room template (art/props48/rooms), "" = the first; bays use the same name if there is one
     }
 
     public static class QueueEntry {
