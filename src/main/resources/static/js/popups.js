@@ -5,6 +5,7 @@ import * as S from './sprites.js';
 import { workCard } from './panels-work.js';
 import { dwarfCard, EFFECT, upgradeBtn } from './panels-base.js';
 import { roomMaterial } from './plate.js';
+import { roomLooks } from './hold.js';
 
 export function openRoomSheet(b, at) {
   G.ws = b.id;
@@ -14,7 +15,8 @@ export function openRoomSheet(b, at) {
     const still = D().buildings[cur.id] && D().buildings[cur.id].active === false
       ? h('div', { class: 'card sub warn' }, h('b', null, ico('stop'), ' Stands still. '),
         h('span', { class: 'small' }, 'No hallway, stairwell or shaft beside it, so nobody can get in. Build a hallway next to it, or move it (Build mode).')) : null;
-    if (t.kind !== 'passive') return still ? h('div', null, still, workCard(cur)) : workCard(cur);
+    const look = lookRow(cur);
+    if (t.kind !== 'passive') return h('div', null, still, workCard(cur), look);
     const f = F();
     const extra = [];
     if (cur.type === 'tavern') {
@@ -33,8 +35,21 @@ export function openRoomSheet(b, at) {
       still,
       EFFECT[cur.type] ? h('p', null, EFFECT[cur.type](cur)) : null,
       ...extra,
+      look,
       upgradeBtn(cur));
   }, at || null, roomMaterial(b.type));
+}
+
+/** The room's look: one button per template made for its type (room editor), the chosen one gold. */
+function lookRow(b) {
+  const list = roomLooks(b.type);
+  if (list.length < 2) return null;
+  const cur = list.includes(b.look) ? b.look : list[0];
+  const name = (n) => n.replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  return h('div', { class: 'row wrap' }, h('span', { class: 'small muted' }, 'Look'),
+    info('How the room is furnished. It only changes the picture, not what the room does.'),
+    ...list.map((n) => h('button', { class: 'btn small' + (n === cur ? ' primary' : ''), 'aria-pressed': String(n === cur),
+      onclick: () => { if (n !== cur) bus.act({ type: 'roomLook', building: b.id, look: n }); } }, name(n))));
 }
 
 /** The guards of the entrance hall, and who could join them. */

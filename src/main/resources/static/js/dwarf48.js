@@ -2,7 +2,7 @@
 // the same way compose() does in Python, and swaps the placeholder ramps for a dwarf's colours.
 //   await D.load();  D.draw(ctx, look, 'workSitBack', frame, x, floorY, {flip})
 // look: {sex: 'm'|'f', hair, beard, hat, vest: true, mood, prop, quilt: true, ramps: {skin: [5 colours], hair: [...], ...}}
-// Not used by the game yet (it still draws the dwarf/ kit); the room editor shows its spots with it.
+// The hold (hold.js) draws every dwarf with it (look48 turns a dwarf into a look); the room editor shows its spots with it.
 
 let kit = null;
 const strips = {}, cache = new Map();

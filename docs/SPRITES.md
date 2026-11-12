@@ -103,10 +103,10 @@ pixelgenau dieselben und ab jetzt die Quelle: zum Ändern die PNG in Aseprite, K
   kommen weiter aus `figure.js`.
 - `sprites.js` (`dwarfSprite`, `npcSprite`, `placeDwarf`, `portrait`) speichert fertige Bilder zwischen.
 
-## Zwerge 48 × 64 (neuer Stil, noch nicht im Spiel)
+## Zwerge 48 × 64 (im Spiel)
 
-Der nächste Satz Zwerge liegt fertig in `static/art/dwarf48/`, wird aber erst eingebaut, wenn die Räume im neuen
-Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
+Die Festung zeichnet alle Zwerge mit dem Satz in `static/art/dwarf48/` (die Figuren sind etwa 47 px hoch, Räume 144 px).
+Porträts in den Panels und das Cheat-Fenster nutzen noch das alte Kit (`dwarfkit.js`).
 
 - **Vorlage:** das Basismodell (Mann, kurze Haare, Vollbart, grüne Tunika, Lederweste), `art-src/dwarf48/preview/base_walk.png`,
   im Raster der Laufvorlage: Zellen 48 × 64, Reihen hinten, rechts, vorn, links (links = rechts gespiegelt), Spalten Schritt, Stand, Schritt.
@@ -125,9 +125,10 @@ Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
 - **Umfärben:** `ramps` in `kit.json` sind Platzhalter (Haut, Haar, Tunika, Weste, Hose, Stiefel, Metall, Stoff …);
   Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `Figure.ramp(farbe, 5)`. `fixed` (Augen, Umriss) bleibt.
 - **Lader:** `static/js/dwarf48.js` (`load`, `frame(look, pose, f)`, `draw(ctx, look, pose, f, x, y, {flip})`, Umfärben
-  über `look.ramps`, `quilt: false` lässt die Decke weg). Der Raum-Editor zeigt seine Punkte damit; im Spiel noch nicht.
+  über `look.ramps`, `quilt: false` lässt die Decke weg). Der Raum-Editor zeigt seine Punkte damit. Im Spiel übersetzt
+  `look48(d)` in `hold.js` einen Zwerg (Frisur, Bart, Haut, Haar, Kleidung, Helm, Stimmung) in einen `look`.
 
-## Grafik 48 px (neuer Stil, noch nicht im Spiel)
+## Grafik 48 px (im Spiel)
 
 Räume, Tal, Fels, Monster und Effekte im Maßstab der Zwerge 48 × 64: Zelle 48 px, Raum 144 px hoch, Boden bei y 135.
 Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetzt (Wand, Boden, Gewölbe, Möbel).
@@ -147,8 +148,13 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
 - **Umfärben:** Platzhalter-Reihen in `placeholders`: `ingot` (Barren, Erz; Ton 3 = Metallfarbe, neue Reihe aus
   `Figure.ramp`) und `rockd` (Höhlen, Risse, Brocken; Reihen der Minenschichten in `depths`). Der Export prüft, dass
   kein anderes Material dieser Teile eine Platzhalterfarbe hat.
-- **Im Spiel:** `static/js/art48.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). Noch nicht eingebunden,
-  das kommt mit dem neuen Maßstab (`docs/TODO.md`).
+- **Im Spiel:** `static/js/art48.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). `hold.js` lädt Sheet,
+  Zwerge und alle Raumvorlagen vor dem ersten Bild (`loadArt()`), zeichnet Himmel, Berge (`mountains_*` nach Tageszeit),
+  Wiese, Bäume, Stand, Brunnen, Fels (`rock_0..4` nach Tiefe), Gänge (`hallway`), Schacht, Treppenhäuser, Tunnel, Tor,
+  Höhlen mit Bewuchs (`moss_*`, `glowshrooms`, `roots`, `stalactites`), Risse beim Graben und Monster. Räume: Hülle
+  und hintere Möbel, die Zwerge im Raum, vordere Möbel; die leuchtenden Pixel (`glow`) kommen nach der Lichtschicht.
+  Lichter, Rauch, Funken, Dampf und Klickflächen kommen aus den Punkten der Vorlage. Alte Symbole (Status, Pfeile,
+  Pixelschrift) werden doppelt groß gezeichnet.
 
 ### Raumvorlagen (Editor)
 
