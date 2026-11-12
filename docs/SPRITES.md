@@ -103,6 +103,25 @@ pixelgenau dieselben und ab jetzt die Quelle: zum Ändern die PNG in Aseprite, K
   kommen weiter aus `figure.js`.
 - `sprites.js` (`dwarfSprite`, `npcSprite`, `placeDwarf`, `portrait`) speichert fertige Bilder zwischen.
 
+## Zwerge 48 × 64 (neuer Stil, noch nicht im Spiel)
+
+Der nächste Satz Zwerge liegt fertig in `static/art/dwarf48/`, wird aber erst eingebaut, wenn die Räume im neuen
+Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
+
+- **Vorlage:** das Basismodell (Mann, kurze Haare, Vollbart, grüne Tunika, Lederweste), `art-src/dwarf48/preview/base_walk.png`,
+  im Raster der Laufvorlage: Zellen 48 × 64, Reihen hinten, rechts, vorn, links (links = rechts gespiegelt), Spalten Schritt, Stand, Schritt.
+- **Quelle ist Code:** `art-src/dwarf48/parts.py` baut jedes Teil aus einfachen Formen, `engine.py` schattiert sie
+  (Licht von oben links, 5 Töne je Farbe, Umriss im dunkelsten Ton des Teils). `python3 build.py <ordner>` schreibt
+  die Streifen und `kit.json`, `python3 preview.py <ordner>` die Vorschauen. Wer eine PNG von Hand verbessert, darf
+  `build.py` danach nicht mehr über den Ordner laufen lassen.
+- **Teile:** Beine (gehen 3, sitzen), Körper Mann/Frau, Weste, Arme (gehen, Hände unten/Brust/Mund), Kopf, Gesichter
+  (`neutral happy angry open blink sleep`), 6 Frisuren, 5 Bärte, 3 Hüte, Dinge in der Hand, Decke zum Schlafen; je Ansicht.
+- **Posen** stehen mit Bildern und Reihenfolge in `kit.json` (`poses`, `order`): `idle talk hands sit sitTalk eat drink
+  walkFront walkBack idleBack walk idleSide work sleep`. Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
+  schiebt alles außer den Beinen. Schlafen ist das Seitenbild, eine Vierteldrehung nach links.
+- **Umfärben:** `ramps` in `kit.json` sind Platzhalter (Haut, Haar, Tunika, Weste, Hose, Stiefel, Metall, Stoff …);
+  Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `Figure.ramp(farbe, 5)`. `fixed` (Augen, Umriss) bleibt.
+
 ## Tiefe
 
 - Die Festung liegt in einem Berg: links das Tal (zwei große Bäume, Marktstand, Wegweiser, Reisende, Karawanen), ein Tor (`gate_<stufe>`) mit Tunnel (die Eingangshalle)
