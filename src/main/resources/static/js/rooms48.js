@@ -3,7 +3,7 @@
 // art/props48/rooms/<type>/<part>_<name>.json, listed in art/props48/rooms/index.json. Shared by the editor and the game.
 //
 // A template: {version, type, part: 'room'|'bay', name, cells, wall, floor, vault,
-//              props: [{s: sprite, x, y, flip, z, frame: null = animate | n}],
+//              props: [{s: sprite, x, y, flip, z, frame: null = animate | n, layer: 'back' | 'front'}],
 //              spots: [{kind, x, y, ...}]}       x, y in room pixels; the floor line is y 135
 import * as Art from './art48.js';
 
@@ -129,16 +129,24 @@ export async function get(type, part = 'room', name = '') {
 }
 
 // ------------------------------------------------------------------ drawing
+// Two layers: props with layer 'front' stand in front of the dwarves (a table they sit behind, a cupboard in the
+// foreground), all others (layer 'back' or none) behind them. Order: shell, back props, dwarves, front props.
+export const LAYERS = ['back', 'front'];
+export const layerOf = p => p.layer === 'front' ? 'front' : 'back';
+
 /** Wall, floor and vault corners of a room (or bay) `w` px wide at x0, y0. `worldX` lines the tiles up. */
 export function drawShell(ctx, tpl, x0, y0, w, worldX = x0) {
-  const save = () => { ctx.save(); ctx.translate(x0 - worldX, 0); };
-  save(); Art.tile(ctx, tpl.wall, worldX, y0, w); Art.tile(ctx, tpl.floor, worldX, y0 + FLOOR, w); ctx.restore();
+  ctx.save(); ctx.translate(x0 - worldX, 0);
+  Art.tile(ctx, tpl.wall, worldX, y0, w); Art.tile(ctx, tpl.floor, worldX, y0 + FLOOR, w);
+  ctx.restore();
   ctx.fillStyle = 'rgba(20,10,16,0.35)'; ctx.fillRect(x0, y0 + FLOOR - 1, w, 1);     // shadow where wall meets floor
   if (tpl.vault) { Art.draw(ctx, 'vault', 0, x0, y0); Art.draw(ctx, 'vault', 0, x0 + w - 1, y0, { flip: true }); }
 }
-/** Props in z order; t = time in seconds for animated ones (4 frames at ~6 per second). */
+/** Props of one layer ('back', 'front', or null for both) in z order; t = seconds, animated ones run ~6 frames/s. */
 export function drawProps(ctx, tpl, x0, y0, t = 0, opts = {}) {
-  const list = [...tpl.props].map((p, i) => ({ p, i })).sort((a, b) => (a.p.z || 0) - (b.p.z || 0) || a.i - b.i);
+  const list = tpl.props.map((p, i) => ({ p, i }))
+    .filter(({ p }) => !opts.layer || layerOf(p) === opts.layer)
+    .sort((a, b) => (a.p.z || 0) - (b.p.z || 0) || a.i - b.i);
   for (const { p, i } of list) {
     const n = Art.frames(p.s);
     if (!n) continue;
@@ -146,8 +154,8 @@ export function drawProps(ctx, tpl, x0, y0, t = 0, opts = {}) {
     Art.draw(ctx, p.s, f, x0 + p.x, y0 + p.y, { flip: !!p.flip, glow: !!opts.glow });
   }
 }
-/** Warm light: multiply a light map over what is drawn, then lay the self-lit pixels on top. */
-export function drawLight(ctx, tpl, x0, y0, w, t = 0, opts = {}) {
+/** The light map of a room: dim plum ambient plus a warm, stepped cone per light spot. */
+export function lightMap(tpl, w, t = 0, opts = {}) {
   const ambient = opts.ambient ?? 0.45;
   const lm = document.createElement('canvas'); lm.width = w; lm.height = RH;
   const g = lm.getContext('2d');
@@ -161,26 +169,45 @@ export function drawLight(ctx, tpl, x0, y0, w, t = 0, opts = {}) {
     const r = s.r || 90, p = flick(s.p ?? 0.8);
     const gr = g.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
     const [cr, cg, cb] = [1, 3, 5].map(i => parseInt((s.c || '#ffd98e').slice(i, i + 2), 16));
-    for (let i = 0; i <= 4; i++) {
-      const k = Math.pow(1 - i / 4, 1.4) * p;
-      gr.addColorStop(i / 4, `rgba(${cr},${cg},${cb},${Math.min(1, k)})`);
-    }
+    for (let i = 0; i <= 4; i++) gr.addColorStop(i / 4, `rgba(${cr},${cg},${cb},${Math.min(1, Math.pow(1 - i / 4, 1.4) * p)})`);
     g.fillStyle = gr; g.fillRect(s.x - r, s.y - r, 2 * r, 2 * r);
   }
-  // hard steps like pixel art light
-  const d = g.getImageData(0, 0, w, RH), px = d.data, step = 24;
+  const d = g.getImageData(0, 0, w, RH), px = d.data, step = 24;                       // hard steps like pixel art light
   for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, Math.round(px[i + j] / step) * step);
   g.putImageData(d, 0, 0);
-  ctx.save();
-  ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(lm, x0, y0);
-  ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = 0.35; ctx.drawImage(lm, x0, y0);
-  ctx.restore();
-  drawProps(ctx, tpl, x0, y0, t, { glow: true });
+  return lm;
 }
-/** Everything: shell, props, light. */
+/** Draw `paint(g, 0, 0)` lit by the light map onto ctx at x0, y0 (only where paint drew), then `glow(g)` unlit on top. */
+function litLayer(ctx, lm, x0, y0, paint, glow) {
+  const c = document.createElement('canvas'); c.width = lm.width; c.height = lm.height;
+  const g = c.getContext('2d');
+  paint(g);
+  const mask = document.createElement('canvas'); mask.width = c.width; mask.height = c.height;
+  mask.getContext('2d').drawImage(c, 0, 0);
+  g.globalCompositeOperation = 'multiply'; g.drawImage(lm, 0, 0);
+  g.globalCompositeOperation = 'soft-light'; g.globalAlpha = 0.35; g.drawImage(lm, 0, 0);
+  g.globalAlpha = 1; g.globalCompositeOperation = 'destination-in'; g.drawImage(mask, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  if (glow) glow(g);
+  ctx.drawImage(c, x0, y0);
+}
+/**
+ * A whole room: shell and back props, then `opts.between(ctx, x0, y0)` (the dwarves), then front props.
+ * opts: {light: true, ambient, worldX, between, front: 1 (alpha of the front layer, e.g. 0.4 to see behind it)}
+ */
 export function drawRoom(ctx, tpl, x0, y0, t = 0, opts = {}) {
-  const w = (tpl.cells || 1) * CELL;
-  drawShell(ctx, tpl, x0, y0, w, opts.worldX ?? x0);
-  drawProps(ctx, tpl, x0, y0, t);
-  if (opts.light !== false) drawLight(ctx, tpl, x0, y0, w, t, opts);
+  const w = (tpl.cells || 1) * CELL, worldX = opts.worldX ?? x0, between = opts.between, fa = opts.front ?? 1;
+  const back = g => { drawShell(g, tpl, 0, 0, w, worldX); drawProps(g, tpl, 0, 0, t, { layer: 'back' }); };
+  const front = g => drawProps(g, tpl, 0, 0, t, { layer: 'front' });
+  const glow = layer => g => drawProps(g, tpl, 0, 0, t, { layer, glow: true });
+  const withAlpha = (a, f) => { ctx.save(); ctx.globalAlpha = a; f(); ctx.restore(); };
+  if (opts.light === false) {
+    ctx.save(); ctx.translate(x0, y0); back(ctx); between && between(ctx, 0, 0); ctx.restore();
+    withAlpha(fa, () => { ctx.save(); ctx.translate(x0, y0); front(ctx); ctx.restore(); });
+    return;
+  }
+  const lm = lightMap(tpl, w, t, opts);
+  litLayer(ctx, lm, x0, y0, back, glow('back'));
+  if (between) litLayer(ctx, lm, x0, y0, g => between(g, 0, 0));
+  withAlpha(fa, () => litLayer(ctx, lm, x0, y0, front, glow('front')));
 }

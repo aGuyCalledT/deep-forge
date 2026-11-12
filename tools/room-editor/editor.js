@@ -11,7 +11,8 @@ let types = [], idx = {}, tpl = null, cur = { type: '', part: 'room', name: '' }
 let sel = null;             // {k: 'prop'|'spot', i}
 let tool = null;            // null = select, {prop: name} or {spot: kind}
 let drag = null, hover = null;
-const opt = { light: true, ghost: true, anim: true, grid: false, zoom: 3 };
+const opt = { light: true, ghost: true, anim: true, grid: false, zoom: 3, front: true };
+let placeLayer = 'back';   // where new props go
 const ghosts = {};
 const PAD = 16;                // margin around the room for things that stick out (hanging lamps, smoke)
 
@@ -45,6 +46,11 @@ function buildPalette() {
   sp.append(el('div', { class: 'tool' + (!tool ? ' on' : ''), onclick: () => setTool(null), title: 'select and move (Esc)' }, 'select / move'));
   sp.append(el('div', { class: 'tool', onclick: autoSpots, title: 'add the spots the placed props suggest' }, 'auto spots'));
   pal.append(sp);
+  pal.append(el('h3', { textContent: 'New props go' }));
+  const lg = el('div', { class: 'spots' });
+  for (const [k, t] of [['back', 'behind dwarves'], ['front', 'in front of dwarves']])
+    lg.append(el('div', { class: 'tool' + (placeLayer === k ? ' on' : ''), title: 'L switches the layer of the selected prop', onclick: () => { placeLayer = k; buildPalette(); } }, t));
+  pal.append(lg);
   pal.append(el('h3', { textContent: 'Spots' }));
   const sg = el('div', { class: 'spots' });
   for (const [k, s] of Object.entries(R.SPOTS)) {
@@ -88,7 +94,11 @@ function buildSide() {
     side.append(num('x', o, 'x'), num('y', o, 'y'));
     if (sel.k === 'prop') {
       side.append(el('div', { class: 'row' }, el('span', { textContent: 'flip' }), el('input', { type: 'checkbox', checked: !!o.flip, onchange: e => { o.flip = e.target.checked; setDirty(); } })));
-      side.append(num('layer', o, 'z', 1, buildSide));
+      const ls = el('select', { onchange: () => { o.layer = ls.value; setDirty(); buildSide(); } });
+      ls.append(el('option', { value: 'back', textContent: 'back (behind dwarves)' }), el('option', { value: 'front', textContent: 'front (before dwarves)' }));
+      ls.value = R.layerOf(o);
+      side.append(el('div', { class: 'row' }, el('span', { textContent: 'layer' }), ls));
+      side.append(num('order', o, 'z', 1, buildSide));
       const n = Art.frames(o.s);
       if (n > 1) {
         const s = el('select', { onchange: () => { o.frame = s.value === '' ? null : +s.value; setDirty(); } });
@@ -115,18 +125,22 @@ function buildSide() {
     side.append(el('div', { class: 'row' }, el('button', { textContent: 'Duplicate', onclick: duplicateSel }), el('button', { class: 'danger', textContent: 'Delete', onclick: deleteSel })));
   }
   // layers
-  side.append(el('h3', { textContent: `Props (${tpl.props.length}), back to front` }));
-  const ly = el('div', { class: 'layers' });
-  tpl.props.map((p, i) => ({ p, i })).sort((a, b) => (a.p.z || 0) - (b.p.z || 0) || a.i - b.i).forEach(({ p, i }) =>
-    ly.append(el('div', { class: sel && sel.k === 'prop' && sel.i === i ? 'on' : '', onclick: () => select({ k: 'prop', i }) }, el('span', { textContent: p.s }), el('span', { textContent: `z ${p.z || 0}` }))));
-  side.append(ly);
+  for (const layer of ['front', 'back']) {
+    const list = tpl.props.map((p, i) => ({ p, i })).filter(({ p }) => R.layerOf(p) === layer)
+      .sort((a, b) => (b.p.z || 0) - (a.p.z || 0) || b.i - a.i);
+    side.append(el('h3', { textContent: `${layer === 'front' ? 'Front, before dwarves' : 'Back, behind dwarves'} (${list.length})` }));
+    const ly = el('div', { class: 'layers' });
+    list.forEach(({ p, i }) => ly.append(el('div', { class: sel && sel.k === 'prop' && sel.i === i ? 'on' : '', onclick: () => select({ k: 'prop', i }) }, el('span', { textContent: p.s }), el('span', { textContent: `order ${p.z || 0}` }))));
+    if (layer === 'front') ly.append(el('div', { class: 'dwarfline', textContent: '— dwarves —' }));
+    side.append(ly);
+  }
   side.append(el('h3', { textContent: `Spots (${tpl.spots.length})` }));
   const sl = el('div', { class: 'layers' });
   tpl.spots.forEach((s, i) => sl.append(el('div', { class: sel && sel.k === 'spot' && sel.i === i ? 'on' : '', onclick: () => select({ k: 'spot', i }) }, el('span', { textContent: s.kind }), el('span', { textContent: `${s.x}, ${s.y}` }))));
   side.append(sl);
   const help = el('div', { class: 'help' });
   help.innerHTML = 'Click a prop or spot in the palette, then click in the room to place it. Props snap to the floor (hold <kbd>Alt</kbd> to place freely).<br>' +
-    '<kbd>Arrows</kbd> move (<kbd>Shift</kbd> ×8) · <kbd>F</kbd> flip · <kbd>PgUp</kbd>/<kbd>PgDn</kbd> layer · <kbd>Del</kbd> delete · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>S</kbd> save · <kbd>Esc</kbd> select tool';
+    '<kbd>Arrows</kbd> move (<kbd>Shift</kbd> ×8) · <kbd>F</kbd> flip · <kbd>L</kbd> front/back · <kbd>PgUp</kbd>/<kbd>PgDn</kbd> order · <kbd>Del</kbd> delete · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>S</kbd> save · <kbd>Esc</kbd> select tool';
   side.append(help);
 }
 function select(s) { sel = s; buildSide(); }
@@ -137,8 +151,8 @@ function place(x, y, free) {
     const kind = Art.info(tool.prop);
     const hang = Art.frame(tool.prop, 0).ay < Art.frame(tool.prop, 0).canvas.height / 2;     // hangs from its anchor
     if (!free && !hang && Math.abs(y - R.FLOOR) < 14) y = R.FLOOR;
-    const z = tpl.props.reduce((m, p) => Math.max(m, p.z || 0), 0);
-    tpl.props.push({ s: tool.prop, x, y, flip: false, z, frame: null });
+    const z = tpl.props.filter(p => R.layerOf(p) === placeLayer).reduce((m, p) => Math.max(m, p.z || 0), 0);
+    tpl.props.push({ s: tool.prop, x, y, flip: false, z, frame: null, layer: placeLayer });
     sel = { k: 'prop', i: tpl.props.length - 1 };
     void kind;
   } else {
@@ -167,7 +181,7 @@ function autoSpots() {
 
 // ------------------------------------------------------------------ hit test
 function hitProp(x, y) {
-  const order = tpl.props.map((p, i) => ({ p, i })).sort((a, b) => (b.p.z || 0) - (a.p.z || 0) || b.i - a.i);
+  const order = tpl.props.map((p, i) => ({ p, i })).sort((a, b) => (R.layerOf(b.p) === 'front') - (R.layerOf(a.p) === 'front') || (b.p.z || 0) - (a.p.z || 0) || b.i - a.i);
   for (const { p, i } of order) {
     const fr = Art.frame(p.s, 0, { flip: !!p.flip });
     const lx = Math.round(x - (p.x - fr.ax)), ly = Math.round(y - (p.y - fr.ay));
@@ -218,6 +232,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'Delete' || e.key === 'Backspace') { deleteSel(); return; }
   else if ((e.key === 'f' || e.key === 'F') && sel.k === 'prop') o.flip = !o.flip;
   else if ((e.key === 'f' || e.key === 'F') && o.face !== undefined) o.face = -o.face;
+  else if ((e.key === 'l' || e.key === 'L') && sel.k === 'prop') { o.layer = R.layerOf(o) === 'front' ? 'back' : 'front'; status(`layer: ${o.layer}`); }
   else if (e.key === 'PageUp' && sel.k === 'prop') { e.preventDefault(); o.z = (o.z || 0) + 1; }
   else if (e.key === 'PageDown' && sel.k === 'prop') { e.preventDefault(); o.z = (o.z || 0) - 1; }
   else return;
@@ -233,20 +248,18 @@ function frameLoop(now) {
   off.width = w + 2 * PAD; off.height = R.RH + 2 * PAD;
   og.clearRect(0, 0, off.width, off.height);
   og.save(); og.beginPath(); og.rect(PAD, PAD, w, R.RH); og.clip();
-  R.drawShell(og, tpl, PAD, PAD, w, 0);
-  R.drawProps(og, tpl, PAD, PAD, t);
-  if (opt.ghost) {
-    og.globalAlpha = 0.75;
+  const between = !opt.ghost ? null : (g, x0, y0) => {
+    g.globalAlpha = 0.8;
     for (const s of tpl.spots) {
       const im = ghosts[GHOST[s.kind]];
       if (!im || !im.complete) continue;
-      og.save(); og.translate(PAD + s.x, PAD + s.y);
-      if (s.face === -1) og.scale(-1, 1);
-      og.drawImage(im, -24, -62); og.restore();
+      g.save(); g.translate(x0 + s.x, y0 + s.y);
+      if (s.face === -1) g.scale(-1, 1);
+      g.drawImage(im, -24, -62); g.restore();
     }
-    og.globalAlpha = 1;
-  }
-  if (opt.light) R.drawLight(og, tpl, PAD, PAD, w, t);
+    g.globalAlpha = 1;
+  };
+  R.drawRoom(og, tpl, PAD, PAD, t, { light: opt.light, worldX: 0, between, front: opt.front ? 1 : 0.35 });
   og.restore();
 
   cv.width = off.width * Z; cv.height = off.height * Z;
@@ -264,7 +277,7 @@ function frameLoop(now) {
   // selection box
   if (sel && sel.k === 'prop' && tpl.props[sel.i]) {
     const p = tpl.props[sel.i], fr = Art.frame(p.s, 0, { flip: !!p.flip });
-    ctx.strokeStyle = '#f0c060'; ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = R.layerOf(p) === 'front' ? '#7fd0ff' : '#f0c060'; ctx.setLineDash([4, 3]);
     ctx.strokeRect(X(p.x - fr.ax) - 0.5, Y(p.y - fr.ay) - 0.5, fr.canvas.width * Z + 1, fr.canvas.height * Z + 1);
     ctx.setLineDash([]);
   }
@@ -344,7 +357,7 @@ $('save').onclick = save;
 $('wall').onchange = e => { tpl.wall = e.target.value; setDirty(); };
 $('floor').onchange = e => { tpl.floor = e.target.value; setDirty(); };
 $('vault').onchange = e => { tpl.vault = e.target.checked; setDirty(); };
-for (const [id, k] of [['tLight', 'light'], ['tGhost', 'ghost'], ['tAnim', 'anim'], ['tGrid', 'grid']])
+for (const [id, k] of [['tLight', 'light'], ['tGhost', 'ghost'], ['tFront', 'front'], ['tAnim', 'anim'], ['tGrid', 'grid']])
   $(id).onclick = e => { opt[k] = !opt[k]; e.target.classList.toggle('on', opt[k]); };
 $('zoom').onchange = e => { opt.zoom = +e.target.value; };
 addEventListener('beforeunload', e => { if (dirty) e.preventDefault(); });

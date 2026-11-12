@@ -148,7 +148,8 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
 
 ### Raumvorlagen (Editor)
 
-Wie ein Raum eingerichtet ist, steht in Vorlagen: Wand, Boden, Gewölbe, Möbel mit Position, Ebene, Spiegelung und Bild,
+Wie ein Raum eingerichtet ist, steht in Vorlagen: Wand, Boden, Gewölbe, Möbel mit Position, Ebene (`layer`: `back`
+hinter den Zwergen, `front` vor ihnen, z. B. ein Tisch, hinter dem sie sitzen), Reihenfolge, Spiegelung und Bild,
 dazu Punkte, die das Spiel liest (`worker` mit Blickrichtung, `seat`, `bar`, `bed`, `light` mit Radius, Farbe und
 Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kettle`, `steam`, `stand`).
 
@@ -156,12 +157,14 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
   Python 3. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
 - **Bedienen:** Links Möbel oder Punkt wählen und in den Raum klicken. Möbel rasten am Boden ein (Alt hält sie frei).
   Ziehen verschiebt. Tasten: Pfeile (mit Shift 8 px), F spiegeln, Bild auf/ab für die Ebene, Entf, Strg+D, Strg+S,
-  Esc. „auto spots“ setzt die Punkte, die die Möbel mitbringen (Fackel gibt Licht, Bank zwei Sitze, Amboss Funken
+  Esc, L wechselt die Ebene. Links „New props go“ wählt, wohin neue Möbel kommen; der Schalter „front“ macht die
+  vordere Ebene durchsichtig. „auto spots“ setzt die Punkte, die die Möbel mitbringen (Fackel gibt Licht, Bank zwei Sitze, Amboss Funken
   und Arbeitsplatz …). Rechts steht, welche Punkte der Raumtyp mindestens braucht. Schalter für Licht, Zwerge an den
   Punkten, Animation, Raster und Zoom.
 - **Ablage:** `static/art/props48/rooms/<typ>/<room|bay>_<name>.json`, Liste in `rooms/index.json` (schreibt der
   Editor). `bay` ist eine Maschinen-Erweiterung. Format und Pflichtpunkte stehen in `static/js/rooms48.js`
-  (`SPOTS`, `NEEDS`, `PROP_SPOTS`), zeichnen mit `drawRoom(ctx, tpl, x, y, t)`.
+  (`SPOTS`, `NEEDS`, `PROP_SPOTS`), zeichnen mit `drawRoom(ctx, tpl, x, y, t, {between})`: Hülle und hintere Ebene, dann `between` (die Zwerge),
+  dann die vordere Ebene, jede Ebene für sich beleuchtet.
 - **Im Spiel:** `Building.look` (leer = erste Vorlage) und die Aktion `roomLook {building, look}`. Der Server prüft
   gegen `rooms/index.json` (`RoomLooks.java`). Ein Test verlangt für jeden Raumtyp und jede Erweiterung mindestens
   eine Vorlage. Zu sehen ist das erst mit dem neuen Renderer.
