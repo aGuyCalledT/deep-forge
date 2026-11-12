@@ -8,3 +8,4 @@ sprites/**/*.png
 .idea/
 *.iml
 art-src/out/
+__pycache__/
