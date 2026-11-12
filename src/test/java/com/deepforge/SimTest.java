@@ -493,4 +493,22 @@ class SimTest {
         assertEquals(T0, g.t, 1e-6);
         assertTrue(g.nextRaidAt < f.nextRaidAt);
     }
+
+    @Test
+    void everyRoomHasALookAndThePlayerCanPickOne() {
+        for (String type : Layouts.ROOM_CELLS.keySet())
+            assertFalse(RoomLooks.looks(type, "room").isEmpty(), type + " needs a template from the room editor");
+        for (String type : Layouts.MACHINE_CELLS.keySet())
+            assertFalse(RoomLooks.looks(type, "bay").isEmpty(), type + " needs a bay template from the room editor");
+        Fortress f = fresh(3);
+        Market m = Market.inMemory(3, T0);
+        Building b = f.buildings.get(0);
+        String look = RoomLooks.looks(b.type, "room").get(0);
+        act(f, m, T0 + 1, "type", "roomLook", "building", b.id, "look", look);
+        assertEquals(look, b.look);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 2, "type", "roomLook", "building", b.id, "look", "nope"));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 3, "type", "roomLook", "building", "x", "look", look));
+        act(f, m, T0 + 4, "type", "roomLook", "building", b.id, "look", "");
+        assertEquals("", b.look);
+    }
 }

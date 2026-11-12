@@ -1,0 +1,81 @@
+{
+ "version": 1,
+ "type": "jeweler",
+ "part": "room",
+ "name": "starter",
+ "cells": 6,
+ "wall": "wall_ashlar",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "chest",
+   "x": 40,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "jeweler",
+   "x": 130,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "scales",
+   "x": 225,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "lantern",
+   "x": 130,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 270,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 124,
+   "y": 113
+  },
+  {
+   "kind": "worker",
+   "face": 0,
+   "x": 130,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 130,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 270,
+   "y": 62
+  }
+ ]
+}

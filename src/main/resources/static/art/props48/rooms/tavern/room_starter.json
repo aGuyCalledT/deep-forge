@@ -1,0 +1,203 @@
+{
+ "version": 1,
+ "type": "tavern",
+ "part": "room",
+ "name": "starter",
+ "cells": 9,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "rug",
+   "x": 200,
+   "y": 133,
+   "flip": false,
+   "z": -1,
+   "frame": null
+  },
+  {
+   "s": "fireplace",
+   "x": 60,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "longtable",
+   "x": 200,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "bench",
+   "x": 172,
+   "y": 135,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "bench",
+   "x": 228,
+   "y": 135,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "mug",
+   "x": 192,
+   "y": 113,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "stool",
+   "x": 120,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "bar",
+   "x": 360,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "bottles",
+   "x": 350,
+   "y": 88,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "barrel",
+   "x": 414,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chandelier",
+   "x": 200,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 130,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 290,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 372,
+   "y": 135,
+   "face": -1
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ff9450",
+   "p": 0.95,
+   "x": 60,
+   "y": 111
+  },
+  {
+   "kind": "fire",
+   "w": 30,
+   "h": 16,
+   "x": 60,
+   "y": 123
+  },
+  {
+   "kind": "chimney",
+   "x": 60,
+   "y": 75
+  },
+  {
+   "kind": "seat",
+   "x": 163,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 181,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 219,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 237,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 120,
+   "y": 135
+  },
+  {
+   "kind": "bar",
+   "x": 342,
+   "y": 135
+  },
+  {
+   "kind": "bar",
+   "x": 378,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 130,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 200,
+   "y": 26
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 130,
+   "y": 62
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 290,
+   "y": 62
+  }
+ ]
+}

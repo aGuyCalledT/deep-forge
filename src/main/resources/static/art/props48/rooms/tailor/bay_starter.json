@@ -1,0 +1,33 @@
+{
+ "version": 1,
+ "type": "tailor",
+ "part": "bay",
+ "name": "starter",
+ "cells": 2,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": false,
+ "props": [
+  {
+   "s": "sewing",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 48,
+   "y": 113
+  },
+  {
+   "kind": "worker",
+   "face": 0,
+   "x": 48,
+   "y": 135
+  }
+ ]
+}

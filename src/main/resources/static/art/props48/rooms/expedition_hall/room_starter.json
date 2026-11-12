@@ -1,0 +1,88 @@
+{
+ "version": 1,
+ "type": "expedition_hall",
+ "part": "room",
+ "name": "starter",
+ "cells": 7,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "noticeboard",
+   "x": 60,
+   "y": 100,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chest",
+   "x": 55,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "maptable",
+   "x": 165,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "banner",
+   "x": 270,
+   "y": 20,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chest",
+   "x": 275,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "armorstand",
+   "x": 315,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chandelier",
+   "x": 165,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "seat",
+   "x": 147,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 183,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 130,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 165,
+   "y": 26
+  }
+ ]
+}

@@ -92,6 +92,7 @@ public final class Actions {
             case "saveOrder" -> Depot.saveOrder(f, a);
             case "deleteOrder" -> Depot.deleteOrder(f, a);
             case "rename" -> rename(f, a);
+            case "roomLook" -> roomLook(f, a);
             case "moveRoom" -> Layouts.moveRoom(f, str(a, "building"), num(a, "col", -1), num(a, "floor", -1));
             case "moveHall" -> Layouts.moveHall(f, num(a, "col", -1), num(a, "floor", -1), num(a, "col2", -1), num(a, "floor2", -1));
             case "moveWell" -> Layouts.moveWell(f, num(a, "col", -1), num(a, "floor", -1), num(a, "col2", -1), num(a, "floor2", -1));
@@ -552,5 +553,14 @@ public final class Actions {
         String n = str(a, "name");
         check(n != null && n.trim().matches("[A-Za-z0-9' \\-]{3,32}"), "3-32 letters, digits, spaces, ' or -.");
         f.name = n.trim();
+    }
+
+    /** Pick how a room is drawn (a template from the room editor); "" = the first one there is. */
+    static void roomLook(Fortress f, Map<String, Object> a) {
+        Building b = f.buildings.stream().filter(x -> x.id.equals(str(a, "building"))).findFirst().orElse(null);
+        check(b != null, "That room is gone. Pick another one.");
+        String look = Objects.requireNonNullElse(str(a, "look"), "");
+        check(look.isEmpty() || RoomLooks.exists(b.type, look), "That look does not exist. Pick one from the list.");
+        b.look = look;
     }
 }

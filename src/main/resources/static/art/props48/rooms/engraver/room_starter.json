@@ -1,0 +1,65 @@
+{
+ "version": 1,
+ "type": "engraver",
+ "part": "room",
+ "name": "starter",
+ "cells": 5,
+ "wall": "wall_ashlar",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "engraver",
+   "x": 110,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "shelf",
+   "x": 195,
+   "y": 90,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "crate",
+   "x": 195,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 45,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 100,
+   "y": 111
+  },
+  {
+   "kind": "worker",
+   "face": 0,
+   "x": 110,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 45,
+   "y": 62
+  }
+ ]
+}

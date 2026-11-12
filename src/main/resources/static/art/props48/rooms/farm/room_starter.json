@@ -1,0 +1,110 @@
+{
+ "version": 1,
+ "type": "farm",
+ "part": "room",
+ "name": "starter",
+ "cells": 7,
+ "wall": "wall_rock",
+ "floor": "floor_earth",
+ "vault": true,
+ "props": [
+  {
+   "s": "mushbed_2",
+   "x": 50,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "mushbed_1",
+   "x": 120,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "mushbed_2",
+   "x": 190,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "mushbed_0",
+   "x": 260,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "glowshrooms",
+   "x": 312,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "barrel",
+   "x": 315,
+   "y": 135,
+   "flip": false,
+   "z": -1,
+   "frame": null
+  },
+  {
+   "s": "roots",
+   "x": 80,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 160,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 50,
+   "y": 125
+  },
+  {
+   "kind": "work",
+   "x": 190,
+   "y": 125
+  },
+  {
+   "kind": "light",
+   "r": 46,
+   "c": "#90e0c8",
+   "p": 0.55,
+   "x": 312,
+   "y": 127
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 160,
+   "y": 62
+  },
+  {
+   "kind": "worker",
+   "x": 168,
+   "y": 135,
+   "face": 0
+  }
+ ]
+}

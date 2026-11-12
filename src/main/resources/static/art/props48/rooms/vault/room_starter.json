@@ -1,0 +1,78 @@
+{
+ "version": 1,
+ "type": "vault",
+ "part": "room",
+ "name": "starter",
+ "cells": 5,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "vaultdoor",
+   "x": 50,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "goldpile",
+   "x": 140,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "ingots",
+   "x": 205,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chest",
+   "x": 128,
+   "y": 135,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 100,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 190,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 100,
+   "y": 62
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 190,
+   "y": 62
+  }
+ ]
+}
