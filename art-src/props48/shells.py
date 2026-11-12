@@ -17,6 +17,7 @@ from props import PROPS
 R['rock'] = ['#1a1419', '#2f242b', '#46363c', '#5e4a4c', '#7c6460']     # warm plum-brown rock
 R['sand'] = ['#2a1f22', '#4d3b37', '#75604f', '#9c8366', '#c6aa82']     # dressed sandstone
 CELL, RH, FLOOR = 48, 144, 135
+EMIT = {'flame'}                                    # ramps that glow: the light pass leaves them as they are
 
 def hsh(*a):
     v = 2166136261
@@ -277,7 +278,7 @@ def blit(canvas, emit, g, x, y, flip=False):
             if v is None: continue
             X, Y = x + i, y + j
             if 0 <= X < canvas.shape[1] and 0 <= Y < canvas.shape[0]:
-                canvas[Y, X] = v; emit[Y, X] = not isinstance(v, str) and v[0] == 'flame'
+                canvas[Y, X] = v; emit[Y, X] = not isinstance(v, str) and v[0] in EMIT
 def put(canvas, emit, p, x, y, flip=False):
     ax, ay = p['anchor']; blit(canvas, emit, p['grid'], x - (p['grid'].shape[1] - 1 - ax if flip else ax), y - ay, flip)
 def dwarf(canvas, emit, name, x, y, flip=False):
