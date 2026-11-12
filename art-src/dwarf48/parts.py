@@ -155,34 +155,36 @@ def head(view):
     p.fill(ell(15.4, 26, 1.6, 2.4), 'skin', bias=0.0); p.fill(ell(32.6, 26, 1.6, 2.4), 'skin', bias=-0.1)
     if view == 'front': p.fill(ell(24, 28.4, 2.7, 2.2), 'skin', bias=0.2, round_=1.4)
     return p
-FACE_FRONT = {   # rows from y 22: brows, lids, eyes, under-eye, cheeks; then the mouth rows 31-32
-    'neutral': (['hHhh....hhHh', '.dd......dd.', '.wi......iw.', '.ss......ss.', 'c..........c'], ['..aa..', '......']),
-    'happy':   (['hHhh....hhHh', '.dd......dd.', '.wi......iw.', '.ll......ll.', 'cc........cc'], ['a....a', '.aaaa.']),
-    'angry':   (['.hhd....dhh.', '...d....d...', '.wi......iw.', '.ss......ss.', '............'], ['.aaaa.', 'a....a']),
-    'open':    (['hHhh....hhHh', '.dd......dd.', '.wi......iw.', '.ss......ss.', 'c..........c'], ['.adda.', '..dd..']),
-    'blink':   (['hHhh....hhHh', '............', '.dd......dd.', '.ss......ss.', 'c..........c'], ['..aa..', '......']),
-    'sleep':   (['hHhh....hhHh', '............', '.aa......aa.', '.ss......ss.', 'c..........c'], ['..a...', '......']),
+FACE_FRONT = {   # rows from y 22: brows, lid, eye, eye, under-eye, cheeks (eyes 3 px wide like the CC0 bases); mouth rows 31-32
+    'neutral': (['hHh......hHh', 'ddd......ddd', 'wii......iiw', 'wii......iiw', '.ss......ss.', 'c..........c'], ['..aa..', '......']),
+    'happy':   (['hHh......hHh', 'ddd......ddd', 'wii......iiw', 'sll......lls', '............', 'cc........cc'], ['a....a', '.aaaa.']),
+    'angry':   (['.hd......dh.', 'dddd....dddd', 'wii......iiw', 'sss......sss', '............', '............'], ['.aaaa.', 'a....a']),
+    'open':    (['hHh......hHh', 'ddd......ddd', 'wii......iiw', 'wii......iiw', '.ss......ss.', 'c..........c'], ['.adda.', '..dd..']),
+    'blink':   (['hHh......hHh', '............', '............', 'ddd......ddd', '.ss......ss.', 'c..........c'], ['..aa..', '......']),
+    'sleep':   (['hHh......hHh', '............', '............', 'aaa......aaa', '.ss......ss.', 'c..........c'], ['..a...', '......']),
 }
-FACE_SIDE = {
-    'neutral': (['hHhh', '.dd.', '.wi.', '.ss.', 'c...'], ['.aa', '...']),
-    'happy':   (['hHhh', '.dd.', '.wi.', '.ll.', 'cc..'], ['a.a', '.aa']),
-    'angry':   (['.hhd', '..dd', '.wi.', '.ss.', '....'], ['aaa', '...']),
-    'open':    (['hHhh', '.dd.', '.wi.', '.ss.', 'c...'], ['.dd', '.dd']),
-    'blink':   (['hHhh', '....', '.dd.', '.ss.', 'c...'], ['.aa', '...']),
-    'sleep':   (['hHhh', '....', '.aa.', '.ss.', 'c...'], ['.a.', '...']),
+FACE_SIDE = {    # from x 26, y 22; the cheek sits at (25, 27)
+    'neutral': (['hHh', 'dd.', 'wi.', 'wi.', 'ss.'], ['.aa', '...']),
+    'happy':   (['hHh', 'dd.', 'wi.', 'll.', '...'], ['a.a', '.aa']),
+    'angry':   (['.hd', 'ddd', 'wi.', 'ss.', '...'], ['aaa', '...']),
+    'open':    (['hHh', 'dd.', 'wi.', 'wi.', 'ss.'], ['.dd', '.dd']),
+    'blink':   (['hHh', '...', '...', 'dd.', 'ss.'], ['.aa', '...']),
+    'sleep':   (['hHh', '...', '...', 'aa.', 'ss.'], ['.a.', '...']),
 }
 def face(view, mood, sex):
     p = Part()
+    open_eyes = mood not in ('blink', 'sleep')
     if view == 'front':
         eyes, mouth = FACE_FRONT[mood]
         p.grid(18, 22, eyes, K)
         p.grid(21, 31, mouth, K)
-        if sex == 'f' and mood not in ('blink', 'sleep'): p.grid(18, 23, ['d..........d'], K)     # lashes
+        if sex == 'f' and open_eyes: p.grid(17, 23, ['d............d'], K)      # lashes at the outer corners
     elif view == 'side':
         eyes, mouth = FACE_SIDE[mood]
-        p.grid(25, 22, eyes, K)
+        p.grid(26, 22, eyes, K)
         p.grid(27, 31, mouth, K)
-        if sex == 'f' and mood not in ('blink', 'sleep'): p.grid(29, 23, ['d'], K)
+        if mood not in ('angry',): p.grid(25, 27, ['c'], K)
+        if sex == 'f' and open_eyes: p.grid(28, 23, ['d'], K)
     return p
 
 # ================================================================== hair

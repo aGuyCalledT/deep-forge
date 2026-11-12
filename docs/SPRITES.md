@@ -119,6 +119,7 @@ Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
 - **Posen** stehen mit Bildern und Reihenfolge in `kit.json` (`poses`, `order`): `idle talk hands sit sitTalk eat drink
   walkFront walkBack idleBack walk idleSide work sleep`. Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
   schiebt alles außer den Beinen. Schlafen ist das Seitenbild, eine Vierteldrehung nach links.
+- **Augen** wie bei den CC0-Vorlagen in `art-src/bases/`: 3 px breit, Lid oben, zwei Reihen Weiß und Iris.
 - **Umfärben:** `ramps` in `kit.json` sind Platzhalter (Haut, Haar, Tunika, Weste, Hose, Stiefel, Metall, Stoff …);
   Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `Figure.ramp(farbe, 5)`. `fixed` (Augen, Umriss) bleibt.
 
@@ -134,3 +135,9 @@ Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
 - Am Himmel ziehen Berge (mit Schnee) und bewaldete Hügel beim Verschieben langsamer mit als die Welt (Parallaxe),
   dazu Dunst über dem Horizont.
 - Zwerge werfen einen kleinen Schatten auf den Boden (`groundShadow` in `sprites.js`).
+
+## Vorlagen (CC0)
+
+`art-src/bases/human` und `art-src/bases/elf`: Figuren-Vorlagen im Raster 48 × 64 (Reihen und Richtungen im Dateinamen,
+z. B. `SWEN_` oder `NESW_`), von Svetlana Kushnariova (Cabbit) und Jordan Irwin (AntumDeluge), CC0, Namensnennung
+freiwillig (siehe `README.txt`). Maß für Größe, Proportionen und Augen; Menschen und Elfen im Tal könnten darauf aufbauen.
