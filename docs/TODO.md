@@ -151,7 +151,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       (jetzt nur Tunika in Metallfarbe), Kleidungs-Muster (Strick, Weste, Flicken), Nasen-, Brauen- und Mundformen.
 - [ ] Mehr Frisuren und Bärte zeichnen, damit die 10 alten Frisuren und 8 Bärte wieder eigene Bilder haben.
 - [ ] Werkzeuge als gezeichnete Teile statt Linien aus dem Code.
-- [ ] Übrige Grafik (Räume, Erweiterungen, Monster, Tal, Symbole) im neuen Stil in Pixelwright neu zeichnen.
+- [x] Übrige Grafik im neuen Stil: statt Pixelwright als Code in `art-src/props48/` (siehe „Grafik 48 px“).
 
 ## Zwerge 48 × 64
 
@@ -161,3 +161,16 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Einbauen, sobald die Räume im neuen Maßstab sind: `dwarfkit.js` auf `kit.json` aus `dwarf48` umstellen, alte Posen
       zuordnen (`climb` -> `walkBack`), Reisende und Wachen darüber, Auswahllisten im Cheat-Fenster.
 - [ ] Gesichter in der Seitenansicht deutlicher (Stimmungen kaum zu sehen).
+
+## Grafik 48 px (Räume aus Teilen)
+
+- [x] Blöcke 0–8 gezeichnet (`art-src/props48/`): Möbel, Raumhüllen und Wege, Wohnen, Werkstätten, Lager/Handel/Wache,
+      Tal (Tag, Abend, Nacht), Fels je Minenschicht und Höhlen, 9 Monster, Kleintiere, Deko und Effekte.
+- [x] Export: `python3 art-src/props48/export.py` schreibt `static/art/props48/sheet.png`, `glow.png`, `sheet.json`
+      (prüft die Pixel danach); Lader `static/js/art48.js` (Bilder, Anker, Umfärben, Spiegeln, Kacheln).
+- [ ] Standard-Einrichtung je Raumtyp (Wand, Boden, Möbel mit Position), daraus Betten, Sitze, Arbeitsplätze, Klickflächen.
+- [ ] Maßstab umstellen (`hold.js`: `CELL 48`, `RH 144`, Boden 135) zusammen mit den Zwergen 48 × 64.
+- [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
+- [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.
+- [ ] Kleinigkeiten: Fächer-Muster im Fels glätten, größere Scheren der Magmakrabbe, zweiter Arm des Ogers,
+      Lichtringe in Stufen statt Kreisen.

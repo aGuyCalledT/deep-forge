@@ -123,6 +123,29 @@ Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
 - **Umfärben:** `ramps` in `kit.json` sind Platzhalter (Haut, Haar, Tunika, Weste, Hose, Stiefel, Metall, Stoff …);
   Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `Figure.ramp(farbe, 5)`. `fixed` (Augen, Umriss) bleibt.
 
+## Grafik 48 px (neuer Stil, noch nicht im Spiel)
+
+Räume, Tal, Fels, Monster und Effekte im Maßstab der Zwerge 48 × 64: Zelle 48 px, Raum 144 px hoch, Boden bei y 135.
+Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetzt (Wand, Boden, Gewölbe, Möbel).
+
+- **Quelle ist Code** in `art-src/props48/` (Python mit numpy und Pillow): `engine.py` (Formen, Schattierung, Farbreihen),
+  `props.py` (Möbel), `shells.py` (Wände, Böden, Gewölbe, Gang, Treppenhaus, Schacht, Tunnel, Pfeiler), `living.py`,
+  `workshop.py`, `storage.py`, `valley.py`, `rock.py`, `monsters.py`, `ambient.py`. Jede Datei mit
+  `python3 <datei> preview` baut Vorschaubilder nach `art-src/props48/preview/`.
+- **Stil:** 5 warme Töne je Material, Schatten ins Pflaumenfarbene, Licht von oben links, Holz flach nach Flächen,
+  Rundes gewölbt, Umriss im dunkelsten Ton des Materials, Muster nur mit Grund. Mauerwerk und Bretter schattiert
+  `blocks()` (Fuge, helle Kante oben links, dunkle unten rechts).
+- **Export:** `python3 art-src/props48/export.py` schreibt `static/art/props48/sheet.png`, `glow.png` (nur selbst
+  leuchtende Pixel, gleiche Lage) und `sheet.json` und vergleicht danach jedes Pixel. Ein Eintrag:
+  `{kind: prop|tile, group, frames: [[x, y, w, h, ankerX, ankerY], ...], recolour, glow}`. Möbel stehen mit dem Anker
+  auf dem Boden, Wandteile hängen daran, Kacheln wiederholen sich ab ihrer linken Kante (Wände und Fels alle 96 px).
+  Animierte Teile haben 4 Bilder.
+- **Umfärben:** Platzhalter-Reihen in `placeholders`: `ingot` (Barren, Erz; Ton 3 = Metallfarbe, neue Reihe aus
+  `Figure.ramp`) und `rockd` (Höhlen, Risse, Brocken; Reihen der Minenschichten in `depths`). Der Export prüft, dass
+  kein anderes Material dieser Teile eine Platzhalterfarbe hat.
+- **Im Spiel:** `static/js/art48.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). Noch nicht eingebunden,
+  das kommt mit dem neuen Maßstab (`docs/TODO.md`).
+
 ## Tiefe
 
 - Die Festung liegt in einem Berg: links das Tal (zwei große Bäume, Marktstand, Wegweiser, Reisende, Karawanen), ein Tor (`gate_<stufe>`) mit Tunnel (die Eingangshalle)
