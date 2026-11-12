@@ -152,3 +152,12 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Mehr Frisuren und Bärte zeichnen, damit die 10 alten Frisuren und 8 Bärte wieder eigene Bilder haben.
 - [ ] Werkzeuge als gezeichnete Teile statt Linien aus dem Code.
 - [ ] Übrige Grafik (Räume, Erweiterungen, Monster, Tal, Symbole) im neuen Stil in Pixelwright neu zeichnen.
+
+## Zwerge 48 × 64
+
+- [x] **Alle Zwerg-Teile im Stil des Basismodells** (`static/art/dwarf48/`, Quelle `art-src/dwarf48/`): Mann und Frau,
+      drei Ansichten, gehen, stehen, reden, sitzen, essen, trinken, Hände, arbeiten (Seite), schlafen, 6 Stimmungen,
+      6 Frisuren, 5 Bärte, Helm/Mütze/Kapuze, Krug, Löffel, Axt, Sack, umfärbbar. Reisende im Tal als Zwerge.
+- [ ] Einbauen, sobald die Räume im neuen Maßstab sind: `dwarfkit.js` auf `kit.json` aus `dwarf48` umstellen, alte Posen
+      zuordnen (`climb` -> `walkBack`), Reisende und Wachen darüber, Auswahllisten im Cheat-Fenster.
+- [ ] Gesichter in der Seitenansicht deutlicher (Stimmungen kaum zu sehen).
