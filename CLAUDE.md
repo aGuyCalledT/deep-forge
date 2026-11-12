@@ -48,6 +48,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen (öffnen sich neben dem Objekt), Cheat-Werkzeuge |
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
 | `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall um, liefert Zwerge, Fremde und Porträts |
+| `art-src/props48/` | Grafik 48 px als Code (Räume aus Teilen, Tal, Fels, Monster, Effekte), `export.py` schreibt `static/art/props48/` (Sheet, Glow, JSON), Lader `static/js/art48.js`, noch nicht eingebaut |
 | `art-src/dwarf48/` | nächster Zwerg-Satz 48 × 64 als Code (`parts.py`, `build.py`), Ergebnis in `static/art/dwarf48/`, noch nicht eingebaut |
 | `static/js/dwarfkit.js` | setzt Zwerge aus den PNG-Teilen in `static/art/dwarf/` zusammen (`kit.json`: Bilder, Reihenfolge, Platzhalterfarben) und färbt sie um; gezeichnet im Pixelwright-Projekt „Deep Forge Dwarves“ |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt) |

@@ -85,9 +85,9 @@ def meadow(cv, em, w, y0, h):
     for y in range(y0, y0 + h):
         for x in range(w):
             d = y - y0
-            path = abs(d - 12 - 3 * math.sin(x / 47)) < 4.5 + 0.8 * math.sin(x / 13)
+            path = abs(d - 12 - 3 * math.sin(x * 4 * math.pi / w)) < 4.5 + 0.8 * math.sin(x * 88 * math.pi / w)
             if path:
-                t = 3 if d < 12 + 3 * math.sin(x / 47) - 2 else 2
+                t = 3 if d < 12 + 3 * math.sin(x * 4 * math.pi / w) - 2 else 2
                 if hsh(x, y) % 23 == 0: t = 1                                 # ruts and pebbles
                 cv[y, x] = ('clay', t)
             else:
