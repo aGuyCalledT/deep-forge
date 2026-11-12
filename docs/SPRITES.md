@@ -160,6 +160,16 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
 
 - **Editor starten:** `python3 tools/room-editor/serve.py`, dann `http://localhost:8099` öffnen. Er braucht nur
   Python 3. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
+- **Hilfe:** Jedes Bedienelement, jeder Punkt und jede Möbel-Gruppe hat einen Info-Knopf (i) und einen Tooltip mit
+  einer kurzen englischen Erklärung. Texte: Bedienung und Möbel in `tools/room-editor/info.js`, Punkte in
+  `rooms48.js` (`SPOTS[kind].about`, das Spiel nutzt sie mit).
+- **Raster:** „Snap“ (Standard 4 px) rastet Platzieren, Ziehen und Pfeiltasten ein, gezählt ab der Bodenlinie, die
+  Decke (y 0) rastet auch. Alt platziert pixelgenau. Der Schalter „grid“ zeigt die Rasterpunkte, die 48-px-Zellen und
+  die Raummitte.
+- **Mehrfachauswahl:** Shift+Klick, Rahmen auf freier Fläche aufziehen, Strg+A. Dann: linke Kante und Oberkante der
+  Gruppe eingeben, ausrichten (links, Mitte, rechts, oben, Mitte, unten), im Raum zentrieren, gleichmäßig verteilen
+  (zwischen dem ersten und letzten) oder über die ganze Raumbreite bzw. -höhe verteilen. Einzelne Teile: x/y eingeben
+  und zentrieren. Ziehen, Pfeile, F, S, L und Bild auf/ab wirken auf die ganze Auswahl.
 - **Bedienen:** Links Möbel oder Punkt wählen und in den Raum klicken. Möbel rasten am Boden ein (Alt hält sie frei).
   Ziehen verschiebt. Tasten: Pfeile (mit Shift 8 px), F spiegeln, Bild auf/ab für die Ebene, Entf, Strg+D, Strg+S,
   Esc, L wechselt die Ebene. Bei einem Punkt dreht F die Blickrichtung weiter, S schaltet sitzen/stehen; rechts steht

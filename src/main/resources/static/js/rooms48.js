@@ -12,23 +12,39 @@ export const FLOOR = 135, RH = 144, CELL = 48;
 export const WALLS = ['wall_rock', 'wall_brick', 'wall_ashlar', 'wall_panel'];
 export const FLOORS = ['floor_planks', 'floor_flags', 'floor_earth'];
 
-/** Spot kinds: what the game reads from a template. Colour and letter are for the editor's markers. */
+/** Spot kinds: what the game reads from a template. Colour and letter are for the editor's markers; help is the short
+ * tooltip, about the longer explanation behind the editor's info button. */
 export const SPOTS = {
-  worker:  { c: '#6fd06f', t: 'W', face: 'right', sit: true, help: 'where a worker stands or sits (one per machine)' },
-  seat:    { c: '#6fb0f0', t: 'S', face: 'front', help: 'a place to sit (tavern, barracks, guild)' },
-  bar:     { c: '#f0c060', t: 'B', face: 'front', help: 'a place to stand and drink at the bar' },
-  bed:     { c: '#d080f0', t: 'Z', face: 'right', sides: true, help: 'a sleeping place, y = the mattress' },
-  light:   { c: '#ffd98e', t: 'L', light: true, help: 'a light: radius, colour, strength' },
-  fire:    { c: '#ff8040', t: 'F', size: true, help: 'the fire area (smoke, sparks, heat glow)' },
-  chimney: { c: '#a09090', t: 'C', help: 'where smoke leaves the room' },
-  bellows: { c: '#ff6060', t: 'b', help: 'click target: bellows' },
-  anvil:   { c: '#c0c0d0', t: 'A', help: 'hammer point: sparks fly here' },
-  quench:  { c: '#60c0e0', t: 'Q', help: 'click target: quench barrel' },
-  wheel:   { c: '#e0e080', t: 'G', help: 'grindstone wheel centre' },
-  work:    { c: '#80e0c0', t: 'w', help: 'the piece being worked on' },
-  kettle:  { c: '#f0a060', t: 'K', help: 'brew kettle' },
-  steam:   { c: '#f0f0f0', t: 's', help: 'where steam rises' },
-  stand:   { c: '#b0b0b0', t: 'I', face: 'front', sit: true, help: 'an idle spot to stand (or sit) around' },
+  worker:  { c: '#6fd06f', t: 'W', face: 'right', sit: true, help: 'where a worker stands or sits (one per machine)',
+    about: "Where a dwarf works in this room. The room's own machine uses the first worker spot; every machine bay has its own template with one. Pick where the dwarf faces and whether it sits: back + sits is a dwarf at a bench with its back to you." },
+  seat:    { c: '#6fb0f0', t: 'S', face: 'front', help: 'a place to sit (tavern, barracks, guild)',
+    about: 'A place where a dwarf sits down: to eat and drink in the tavern, to rest in the barracks, to plan in the guild. Each seat holds one dwarf, so more seats mean more guests at once. Put it on the bench or chair, at floor height.' },
+  bar:     { c: '#f0c060', t: 'B', face: 'front', help: 'a place to stand and drink at the bar',
+    about: 'A place to stand at the counter and drink (tavern). Dwarves queue here when the seats are full.' },
+  bed:     { c: '#d080f0', t: 'Z', face: 'right', sides: true, help: 'a sleeping place, y = the mattress',
+    about: 'One sleeping place. Each bed spot holds one sleeping dwarf, so a bunk bed needs two. Put it on the mattress; facing right puts the head on the left end, facing left on the right end.' },
+  light:   { c: '#ffd98e', t: 'L', light: true, help: 'a light: radius, colour, strength',
+    about: 'A light source. Everything within the radius is lit in its colour, strength sets how bright; outside every light the room stays dim. Put it on the flame of a torch, candle or fire.' },
+  fire:    { c: '#ff8040', t: 'F', size: true, help: 'the fire area (smoke, sparks, heat glow)',
+    about: 'The burning area of a forge, smelter or fireplace. Smoke, sparks and the heat glow come from here, and it burns brighter while the bellows are worked.' },
+  chimney: { c: '#a09090', t: 'C', help: 'where smoke leaves the room',
+    about: 'Where smoke leaves the room, usually the top of the flue or hood.' },
+  bellows: { c: '#ff6060', t: 'b', help: 'click target: bellows',
+    about: 'Click target: players click here to work the bellows, which makes the forge or smelter hotter.' },
+  anvil:   { c: '#c0c0d0', t: 'A', help: 'hammer point: sparks fly here',
+    about: 'Where the hammer lands: sparks fly from this point while the smith works.' },
+  quench:  { c: '#60c0e0', t: 'Q', help: 'click target: quench barrel',
+    about: 'Click target: players click here to quench a hot piece in the barrel.' },
+  wheel:   { c: '#e0e080', t: 'G', help: 'grindstone wheel centre',
+    about: 'Centre of the grinding wheel: it turns and throws sparks while someone grinds.' },
+  work:    { c: '#80e0c0', t: 'w', help: 'the piece being worked on',
+    about: 'The piece being worked on: the game shows the item and its progress here.' },
+  kettle:  { c: '#f0a060', t: 'K', help: 'brew kettle',
+    about: 'The brew kettle: it bubbles while a brew is on.' },
+  steam:   { c: '#f0f0f0', t: 's', help: 'where steam rises',
+    about: 'Where steam rises while brewing.' },
+  stand:   { c: '#b0b0b0', t: 'I', face: 'front', sit: true, help: 'an idle spot to stand (or sit) around',
+    about: 'A place to hang around when there is nothing to do: waiting, chatting, watching. Can be standing or sitting.' },
 };
 
 /** Where a dwarf on a spot looks: 'front', 'left', 'right' or 'back' (back = back to the viewer). */
