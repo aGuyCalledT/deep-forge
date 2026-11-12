@@ -4,7 +4,8 @@
 //
 // A template: {version, type, part: 'room'|'bay', name, cells, wall, floor, vault,
 //              props: [{s: sprite, x, y, flip, z, frame: null = animate | n, layer: 'back' | 'front'}],
-//              spots: [{kind, x, y, ...}]}       x, y in room pixels; the floor line is y 135
+//              spots: [{kind, x, y, face: front|left|right|back, sit, ...}]}   x, y in room pixels; floor line y 135
+// spotPose(spot) gives the dwarf48 pose for a spot (e.g. a worker facing 'back' with sit: workSitBack).
 import * as Art from './art48.js';
 
 export const FLOOR = 135, RH = 144, CELL = 48;
@@ -13,10 +14,10 @@ export const FLOORS = ['floor_planks', 'floor_flags', 'floor_earth'];
 
 /** Spot kinds: what the game reads from a template. Colour and letter are for the editor's markers. */
 export const SPOTS = {
-  worker:  { c: '#6fd06f', t: 'W', face: true, help: 'where a worker stands (one per machine)' },
-  seat:    { c: '#6fb0f0', t: 'S', help: 'a place to sit (tavern, barracks, guild)' },
-  bar:     { c: '#f0c060', t: 'B', help: 'a place to stand and drink at the bar' },
-  bed:     { c: '#d080f0', t: 'Z', help: 'a sleeping place, y = the mattress' },
+  worker:  { c: '#6fd06f', t: 'W', face: 'right', sit: true, help: 'where a worker stands or sits (one per machine)' },
+  seat:    { c: '#6fb0f0', t: 'S', face: 'front', help: 'a place to sit (tavern, barracks, guild)' },
+  bar:     { c: '#f0c060', t: 'B', face: 'front', help: 'a place to stand and drink at the bar' },
+  bed:     { c: '#d080f0', t: 'Z', face: 'right', sides: true, help: 'a sleeping place, y = the mattress' },
   light:   { c: '#ffd98e', t: 'L', light: true, help: 'a light: radius, colour, strength' },
   fire:    { c: '#ff8040', t: 'F', size: true, help: 'the fire area (smoke, sparks, heat glow)' },
   chimney: { c: '#a09090', t: 'C', help: 'where smoke leaves the room' },
@@ -27,8 +28,32 @@ export const SPOTS = {
   work:    { c: '#80e0c0', t: 'w', help: 'the piece being worked on' },
   kettle:  { c: '#f0a060', t: 'K', help: 'brew kettle' },
   steam:   { c: '#f0f0f0', t: 's', help: 'where steam rises' },
-  stand:   { c: '#b0b0b0', t: 'I', help: 'an idle spot to stand around' },
+  stand:   { c: '#b0b0b0', t: 'I', face: 'front', sit: true, help: 'an idle spot to stand (or sit) around' },
 };
+
+/** Where a dwarf on a spot looks: 'front', 'left', 'right' or 'back' (back = back to the viewer). */
+export const FACINGS = ['front', 'left', 'right', 'back'];
+export function facing(s) {
+  if (typeof s.face === 'number') return s.face < 0 ? 'left' : s.face > 0 ? 'right' : 'front';   // old templates
+  return FACINGS.includes(s.face) ? s.face : ((SPOTS[s.kind] || {}).face || 'front');
+}
+/** Seated? Seats always, workers and idle spots when `sit` is set. */
+export const sits = s => s.kind === 'seat' || (!!s.sit && !!(SPOTS[s.kind] || {}).sit);
+// pose of the dwarf48 kit per spot kind and view, [standing, seated]
+const POSE = {
+  worker: { front: ['hands', 'workSitFront'], side: ['work', 'workSit'], back: ['workBack', 'workSitBack'] },
+  seat: { front: ['sit', 'sit'], side: ['sitSide', 'sitSide'], back: ['sitBack', 'sitBack'] },
+  bar: { front: ['drink', 'drink'], side: ['idleSide', 'sitSide'], back: ['idleBack', 'sitBack'] },
+  stand: { front: ['idle', 'sit'], side: ['idleSide', 'sitSide'], back: ['idleBack', 'sitBack'] },
+  bed: { front: ['sleep', 'sleep'], side: ['sleep', 'sleep'], back: ['sleep', 'sleep'] },
+};
+/** The pose a dwarf takes on a spot: {pose, flip} (side poses face right, flip = left), or null for spots without dwarves. */
+export function spotPose(s) {
+  const t = POSE[s.kind];
+  if (!t) return null;
+  const f = facing(s), view = f === 'left' || f === 'right' ? 'side' : f;
+  return { pose: t[view][sits(s) ? 1 : 0], flip: f === 'left' };
+}
 
 /** What each room needs at least (the game's old anchors), as {kind: count}. Bays need one worker. */
 export const NEEDS = {
@@ -70,18 +95,18 @@ export const PROP_SPOTS = {
   chair: [{ kind: 'seat', dx: 0, dy: 0 }],
   stool: [{ kind: 'seat', dx: 0, dy: 0 }],
   bar: [{ kind: 'bar', dx: -18, dy: 0 }, { kind: 'bar', dx: 18, dy: 0 }],
-  anvil: [{ kind: 'anvil', dx: -4, dy: -23 }, { kind: 'worker', dx: -22, dy: 0, face: 1 }],
+  anvil: [{ kind: 'anvil', dx: -4, dy: -23 }, { kind: 'worker', dx: -22, dy: 0, face: 'right' }],
   bellows: [{ kind: 'bellows', dx: 0, dy: -10 }],
   quench: [{ kind: 'quench', dx: 0, dy: -14 }],
-  grindstone: [{ kind: 'wheel', dx: 0, dy: -22 }, { kind: 'worker', dx: 24, dy: 0, face: -1 }],
-  engraver: [{ kind: 'work', dx: -10, dy: -24 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
-  jeweler: [{ kind: 'work', dx: -6, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
-  sewing: [{ kind: 'work', dx: 0, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
-  loom: [{ kind: 'work', dx: 0, dy: -40 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
+  grindstone: [{ kind: 'wheel', dx: 0, dy: -22 }, { kind: 'worker', dx: 24, dy: 0, face: 'left' }],
+  engraver: [{ kind: 'work', dx: -10, dy: -24 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
+  jeweler: [{ kind: 'work', dx: -6, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
+  sewing: [{ kind: 'work', dx: 0, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
+  loom: [{ kind: 'work', dx: 0, dy: -40 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
   mushbed_2: [{ kind: 'work', dx: 0, dy: -10 }],
-  desk: [{ kind: 'worker', dx: 0, dy: 0, face: 0 }],
+  desk: [{ kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
   maptable: [{ kind: 'seat', dx: -18, dy: 0 }, { kind: 'seat', dx: 18, dy: 0 }],
-  dummy: [{ kind: 'worker', dx: -22, dy: 0, face: 1 }],
+  dummy: [{ kind: 'worker', dx: -22, dy: 0, face: 'right' }],
 };
 
 /** Suggested spots for the props of a template (kinds the template already has are left out). */
@@ -92,7 +117,7 @@ export function autoSpots(tpl) {
     for (const s of PROP_SPOTS[p.s] || []) {
       if (have.has(s.kind) && s.kind !== 'light') continue;
       const { dx, dy, ...rest } = s;
-      out.push({ ...rest, x: Math.round(p.x + (p.flip ? -dx : dx)), y: Math.round(p.y + dy), ...(s.face !== undefined ? { face: p.flip ? -s.face : s.face } : {}) });
+      out.push({ ...rest, x: Math.round(p.x + (p.flip ? -dx : dx)), y: Math.round(p.y + dy), ...(s.face !== undefined ? { face: p.flip ? ({ left: 'right', right: 'left' }[s.face] || s.face) : s.face } : {}) });
     }
   }
   return out;

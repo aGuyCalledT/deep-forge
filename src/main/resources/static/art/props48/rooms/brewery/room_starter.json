@@ -80,7 +80,7 @@
    "kind": "worker",
    "x": 144,
    "y": 135,
-   "face": 0
+   "face": "front"
   }
  ]
 }

@@ -10,13 +10,13 @@ def build_sheets():
     S = {}
     for sex in 'mf':
         S[f'front_legs_{sex}'] = [legs(sex, 'front', f) for f in range(4)]
-        S[f'back_legs_{sex}'] = [legs(sex, 'back', f) for f in range(3)]
-        S[f'side_legs_{sex}'] = [legs(sex, 'side', f) for f in range(3)]
+        S[f'back_legs_{sex}'] = [legs(sex, 'back', f) for f in range(4)]
+        S[f'side_legs_{sex}'] = [legs(sex, 'side', f) for f in range(4)]
         for v in VIEWS:
             S[f'{v}_body_{sex}'] = [body(sex, v)]
             S[f'{v}_vest_{sex}'] = [vest(sex, v)]
         S[f'front_arms_{sex}'] = [front_arms(sex, f) for f in range(6)]
-        S[f'back_arms_{sex}'] = [back_arms(sex, f) for f in range(3)]
+        S[f'back_arms_{sex}'] = [back_arms(sex, f) for f in range(6)]
         S[f'front_face_{sex}'] = [face('front', m, sex) for m in MOODS]
         S[f'side_face_{sex}'] = [face('side', m, sex) for m in MOODS]
     S['side_arm_far'] = [side_arm('m', f, True) for f in range(6)]
@@ -31,7 +31,7 @@ def build_sheets():
     return S
 
 # ------------------------------------------------------------------ poses: per frame (legs, arms, dy, mood, prop)
-# front arms: 0 walk A, 1 stand, 2 walk B, 3 hands down, 4 hand at chest, 5 hand at mouth; legs 3 = seated
+# front arms: 0 walk A, 1 stand, 2 walk B, 3 hands down, 4 hand at chest, 5 hand at mouth; legs 3 = seated (all views)
 POSES = {
  'idle':    ('front', [(1, 1, 0, None, None), (1, 1, 1, None, None)]),
  'talk':    ('front', [(1, 1, 0, 'open', None), (1, 1, 0, None, None), (1, 1, 0, 'open', None), (1, 1, 0, None, None)]),
@@ -47,6 +47,13 @@ POSES = {
  'idleSide': ('side', [(1, 1, 0, None, None)]),
  'work':    ('side', [(1, 3, 0, None, None), (1, 4, 0, None, None), (1, 5, 0, None, None), (1, 4, 0, None, None)]),
  'sleep':   ('side', [(1, 1, 0, 'sleep', 0), (1, 1, 0, 'sleep', 1)]),
+ # seated from the side and from behind, and working in every view (back arms 3-5: at the bench, hammer up, strike)
+ 'sitSide':  ('side', [(3, 1, 5, None, None), (3, 1, 6, None, None)]),
+ 'sitBack':  ('back', [(3, 1, 5, None, None), (3, 1, 6, None, None)]),
+ 'workSit':  ('side', [(3, 3, 5, None, None), (3, 4, 5, None, None), (3, 5, 5, None, None), (3, 4, 5, None, None)]),
+ 'workBack': ('back', [(1, 3, 0, None, None), (1, 4, 0, None, None), (1, 5, 0, None, None), (1, 4, 0, None, None)]),
+ 'workSitBack': ('back', [(3, 3, 5, None, None), (3, 4, 5, None, None), (3, 5, 5, None, None), (3, 4, 5, None, None)]),
+ 'workSitFront': ('front', [(3, 3, 5, None, None), (3, 4, 5, None, None), (3, 3, 5, None, None), (3, 4, 5, None, None)]),
 }
 
 def frame_of(S, name, i):

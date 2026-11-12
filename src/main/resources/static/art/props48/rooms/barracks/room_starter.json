@@ -68,7 +68,7 @@
  "spots": [
   {
    "kind": "worker",
-   "face": 1,
+   "face": "right",
    "x": 178,
    "y": 135
   },

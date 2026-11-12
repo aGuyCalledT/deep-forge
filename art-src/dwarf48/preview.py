@@ -54,6 +54,12 @@ if __name__ == '__main__':
             look = {'sex': sex, 'hair': st, 'beard': 'full', 'hat': h, 'hatColor': '#8a5a9a' if h != 'helm' else None}
             rows.append([cell(S, look, 'idle', 0), cell(S, look, 'idleSide', 0), cell(S, look, 'idleBack', 0)]); labels.append(h + ' ' + sex)
     grid_image(rows, labels).save(f'{out}/beards_hats.png')
+    rows, labels = [], []                     # seated and working in every view
+    for sex in 'mf':
+        look = {'sex': sex, 'hair': 'short' if sex == 'm' else 'bun', 'beard': 'full'}
+        for pose in ('sitSide', 'sitBack', 'workSit', 'workBack', 'workSitBack', 'workSitFront'):
+            rows.append([cell(S, look, pose, f) for f in range(len(POSES[pose][1]))]); labels.append(f'{pose} {sex}')
+    grid_image(rows, labels).save(f'{out}/seated_work.png')
     rows, labels = [], []
     for sex in 'mf':
         look = {'sex': sex, 'hair': 'short' if sex == 'm' else 'bun', 'beard': 'full'}

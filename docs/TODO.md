@@ -173,6 +173,8 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Renderer: `hold.js` zeichnet Räume aus der Vorlage (`look`), Sitze, Betten, Arbeitsplätze und Klickflächen
       aus den Punkten statt aus `shared.js` `ROOMS`/`BAYS`; Auswahl der Vorlage im Raumfenster (`popups.js`).
 - [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
+- [x] Punkte mit Blickrichtung (vorne, links, rechts, Rücken) und sitzen; neue Zwerg-Posen sitzend/arbeitend in jeder Ansicht.
+- [ ] Schlafende in Betten: liegender Zwerg ist höher als die Matratze, im oberen Stockbett stößt er an; Decke passend zum Bett.
 - [ ] Maßstab umstellen (`hold.js`: `CELL 48`, `RH 144`, Boden 135) zusammen mit den Zwergen 48 × 64.
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.

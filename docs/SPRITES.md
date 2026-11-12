@@ -114,14 +114,18 @@ Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
   (Licht von oben links, 5 Töne je Farbe, Umriss im dunkelsten Ton des Teils). `python3 build.py <ordner>` schreibt
   die Streifen und `kit.json`, `python3 preview.py <ordner>` die Vorschauen. Wer eine PNG von Hand verbessert, darf
   `build.py` danach nicht mehr über den Ordner laufen lassen.
-- **Teile:** Beine (gehen 3, sitzen), Körper Mann/Frau, Weste, Arme (gehen, Hände unten/Brust/Mund), Kopf, Gesichter
+- **Teile:** Beine (gehen 3, sitzen in allen Ansichten), Körper Mann/Frau, Weste, Arme (gehen, Hände unten/Brust/Mund;
+  von hinten an der Werkbank, Hammer oben, Schlag), Kopf, Gesichter
   (`neutral happy angry open blink sleep`), 6 Frisuren, 5 Bärte, 3 Hüte, Dinge in der Hand, Decke zum Schlafen; je Ansicht.
 - **Posen** stehen mit Bildern und Reihenfolge in `kit.json` (`poses`, `order`): `idle talk hands sit sitTalk eat drink
-  walkFront walkBack idleBack walk idleSide work sleep`. Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
+  walkFront walkBack idleBack walk idleSide work sleep`, dazu sitzend und arbeitend in jeder Ansicht: `sitSide sitBack
+  workSit workBack workSitBack workSitFront` (Vorschau `preview/seated_work.png`). Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
   schiebt alles außer den Beinen. Schlafen ist das Seitenbild, eine Vierteldrehung nach links.
 - **Augen** wie bei den CC0-Vorlagen in `art-src/bases/`: 3 px breit, Lid oben, zwei Reihen Weiß und Iris.
 - **Umfärben:** `ramps` in `kit.json` sind Platzhalter (Haut, Haar, Tunika, Weste, Hose, Stiefel, Metall, Stoff …);
   Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `Figure.ramp(farbe, 5)`. `fixed` (Augen, Umriss) bleibt.
+- **Lader:** `static/js/dwarf48.js` (`load`, `frame(look, pose, f)`, `draw(ctx, look, pose, f, x, y, {flip})`, Umfärben
+  über `look.ramps`, `quilt: false` lässt die Decke weg). Der Raum-Editor zeigt seine Punkte damit; im Spiel noch nicht.
 
 ## Grafik 48 px (neuer Stil, noch nicht im Spiel)
 
@@ -150,14 +154,16 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
 
 Wie ein Raum eingerichtet ist, steht in Vorlagen: Wand, Boden, Gewölbe, Möbel mit Position, Ebene (`layer`: `back`
 hinter den Zwergen, `front` vor ihnen, z. B. ein Tisch, hinter dem sie sitzen), Reihenfolge, Spiegelung und Bild,
-dazu Punkte, die das Spiel liest (`worker` mit Blickrichtung, `seat`, `bar`, `bed`, `light` mit Radius, Farbe und
+dazu Punkte, die das Spiel liest (`worker` mit Blickrichtung `face` – `front`, `left`, `right`, `back` = Rücken zum
+Betrachter – und `sit`, `seat`, `bar`, `bed`, `light` mit Radius, Farbe und
 Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kettle`, `steam`, `stand`).
 
 - **Editor starten:** `python3 tools/room-editor/serve.py`, dann `http://localhost:8099` öffnen. Er braucht nur
   Python 3. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
 - **Bedienen:** Links Möbel oder Punkt wählen und in den Raum klicken. Möbel rasten am Boden ein (Alt hält sie frei).
   Ziehen verschiebt. Tasten: Pfeile (mit Shift 8 px), F spiegeln, Bild auf/ab für die Ebene, Entf, Strg+D, Strg+S,
-  Esc, L wechselt die Ebene. Links „New props go“ wählt, wohin neue Möbel kommen; der Schalter „front“ macht die
+  Esc, L wechselt die Ebene. Bei einem Punkt dreht F die Blickrichtung weiter, S schaltet sitzen/stehen; rechts steht
+  die Pose, die daraus wird (`spotPose(spot)` in `rooms48.js`, z. B. Arbeiter `back` + `sit` = `workSitBack`). Links „New props go“ wählt, wohin neue Möbel kommen; der Schalter „front“ macht die
   vordere Ebene durchsichtig. „auto spots“ setzt die Punkte, die die Möbel mitbringen (Fackel gibt Licht, Bank zwei Sitze, Amboss Funken
   und Arbeitsplatz …). Rechts steht, welche Punkte der Raumtyp mindestens braucht. Schalter für Licht, Zwerge an den
   Punkten, Animation, Raster und Zoom.

@@ -1,11 +1,12 @@
 // Room template editor: place props, mark spots, save templates for the game. See tools/room-editor/serve.py.
 import * as Art from '/static/js/art48.js';
 import * as R from '/static/js/rooms48.js';
+import * as D from '/static/js/dwarf48.js';
 
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
 const GROUPS = ['furniture', 'living', 'workshop', 'storage', 'shell', 'rock', 'ambient', 'valley', 'monster'];
-const GHOST = { worker: 'd_side', stand: 'd_stand', seat: 'd_sit', bar: 'd_drink' };
+const LOOKS = [{ sex: 'm', hair: 'short', beard: 'full' }, { sex: 'f', hair: 'bun' }, { sex: 'm', hair: 'bald', beard: 'fork', hat: 'cap' }];
 
 let types = [], idx = {}, tpl = null, cur = { type: '', part: 'room', name: '' }, dirty = false;
 let sel = null;             // {k: 'prop'|'spot', i}
@@ -13,7 +14,6 @@ let tool = null;            // null = select, {prop: name} or {spot: kind}
 let drag = null, hover = null;
 const opt = { light: true, ghost: true, anim: true, grid: false, zoom: 3, front: true };
 let placeLayer = 'back';   // where new props go
-const ghosts = {};
 const PAD = 16;                // margin around the room for things that stick out (hanging lamps, smoke)
 
 // ------------------------------------------------------------------ helpers
@@ -110,11 +110,15 @@ function buildSide() {
     } else {
       const def = R.SPOTS[o.kind];
       if (def.face) {
-        const s = el('select', { onchange: () => { o.face = +s.value; setDirty(); } });
-        for (const [v, t] of [[-1, 'left'], [0, 'front'], [1, 'right']]) s.append(el('option', { value: v, textContent: t }));
-        s.value = o.face ?? 1;
+        const s = el('select', { onchange: () => { o.face = s.value; setDirty(); } });
+        for (const v of def.sides ? ['left', 'right'] : R.FACINGS) s.append(el('option', { value: v, textContent: v === 'back' ? 'back to viewer' : v }));
+        s.value = R.facing(o);
         side.append(el('div', { class: 'row' }, el('span', { textContent: 'faces' }), s));
       }
+      if (def.sit) side.append(el('div', { class: 'row' }, el('span', { textContent: 'sits' }),
+        el('input', { type: 'checkbox', checked: !!o.sit, onchange: e => { o.sit = e.target.checked; setDirty(); } })));
+      const sp = R.spotPose(o);
+      if (sp) side.append(el('div', { class: 'row' }, el('span', { textContent: 'pose' }), el('span', { textContent: sp.pose + (sp.flip ? ' (mirrored)' : '') })));
       if (def.light) {
         side.append(num('radius', o, 'r'), num('strength', o, 'p', 0.05));
         const c = el('input', { type: 'color', value: o.c || '#ffd98e', oninput: () => { o.c = c.value; setDirty(); } });
@@ -140,7 +144,7 @@ function buildSide() {
   side.append(sl);
   const help = el('div', { class: 'help' });
   help.innerHTML = 'Click a prop or spot in the palette, then click in the room to place it. Props snap to the floor (hold <kbd>Alt</kbd> to place freely).<br>' +
-    '<kbd>Arrows</kbd> move (<kbd>Shift</kbd> ×8) · <kbd>F</kbd> flip · <kbd>L</kbd> front/back · <kbd>PgUp</kbd>/<kbd>PgDn</kbd> order · <kbd>Del</kbd> delete · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>S</kbd> save · <kbd>Esc</kbd> select tool';
+    '<kbd>Arrows</kbd> move (<kbd>Shift</kbd> ×8) · <kbd>F</kbd> flip / turn a spot · <kbd>S</kbd> sit or stand · <kbd>L</kbd> front/back · <kbd>PgUp</kbd>/<kbd>PgDn</kbd> order · <kbd>Del</kbd> delete · <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>S</kbd> save · <kbd>Esc</kbd> select tool';
   side.append(help);
 }
 function select(s) { sel = s; buildSide(); }
@@ -157,7 +161,7 @@ function place(x, y, free) {
     void kind;
   } else {
     const def = R.SPOTS[tool.spot], s = { kind: tool.spot, x, y: free ? y : (['worker', 'seat', 'bar', 'stand'].includes(tool.spot) && Math.abs(y - R.FLOOR) < 14 ? R.FLOOR : y) };
-    if (def.face) s.face = 1;
+    if (def.face) s.face = def.face;
     if (def.light) Object.assign(s, { r: 90, c: '#ffd98e', p: 0.8 });
     if (def.size) Object.assign(s, { w: 24, h: 12 });
     tpl.spots.push(s);
@@ -174,7 +178,7 @@ function duplicateSel() {
 function autoSpots() {
   const add = R.autoSpots(tpl);
   const need = cur.part === 'bay' ? R.BAY_NEEDS : (R.NEEDS[cur.type] || {});
-  if (need.worker && !tpl.spots.some(s => s.kind === 'worker') && !add.some(s => s.kind === 'worker')) add.push({ kind: 'worker', x: Math.round(W() / 2), y: R.FLOOR, face: 0 });
+  if (need.worker && !tpl.spots.some(s => s.kind === 'worker') && !add.some(s => s.kind === 'worker')) add.push({ kind: 'worker', x: Math.round(W() / 2), y: R.FLOOR, face: 'front' });
   tpl.spots.push(...add); setDirty(); buildSide();
   status(add.length ? `added ${add.length} spots` : 'nothing to add');
 }
@@ -231,7 +235,11 @@ addEventListener('keydown', e => {
   else if (ctrl && e.key === 'd') { e.preventDefault(); duplicateSel(); return; }
   else if (e.key === 'Delete' || e.key === 'Backspace') { deleteSel(); return; }
   else if ((e.key === 'f' || e.key === 'F') && sel.k === 'prop') o.flip = !o.flip;
-  else if ((e.key === 'f' || e.key === 'F') && o.face !== undefined) o.face = -o.face;
+  else if ((e.key === 'f' || e.key === 'F') && sel.k === 'spot' && R.SPOTS[o.kind].face) {     // spots: turn through the facings
+    const list = R.SPOTS[o.kind].sides ? ['left', 'right'] : R.FACINGS;
+    o.face = list[(list.indexOf(R.facing(o)) + 1) % list.length]; status(`faces ${o.face}`);
+  }
+  else if ((e.key === 's' || e.key === 'S') && !ctrl && sel.k === 'spot' && R.SPOTS[o.kind].sit) { o.sit = !o.sit; status(o.sit ? 'sits' : 'stands'); }
   else if ((e.key === 'l' || e.key === 'L') && sel.k === 'prop') { o.layer = R.layerOf(o) === 'front' ? 'back' : 'front'; status(`layer: ${o.layer}`); }
   else if (e.key === 'PageUp' && sel.k === 'prop') { e.preventDefault(); o.z = (o.z || 0) + 1; }
   else if (e.key === 'PageDown' && sel.k === 'prop') { e.preventDefault(); o.z = (o.z || 0) - 1; }
@@ -249,14 +257,12 @@ function frameLoop(now) {
   og.clearRect(0, 0, off.width, off.height);
   og.save(); og.beginPath(); og.rect(PAD, PAD, w, R.RH); og.clip();
   const between = !opt.ghost ? null : (g, x0, y0) => {
-    g.globalAlpha = 0.8;
-    for (const s of tpl.spots) {
-      const im = ghosts[GHOST[s.kind]];
-      if (!im || !im.complete) continue;
-      g.save(); g.translate(x0 + s.x, y0 + s.y);
-      if (s.face === -1) g.scale(-1, 1);
-      g.drawImage(im, -24, -62); g.restore();
-    }
+    if (!D.ready()) return;
+    g.globalAlpha = 0.85;
+    tpl.spots.forEach((s, i) => {
+      const sp = R.spotPose(s);
+      if (sp) D.draw(g, s.kind === 'bed' ? { ...LOOKS[i % LOOKS.length], quilt: false } : LOOKS[i % LOOKS.length], sp.pose, Math.floor(t * 4 + i), x0 + s.x, y0 + s.y, { flip: sp.flip });
+    });
     g.globalAlpha = 1;
   };
   R.drawRoom(og, tpl, PAD, PAD, t, { light: opt.light, worldX: 0, between, front: opt.front ? 1 : 0.35 });
@@ -291,7 +297,9 @@ function frameLoop(now) {
     ctx.fillStyle = d.c; ctx.strokeStyle = on ? '#fff' : '#111'; ctx.lineWidth = on ? 2 : 1;
     ctx.fillRect(x - r, y - r, 2 * r, 2 * r); ctx.strokeRect(x - r, y - r, 2 * r, 2 * r);
     ctx.fillStyle = '#111'; ctx.fillText(d.t, x, y + 0.5);
-    if (s.face) { ctx.fillStyle = d.c; ctx.beginPath(); ctx.moveTo(x + s.face * (r + 6), y); ctx.lineTo(x + s.face * (r + 1), y - 4); ctx.lineTo(x + s.face * (r + 1), y + 4); ctx.fill(); }
+    const fc = d.face ? R.facing(s) : null, dir = fc === 'left' ? -1 : fc === 'right' ? 1 : 0;
+    if (dir) { ctx.fillStyle = d.c; ctx.beginPath(); ctx.moveTo(x + dir * (r + 6), y); ctx.lineTo(x + dir * (r + 1), y - 4); ctx.lineTo(x + dir * (r + 1), y + 4); ctx.fill(); }
+    if (fc === 'back') { ctx.fillStyle = d.c; ctx.beginPath(); ctx.moveTo(x, y - r - 6); ctx.lineTo(x - 4, y - r - 1); ctx.lineTo(x + 4, y - r - 1); ctx.fill(); }
     ctx.lineWidth = 1;
   });
   // placement preview
@@ -365,7 +373,7 @@ addEventListener('beforeunload', e => { if (dirty) e.preventDefault(); });
 // ------------------------------------------------------------------ start
 (async () => {
   await Art.load('/static/art/props48/');
-  for (const n of Object.values(GHOST)) { ghosts[n] = new Image(); ghosts[n].src = `/dwarves/${n}.png`; }
+  D.load('/static/art/dwarf48/').catch(e => status('dwarf kit missing: ' + e));
   for (const w of R.WALLS) $('wall').append(el('option', { value: w, textContent: w.replace('wall_', '') }));
   for (const f of R.FLOORS) $('floor').append(el('option', { value: f, textContent: f.replace('floor_', '') }));
   const d = await api('/api/rooms');
