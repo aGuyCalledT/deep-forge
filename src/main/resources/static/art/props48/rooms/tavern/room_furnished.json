@@ -1,0 +1,291 @@
+{
+ "version": 1,
+ "type": "tavern",
+ "part": "room",
+ "name": "furnished",
+ "cells": 9,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "rug",
+   "x": 196,
+   "y": 131,
+   "flip": false,
+   "z": -1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "fireplace",
+   "x": 64,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "stool",
+   "x": 128,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "chandelier",
+   "x": 196,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 116,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 284,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "herbs",
+   "x": 300,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bench",
+   "x": 176,
+   "y": 127,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bench",
+   "x": 216,
+   "y": 127,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "longtable",
+   "x": 196,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  },
+  {
+   "s": "mug",
+   "x": 180,
+   "y": 115,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  },
+  {
+   "s": "plate",
+   "x": 200,
+   "y": 115,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  },
+  {
+   "s": "mug",
+   "x": 220,
+   "y": 115,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  },
+  {
+   "s": "stool",
+   "x": 272,
+   "y": 127,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "table",
+   "x": 272,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  },
+  {
+   "s": "mug",
+   "x": 276,
+   "y": 113,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  },
+  {
+   "s": "bar",
+   "x": 352,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bottles",
+   "x": 340,
+   "y": 87,
+   "flip": false,
+   "z": 1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "mug",
+   "x": 372,
+   "y": 89,
+   "flip": false,
+   "z": 1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "barrel",
+   "x": 416,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "cat",
+   "x": 104,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "seat",
+   "x": 164,
+   "y": 127
+  },
+  {
+   "kind": "seat",
+   "x": 196,
+   "y": 127
+  },
+  {
+   "kind": "seat",
+   "x": 228,
+   "y": 127
+  },
+  {
+   "kind": "seat",
+   "x": 272,
+   "y": 127
+  },
+  {
+   "kind": "seat",
+   "x": 128,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "bar",
+   "x": 332,
+   "y": 135,
+   "face": "back"
+  },
+  {
+   "kind": "bar",
+   "x": 368,
+   "y": 135,
+   "face": "back"
+  },
+  {
+   "kind": "worker",
+   "x": 400,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ff9450",
+   "p": 0.95,
+   "x": 64,
+   "y": 111
+  },
+  {
+   "kind": "fire",
+   "w": 30,
+   "h": 16,
+   "x": 64,
+   "y": 123
+  },
+  {
+   "kind": "chimney",
+   "x": 64,
+   "y": 75
+  },
+  {
+   "kind": "light",
+   "r": 130,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 196,
+   "y": 26
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 116,
+   "y": 61
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 284,
+   "y": 61
+  }
+ ]
+}

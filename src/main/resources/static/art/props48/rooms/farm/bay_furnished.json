@@ -1,0 +1,51 @@
+{
+ "version": 1,
+ "type": "farm",
+ "part": "bay",
+ "name": "furnished",
+ "cells": 2,
+ "wall": "wall_rock",
+ "floor": "floor_earth",
+ "vault": false,
+ "props": [
+  {
+   "s": "mushbed_2",
+   "x": 44,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 84,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 80,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "work",
+   "x": 44,
+   "y": 125
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 84,
+   "y": 61
+  }
+ ]
+}

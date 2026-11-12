@@ -2,106 +2,129 @@
  "barracks": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "brewery": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "engraver": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "expedition_hall": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "farm": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "forge": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "grindstone": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "jeweler": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "quarters": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "smelter": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "tailor": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "tavern": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "trade_depot": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "vault": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "warehouse": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  }

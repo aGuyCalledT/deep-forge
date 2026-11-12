@@ -1,0 +1,108 @@
+{
+ "version": 1,
+ "type": "trade_depot",
+ "part": "room",
+ "name": "furnished",
+ "cells": 7,
+ "wall": "wall_brick",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "cart",
+   "x": 64,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "scales",
+   "x": 160,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "noticeboard",
+   "x": 240,
+   "y": 91,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "goods",
+   "x": 236,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "crate",
+   "x": 300,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "crate",
+   "x": 300,
+   "y": 115,
+   "flip": false,
+   "z": 1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "lantern",
+   "x": 160,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 112,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "stand",
+   "x": 200,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 160,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 112,
+   "y": 61
+  }
+ ]
+}

@@ -1,0 +1,107 @@
+{
+ "version": 1,
+ "type": "smelter",
+ "part": "room",
+ "name": "furnished",
+ "cells": 7,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "smelter",
+   "x": 72,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bellows",
+   "x": 140,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "ore_pile",
+   "x": 232,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "coal_pile",
+   "x": 280,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "crate",
+   "x": 316,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 216,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 180,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "light",
+   "r": 90,
+   "c": "#ff8a4a",
+   "p": 0.95,
+   "x": 71,
+   "y": 119
+  },
+  {
+   "kind": "fire",
+   "w": 18,
+   "h": 14,
+   "x": 71,
+   "y": 125
+  },
+  {
+   "kind": "chimney",
+   "x": 71,
+   "y": 47
+  },
+  {
+   "kind": "bellows",
+   "x": 140,
+   "y": 125
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 216,
+   "y": 61
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+ "version": 1,
+ "type": "brewery",
+ "part": "bay",
+ "name": "furnished",
+ "cells": 2,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "vats",
+   "x": 44,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 84,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 84,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 84,
+   "y": 61
+  }
+ ]
+}
