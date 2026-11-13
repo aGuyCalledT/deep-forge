@@ -186,14 +186,14 @@ public class ApiController {
     @PostMapping("/rooms/save")
     public Map<String, Object> saveRoom(@RequestBody Map<String, Object> b, HttpServletRequest req) {
         Store.User u = user(req);
-        looks.save(u, auth.isAdmin(u), str(b.get("type")), str(b.getOrDefault("part", "room")), str(b.get("name")), b.get("data"));
+        looks.save(u, str(b.get("type")), str(b.getOrDefault("part", "room")), str(b.get("name")), b.get("data"));
         return looks.list(u);
     }
 
     @PostMapping("/rooms/delete")
     public Map<String, Object> deleteRoom(@RequestBody Map<String, Object> b, HttpServletRequest req) {
         Store.User u = user(req);
-        looks.delete(u, auth.isAdmin(u), str(b.get("type")), str(b.getOrDefault("part", "room")), str(b.get("name")));
+        looks.delete(u, str(b.get("type")), str(b.getOrDefault("part", "room")), str(b.get("name")));
         return looks.list(u);
     }
 

@@ -168,9 +168,9 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
   „Use“ wählt, „Copy“ öffnet eine Kopie im Editor, „Edit“ die eigene, „Make a new look“ eine Kopie der aktuellen. Der
   Editor (`static/editor/`) läuft als Fenster über dem Spiel (`openEditor` in `popups.js`, `?embed=1&type=&part=&name=&copy=1`)
   und meldet `saved`, `deleted` und `close` per `postMessage`; nach dem Speichern bekommt der Raum die neue Vorlage.
-  Am Handy liegen die Ansichts-Schalter hinter „View“.
+  Am Handy (≤ 760 px) gibt es nur die Liste mit „Use“, Editor-Knöpfe fehlen dort.
 - **Spieler-Vorlagen** speichert der Server in der Tabelle `room_templates` (`RoomTemplates.java`): jeder Eingeloggte
-  darf Vorlagen anlegen (höchstens 40), alle sehen und nutzen sie, ändern oder löschen darf nur der Ersteller (oder ein
+  darf Vorlagen anlegen (höchstens 40), alle sehen und nutzen sie, ändern oder löschen darf nur der Ersteller (auch kein
   Admin). Namen eingebauter Vorlagen sind vergeben. Der Server baut jede Vorlage aus bekannten Feldern neu auf
   (Sprites und Kacheln aus `sheet.json`, bekannte Punkte, Zahlen begrenzt). API: `GET /api/rooms` (Liste mit Ersteller),
   `GET /api/rooms/template`, `POST /api/rooms/save`, `POST /api/rooms/delete`.

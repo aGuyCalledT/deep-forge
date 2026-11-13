@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 /**
  * Room looks (templates of the 48-px art): the built-in ones shipped as files (RoomLooks) and the ones players make
  * with the room editor in the game, stored in the database and shared with everyone. A look only changes the picture.
- * Anyone logged in may make looks; only the author (or an admin) may change or delete one. Built-in names are taken.
+ * Anyone logged in may make looks; only the author may change or delete one. Built-in names are taken.
  */
 @Component
 public class RoomTemplates {
@@ -98,11 +98,11 @@ public class RoomTemplates {
         }
     }
 
-    public void save(Store.User u, boolean admin, String type, String part, String name, Object data) {
+    public void save(Store.User u, String type, String part, String name, Object data) {
         check(type, part, name);
         Actions.check(!RoomLooks.looks(type, part).contains(name), "That name belongs to a built-in look. Pick another name.");
         Store.Template old = store.template(type, part, name);
-        Actions.check(old == null || old.authorId() == u.id() || admin, "Someone else made a look with that name. Pick another name.");
+        Actions.check(old == null || old.authorId() == u.id(), "Someone else made a look with that name. Pick another name.");
         Actions.check(old != null || store.templatesBy(u.id()) < MAX_PER_PLAYER,
                 "You have made " + MAX_PER_PLAYER + " looks already. Delete one first.");
         Actions.check(data instanceof Map<?, ?>, "The look is empty. Place something and save again.");
@@ -113,16 +113,16 @@ public class RoomTemplates {
             throw new Actions.GameException("The look could not be saved. Try again.");
         }
         Actions.check(clean.length() <= MAX_BYTES, "That look is too big. Remove some furniture.");
-        store.saveTemplate(type, part, name, old != null ? old.authorId() : u.id(), clean);
+        store.saveTemplate(type, part, name, u.id(), clean);
         custom.add(key(type, part, name));
     }
 
-    public void delete(Store.User u, boolean admin, String type, String part, String name) {
+    public void delete(Store.User u, String type, String part, String name) {
         check(type, part, name);
         Actions.check(!RoomLooks.looks(type, part).contains(name), "Built-in looks can't be deleted.");
         Store.Template old = store.template(type, part, name);
         Actions.check(old != null, "That look does not exist.");
-        Actions.check(old.authorId() == u.id() || admin, "Only the dwarf who made a look can delete it.");
+        Actions.check(old.authorId() == u.id(), "Only the dwarf who made a look can delete it.");
         store.deleteTemplate(type, part, name);
         custom.remove(key(type, part, name));
     }

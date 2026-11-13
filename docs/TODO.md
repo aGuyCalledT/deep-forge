@@ -178,8 +178,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
 - [x] Raum-Editor im Spiel (Raumfenster → „Change look“): Liste aller Vorlagen mit Bild, Spieler-Vorlagen auf dem
       Server (`room_templates`), für alle sichtbar, nur vom Ersteller änderbar.
-- [ ] Spieler-Vorlagen: Melden/Ausblenden unpassender Vorlagen durch Admins, Sortieren nach Beliebtheit.
-- [ ] Editor am Handy: Werkzeugleiste ist noch hoch; Möbel-Palette und Seitenleiste als ausklappbare Leisten.
+- [ ] Spieler-Vorlagen: Sortieren nach Beliebtheit.
 - [x] Punkte mit Blickrichtung (vorne, links, rechts, Rücken) und sitzen; neue Zwerg-Posen sitzend/arbeitend in jeder Ansicht.
 - [ ] Schlafende in Betten: liegender Zwerg ist höher als die Matratze, im oberen Stockbett stößt er an; Decke passend zum Bett.
 - [x] Maßstab umgestellt (`hold.js`: `CELL 48`, `RH 144`, Boden 135), Tal, Fels, Gänge, Schacht, Treppenhäuser, Tor,

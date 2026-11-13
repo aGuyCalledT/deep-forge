@@ -55,7 +55,7 @@ function lookRow(b) {
   const list = roomLooks(b.type);
   const cur = list.includes(b.look) ? b.look : list[0];
   return h('div', { class: 'row wrap look-row' }, h('span', { class: 'small muted' }, 'Look'),
-    info('How the room is furnished. It only changes the picture, not what the room does. Pick one anyone made, or make your own in the room editor.'),
+    info('How the room is furnished. It only changes the picture, not what the room does. Pick one anyone made, or make your own in the room editor (on a bigger screen).'),
     h('span', { class: 'grow' }, h('b', null, cur ? lookName(cur) : 'Bare'), h('br'), h('span', { class: 'small muted' }, cur ? byWhom(b.type, cur) : '')),
     h('button', { class: 'btn small', onclick: () => openLooks(b) }, ico('build'), 'Change look'));
 }
@@ -73,13 +73,13 @@ function openLooks(b0) {
           lookPreview(b.type, n),
           h('div', { class: 'row wrap' },
             h('span', { class: 'grow' }, h('b', null, lookName(n)), h('br'), h('span', { class: 'small muted' }, byWhom(b.type, n))),
-            mine ? h('button', { class: 'btn small', onclick: () => openEditor({ type: b.type, name: n, building: b.id }) }, 'Edit') : null,
-            h('button', { class: 'btn small', title: 'Open a copy in the room editor', onclick: () => openEditor({ type: b.type, name: n, copy: true, building: b.id }) }, 'Copy'),
+            editorFits() && mine ? h('button', { class: 'btn small', onclick: () => openEditor({ type: b.type, name: n, building: b.id }) }, 'Edit') : null,
+            !editorFits() ? null : h('button', { class: 'btn small', title: 'Open a copy in the room editor', onclick: () => openEditor({ type: b.type, name: n, copy: true, building: b.id }) }, 'Copy'),
             n === cur ? h('span', { class: 'chip-in-use small' }, 'In use')
               : h('button', { class: 'btn small primary', onclick: () => bus.act({ type: 'roomLook', building: b.id, look: n }) }, 'Use'))
         );
       })),
-      h('button', { class: 'btn primary wide', onclick: () => openEditor({ type: b.type, name: cur, copy: true, building: b.id }) }, ico('build'), 'Make a new look'));
+      !editorFits() ? null : h('button', { class: 'btn primary wide', onclick: () => openEditor({ type: b.type, name: cur, copy: true, building: b.id }) }, ico('build'), 'Make a new look'));
   }, null, roomMaterial(b0.type));
   refreshLooks().then(refreshSheet).catch(() => {});          // others may have made new looks meanwhile
 }
@@ -105,12 +105,14 @@ function lookPreview(type, n) {
 // ------------------------------------------------------------------ the room editor, inside the game
 
 let dock = null;
+/** The editor needs room for its palette and side bar: offered on bigger screens only, not on phones. */
+const editorFits = () => matchMedia('(min-width: 761px)').matches;
 /**
  * Open the room editor over the game ({type, part, name, copy, building}). It runs in a frame and tells the game
  * when it saved a look (then the room gets it) and when it is closed.
  */
 export function openEditor(o = {}) {
-  if (dock) return;
+  if (dock || !editorFits()) return;
   const q = new URLSearchParams({ embed: '1', type: o.type || '', part: o.part || 'room', name: o.name || '' });
   if (o.copy) q.set('copy', '1');
   const frame = h('iframe', { class: 'editor-frame', src: 'editor/index.html?' + q, title: 'Room editor' });
