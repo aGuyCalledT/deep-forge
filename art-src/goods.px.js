@@ -22,7 +22,6 @@ sprite("bar", { w: 14, h: 14, outline: "k" }, (c) => {
 });
 
 const ITEM = {
-  pickaxe: (c) => { c.line(3, 13, 10, 3, "v"); c.line(4, 13, 11, 3, "W"); c.poly([2, 3, 7, 1, 13, 1, 13, 3, 7, 3], "M"); c.hline(7, 1, 6, "X"); c.px(2, 4, "m"); },
   axe: (c) => { c.line(3, 13, 9, 2, "v"); c.ellipse(10, 4, 3, 4, "M"); c.vline(12, 1, 7, "X"); c.px(8, 3, "m"); c.px(9, 7, "m"); },
   helm: (c) => { c.ellipse(7, 7, 6, 5, "M"); c.rect(1, 7, 13, 4, "_"); c.rect(1, 7, 13, 2, "x"); c.rect(6, 7, 2, 5, "M"); c.rect(3, 3, 4, 2, "X"); c.px(1, 8, "m"); c.px(13, 8, "m"); },
   mail: (c) => { c.rect(3, 2, 8, 11, "M"); c.rect(1, 3, 3, 5, "M"); c.rect(10, 3, 3, 5, "M"); c.rect(5, 1, 4, 2, "_");
@@ -41,14 +40,7 @@ const ITEM = {
   compass: (c) => { c.circ(7, 7, 6, "M"); c.circ(7, 7, 5, "x"); c.circ(7, 7, 4, "C"); c.line(7, 4, 7, 7, "&"); c.line(7, 8, 7, 10, "4"); c.px(7, 7, "k"); c.px(7, 0, "X"); c.hline(3, 13, 9, "m"); },
   music_box: (c) => { c.rect(1, 5, 12, 8, "M"); c.rect(1, 2, 12, 3, "X"); c.hline(1, 4, 12, "m"); c.hline(1, 12, 12, "m"); c.ring(5, 9, 2, "O"); c.px(5, 9, "j"); c.ring(9, 9, 1, "O"); c.line(13, 7, 13, 10, "x"); c.px(13, 6, "x"); },
   regalia: (c) => { c.poly([1, 8, 1, 3, 3, 6, 5, 1, 7, 6, 9, 3, 9, 8], "M"); c.hline(1, 8, 9, "m"); c.px(3, 7, "N"); c.px(5, 7, "H"); c.px(7, 7, "P"); c.line(8, 13, 12, 5, "4"); c.line(9, 13, 13, 5, "5"); c.circ(12, 4, 1, "M"); c.px(12, 3, "X"); c.rect(1, 10, 6, 3, "&"); c.hline(1, 10, 6, "C"); },
-  // a tool for every job (metal head in M/m/X/x, wooden handle v/W)
-  hammer: (c) => { c.line(5, 13, 8, 6, "v"); c.line(6, 13, 9, 6, "W"); c.rect(3, 2, 10, 4, "M"); c.hline(3, 2, 10, "X"); c.hline(3, 5, 10, "m"); c.rect(2, 3, 1, 2, "x"); c.rect(12, 2, 2, 4, "x"); c.vline(8, 2, 4, "m"); },
-  ladle: (c) => { c.line(2, 1, 8, 7, "v"); c.line(3, 1, 9, 7, "W"); c.ellipse(10, 10, 3, 3, "M"); c.hline(7, 9, 7, "X"); c.rect(8, 10, 5, 2, "y"); c.px(9, 10, "Y"); c.hline(8, 13, 5, "m"); },
-  sickle: (c) => { c.ring(7, 6, 5, "M"); c.rect(1, 6, 13, 7, "_"); c.rect(7, 1, 7, 5, "_"); c.ring(7, 6, 4, "x"); c.px(2, 5, "X"); c.line(3, 13, 6, 9, "v"); c.line(4, 13, 7, 9, "W"); },
-  chisel: (c) => { c.rect(5, 1, 4, 6, "v"); c.vline(5, 1, 6, "W"); c.rect(5, 6, 4, 1, "m"); c.rect(6, 7, 2, 5, "M"); c.vline(6, 7, 5, "X"); c.px(6, 12, "x"); c.px(7, 12, "m"); c.px(6, 13, "X"); },
-  scales: (c) => { c.vline(7, 2, 10, "M"); c.hline(2, 3, 11, "x"); c.px(7, 1, "X"); c.line(2, 3, 1, 7, "m"); c.line(2, 3, 4, 7, "m"); c.line(12, 3, 10, 7, "m"); c.line(12, 3, 13, 7, "m");
-    c.hline(1, 8, 4, "X"); c.hline(10, 8, 4, "X"); c.rect(4, 12, 7, 2, "M"); c.hline(4, 13, 7, "m"); },
-  staff: (c) => { c.line(3, 13, 9, 4, "v"); c.line(4, 13, 10, 4, "W"); c.ring(10, 3, 2, "M"); c.px(10, 3, "P"); c.px(9, 2, "9"); c.px(12, 1, "X"); c.px(11, 5, "m"); },
+  // tools for every job, the pickaxe among them: tools.px.js
 };
 for (const [k, fn] of Object.entries(ITEM)) sprite("item_" + k, { w: 14, h: 14, outline: "k" }, fn);
 // little marks for finished goods
