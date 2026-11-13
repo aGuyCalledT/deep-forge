@@ -6,9 +6,10 @@
 <title>Deep Forge room editor</title>
 <link rel="icon" href="data:,">
 <style>
+  @font-face { font-family: "Minecraft"; src: url("../fonts/minecraft.ttf") format("truetype"); }
   :root { --bg: #1b1418; --panel: #261c22; --line: #3d2e36; --text: #eadbc8; --dim: #a8968a; --gold: #f0c060; --bad: #ff7a6a; --good: #7fd07f; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.35 system-ui, sans-serif; height: 100vh; display: grid;
+  body { margin: 0; background: var(--bg); color: var(--text); font: 12px/1.4 "Minecraft", monospace; font-synthesis: none; height: 100vh; display: grid;
          grid-template-rows: auto 1fr; grid-template-columns: 230px 1fr 270px; grid-template-areas: "top top top" "pal stage side"; }
   header { grid-area: top; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
   header .grow { flex: 1; }
@@ -22,26 +23,26 @@
   button.on { background: #4a3a20; border-color: var(--gold); }
   .dirty { color: var(--gold); }
   #pal { grid-area: pal; overflow-y: auto; border-right: 1px solid var(--line); padding: 6px; }
-  #pal h3 { margin: 10px 2px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  #pal h3 { margin: 10px 2px 4px; font-size: 12px; text-transform: uppercase; color: var(--dim); }
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
-  .tool { background: #2e2228; border: 1px solid transparent; border-radius: 4px; padding: 2px; cursor: pointer; text-align: center; font-size: 9px; color: var(--dim); overflow: hidden; }
+  .tool { background: #2e2228; border: 1px solid transparent; border-radius: 4px; padding: 2px; cursor: pointer; text-align: center; font-size: 12px; color: var(--dim); overflow: hidden; }
   .tool canvas { display: block; margin: 0 auto; image-rendering: pixelated; }
   .tool:hover { border-color: var(--line); } .tool.on { border-color: var(--gold); color: var(--text); }
   .spots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
-  .spots .tool { text-align: left; padding: 4px 6px; font-size: 11px; color: var(--text); }
-  .dot { display: inline-block; width: 14px; height: 14px; border-radius: 3px; color: #111; font-weight: 700; font-size: 10px; text-align: center; line-height: 14px; margin-right: 4px; }
+  .spots .tool { text-align: left; padding: 4px 6px; font-size: 12px; color: var(--text); }
+  .dot { display: inline-block; width: 14px; height: 14px; border-radius: 3px; color: #111; font-weight: 400; font-size: 12px; text-align: center; line-height: 14px; margin-right: 4px; }
   #stage { grid-area: stage; overflow: auto; position: relative; background: #120d10; }
   #stage canvas { display: block; margin: 24px; image-rendering: pixelated; cursor: crosshair; }
   #side { grid-area: side; overflow-y: auto; border-left: 1px solid var(--line); padding: 8px 10px; }
-  #side h3 { margin: 12px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  #side h3 { margin: 12px 0 6px; font-size: 12px; text-transform: uppercase; color: var(--dim); }
   .row { display: flex; gap: 6px; align-items: center; margin: 4px 0; } .row > span:first-child { width: 58px; color: var(--dim); }
   .need { margin: 2px 0; } .need.ok { color: var(--good); } .need.bad { color: var(--bad); }
   .layers div { padding: 2px 6px; border-radius: 3px; cursor: pointer; display: flex; justify-content: space-between; }
-  .layers .dwarfline { color: var(--dim); justify-content: center; cursor: default; font-size: 11px; }
+  .layers .dwarfline { color: var(--dim); justify-content: center; cursor: default; font-size: 12px; }
   .layers div:hover { background: #33262d; } .layers div.on { background: #4a3a20; }
-  .help { color: var(--dim); font-size: 11px; margin-top: 14px; }
-  .help kbd { background: #33262d; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; font-size: 10px; }
-  .info { width: 16px; height: 16px; padding: 0; border-radius: 50%; font: italic 700 10px/14px Georgia, serif; color: var(--dim);
+  .help { color: var(--dim); font-size: 12px; margin-top: 14px; }
+  .help kbd { background: #33262d; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; font-size: 12px; }
+  .info { width: 16px; height: 16px; padding: 0; border-radius: 50%; font: 12px/14px "Minecraft", monospace; color: var(--dim);
           background: #2e2228; border: 1px solid var(--line); flex: none; vertical-align: middle; margin-left: 4px; }
   .info:hover { color: var(--gold); border-color: var(--gold); }
   header .info { margin-left: -4px; }

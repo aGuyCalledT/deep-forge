@@ -119,9 +119,11 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   Balken (`bar`) nur für Mengen (Lager, Gesundheit, Stimmung, Hitze).
 - **Bewegung mechanisch:** Fenster fahren aus dem Bildschirmrand ein und wieder hinaus (`slideIn`/`slideOut`).
   Raumfenster docken am Desktop rechts an (beim Hovern erscheint nur der grüne Umriss). Bei `prefers-reduced-motion` bewegt sich nichts.
-- Schriften (selbst gehostet in `static/fonts/`): Germania One für Titel, Alegreya Sans für Text, Alegreya Sans SC
-  für Knöpfe und Tabs, Kalam für Handschrift auf Papier. Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
-  Räume tragen keine Namensschilder mehr im Canvas.
+- Schriften (selbst gehostet in `static/fonts/`, Pixelschriften): Alagard für Überschriften, Cavalhatriz für Handschrift
+  auf Papier, Minecraft für alles andere (Text, Knöpfe, Tabs). Es gibt nur einen Schnitt: nichts fett, Hervorhebung
+  über Farbe (`b`/`strong` in `--hl`, auf Papier rot). Größen in Vielfachen von 4 px (8, 12, 16, 20, 24), sonst
+  verschwimmen die Pixel; kein `letter-spacing`. Fehlende Zeichen (· × → ↑ ↓ – — ∞ ’ …) ergänzt
+  `tools/fonts/add_glyphs.py`. Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
 - Im Spiel klicken statt Menüs: Räume und Zwerge öffnen ihr Fenster direkt (`popups.js`), Hover zeigt einen
   grünen Umriss, stillstehende Werkstätten mit Material bekommen einen grünen Pfeil.
 - Farben aus den CSS-Variablen in `style.css`.
