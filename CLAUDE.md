@@ -116,7 +116,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   Neigung je id verschieden, Nagel oder Wachssiegel), Handschrift Kalam, Abhakliste `todo()`.
 - **Sanduhr** statt Balken für ablaufende Zeit: `hourglass({job, machine} | {from, to} | {p})`, echter Fortschritt.
   Balken (`bar`) nur für Mengen (Lager, Gesundheit, Stimmung, Hitze).
-- **Bewegung mechanisch:** Fenster fahren aus dem Bildschirmrand ein und wieder hinaus (`slideIn`/`slideOut`), das
+- **Bewegung mechanisch:** Fenster fahren aus dem Bildschirmrand ein und wieder hinaus (`slideIn`/`slideOut`).
   Raumfenster docken am Desktop rechts an (beim Hovern erscheint nur der grüne Umriss). Bei `prefers-reduced-motion` bewegt sich nichts.
 - Schriften (selbst gehostet in `static/fonts/`): Germania One für Titel, Alegreya Sans für Text, Alegreya Sans SC
   für Knöpfe und Tabs, Kalam für Handschrift auf Papier. Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
