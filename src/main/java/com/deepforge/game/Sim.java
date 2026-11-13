@@ -15,7 +15,7 @@ public final class Sim {
 
     public static final double STEP = 60;
     public static final double MAX_CATCHUP = 7 * 86400;
-    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "tailor", "farm", "brewery");
+    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "mechanic", "tailor", "farm", "brewery");
     static final List<String> RAIDERS = List.of("Goblin warband", "Bandit gang", "Orc raiders", "Kobold swarm", "Troll pack");
 
     public static void advance(Fortress f, double now, Market market) {
@@ -563,6 +563,10 @@ public final class Sim {
             case "alloy" -> "alloying " + Content.METALS.get(j.mat).name().toLowerCase();
             case "craft" -> "forging " + Content.METALS.get(j.mat).name().toLowerCase() + " "
                     + Content.ITEMS.get(j.itype).name().toLowerCase();
+            case "assemble" -> "making a " + Content.METALS.get(j.mat).name().toLowerCase() + " "
+                    + Content.ITEMS.get(j.itype).name().toLowerCase();
+            case "gears" -> "cutting gears";
+            case "inlay" -> "inlaying " + (j.inItem == null ? "" : Content.goodName(j.inItem).toLowerCase());
             case "cutgem" -> "cutting a gem";
             case "weave" -> "weaving cloth";
             case "sew" -> "sewing a " + Content.goodName(Content.wearKey(j.itype, j.mat)).toLowerCase();
@@ -593,6 +597,24 @@ public final class Sim {
         Job j = b.job;
         if (j.recipe.equals("craft")) {
             toAnvil(f, b, w, j.time / Math.max(0.1, rate) / H, r, at);
+            return;
+        }
+        if (j.recipe.equals("assemble")) {   // no anvil: the mechanic's own skill decides the quality
+            Forging g = new Forging();
+            g.id = f.nextId++;
+            g.building = b.id;
+            g.itype = j.itype;
+            g.mat = j.mat;
+            g.dwarf = w == null ? 0 : w.id;
+            g.skill = w == null ? 0 : skill(w, "crafting");
+            g.nimble = w != null && has(w, "nimble");
+            g.level = b.level;
+            g.hours = j.time / Math.max(0.1, rate) / H;
+            g.at = at;
+            g.craft = "crafting";
+            b.job = null;
+            Smithed s = finishForging(f, g, 0, r, at, false);
+            if (s.key != null && s.quality >= 3) log(f, at, "good", "The fine mechanic made a " + Content.goodName(s.key).toLowerCase() + ".");
             return;
         }
         for (Map.Entry<String, Integer> e : j.out.entrySet()) add(f, e.getKey(), e.getValue());
@@ -656,7 +678,7 @@ public final class Sim {
      */
     public static Smithed finishForging(Fortress f, Forging g, double play, Rng r, double at, boolean byHand) {
         Dwarf w = g.dwarf == 0 ? null : dwarf(f, g.dwarf);
-        if (w != null) addXp(w, "smithing", 6 + 6 * play);
+        if (w != null) addXp(w, g.craft == null ? "smithing" : g.craft, 6 + 6 * play);
         Smithed out = new Smithed();
         out.forging = g.id;
         out.score = play;

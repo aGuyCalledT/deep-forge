@@ -76,12 +76,18 @@ public final class Content {
     public static final List<String> SKILLS = List.of("mining", "smelting", "smithing", "crafting", "farming", "combat", "trading");
     public static final List<String> CATEGORIES = List.of("ore", "materials", "gems", "provisions", "bars",
             "tools", "weapons", "armor", "hardware", "tableware", "jewelry", "clothing");
-    public static final List<String> BLUEPRINTS = List.of("steelmaking", "mail", "crown", "starsteel");
+    public static final List<String> BLUEPRINTS = List.of("steelmaking", "mail", "crown", "starsteel", "clockwork", "regalia");
     public static final Map<String, String> BLUEPRINT_NAMES = Map.of(
             "steelmaking", "Steelmaking (pig iron and steel)",
             "mail", "Chain mail",
             "crown", "Crowns",
-            "starsteel", "Star steel (steel, platinum and aluminum)");
+            "starsteel", "Star steel (steel, platinum and aluminum)",
+            "clockwork", "Clockwork (sea compass and music box)",
+            "regalia", "Crown and regalia");
+    /** Pieces made from several materials at the fine mechanic's bench: item type -> what goes in besides its own bars. */
+    public static final Map<String, Map<String, Integer>> PARTS = new LinkedHashMap<>();
+    public static final String INLAY_METAL = "gold";   // the engraver lays a gold bar into the piece
+    public static final int INLAY_BARS = 1;
 
     // ---------------------------------------------------------------- helpers
 
@@ -108,6 +114,22 @@ public final class Content {
         Map<String, Integer> m = new LinkedHashMap<>();
         for (int i = 0; i < kv.length; i += 2) m.put((String) kv[i], (Integer) kv[i + 1]);
         return m;
+    }
+
+    private static void assembled(String id, String name, int bars, double factor, int skill, String cat, String rule,
+                                  String slot, List<String> mods, String blueprint, String note, Object... parts) {
+        ITEMS.put(id, new ItemType(id, name, bars, factor, skill, cat, rule, slot, mods, blueprint, note));
+        Map<String, Integer> m = new LinkedHashMap<>();
+        for (int i = 0; i < parts.length; i += 2) m.put((String) parts[i], (Integer) parts[i + 1]);
+        PARTS.put(id, m);
+    }
+
+    /** Base value of what goes into a piece besides its own bars (parts of assembled pieces, the inlay). */
+    public static double extraValue(String type, String mods) {
+        double v = 0;
+        for (Map.Entry<String, Integer> e : PARTS.getOrDefault(type, Map.of()).entrySet()) v += baseValue(e.getKey()) * e.getValue();
+        if (mods.contains("i")) v += 2 * INLAY_BARS * METALS.get(INLAY_METAL).value();
+        return v;
     }
 
     private static void building(String id, String name, String kind, String skill, boolean multi,
@@ -223,6 +245,7 @@ public final class Content {
         raw("stone", "Stone", "#7d7a73", 100, "materials", "For building and upgrades.");
         raw("rough_gem", "Rough gem", "#5fb7a6", 2500, "gems", "Cut it at the jeweler.");
         raw("cut_gem", "Cut gem", "#6fe0c8", 6000, "gems", "Set it into rings, crowns and goblets.");
+        raw("gears", "Gears", "#b9a052", 4500, "materials", "Brass clockwork from the fine mechanic. Goes into locks, compasses and music boxes.");
         raw("cloth", "Cloth", "#c9b28a", 400, "materials", "Woven from mushroom fibre at the tailor. Sew it into clothes.");
         raw("food", "Cave mushrooms", "#b48a5a", 200, "provisions", "Every dwarf eats.");
         raw("ale", "Ale", "#d9a94a", 300, "provisions", "Every dwarf drinks. Happy dwarves drink more.");
@@ -239,24 +262,45 @@ public final class Content {
         // --- item types. rule: hard = hardness >= 3 (not pig iron), precious = precious metals only, any = all
         ITEMS.put("pickaxe", new ItemType("pickaxe", "Pickaxe", 2, 1.5, 1, "tools", "tool", "tool", List.of("s", "e"), null,
                 "Equip a miner: digs faster, and harder metal breaks harder rock. Wears out."));
-        ITEMS.put("axe", new ItemType("axe", "Battle axe", 2, 1.8, 2, "weapons", "hard", "weapon", List.of("s", "e"), null,
+        ITEMS.put("axe", new ItemType("axe", "Battle axe", 2, 1.8, 2, "weapons", "hard", "weapon", List.of("s", "e", "i"), null,
                 "Equip a warrior: hits harder."));
-        ITEMS.put("helm", new ItemType("helm", "Helm", 2, 1.6, 2, "armor", "hard", "helm", List.of("e"), null,
+        ITEMS.put("helm", new ItemType("helm", "Helm", 2, 1.6, 2, "armor", "hard", "helm", List.of("e", "i"), null,
                 "Equip anyone: protects the head."));
-        ITEMS.put("mail", new ItemType("mail", "Chain mail", 4, 1.7, 3, "armor", "hard", "armor", List.of("e"), "mail",
+        ITEMS.put("mail", new ItemType("mail", "Chain mail", 4, 1.7, 3, "armor", "hard", "armor", List.of("e", "i"), "mail",
                 "Equip anyone: strong protection."));
         ITEMS.put("chain", new ItemType("chain", "Chain", 1, 1.3, 1, "hardware", "any", null, List.of(), null,
                 "Every city needs chains."));
-        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.6, 2, "tableware", "any", null, List.of("e", "g"), null,
+        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.6, 2, "tableware", "any", null, List.of("e", "g", "i"), null,
                 "Kept in stock, fine goblets make the tavern nicer."));
         ITEMS.put("ring", new ItemType("ring", "Ring", 1, 2.5, 4, "jewelry", "precious", null, List.of("e", "g"), null,
                 "Small and valuable."));
         ITEMS.put("crown", new ItemType("crown", "Crown", 3, 2.2, 5, "jewelry", "precious", null, List.of("e", "g"), "crown",
                 "Fit for a mountain king."));
 
+        // made at the fine mechanic's bench from bars and parts (PARTS); the bars of the type are its own metal
+        assembled("lamp", "Miner's lamp", 1, 1.6, 2, "tools", "only:brass", null, List.of("e"), null,
+                "A brass lamp with a copper hood. Harbors and deep mines buy them.", "bar:copper", 1);
+        assembled("lock", "Lock", 1, 1.6, 3, "hardware", "hard", null, List.of("e"), null,
+                "Steel and clockwork. Stonebridge and the harbor pay well.", "gears", 1);
+        assembled("shield", "Shield", 2, 1.6, 2, "armor", "hard", null, List.of("e", "i"), null,
+                "A round shield with a bronze rim.", "bar:bronze", 1);
+        assembled("tankards", "Tankard set", 2, 1.6, 2, "tableware", "pewter", null, List.of("e"), null,
+                "Pewter tankards with brass lids. Taverns love them.", "bar:brass", 1);
+        assembled("chalice", "Chalice", 2, 1.7, 3, "tableware", "precious", null, List.of("e", "i"), null,
+                "Gold rim, a cut gem in the foot. The monks of Highcrag pay best.", "bar:gold", 1, "cut_gem", 1);
+        assembled("parade_axe", "Parade axe", 2, 1.8, 4, "weapons", "hard", "weapon", List.of("s", "e", "i"), null,
+                "A battle axe with gold and a gem. A warrior can carry it.", "bar:gold", 1, "cut_gem", 1);
+        assembled("compass", "Sea compass", 1, 1.8, 3, "tools", "only:brass", null, List.of("e"), "clockwork",
+                "Brass, nickel silver and clockwork. Every harbor wants one.", "bar:nickel_silver", 1, "gears", 1);
+        assembled("music_box", "Music box", 1, 2.0, 4, "jewelry", "precious", null, List.of("e", "g"), "clockwork",
+                "Plays a dwarven song. Amberfall can't get enough.", "gears", 1);
+        assembled("regalia", "Crown and regalia", 3, 2.2, 5, "jewelry", "only:gold", null, List.of("e"), "regalia",
+                "Three gold bars, platinum and three cut gems. Long work, and now and then an artifact.", "bar:platinum", 1, "cut_gem", 3);
+
         MODS.put("s", new Mod("s", "Sharpened", 1.3, "grindstone", "+25% attack or digging"));
         MODS.put("e", new Mod("e", "Engraved", 1.4, "engraver", "Worth more"));
         MODS.put("g", new Mod("g", "Gem-set", 1.8, "jeweler", "Needs a cut gem"));
+        MODS.put("i", new Mod("i", "Gold-inlaid", 1.0, "engraver", "A gold bar laid in: worth twice the gold more"));
 
         // --- monsters
         MONSTERS.put("giant_rat", new Monster("giant_rat", "Giant rats", 8, "A squeaking swarm."));
@@ -313,6 +357,8 @@ public final class Content {
                 "Engraves goods. Engraved goods sell for more.");
         building("jeweler", "Jeweler", "queue", "crafting", true, 90000, goods("stone", 30, "bar:silver", 10), 32000, 20, 1.6, 0,
                 "Cuts gems and sets them into rings, crowns and goblets.");
+        building("mechanic", "Fine mechanic's bench", "queue", "crafting", true, 80000, goods("stone", 30, "bar:brass", 10), 28000, 20, 1.6, 0,
+                "Makes gears, and pieces from several materials: lamps, locks, shields, chalices, music boxes.");
         building("tailor", "Tailor", "queue", "crafting", true, 30000, goods("stone", 20), 20000, 20, 1.6, 0,
                 "Weaves cloth from mushroom fibre and sews dyed clothes. Dress your dwarves or sell them.");
         building("farm", "Mushroom farm", "continuous", "farming", true, 20000, goods("stone", 20), 15000, 20, 1.55, 1,
@@ -403,7 +449,8 @@ public final class Content {
             case "hard" -> m.hardness() >= 3 && !m.id().equals("pig_iron");
             case "tool" -> m.hardness() >= 2 && !m.precious() && !m.id().equals("pig_iron");
             case "precious" -> m.precious();
-            default -> true;
+            case "pewter" -> m.id().endsWith("_pewter");
+            default -> !t.rule().startsWith("only:") || t.rule().substring(5).equals(m.id());
         };
     }
 
@@ -475,7 +522,7 @@ public final class Content {
             String[] p = parseItem(key);
             ItemType t = ITEMS.get(p[0]);
             Metal m = METALS.get(p[1]);
-            double v = m.value() * t.bars() * t.factor() * qualityMult(t, Integer.parseInt(p[2]));
+            double v = (m.value() * t.bars() + extraValue(p[0], p[3])) * t.factor() * qualityMult(t, Integer.parseInt(p[2]));
             for (char c : p[3].toCharArray()) v *= MODS.get(String.valueOf(c)).mult();
             return v;
         }
@@ -601,6 +648,8 @@ public final class Content {
         d.put("alloys", ALLOYS.values());
         d.put("items", ITEMS.values());
         d.put("mods", MODS.values());
+        d.put("parts", PARTS);
+        d.put("inlay", Map.of("metal", INLAY_METAL, "bars", INLAY_BARS));
         d.put("layers", LAYERS);
         d.put("monsters", MONSTERS.values());
         d.put("buildings", BUILDINGS.values());

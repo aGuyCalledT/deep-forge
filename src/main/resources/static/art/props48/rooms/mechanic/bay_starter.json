@@ -1,0 +1,34 @@
+{
+ "version": 1,
+ "type": "mechanic",
+ "part": "bay",
+ "name": "starter",
+ "cells": 2,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": false,
+ "spots": [
+  {
+   "kind": "work",
+   "x": 38,
+   "y": 104
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "x": 48,
+   "y": 135,
+   "sit": true
+  }
+ ],
+ "props": [
+  {
+   "s": "desk",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ]
+}

@@ -267,11 +267,14 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Abnutzung auch für Waffen und Rüstung.
 - [x] Sternstahl (Härte 8).
 - [ ] Ein Erz der Härte 8 (braucht Grafik).
+- [x] Schritt 5: Feinmechaniker-Werkbank, Zahnräder, neun Verbundwaren, Goldeinlage.
+- [ ] Grubenlampe als zweiter Platz am Bergarbeiter (+10 % ab Schicht 3), Schild als eigener Ausrüstungsplatz,
+      Krug-Satz für die Taverne, Goldfaden-Tunika (Kleidung): bisher nur Handelsware bzw. nicht gebaut.
+- [ ] Feinmechaniker: eigene 48-px-Möbel (Vorlagen nutzen Schreibtisch, Waage, Rohre).
 - [ ] Schritt 1: Balance-Bot, Preisformel (quadratische Kosten), neue Werte und Zeiten.
 - [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
 - [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.
 - [x] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.
 - [x] Schritt 4: Ruf, Aufträge, Nachfrage alle 12 h mit Vorschau, Münze im Tresor. Aufnahme je Fach über Ruf
       (Marktmacht); die Feineinstellung „eine Ware höchstens ein Viertel des Einkommens“ kommt mit dem Balance-Bot.
-- [ ] Schritt 5: Verbundwaren, Einlage, Feinmechaniker-Werkbank.
 - [ ] Schritt 6: Ränge, Lehre, Wünsche der Zwerge.

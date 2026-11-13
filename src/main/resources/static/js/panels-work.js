@@ -2,7 +2,7 @@
 import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem, qualityStep, qualityMult } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand, statusIco } from './ui.js';
 import * as A from './audio.js';
-const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'tailor', 'farm', 'brewery', 'barracks'];
+const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'mechanic', 'tailor', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
 import { upgradeBtn, costBtn } from './panels-base.js';
 import { jobOf } from './hold.js';
@@ -242,7 +242,7 @@ const COUNTS = [1, 5, 10, 25, -1];
 const KEEPS = [2, 5, 10, 25];
 
 function orderSheet(b) {
-  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : 'cutgem', mat: null, itype: null, count: -1, keep: 0 };
+  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : b.type === 'mechanic' ? 'gears' : 'cutgem', mat: null, itype: null, count: -1, keep: 0 };
   const send = async () => {
     try {
       await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count, keep: st.keep }, false, true);
@@ -275,7 +275,7 @@ function orderSheet(b) {
       }
     } else if (b.type === 'forge') {
       parts.push(h('p', { class: 'small muted' }, 'Choose what to make, then the metal. Each piece burns 1 coal.'));
-      parts.push(h('div', { class: 'row' }, G.data.items.map((t) => {
+      parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => !(G.data.parts || {})[t.id]).map((t) => {
         const locked = t.blueprint && !f.blueprints.includes(t.blueprint);
         return h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), disabled: locked, title: locked ? 'Needs a blueprint from an expedition' : t.note,
           onclick: () => { st.itype = t.id; st.mat = null; refreshSheet(); } }, img(S.item(t.id, 'iron'), 'icon s'), t.name);
@@ -288,6 +288,23 @@ function orderSheet(b) {
         const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
         for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
         if (!metals.length) parts.push(h('p', { class: 'muted' }, 'No metal fits.'));
+      }
+    } else if (b.type === 'mechanic') {
+      parts.push(h('div', { class: 'row' }, ['gears', 'assemble'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'gears' ? 'Cut gears' : 'Make a piece'))));
+      if (st.recipe === 'gears') parts.push(h('p', null, goodIcon('bar:brass'), ' 2 brass → ', goodIcon('gears'), ` 1 gears. You have ${stock('gears')} gears.`));
+      else {
+        parts.push(h('p', { class: 'small muted' }, 'Pieces from several materials. The mechanic\'s skill decides the quality, no anvil needed.'));
+        parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => (G.data.parts || {})[t.id]).map((t) => {
+          const locked = t.blueprint && !f.blueprints.includes(t.blueprint);
+          return h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), disabled: locked, title: locked ? 'Needs a blueprint' : t.note,
+            onclick: () => { st.itype = t.id; st.mat = null; refreshSheet(); } }, img(S.item(t.id, G.data.metals.find((m) => fits(t, m)).id), 'icon s'), t.name);
+        })));
+        if (st.itype) {
+          const t = byId.items[st.itype];
+          parts.push(h('p', { class: 'small' }, t.note + ' ', info(`Skill ${t.skill} of 5. Every quality step is worth ×${qualityStep(t).toFixed(1)}.`)));
+          const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
+          for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
+        }
       }
     } else if (b.type === 'tailor') {
       parts.push(h('div', { class: 'row' }, ['weave', 'sew'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'weave' ? 'Weave cloth' : 'Sew clothes'))));
@@ -303,11 +320,12 @@ function orderSheet(b) {
         }
       }
     } else {
+      if (b.type === 'engraver') parts.push(h('div', { class: 'row' }, ['engrave', 'inlay'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'engrave' ? 'Engrave' : 'Gold inlay'))));
       if (b.type === 'jeweler') parts.push(h('div', { class: 'row' }, ['cutgem', 'setgem'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; refreshSheet(); } }, r === 'cutgem' ? 'Cut gems' : 'Set gems'))));
       if (st.recipe === 'cutgem') parts.push(h('p', null, goodIcon('rough_gem'), ' 1 rough gem → ', goodIcon('cut_gem'), ` 1 cut gem. You have ${stock('rough_gem')} rough gems.`));
       else {
-        const mod = { sharpen: 's', engrave: 'e', setgem: 'g' }[st.recipe];
-        parts.push(h('p', { class: 'small muted' }, byId.mods[mod].name + ': ' + byId.mods[mod].note + `. Worth ×${byId.mods[mod].mult}. The best matching piece is picked first.`));
+        const mod = { sharpen: 's', engrave: 'e', setgem: 'g', inlay: 'i' }[st.recipe];
+        parts.push(h('p', { class: 'small muted' }, byId.mods[mod].name + ': ' + byId.mods[mod].note + (mod === 'i' ? '' : `. Worth ×${byId.mods[mod].mult}`) + '. The best matching piece is picked first.'));
         parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => t.mods.includes(mod)).map((t) => h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), onclick: () => { st.itype = t.id; refreshSheet(); } }, t.name))));
         if (st.itype) {
           const have = Object.entries(f.stock).filter(([k, v]) => v > 0 && isItem(k) && parseItem(k).type === st.itype && !parseItem(k).mods.includes(mod));
@@ -344,6 +362,14 @@ function orderInputs(st) {
     return o;
   }
   if (st.recipe === 'craft' && st.itype && st.mat) return { ['bar:' + st.mat]: byId.items[st.itype].bars, coal: 1 };
+  if (st.recipe === 'assemble' && st.itype && st.mat) {
+    const o = { ['bar:' + st.mat]: byId.items[st.itype].bars };
+    for (const [k, v] of Object.entries(G.data.parts[st.itype])) o[k] = (o[k] || 0) + v;
+    o.coal = (o.coal || 0) + 1;
+    return o;
+  }
+  if (st.recipe === 'gears') return { 'bar:brass': 2 };
+  if (st.recipe === 'inlay' && st.itype) return { ['bar:' + G.data.inlay.metal]: G.data.inlay.bars };
   if (st.recipe === 'cutgem') return { rough_gem: 1 };
   if (st.recipe === 'weave') return { food: 3 };
   if (st.recipe === 'sew' && st.itype) return { cloth: byId.clothes[st.itype].cloth };
@@ -355,6 +381,8 @@ function fits(t, m) {
   if (t.rule === 'hard') return m.hardness >= 3 && m.id !== 'pig_iron';
   if (t.rule === 'tool') return m.hardness >= 2 && !m.precious && m.id !== 'pig_iron';
   if (t.rule === 'precious') return m.precious;
+  if (t.rule === 'pewter') return m.id.endsWith('_pewter');
+  if (t.rule.startsWith('only:')) return m.id === t.rule.slice(5);
   return true;
 }
 

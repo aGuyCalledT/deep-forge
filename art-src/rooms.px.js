@@ -181,7 +181,7 @@ function royalWall(type, c, x, w, rng) {
 }
 
 const FAMILY = {
-  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", brewery: "wood", tailor: "wood", trade_depot: "wood", expedition_hall: "stone",
+  tavern: "wood", quarters: "wood", warehouse: "wood", engraver: "wood", mechanic: "wood", brewery: "wood", tailor: "wood", trade_depot: "wood", expedition_hall: "stone",
   smelter: "brick", forge: "brick", jeweler: "brick", vault: "stone", grindstone: "stone", barracks: "stone", farm: "earth",
 };
 const BRICK = { smelter: ["z", "Z"], forge: ["Q", "z"], jeweler: ["p", "P"] };
@@ -991,6 +991,25 @@ room("engraver", (c, w, R, T, v, rng) => {
 bay("engraver", (c, w, A, T, v, rng) => {
   workbench(c, 4, 32, T);
   c.rect(10 + v * 8, 63, 9, 7, v ? "7" : "4"); c.hline(10 + v * 8, 63, 9, "6");
+  c.rect(22, 56, 3, 9, "4"); c.rect(19, 53, 9, 3, "y");
+});
+
+// the fine mechanic: a workbench with a vise, brass gears on the wall and a pipe with a valve
+room("mechanic", (c, w, R, T, v, rng) => {
+  workbench(c, 6, 44, T);
+  c.rect(12, 62, 9, 8, "4"); c.rect(13, 59, 7, 3, "5"); c.hline(10, 66, 13, "3");      // vise
+  c.ring(31, 66, 3, "O"); c.px(31, 66, "j"); c.ring(38, 67, 2, "j");                   // gears on the bench
+  for (const [x, y, r] of [[16, 30, 6], [30, 26, 4], [40, 34, 5]]) { c.ring(x, y, r, T === 2 ? "j" : "O"); c.ring(x, y, r - 2, "o"); }
+  c.hline(46, 14, w - 52, "4"); c.hline(46, 15, w - 52, "3"); c.rect(70, 12, 5, 6, "&");   // pipe and valve
+  lights(c, T, [[73, 12]], v);
+  plant(c, 80, B);
+  cobweb(c, v ? 50 : 6, v ? 18 : 8, !!v, 6);
+  c.px(20, FY - 1, "O"); c.px(23, FY - 2, "j");      // brass filings
+});
+
+bay("mechanic", (c, w, A, T, v, rng) => {
+  workbench(c, 4, 32, T);
+  c.ring(16 + v * 6, 66, 3, "O"); c.px(16 + v * 6, 66, "j");
   c.rect(22, 56, 3, 9, "4"); c.rect(19, 53, 9, 3, "y");
 });
 

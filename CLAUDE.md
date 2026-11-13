@@ -27,7 +27,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 
 | Datei | Inhalt |
 |---|---|
-| `game/Content.java` | alle Inhalte: Metalle, Legierungen, Erze, Waren, Schichten, Monster, Gebäude, Eigenschaften, Städte, Traditionen |
+| `game/Content.java` | alle Inhalte: Metalle, Legierungen, Erze, Waren (auch Verbundwaren mit Teilen, `PARTS`), Schichten, Monster, Gebäude, Eigenschaften, Städte, Traditionen |
 | `game/State.java` | Spielstand (eine JSON-Zeile pro Spieler) und die gemeinsame Welt (Markt) |
 | `game/Rules.java` | Formeln: Tempo, Kraft, Kapazitäten, Kosten, Kampf, Tod, Spitzhacken (Härte, Tempo, Abnutzung) |
 | `game/Sim.java` | Zeitschritt: Bedürfnisse, Stimmung, Mine, Werkstätten, Monster, Überfälle, Karawanen, Zuwanderung |

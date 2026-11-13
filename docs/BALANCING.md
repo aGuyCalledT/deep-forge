@@ -198,6 +198,30 @@ Masterwork 2, Artifact 3.
   Markt und ohne Weg, eine Barre je Stunde und Tresorstufe (läuft mit dem Tagesplan). Aktion `mint` (`amount` < 0
   holt Barren zurück).
 
+## Feinmechaniker, Verbundwaren, Einlage
+
+- **Fine mechanic's bench** (`mechanic`, 80 Marks + 30 Stein + 10 Messing, Fertigkeit crafting, Maschinen wie die
+  Graveurbank). Zahnräder (`gears`, Rohware, Grundwert 4,5 Marks): 2 Messing → 1, 120 s Arbeit.
+- **Verbundwaren** (`Content.assembled`, Teile in `Content.PARTS`): Wert = `(Metallwert × Barren + Grundwert der Teile) ×
+  Faktor × Qualität × Veredelungen`. Das eigene Metall verändert also nur seinen Anteil; Qualitätsstufen wirken wie bei
+  jeder Ware. Arbeit `150 s × (Barren + Teile)`, Krone mit Ornat doppelt. Kein Amboss: die Qualität würfelt der Server
+  sofort mit der crafting-Fertigkeit des Arbeiters (`Rules.smithMean`, Spiel 0), Artefakte möglich.
+
+| Ware | Metall | Barren | Teile | Faktor | Skill | Gruppe |
+|---|---|---|---|---|---|---|
+| Miner's lamp | Messing | 1 | 1 Kupfer | 1,6 | 2 | tools |
+| Lock | hart | 1 | 1 Zahnräder | 1,6 | 3 | hardware |
+| Shield | hart | 2 | 1 Bronze | 1,6 | 2 | armor |
+| Tankard set | Zinnlegierung | 2 | 1 Messing | 1,6 | 2 | tableware |
+| Chalice | edel | 2 | 1 Gold, 1 geschliffener Stein | 1,7 | 3 | tableware |
+| Parade axe | hart | 2 | 1 Gold, 1 geschliffener Stein | 1,8 | 4 | weapons (Waffe) |
+| Sea compass (Bauplan clockwork) | Messing | 1 | 1 Neusilber, 1 Zahnräder | 1,8 | 3 | tools |
+| Music box (Bauplan clockwork) | edel | 1 | 1 Zahnräder | 2,0 | 4 | jewelry |
+| Crown and regalia (Bauplan regalia) | Gold | 3 | 1 Platin, 3 geschliffene Steine | 2,2 | 5 | jewelry |
+
+- **Goldeinlage** (Veredelung `i`, Graveur, 1 Goldbarren): Wert + 2 × Goldwert vor Faktor und Qualität. Erlaubt auf
+  Streitaxt, Helm, Kettenhemd, Kelch (goblet), Schild, Chalice, Parade axe.
+
 ## Handelsdepot (`Depot.java`)
 
 - Gespeicherte Karawanen: `1 + Stufe`; Regeln (WENN Vorrat ≥ N DANN schicke Karawane nach Stadt): `Stufe`, eine Regel

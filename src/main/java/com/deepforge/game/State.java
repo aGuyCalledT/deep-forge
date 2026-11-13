@@ -397,6 +397,7 @@ public final class State {
         public int level;         // forge level then
         public double hours;      // working hours the piece took (artifact chance grows with it)
         public double at;         // when it came off the fire
+        public String craft;      // the skill that learns from it (null: smithing)
     }
 
     public static class Smithed {

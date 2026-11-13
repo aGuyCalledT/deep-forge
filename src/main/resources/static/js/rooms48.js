@@ -84,6 +84,7 @@ export const NEEDS = {
   grindstone: { worker: 1, wheel: 1, light: 1 },
   engraver: { worker: 1, work: 1, light: 1 },
   jeweler: { worker: 1, work: 1, light: 1 },
+  mechanic: { worker: 1, work: 1, light: 1 },
   tailor: { worker: 1, work: 1, light: 1 },
   farm: { worker: 1, light: 1 },
   brewery: { worker: 1, kettle: 1, steam: 1, light: 1 },

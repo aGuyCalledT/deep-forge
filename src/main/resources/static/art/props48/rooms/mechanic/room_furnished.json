@@ -1,0 +1,90 @@
+{
+ "version": 1,
+ "type": "mechanic",
+ "part": "room",
+ "cells": 5,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "name": "furnished",
+ "spots": [
+  {
+   "kind": "work",
+   "x": 110,
+   "y": 104
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "sit": true,
+   "x": 120,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 120,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 48,
+   "y": 61
+  }
+ ],
+ "props": [
+  {
+   "s": "winch",
+   "x": 196,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "desk",
+   "x": 120,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "scales",
+   "x": 114,
+   "y": 98,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "shelf",
+   "x": 196,
+   "y": 87,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "lantern",
+   "x": 120,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 48,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ]
+}

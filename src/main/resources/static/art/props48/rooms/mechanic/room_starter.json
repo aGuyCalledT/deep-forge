@@ -1,0 +1,90 @@
+{
+ "version": 1,
+ "type": "mechanic",
+ "part": "room",
+ "cells": 5,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "name": "starter",
+ "spots": [
+  {
+   "kind": "work",
+   "x": 100,
+   "y": 104
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "x": 110,
+   "y": 135,
+   "sit": true
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 45,
+   "y": 62
+  }
+ ],
+ "props": [
+  {
+   "s": "desk",
+   "x": 110,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "scales",
+   "x": 104,
+   "y": 98,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "shelf",
+   "x": 195,
+   "y": 90,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "crate",
+   "x": 195,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "pipe_h",
+   "x": 150,
+   "y": 40,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "pipe_valve",
+   "x": 150,
+   "y": 40,
+   "flip": false,
+   "z": 1,
+   "frame": null
+  },
+  {
+   "s": "torch",
+   "x": 45,
+   "y": 80,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ]
+}

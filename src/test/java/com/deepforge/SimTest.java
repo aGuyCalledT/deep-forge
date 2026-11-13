@@ -719,7 +719,8 @@ class SimTest {
                 if (!Content.metalFits(t, m)) continue;
                 if (ref == null) { ref = m.id(); continue; }
                 double ratio = Content.baseValue(Content.itemKey(t.id(), m.id(), 1, "")) / Content.baseValue(Content.itemKey(t.id(), ref, 1, ""));
-                assertEquals(m.value() / Content.METALS.get(ref).value(), ratio, 1e-9, "a metal changes every item by its bar value");
+                double extra = Content.extraValue(t.id(), "");   // parts of assembled pieces keep their own value
+                assertEquals((m.value() * t.bars() + extra) / (Content.METALS.get(ref).value() * t.bars() + extra), ratio, 1e-9, "a metal changes every item by its bar value");
             }
             for (int q = 1; q < Content.ARTIFACT; q++) {
                 double step = Content.baseValue(Content.itemKey(t.id(), ref, q, "")) / Content.baseValue(Content.itemKey(t.id(), ref, q - 1, ""));
@@ -970,5 +971,42 @@ class SimTest {
         m.tick(change + 60);
         @SuppressWarnings("unchecked") Map<String, Map<String, Object>> later = (Map<String, Map<String, Object>>) m.snapshot(Content.CITIES.keySet(), 1, 1).get("cities");
         assertEquals(next, later.get("stonebridge").get("news"), "the news came true");
+    }
+
+    @Test
+    void theFineMechanicMakesPiecesFromSeveralMaterials() {
+        Fortress f = fresh(44);
+        Market m = Market.inMemory(44, T0);
+        // value: own bars plus the parts, then the same factor and quality steps as every piece
+        String lamp = Content.itemKey("lamp", "brass", 1, "");
+        double parts = Content.baseValue("bar:copper");
+        assertEquals((Content.baseValue("bar:brass") + parts) * 1.6, Content.baseValue(lamp), 1e-6);
+        assertFalse(Content.metalFits(Content.ITEMS.get("lamp"), Content.METALS.get("copper")));
+        assertTrue(Content.metalFits(Content.ITEMS.get("tankards"), Content.METALS.get("fine_pewter")));
+        // the gold inlay adds twice the gold
+        String axe = Content.itemKey("axe", "steel", 1, ""), inlaid = Content.itemKey("axe", "steel", 1, "i");
+        assertEquals(Content.baseValue(axe) + 2 * Content.baseValue("bar:gold") * 1.8, Content.baseValue(inlaid), 1e-6);
+        // build the bench, cut gears, make a lock
+        f.coins = 1_000_000;
+        f.stock.put("stone", 500);
+        Rules.add(f, "bar:brass", 30);
+        Rules.add(f, "bar:steel", 5);
+        Rules.add(f, "coal", 10);
+        int[] rk = rock(f, 6);
+        open(f, rk[0], rk[0] + 5, rk[1]);
+        act(f, m, T0, "type", "hallMany", "cells", List.of(List.of(rk[0], rk[1])));
+        act(f, m, T0, "type", "build", "building", "mechanic");
+        State.Building b = f.buildings.stream().filter(x -> x.type.equals("mechanic")).findFirst().orElseThrow();
+        if (b.level == 0) upgradeNow(f, m, T0, b);
+        act(f, m, T0, "type", "assign", "dwarf", f.dwarves.get(1).id, "job", "worker", "building", b.id);
+        act(f, m, T0, "type", "queueAdd", "building", b.id, "recipe", "gears", "count", 2);
+        act(f, m, T0, "type", "queueAdd", "building", b.id, "recipe", "assemble", "itype", "lock", "mat", "steel", "count", 1);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "queueAdd", "building", b.id, "recipe", "assemble", "itype", "compass", "mat", "brass", "count", 1),
+                "the compass needs the clockwork blueprint");
+        f.lastVisit = 0;
+        Sim.advance(f, T0 + 6 * 3600, m);
+        assertEquals(1, count(f, "item:lock:steel:"), "a lock, no anvil needed");
+        assertEquals(1, Rules.stock(f, "gears"), "two gears cut, one went into the lock");
+        assertThrows(Actions.GameException.class, () -> act(f, m, f.t, "type", "queueAdd", "building", "forge-1", "recipe", "craft", "itype", "lock", "mat", "steel", "count", 1));
     }
 }

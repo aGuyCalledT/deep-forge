@@ -180,6 +180,7 @@ export function item(type, metal, q = 1, mods = '') {
   if (mods.includes('e')) draw(ctx, 'mod_e', 1, c.height - 5);
   if (mods.includes('s')) draw(ctx, 'mod_s', c.width - 6, 0);
   if (mods.includes('g')) draw(ctx, 'mod_g', c.width - 6, c.height - 6);
+  if (mods.includes('i')) draw(ctx, 'mod_i', 1, 0);
   if (q >= 4) draw(ctx, 'mod_star', 0, 0);
   cache.set(key, c);
   return c;
