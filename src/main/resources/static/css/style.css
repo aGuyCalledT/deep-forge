@@ -1,7 +1,7 @@
 /* Deep Forge: a dwarven interface. Riveted iron sheets, forged windows with trim, gems and runes, buttons that press
    in, quests and expeditions on paper, hourglasses for time. The metal and the gem say what a window is about. */
 @font-face { font-family: "Alagard"; src: url("../fonts/alagard.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Minecraft"; src: url("../fonts/minecraft.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DotGothic16"; src: url("../fonts/dotgothic16.ttf") format("truetype"); font-display: swap; }
 @font-face { font-family: "Cavalhatriz"; src: url("../fonts/cavalhatriz.ttf") format("truetype"); font-display: swap; }
 
 :root {
@@ -30,11 +30,11 @@
   --blue: #9cc0ff;
   --rose: #e9a0aa;
 
-  /* pixel fonts: one weight each, crisp at multiples of 4 px; emphasis is colour, never bold */
-  --f-title: "Alagard", "Minecraft", monospace;
-  --f-body: "Minecraft", monospace;
-  --f-sc: "Minecraft", monospace;
-  --f-hand: "Cavalhatriz", "Minecraft", monospace;
+  /* pixel fonts: one weight each, DotGothic16 is drawn on a 16 px grid; emphasis is colour, never bold */
+  --f-title: "Alagard", "DotGothic16", monospace;
+  --f-body: "DotGothic16", monospace;
+  --f-sc: "DotGothic16", monospace;
+  --f-hand: "Cavalhatriz", "DotGothic16", monospace;
   --hl: var(--gold);            /* emphasised words on dark metal */
 
   --r: 10px;
