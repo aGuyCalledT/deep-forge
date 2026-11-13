@@ -1,0 +1,105 @@
+{
+ "version": 1,
+ "type": "wizard",
+ "part": "room",
+ "name": "furnished",
+ "cells": 5,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "shelf",
+   "x": 40,
+   "y": 90,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "rug",
+   "x": 110,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "altar",
+   "x": 110,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "lectern",
+   "x": 190,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "candle",
+   "x": 168,
+   "y": 108,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chandelier",
+   "x": 120,
+   "y": 14,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "banner",
+   "x": 205,
+   "y": 40,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 104,
+   "y": 110
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "x": 110,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 90,
+   "c": "#b89cff",
+   "p": 0.8,
+   "x": 110,
+   "y": 76
+  },
+  {
+   "kind": "light",
+   "r": 130,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 120,
+   "y": 40
+  },
+  {
+   "kind": "light",
+   "r": 44,
+   "c": "#ffd98e",
+   "p": 0.4,
+   "x": 168,
+   "y": 98
+  }
+ ]
+}

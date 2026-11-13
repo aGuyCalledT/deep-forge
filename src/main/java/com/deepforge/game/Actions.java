@@ -96,6 +96,8 @@ public final class Actions {
             case "smith" -> smith(f, a, t, r);
             case "nameArtifact" -> nameArtifact(f, a);
             case "equip" -> equip(f, a);
+            case "socket" -> socket(f, a, t);
+            case "unsocket" -> unsocket(f, a, t, r);
             case "wear" -> wear(f, a);
             case "unwear" -> unwear(f, a);
             case "unequip" -> unequip(f, a);
@@ -257,6 +259,19 @@ public final class Actions {
 
     static void equip(Fortress f, Map<String, Object> a) {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
+        int artId = num(a, "artifact", -1);
+        if (artId >= 0) {                      // a legendary piece from the hall of treasures
+            Artifact art = artifact(f, artId);
+            check(art.item != null, "This treasure can't be worn.");
+            check(art.wornBy == 0 || art.wornBy == d.id, "Someone else wears it. Take it off them first.");
+            String slot = Content.ITEMS.get(Content.parseItem(art.item)[0]).slot();
+            check(slot != null, "That can't be equipped.");
+            if (art.item.equals(slotGet(d, slot))) return;
+            takeOff(f, d, slot);
+            slotSet(d, slot, art.item);
+            art.wornBy = d.id;
+            return;
+        }
         String item = str(a, "item");
         check(item != null && Content.isItem(item) && stock(f, item) > 0, "You don't have that item.");
         String slot = Content.ITEMS.get(Content.parseItem(item)[0]).slot();
@@ -266,17 +281,99 @@ public final class Actions {
         slotSet(d, slot, item);
     }
 
-    /** Take a piece off a dwarf. A piece that has done real work is worn and goes to the scrap heap, not back to the warehouse. */
+    static Artifact artifact(Fortress f, int id) {
+        for (Artifact x : f.artifacts) if (x.id == id) return x;
+        throw new GameException("No such treasure.");
+    }
+
+    /**
+     * Take a piece off a dwarf. A piece that has done real work is worn and goes to the scrap heap, not back to the
+     * warehouse; its gems come back. An artifact goes back to the hall of treasures.
+     */
     static void takeOff(Fortress f, Dwarf d, String slot) {
         String old = slotGet(d, slot);
-        if (old != null && !worn(d, slot)) add(f, old, 1);
+        if (old != null && isArtifact(old)) {
+            for (Artifact x : f.artifacts) if (x.wornBy == d.id && old.equals(x.item)) x.wornBy = 0;
+        } else if (old != null && !worn(d, slot)) add(f, old, 1);
+        else if (old != null) salvageGems(f, old);
         slotSet(d, slot, null);
         if (slot.equals("tool")) d.toolWear = 0;
         else d.gearWear.remove(slot);
     }
 
     static boolean worn(Dwarf d, String slot) {
+        if (slot.equals("trinket")) return false;
         return slot.equals("tool") ? d.toolWear > USED_PICK_HOURS : d.gearWear.getOrDefault(slot, 0.0) > 0;
+    }
+
+    // ------------------------------------------------------------ gems and sockets
+
+    /**
+     * The piece a socket action works on: {"item": key} in the warehouse, {"dwarf": id, "slot": s} on a dwarf, or
+     * {"artifact": id}. Returns [current key] and a setter that swaps it for the new key.
+     */
+    record Piece(String key, java.util.function.Consumer<String> set) {}
+
+    static Piece piece(Fortress f, Map<String, Object> a) {
+        int artId = num(a, "artifact", -1);
+        if (artId >= 0) {
+            Artifact art = artifact(f, artId);
+            check(art.item != null, "This treasure has no sockets.");
+            return new Piece(art.item, k -> {
+                Dwarf w = art.wornBy == 0 ? null : dwarf(f, art.wornBy);
+                if (w != null) for (String s : SLOTS) if (art.item.equals(slotGet(w, s))) slotSet(w, s, k);
+                art.item = k;
+                art.value = Content.baseValue(k);
+            });
+        }
+        if (a.get("dwarf") != null) {
+            Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
+            String slot = str(a, "slot");
+            check(SLOTS.contains(slot), "Unknown slot.");
+            String k = slotGet(d, slot);
+            check(k != null, fullName(d) + " wears nothing there.");
+            if (isArtifact(k)) for (Artifact x : f.artifacts) if (x.wornBy == d.id && k.equals(x.item)) return piece(f, Map.of("artifact", x.id));
+            return new Piece(k, nk -> slotSet(d, slot, nk));
+        }
+        String item = str(a, "item");
+        check(item != null && Content.isItem(item) && stock(f, item) > 0, "You don't have that piece.");
+        return new Piece(item, nk -> { add(f, item, -1); add(f, nk, 1); });
+    }
+
+    static final List<String> SLOTS = List.of("weapon", "helm", "armor", "tool", "trinket");
+
+    /** Set an enchanted gem into a free socket. Done at the wizard's tower, at once. */
+    static void socket(Fortress f, Map<String, Object> a, double t) {
+        check(level(f, "wizard") > 0, "Gems are set at the wizard's tower.");
+        String gem = str(a, "gem");
+        Magic.Gem g = Magic.parseGem(gem);
+        check(g != null && stock(f, gem) > 0, "You don't have that gem.");
+        check(g.enchanted(), "Enchant the gem at the wizard's tower first.");
+        Piece p = piece(f, a);
+        int n = Magic.sockets(p.key());
+        check(n > 0, "Crude pieces have no socket. Better pieces have more.");
+        String nk = Magic.withGem(p.key(), gem);
+        check(nk != null, "All " + n + " sockets are full. Take a gem out first.");
+        add(f, gem, -1);
+        p.set().accept(nk);
+        log(f, t, "info", "A " + Magic.gemEffectText(g) + " gem now sits in the " + Content.goodName(p.key()).toLowerCase() + ".");
+    }
+
+    /** Take a gem out of its socket: free, but it cracks one time in four. */
+    static void unsocket(Fortress f, Map<String, Object> a, double t, Rng r) {
+        check(level(f, "wizard") > 0, "Gems are taken out at the wizard's tower.");
+        Piece p = piece(f, a);
+        int i = num(a, "index", -1);
+        List<Magic.Gem> gems = Magic.gems(p.key());
+        check(i >= 0 && i < gems.size(), "There is no gem in that socket.");
+        Magic.Gem g = gems.get(i);
+        p.set().accept(Magic.withoutGem(p.key(), i));
+        if (r.chance(Magic.UNSOCKET_BREAK)) {
+            log(f, t, "warn", "The " + Magic.gemEffectText(g) + " gem cracked as it came out. Gone.");
+        } else {
+            add(f, g.key(), 1);
+            log(f, t, "info", "The " + Magic.gemEffectText(g) + " gem came out whole. It's in the warehouse.");
+        }
     }
 
     /** Sell goods at once to the trader at the gate, for a tenth of their base value. */
@@ -401,7 +498,7 @@ public final class Actions {
     static void unequip(Fortress f, Map<String, Object> a) {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
         String slot = str(a, "slot");
-        check(List.of("weapon", "helm", "armor", "tool").contains(slot), "Unknown slot.");
+        check(SLOTS.contains(slot), "Unknown slot.");
         takeOff(f, d, slot);
     }
 
@@ -410,6 +507,7 @@ public final class Actions {
             case "weapon" -> d.weapon;
             case "helm" -> d.helm;
             case "armor" -> d.armor;
+            case "trinket" -> d.trinket;
             default -> d.tool;
         };
     }
@@ -419,6 +517,7 @@ public final class Actions {
             case "weapon" -> d.weapon = v;
             case "helm" -> d.helm = v;
             case "armor" -> d.armor = v;
+            case "trinket" -> d.trinket = v;
             default -> d.tool = v;
         }
     }
@@ -610,12 +709,12 @@ public final class Actions {
         check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
         LayerState l = f.layers.get(idx);
         check(l.threat == null, "Something lurks in this layer. Drive it out first.");
-        check(veins(l, t) > 0, "No vein shows yet. Look again in " + Rules.duration(l.veinAt - t) + ".");
+        check(veins(l, t, veinWait(f)) > 0, "No vein shows yet. Look again in " + Rules.duration(l.veinAt - t) + ".");
         Content.Layer layer = Content.LAYERS.get(idx);
         int n = veinOre(l);
         if (l.cart.isEmpty()) l.cartStart = t;
         for (int i = 0; i < n; i++) l.cart.merge(r.weighted(layer.weights()), 1, Integer::sum);
-        l.veinAt = Math.max(l.veinAt, t - (VEINS_MAX - 1) * VEIN_WAIT) + VEIN_WAIT;
+        l.veinAt = Math.max(l.veinAt, t - (VEINS_MAX - 1) * veinWait(f)) + veinWait(f);
         log(f, "good", "You broke a vein out of the " + layer.name() + ": " + n + " ore in the cart.");
     }
 
@@ -673,6 +772,7 @@ public final class Actions {
             Artifact art = null;
             for (Artifact x : f.artifacts) if (x.id == id) art = x;
             check(art != null, "No such artifact.");
+            check(art.wornBy == 0, art.name + " is worn by a dwarf. Take it off first.");
             arts.add(art);
         }
         Map<String, Integer> buy = goods(a, "buy");

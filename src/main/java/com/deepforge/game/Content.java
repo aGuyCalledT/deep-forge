@@ -74,7 +74,7 @@ public final class Content {
             new Quality(0, "Crude", 0.7, 0.8), new Quality(1, "Normal", 1.0, 1.0), new Quality(2, "Fine", 1.2, 1.4),
             new Quality(3, "Exceptional", 1.5, 1.8), new Quality(4, "Masterwork", 2.0, 2.0), new Quality(5, "Artifact", 20, 3));
     public static final int ARTIFACT = 5;
-    public static final List<String> SKILLS = List.of("mining", "smelting", "smithing", "crafting", "farming", "combat", "trading");
+    public static final List<String> SKILLS = List.of("mining", "smelting", "smithing", "crafting", "farming", "combat", "trading", "arcana");
     public static final List<String> CATEGORIES = List.of("ore", "materials", "gems", "provisions", "bars",
             "tools", "weapons", "armor", "hardware", "tableware", "jewelry", "clothing");
     public static final List<String> BLUEPRINTS = List.of("steelmaking", "mail", "crown", "starsteel", "clockwork", "regalia");
@@ -245,7 +245,7 @@ public final class Content {
         raw("limestone", "Limestone", "#d8d2bd", 60, "materials", "Flux for pig iron and steel.");
         raw("stone", "Stone", "#7d7a73", 30, "materials", "For building and upgrades.");
         raw("rough_gem", "Rough gem", "#5fb7a6", 2500, "gems", "Cut it at the jeweler.");
-        raw("cut_gem", "Cut gem", "#6fe0c8", 6000, "gems", "Set it into rings, crowns and goblets.");
+        raw("cut_gem", "Cut gem", "#6fe0c8", 6000, "gems", "Enchant it at the wizard's tower, then set it into a socket.");
         raw("gears", "Gears", "#b9a052", 4500, "materials", "Brass clockwork from the fine mechanic. Goes into locks, compasses and music boxes.");
         raw("cloth", "Cloth", "#c9b28a", 400, "materials", "Woven from mushroom fibre at the tailor. Sew it into clothes.");
         raw("food", "Cave mushrooms", "#b48a5a", 200, "provisions", "Every dwarf eats.");
@@ -271,12 +271,25 @@ public final class Content {
                 "Equip anyone: strong protection."));
         ITEMS.put("chain", new ItemType("chain", "Chain", 1, 1.6, 1, "hardware", "any", null, List.of(), null,
                 "Every city needs chains."));
-        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.7, 2, "tableware", "any", null, List.of("e", "g", "i"), null,
+        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.7, 2, "tableware", "any", null, List.of("e", "i"), null,
                 "Kept in stock, fine goblets make the tavern nicer."));
-        ITEMS.put("ring", new ItemType("ring", "Ring", 1, 2.5, 4, "jewelry", "precious", null, List.of("e", "g"), null,
-                "Small and valuable."));
-        ITEMS.put("crown", new ItemType("crown", "Crown", 3, 2.2, 5, "jewelry", "precious", null, List.of("e", "g"), "crown",
-                "Fit for a mountain king."));
+        ITEMS.put("ring", new ItemType("ring", "Ring", 1, 2.5, 4, "jewelry", "precious", "trinket", List.of("e"), null,
+                "Small and valuable. Anyone can wear one: gems in jewelry help with everything."));
+        ITEMS.put("crown", new ItemType("crown", "Crown", 3, 2.2, 5, "jewelry", "precious", "trinket", List.of("e"), "crown",
+                "Fit for a mountain king. Worn as jewelry."));
+        // a tool for every job (slot tool): the right tool makes its job faster, +5 % per metal age; it wears like a pick
+        ITEMS.put("hammer", new ItemType("hammer", "Smith's hammer", 2, 1.6, 2, "tools", "tool", "tool", List.of("s", "e"), null,
+                "Equip a smith: forges faster. Smithing gems count twice in it."));
+        ITEMS.put("ladle", new ItemType("ladle", "Ladle", 1, 1.6, 1, "tools", "tool", "tool", List.of("e"), null,
+                "Equip a smelter: smelts faster. Smelting gems count twice in it."));
+        ITEMS.put("sickle", new ItemType("sickle", "Sickle", 1, 1.6, 1, "tools", "tool", "tool", List.of("s", "e"), null,
+                "Equip a farmer or brewer: grows and brews faster. Farming gems count twice in it."));
+        ITEMS.put("chisel", new ItemType("chisel", "Chisel", 1, 1.7, 2, "tools", "tool", "tool", List.of("s", "e"), null,
+                "Equip a crafter (grindstone, engraver, jeweler, mechanic, tailor): works faster. Crafting gems count twice."));
+        ITEMS.put("scales", new ItemType("scales", "Merchant's scales", 1, 1.8, 3, "tools", "any", "tool", List.of("e", "i"), null,
+                "Equip a merchant: +2% prices per metal age. Trade gems count twice in it."));
+        ITEMS.put("staff", new ItemType("staff", "Wizard's staff", 2, 1.8, 3, "tools", "any", "tool", List.of("e", "i"), null,
+                "Equip the wizard: enchants faster. Learning and crafting gems count twice in it."));
 
         // made at the fine mechanic's bench from bars and parts (PARTS); the bars of the type are its own metal
         assembled("lamp", "Miner's lamp", 1, 2.5, 2, "tools", "only:brass", null, List.of("e"), null,
@@ -293,14 +306,14 @@ public final class Content {
                 "A battle axe with gold and a gem. A warrior can carry it.", "bar:gold", 1, "cut_gem", 1);
         assembled("compass", "Sea compass", 1, 2.0, 3, "tools", "only:brass", null, List.of("e"), "clockwork",
                 "Brass, nickel silver and clockwork. Every harbor wants one.", "bar:nickel_silver", 1, "gears", 1);
-        assembled("music_box", "Music box", 1, 2.6, 4, "jewelry", "precious", null, List.of("e", "g"), "clockwork",
-                "Plays a dwarven song. Amberfall can't get enough.", "gears", 1);
-        assembled("regalia", "Crown and regalia", 3, 3.6, 5, "jewelry", "only:gold", null, List.of("e"), "regalia",
+        assembled("music_box", "Music box", 1, 2.6, 4, "jewelry", "precious", "trinket", List.of("e"), "clockwork",
+                "Plays a dwarven song. Amberfall can't get enough. Worn as jewelry.", "gears", 1);
+        assembled("regalia", "Crown and regalia", 3, 3.6, 5, "jewelry", "only:gold", "trinket", List.of("e"), "regalia",
                 "Three gold bars, platinum and three cut gems. Long work, and now and then an artifact.", "bar:platinum", 1, "cut_gem", 3);
 
         MODS.put("s", new Mod("s", "Sharpened", 1.3, "grindstone", "+25% attack or digging"));
         MODS.put("e", new Mod("e", "Engraved", 1.4, "engraver", "Worth more"));
-        MODS.put("g", new Mod("g", "Gem-set", 1.8, "jeweler", "Needs a cut gem"));
+        MODS.put("g", new Mod("g", "Gem-set", 1.8, "jeweler", "Old saves only: gems now go into sockets"));
         MODS.put("i", new Mod("i", "Gold-inlaid", 1.0, "engraver", "A gold bar laid in: worth twice the gold more"));
 
         // --- monsters
@@ -356,12 +369,14 @@ public final class Content {
                 "Sharpens axes and pickaxes.");
         building("engraver", "Engraver's bench", "queue", "crafting", true, 60000, goods("stone", 30, "bar:bronze", 10), 26000, 20, 1.6, 0,
                 "Engraves goods. Engraved goods sell for more.");
-        building("jeweler", "Jeweler", "queue", "crafting", true, 90000, goods("stone", 30, "bar:silver", 10), 32000, 20, 1.6, 0,
-                "Cuts gems and sets them into rings, crowns and goblets.");
+        building("jeweler", "Jeweler", "queue", "crafting", true, 50000, goods("stone", 30, "bar:bronze", 10), 26000, 20, 1.6, 0,
+                "Cuts rough gems. A better cut gives stronger magic.");
         building("mechanic", "Fine mechanic's bench", "queue", "crafting", true, 80000, goods("stone", 30, "bar:brass", 10), 28000, 20, 1.6, 0,
                 "Makes gears, and pieces from several materials: lamps, locks, shields, chalices, music boxes.");
         building("tailor", "Tailor", "queue", "crafting", true, 30000, goods("stone", 20), 20000, 20, 1.6, 0,
                 "Weaves cloth from mushroom fibre and sews dyed clothes. Dress your dwarves or sell them.");
+        building("wizard", "Wizard's tower", "queue", "arcana", false, 0, goods(), 20000, 20, 1.6, 1,
+                "Enchants gems: you choose the school, the stars choose the rest. Set gems into sockets here.");
         building("farm", "Mushroom farm", "continuous", "farming", true, 20000, goods("stone", 20), 15000, 20, 1.55, 1,
                 "Grows cave mushrooms.");
         building("brewery", "Brewery", "continuous", "farming", true, 25000, goods("stone", 20, "bar:copper", 5), 18000, 20, 1.55, 1,
@@ -434,15 +449,24 @@ public final class Content {
     public static boolean isBar(String key) { return key.startsWith("bar:"); }
 
     public static String itemKey(String type, String metal, int q, String mods) {
-        char[] c = (mods == null ? "" : mods).toCharArray();
-        Arrays.sort(c);
-        return "item:" + type + ":" + metal + ":" + q + ":" + new String(c);
+        return itemKey(type, metal, q, mods, "", "");
     }
 
-    /** Parsed item key: [type, metal, quality, mods]. */
+    /** gems: "effect.word.cut,..." in socket order; legend: the orange effect of an artifact. Both may be empty. */
+    public static String itemKey(String type, String metal, int q, String mods, String gems, String legend) {
+        char[] c = (mods == null ? "" : mods).toCharArray();
+        Arrays.sort(c);
+        String k = "item:" + type + ":" + metal + ":" + q + ":" + new String(c);
+        boolean g = gems != null && !gems.isEmpty(), l = legend != null && !legend.isEmpty();
+        if (g || l) k += ":" + (g ? gems : "");
+        if (l) k += ":" + legend;
+        return k;
+    }
+
+    /** Parsed item key: [type, metal, quality, mods, gems, legend]. */
     public static String[] parseItem(String key) {
         String[] p = key.split(":", -1);
-        return new String[]{p[1], p[2], p[3], p.length > 4 ? p[4] : ""};
+        return new String[]{p[1], p[2], p[3], p.length > 4 ? p[4] : "", p.length > 5 ? p[5] : "", p.length > 6 ? p[6] : ""};
     }
 
     public static boolean metalFits(ItemType t, Metal m) {
@@ -469,6 +493,7 @@ public final class Content {
 
     public static String category(String key) {
         if (isWear(key)) return "clothing";
+        if (Magic.isGem(key)) return "gems";
         if (isItem(key)) return ITEMS.get(parseItem(key)[0]).category();
         if (isBar(key)) return "bars";
         if (ORES.containsKey(key)) return "ore";
@@ -479,6 +504,7 @@ public final class Content {
     /** Market key: one price per item type (all axes together), one for all clothes, everything else its own. */
     public static String marketKey(String key) {
         if (isWear(key)) return "cat:clothing";
+        if (Magic.isGem(key)) return "cut_gem";
         if (isItem(key)) return "type:" + parseItem(key)[0];
         return key;
     }
@@ -504,7 +530,7 @@ public final class Content {
 
     /** Does this stock key belong to the market key (for rules like "all battle axes")? */
     public static boolean inMarket(String key, String marketKey) {
-        return (isItem(key) || isWear(key) || ORES.containsKey(key) || RAWS.containsKey(key) || isBar(key)) && marketKey(key).equals(marketKey);
+        return (isItem(key) || isWear(key) || Magic.isGem(key) || ORES.containsKey(key) || RAWS.containsKey(key) || isBar(key)) && marketKey(key).equals(marketKey);
     }
 
     public static String marketName(String marketKey) {
@@ -525,8 +551,10 @@ public final class Content {
             Metal m = METALS.get(p[1]);
             double v = (m.value() * t.bars() + extraValue(p[0], p[3])) * t.factor() * qualityMult(t, Integer.parseInt(p[2]));
             for (char c : p[3].toCharArray()) v *= MODS.get(String.valueOf(c)).mult();
+            for (Magic.Gem g : Magic.gems(key)) v += Magic.gemValue(g.key());
             return v;
         }
+        if (Magic.isGem(key)) return Magic.gemValue(key);
         if (isBar(key)) return METALS.get(key.substring(4)).value();
         if (ORES.containsKey(key)) return ORES.get(key).value();
         Raw r = RAWS.get(key);
@@ -545,8 +573,11 @@ public final class Content {
             sb.append(QUALITIES.get(Integer.parseInt(p[2])).name()).append(' ');
             for (char c : p[3].toCharArray()) sb.append(MODS.get(String.valueOf(c)).name().toLowerCase()).append(' ');
             sb.append(METALS.get(p[1]).name().toLowerCase()).append(' ').append(ITEMS.get(p[0]).name().toLowerCase());
+            int n = Magic.gems(key).size();
+            if (n > 0) sb.append(" with ").append(n == 1 ? "a gem" : n + " gems");
             return sb.toString();
         }
+        if (Magic.isGem(key)) return Magic.gemName(key);
         if (isBar(key)) return METALS.get(key.substring(4)).name() + " bar";
         if (ORES.containsKey(key)) return ORES.get(key).name();
         Raw r = RAWS.get(key);
@@ -555,7 +586,7 @@ public final class Content {
 
     /** Goods that can be bought at a city. */
     public static boolean buyable(String key) {
-        if (isItem(key)) return false;
+        if (isItem(key) || Magic.isGem(key)) return false;
         if (key.equals("cut_gem")) return false;
         return isBar(key) ? METALS.containsKey(key.substring(4)) : (ORES.containsKey(key) || RAWS.containsKey(key));
     }
@@ -683,6 +714,7 @@ public final class Content {
         d.put("clothes", CLOTHES.values());
         d.put("dyes", DYES);
         d.put("wearSlots", WEAR_SLOTS);
+        d.put("magic", Magic.asData());
         return d;
     }
 }

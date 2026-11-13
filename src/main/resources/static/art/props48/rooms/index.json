@@ -95,6 +95,16 @@
    "starter"
   ]
  },
+ "mechanic": {
+  "bay": [
+   "furnished",
+   "starter"
+  ],
+  "room": [
+   "furnished",
+   "starter"
+  ]
+ },
  "quarters": {
   "bay": [],
   "room": [
@@ -158,11 +168,8 @@
    "starter"
   ]
  },
- "mechanic": {
-  "bay": [
-   "furnished",
-   "starter"
-  ],
+ "wizard": {
+  "bay": [],
   "room": [
    "furnished",
    "starter"

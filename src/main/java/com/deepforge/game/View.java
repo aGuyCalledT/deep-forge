@@ -106,6 +106,20 @@ public final class View {
             Map<String, Double> left = new LinkedHashMap<>();
             for (Map.Entry<String, Double> e : x.gearWear.entrySet()) left.put(e.getKey(), round(Math.max(0, 1 - e.getValue())));
             m.put("gearLeft", left);
+            // magic: the summed (capped) gem effects, the job tool's own speed, legendary effects worn
+            Map<String, Double> fx = new LinkedHashMap<>();
+            for (Map.Entry<String, Double> e : Magic.effects(x).entrySet()) fx.put(e.getKey(), round(e.getValue()));
+            m.put("magic", fx);
+            String jobSkill = x.job.equals("miner") ? "mining" : x.job.equals("merchant") ? "trading" : x.job.equals("warrior") ? "combat"
+                    : x.building != null && building(f, x.building) != null ? Content.BUILDINGS.get(building(f, x.building).type).skill() : null;
+            if (jobSkill != null) {
+                m.put("jobSkill", jobSkill);
+                m.put("toolFits", Magic.toolFor(x, jobSkill));
+                m.put("toolSpeed", round(Magic.toolSpeed(x, jobSkill)));
+            }
+            List<String> legends = new ArrayList<>();
+            for (String k : Magic.worn(x)) if (Magic.legend(k) != null) legends.add(Magic.legend(k));
+            m.put("legends", legends);
             dw.put(x.id, m);
         }
         d.put("dwarves", dw);
@@ -141,7 +155,7 @@ public final class View {
             m.put("cartSize", cartSize(l));
             m.put("cartTarget", cartTarget(l));
             m.put("veinOre", veinOre(l));
-            m.put("veins", veins(l, now));
+            m.put("veins", veins(l, now, veinWait(f)));
             // rock no miner on this layer can break with the picks they have
             int pick = Math.max(best[l.index], Content.MAKESHIFT_HARDNESS);
             m.put("bestPick", pick);

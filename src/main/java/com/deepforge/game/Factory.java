@@ -157,6 +157,13 @@ public final class Factory {
             b.level = t.startLevel();
             f.buildings.add(b);
         }
+        // magic: cut gems got a cut (old ones are fair cuts), forged artifacts a legendary effect, gem setting moved to sockets
+        int oldGems = f.stock.getOrDefault("cut_gem", 0);
+        if (oldGems > 0) { f.stock.remove("cut_gem"); Rules.add(f, Magic.gemKey(1), oldGems); }
+        for (Artifact a : f.artifacts)
+            if (a.item != null && Magic.legend(a.item) == null)
+                a.item = Magic.withLegend(a.item, Magic.rollLegend(new Rng(a.id * 7919L + 5), Content.parseItem(a.item)[0]));
+        for (Building b : f.buildings) b.queue.removeIf(e -> "setgem".equals(e.recipe));
         for (Dwarf d : f.dwarves) {
             if (d.looks >= 2) continue;
             Rng r = new Rng(d.id * 7919L + f.userId * 31L + 17);

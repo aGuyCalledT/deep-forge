@@ -186,6 +186,7 @@ public final class State {
         public String trinket;        // a piece of jewelry a master keeps for themself (taken from the warehouse)
         public Map<String, Double> gearWear = new TreeMap<>();   // weapon, helm, armor: share of their life used up (breaks at 1)
         public double arrived;
+        public double fellAt;         // when an Undying artifact last saved them
     }
 
     public static class Building {
@@ -387,6 +388,7 @@ public final class State {
         public double value;
         public String item;       // forged artifacts: the item key it was made as (quality 5)
         public boolean unnamed;   // waits for the player to name it
+        public int wornBy;        // the dwarf wearing it (0: in the hall of treasures)
     }
 
     /** A piece of hot metal at the anvil, waiting to be hammered and quenched by the player. */

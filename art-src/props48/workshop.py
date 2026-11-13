@@ -196,6 +196,51 @@ def sewing():
     p.fill(ell(49, 72.5, 1.2, 1.2), 'iron', bias=0.1, outline=False)
     return crop(p)
 
+# ------------------------------------------------------------------ wizard's tower
+R['arcane'] = ['#1e1240', '#3a2478', '#6a48c0', '#a888f0', '#e8dcff']   # enchanting light: violet, glows
+from shells import EMIT
+EMIT.update({'arcane'})
+def altar(frame=0):
+    """A carved stone pedestal with an orb of light; three motes circle it."""
+    p = Part()
+    base = rect_m(34, 90, 61, 95)
+    p.fill(base, 'stone', idx=faces(base, 1))
+    shaft = poly([(39, 90), (56, 90), (53, 72), (42, 72)])
+    p.fill(shaft, 'stone', idx=shade(shaft, 0.1, 0.8))
+    for y in (78, 84): p.fill(rect_m(41, y, 54, y), 'stone', idx=np.full((H, W), 1), outline=False)   # carved bands
+    p.c[81, 47] = ('arcane', 3); p.c[81, 48] = ('arcane', 3)                                          # rune in the band
+    top = rect_m(36, 69, 59, 72)
+    p.fill(top, 'stone', idx=faces(top, 1))
+    for x in (40, 47, 55): p.fill(cap((x, 69), (x + 1 if x < 47 else x - 1, 66), 0.8), 'gold', bias=0.1, outline=False)  # claws
+    orb = ell(47.5, 61, 6.5, 6.5)
+    oi = shade(orb, 0.2, 1.2)
+    p.fill(orb, 'arcane', idx=oi)
+    p.px([(45, 58), (46, 57)], 'arcane', 4)
+    for i in range(3):                                                                                # motes
+        a = (frame / 4 + i / 3) * 2 * math.pi
+        x, y = 47.5 + 12 * math.cos(a), 60 + 4 * math.sin(a)
+        p.c[int(y), int(x)] = ('arcane', 4 if math.sin(a) > 0 else 3)
+    return crop(p)
+def lectern():
+    """A reading stand with an open spellbook and a quill."""
+    p = Part()
+    post = rect_m(45, 70, 50, 93)
+    p.fill(post, 'oak', idx=faces(post, 0))
+    foot = rect_m(38, 93, 57, 95)
+    p.fill(foot, 'oak', idx=faces(foot, 1))
+    desk = poly([(33, 70), (62, 70), (60, 62), (35, 66)])
+    p.fill(desk, 'wood', idx=shade(desk, 0.1, 0.6))
+    book = poly([(35, 64), (47, 61), (47, 66), (36, 68)]) | poly([(48, 61), (60, 59), (59, 64), (48, 66)])
+    bi = np.where(xx < 47.5, 4, 3)
+    p.fill(book, 'cream', idx=bi)
+    for k in range(3):                                                                               # lines of script
+        y = 63 + k
+        for x in range(38 + k, 46, 2): p.c[y, x] = ('cream', 1)
+        for x in range(50, 58 - k, 2): p.c[y - 1, x] = ('arcane', 2)
+    p.fill(rect_m(33, 66, 34, 69), 'quilt', idx=np.full((H, W), 2), outline=False)                   # bookmark
+    p.fill(cap((58, 60), (64, 50), 0.7), 'cream', bias=0.2, outline=False)                            # quill
+    return crop(p)
+
 # ------------------------------------------------------------------ brewery and farm
 def brewkettle(frame=0):
     p = Part()
@@ -251,8 +296,8 @@ def mushbed(stage=2):
 WORK = {'forge': forge, 'anvil': anvil, 'quench': quench, 'bellows': bellows, 'smelter': smelter,
         'ore_pile': lambda: pile('ore'), 'coal_pile': lambda: pile('coal'), 'grindstone': grindstone,
         'engraver': engraver, 'jeweler': jeweler, 'loom': loom, 'sewing': sewing, 'brewkettle': brewkettle,
-        'vats': vats, 'mushbed_0': lambda: mushbed(0), 'mushbed_1': lambda: mushbed(1), 'mushbed_2': lambda: mushbed(2)}
-ANIM = ('forge', 'bellows', 'smelter', 'grindstone', 'brewkettle')
+        'vats': vats, 'altar': altar, 'lectern': lectern, 'mushbed_0': lambda: mushbed(0), 'mushbed_1': lambda: mushbed(1), 'mushbed_2': lambda: mushbed(2)}
+ANIM = ('forge', 'bellows', 'smelter', 'grindstone', 'brewkettle', 'altar')
 
 if __name__ == '__main__':
     from PIL import Image
@@ -301,7 +346,7 @@ if __name__ == '__main__':
     frames[0].save(f'{out}/workshop_x2.png')
     frames[0].save(f'{out}/workshop_x2.gif', save_all=True, append_images=frames[1:], duration=160, loop=0)
     K = {k: f() for k, f in WORK.items()}
-    names = list(K); cw = 100; cols = 9; rows = 2
+    names = list(K); cw = 100; cols = 10; rows = 2
     sh = Image.new('RGB', (cols * cw, rows * 100), (36, 28, 34))
     for n, k in enumerate(names):
         g = K[k]['grid']; cx, cy = (n % cols) * cw + cw // 2, (n // cols) * 100 + 96

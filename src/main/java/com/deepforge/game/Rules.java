@@ -20,6 +20,7 @@ public final class Rules {
     }
 
     public static void addXp(Dwarf d, String s, double v) {
+        if (v > 0) v *= 1 + Magic.bonus(d, "learning");
         d.xp.merge(s, v, Double::sum);
     }
 
@@ -124,6 +125,10 @@ public final class Rules {
         }
         if (skill.equals("smithing")) s *= 1 + 0.05 * trad(f, "master_smiths");
         if (skill.equals("farming")) s *= 1 + 0.10 * trad(f, "brewmasters");
+        // magic: the job's tool and the gems in the dwarf's gear
+        s *= 1 + Magic.toolSpeed(d, skill);
+        String fx = Magic.speedEffect(skill);
+        if (fx != null) s *= 1 + Magic.bonus(d, fx);
         return s;
     }
 
@@ -184,7 +189,7 @@ public final class Rules {
 
     /** Workshops (queue and continuous kinds) get one machine per level, at most 5: the room grows with every upgrade. */
     public static int maxMachines(Building b) {
-        if (!isWorkshop(b)) return 1;
+        if (!isWorkshop(b) || !Layouts.MACHINE_CELLS.containsKey(b.type)) return 1;
         return Math.max(1, Math.min(MAX_MACHINES, b.level));
     }
 
@@ -287,7 +292,9 @@ public final class Rules {
     /** Ore per hour for one miner on a layer. */
     public static double minerRate(Fortress f, Dwarf d, LayerState l) {
         Content.Layer layer = Content.LAYERS.get(l.index);
-        return layer.rate() * workSpeed(f, d, "mining") * shaftMult(l) * pickSpeed(d, meanHardness(mineable(layer, pickHardness(d))));
+        double heart = 1;
+        for (Dwarf b : Magic.bearers(f, "heart")) if (b.job.equals("miner") && b.layer == l.index) { heart = 1.15; break; }
+        return layer.rate() * workSpeed(f, d, "mining") * shaftMult(l) * pickSpeed(d, meanHardness(mineable(layer, pickHardness(d)))) * heart;
     }
 
     // ------------------------------------------------------------ smithing at the anvil
@@ -302,7 +309,16 @@ public final class Rules {
 
     /** Veins ready to break out by hand on a layer. */
     public static int veins(LayerState l, double t) {
-        return t < l.veinAt ? 0 : Math.min(VEINS_MAX, 1 + (int) Math.floor((t - l.veinAt) / VEIN_WAIT));
+        return veins(l, t, VEIN_WAIT);
+    }
+
+    public static int veins(LayerState l, double t, double wait) {
+        return t < l.veinAt ? 0 : Math.min(VEINS_MAX, 1 + (int) Math.floor((t - l.veinAt) / wait));
+    }
+
+    /** Hours between veins: 4, or one vein a day more with Deepsight. */
+    public static double veinWait(Fortress f) {
+        return Magic.active(f, "deepsight") ? VEIN_WAIT * 6 / 7 : VEIN_WAIT;
     }
 
     /** Heat 0..100 for a boosted building (0 for every other one). */
@@ -330,8 +346,9 @@ public final class Rules {
         Dwarf w = g.dwarf == 0 ? null : dwarf(f, g.dwarf);
         Content.ItemType t = Content.ITEMS.get(g.itype);
         double spec = (spec(w, "finesmith") ? 0.5 : 0) + (spec(w, "weaponsmith") && ("weapons".equals(t.category()) || "armor".equals(t.category())) ? 1 : 0);
+        // smithing-quality gems: +100 % is one quality step more on average
         return -0.3 + 0.18 * g.skill + 0.2 * (g.level - 1) + 1.2 * play + (g.nimble ? 0.3 : 0) + 0.2 * trad(f, "master_smiths")
-                - ITEM_SKILL_PENALTY * (t.skill() - 1) + spec;
+                - ITEM_SKILL_PENALTY * (t.skill() - 1) + spec + Magic.bonus(w, "smithq");
     }
 
     /** Chance that the piece becomes an artifact. Perfect play makes it five times as likely. */
@@ -355,12 +372,26 @@ public final class Rules {
 
     /** Hardness of the rock a miner's pick can break: its metal's hardness, or the makeshift pick's. */
     public static int pickHardness(Dwarf d) {
-        return d.tool == null ? Content.MAKESHIFT_HARDNESS : Content.METALS.get(Content.parseItem(d.tool)[1]).hardness();
+        return !isPick(d.tool) ? Content.MAKESHIFT_HARDNESS : Content.METALS.get(Content.parseItem(d.tool)[1]).hardness();
+    }
+
+    public static boolean isPick(String key) {
+        return key != null && key.startsWith("item:pickaxe:");
+    }
+
+    /** A piece is gone (broken, scrapped): its gems drop out and go to the warehouse. */
+    public static void salvageGems(Fortress f, String key) {
+        if (key == null || !Content.isItem(key)) return;
+        for (Magic.Gem g : Magic.gems(key)) add(f, g.key(), 1);
+    }
+
+    public static boolean isArtifact(String key) {
+        return key != null && Content.isItem(key) && Integer.parseInt(Content.parseItem(key)[2]) >= Content.ARTIFACT;
     }
 
     /** Speed of a pick against rock of the given (mean) hardness: harder metal +12 % per step (at most +60 %), times quality, sharpened +15 %. */
     public static double pickSpeed(Dwarf d, double rock) {
-        if (d.tool == null) return MAKESHIFT_SPEED;
+        if (!isPick(d.tool)) return MAKESHIFT_SPEED;
         String[] p = Content.parseItem(d.tool);
         double h = Content.METALS.get(p[1]).hardness();
         return (1 + Math.min(0.6, 0.12 * Math.max(0, h - rock))) * qualityPower(d.tool) * (p[3].contains("s") ? 1.15 : 1);
@@ -385,12 +416,14 @@ public final class Rules {
 
     /** Working hours a pickaxe lasts: copper 2 days, bronze and iron 5, steel 10; better quality lasts longer. */
     public static double toolLife(String key) {
+        if (isArtifact(key)) return Double.POSITIVE_INFINITY;   // legendary pieces never break
         int h = Content.METALS.get(Content.parseItem(key)[1]).hardness();
-        return (24 + 6 * h * h) * qualityPower(key);
+        return (24 + 6 * Math.max(2, h) * Math.max(2, h)) * qualityPower(key);
     }
 
     /** Battles a weapon or armor piece lasts: (10 + 3 × hardness²) × quality: bronze 58, steel 118, star steel 202. */
     public static double gearLife(String key) {
+        if (isArtifact(key)) return Double.POSITIVE_INFINITY;
         int h = Content.METALS.get(Content.parseItem(key)[1]).hardness();
         return (10 + 3 * h * h) * qualityPower(key);
     }
@@ -400,9 +433,10 @@ public final class Rules {
         for (String slot : List.of("weapon", "helm", "armor")) {
             String key = slot.equals("weapon") ? d.weapon : slot.equals("helm") ? d.helm : d.armor;
             if (key == null) continue;
-            double w = d.gearWear.getOrDefault(slot, 0.0) + 1 / gearLife(key);
+            double w = d.gearWear.getOrDefault(slot, 0.0) + (1 - Magic.bonus(d, "wear")) / gearLife(key);
             if (w < 1) { d.gearWear.put(slot, w); continue; }
             d.gearWear.remove(slot);
+            salvageGems(f, key);
             String next = null;
             if (f.autoPicks) {
                 for (Map.Entry<String, Integer> e : f.stock.entrySet())
@@ -430,12 +464,32 @@ public final class Rules {
         return Content.METALS.get(p[1]).hardness() * 10 + qualityPower(key) * (p[3].contains("s") ? 1.15 : 1);
     }
 
+    /** "cut_gem" (what chalices and regalia need) counts every plain cut gem, whatever its cut. */
     public static int stock(Fortress f, String key) {
+        if (key.equals("cut_gem")) {
+            int n = f.stock.getOrDefault(key, 0);
+            for (int c = 0; c < Magic.CUTS.size(); c++) n += f.stock.getOrDefault(Magic.gemKey(c), 0);
+            return n;
+        }
         return f.stock.getOrDefault(key, 0);
     }
 
     public static void add(Fortress f, String key, int q) {
         if (q == 0) return;
+        if (key.equals("cut_gem")) {          // takes the plainest cut gems first; a found one is a fair cut
+            if (q > 0) { add(f, Magic.gemKey(1), q); return; }
+            int need = -q;
+            for (int c = -1; c < Magic.CUTS.size() && need > 0; c++) {
+                String k = c < 0 ? "cut_gem" : Magic.gemKey(c);
+                int n = Math.min(need, f.stock.getOrDefault(k, 0));
+                if (n > 0) { addRaw(f, k, -n); need -= n; }
+            }
+            return;
+        }
+        addRaw(f, key, q);
+    }
+
+    static void addRaw(Fortress f, String key, int q) {
         int v = f.stock.getOrDefault(key, 0) + q;
         if (v <= 0) f.stock.remove(key);
         else f.stock.put(key, v);
@@ -477,7 +531,7 @@ public final class Rules {
     }
 
     public static double power(Fortress f, Dwarf d) {
-        double p = (4 + 1.5 * skill(d, "combat"))
+        double p = (1 + Magic.bonus(d, "combat")) * (4 + 1.5 * skill(d, "combat"))
                 * (1 + weaponAtk(d.weapon) / 8)
                 * (1 + (armorDef(d.helm, 0.8) + armorDef(d.armor, 1.8)) / 10)
                 * Math.max(0.2, d.health / 100)
@@ -697,9 +751,13 @@ public final class Rules {
         for (Dwarf d : merchants) {
             double m = 0.012 * skill(d, "trading");
             if (has(d, "greedy")) m += 0.08;
+            m += Magic.bonus(d, "prices");
+            if (Magic.toolFor(d, "trading")) m += Magic.SCALES_PRICE * Magic.age(Content.METALS.get(Content.parseItem(d.tool)[1])) * qualityPower(d.tool);
             b = Math.max(b, m);
         }
-        return 1 + 0.03 * trad(f, "silver_tongues") + b;
+        boolean golden = false;
+        for (Dwarf d : merchants) golden |= Magic.bears(d, "golden");
+        return (1 + 0.03 * trad(f, "silver_tongues") + b) * (golden ? 1.15 : 1);
     }
 
     public static int expeditionSlots(Fortress f) {
@@ -938,7 +996,7 @@ public final class Rules {
         for (Dwarf d : new ArrayList<>(party)) {
             double injury = b.win ? Math.min(0.6, 0.35 / Math.max(0.3, ratio)) : 0.85;
             double death = b.win ? Math.min(0.15, 0.03 / Math.max(0.2, ratio * ratio)) : Math.min(0.6, 0.22 / (ratio + 0.2));
-            double dmgMult = has(d, "tough") ? 0.7 : 1;
+            double dmgMult = (has(d, "tough") ? 0.7 : 1) / (1 + Magic.bonus(d, "defence"));
             if (has(d, "tough")) death *= 0.7;
             if (r.chance(injury)) {
                 double dmg = (b.win ? r.range(8, 30) : r.range(20, 55)) * dmgMult;
@@ -947,15 +1005,22 @@ public final class Rules {
             addXp(d, "combat", b.win ? 30 : 15);
             wearGear(f, d, t);
             if (r.chance(death) || d.health <= 0) {
-                b.dead.add(d);
-                kill(f, d, cause + " (" + enemyName + ")", t);
+                if (kill(f, d, cause + " (" + enemyName + ")", t)) b.dead.add(d);
             }
         }
         return b;
     }
 
-    public static void kill(Fortress f, Dwarf d, String cause, double t) {
+    /** A dwarf dies. Returns false when an Undying artifact saved them (once a day): they fall and get up hurt. */
+    public static boolean kill(Fortress f, Dwarf d, String cause, double t) {
+        if (Magic.bears(d, "undying") && t - d.fellAt >= 24 * H) {
+            d.fellAt = t;
+            d.health = Math.max(d.health, 10);
+            log(f, t, "good", fullName(d) + " fell (" + cause + "), but the Undying artifact pulled them back up.");
+            return false;
+        }
         f.dwarves.remove(d);
+        for (Artifact a : f.artifacts) if (a.wornBy == d.id) a.wornBy = 0;
         Memorial m = new Memorial();
         m.name = fullName(d);
         m.cause = cause;
@@ -970,5 +1035,6 @@ public final class Rules {
             c.guards.remove(Integer.valueOf(d.id));
         }
         for (Expedition e : f.expeditions) e.party.remove(Integer.valueOf(d.id));
+        return true;
     }
 }

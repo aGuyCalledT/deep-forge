@@ -66,9 +66,11 @@ public final class Sim {
         double food = 0, ale = 0;
         for (Dwarf d : f.dwarves) {
             if (d.busy != null && d.busy.startsWith("expedition:")) continue;
-            food += FOOD_PER_H;
-            if (!has(d, "teetotal")) ale += ALE_PER_H * (has(d, "drinker") ? 2 : 1);
+            double thrift = 1 - Magic.bonus(d, "thrift");
+            food += FOOD_PER_H * thrift;
+            if (!has(d, "teetotal")) ale += ALE_PER_H * (has(d, "drinker") ? 2 : 1) * thrift;
         }
+        if (Magic.active(f, "tankard")) ale *= 0.75;
         f.foodDebt += food * dt / H;
         f.aleDebt += ale * dt / H;
         int fd = (int) Math.min(Math.floor(f.foodDebt), stock(f, "food"));
@@ -98,7 +100,7 @@ public final class Sim {
                 if (d.health <= 0) kill(f, d, "starved", t);
             } else {
                 d.hungerHours = 0;
-                if (d.health < 100) d.health = Math.min(100, d.health + 4 * dt / H);
+                if (d.health < 100) d.health = Math.min(100, d.health + 4 * (1 + Magic.bonus(d, "regen")) * dt / H);
             }
         }
     }
@@ -135,6 +137,7 @@ public final class Sim {
         h += 2 * trad(f, "brewmasters");
         for (Object[] w : wishes(f, d)) h += (Boolean) w[1] ? 3 : -6;   // journeymen and masters want more
         if (d.health < 40) h -= 10;
+        h += Magic.bonus(d, "mood");
         return Math.max(0, Math.min(100, h));
     }
 
@@ -173,14 +176,16 @@ public final class Sim {
             if (!d.job.equals("miner") || d.busy != null || d.dig != null) continue;
             LayerState l = f.layers.get(d.layer);
             if (!l.unlocked || l.threat != null) continue;
-            if (d.tool == null && f.autoPicks) takePick(f, d, t);
+            if (d.tool == null && f.autoPicks) takeTool(f, d, "pickaxe");
             double v = minerRate(f, d, l) * dt / H;
-            // each miner brings only what their pick can break
+            // each miner brings only what their pick can break; gems of gem finds make rough gems more likely
             Map<String, Integer> can = mineable(Content.LAYERS.get(l.index), pickHardness(d));
+            double gemMult = 1 + Magic.bonus(d, "gemfind");
             double n = 0;
-            for (int w : can.values()) n += w;
-            for (Map.Entry<String, Integer> e : can.entrySet()) mix.get(l.index).merge(e.getKey(), v * e.getValue() / n, Double::sum);
-            wearPick(f, d, dt / H, t);
+            for (Map.Entry<String, Integer> e : can.entrySet()) n += e.getValue() * (e.getKey().equals("rough_gem") ? gemMult : 1);
+            for (Map.Entry<String, Integer> e : can.entrySet())
+                mix.get(l.index).merge(e.getKey(), v * e.getValue() * (e.getKey().equals("rough_gem") ? gemMult : 1) / n, Double::sum);
+            wearTool(f, d, dt / H, t, "mining");
             rate[l.index] += v;
             miners[l.index]++;
             if (has(d, "sniffer")) sniff[l.index]++;
@@ -215,33 +220,48 @@ public final class Sim {
         }
     }
 
-    /** A pick wears with every working hour; when it breaks the miner takes the next one, or the makeshift pick. */
-    static void wearPick(Fortress f, Dwarf d, double hours, double t) {
-        if (d.tool == null) return;
-        d.toolWear += hours;
+    /**
+     * A tool wears with every working hour at the job it is made for (gems against tool wear slow that, legendary
+     * pieces never wear); when it breaks the dwarf takes the next one of its kind, or works on without.
+     */
+    static void wearTool(Fortress f, Dwarf d, double hours, double t, String skill) {
+        if (d.tool == null || !Magic.toolFor(d, skill)) return;
+        d.toolWear += hours * (1 - Magic.bonus(d, "wear"));
         if (d.toolWear < toolLife(d.tool)) return;
+        String type = Content.parseItem(d.tool)[0];
         String broke = Content.goodName(d.tool).toLowerCase();
+        salvageGems(f, d.tool);
         d.tool = null;
         d.toolWear = 0;
-        String next = f.autoPicks ? takePick(f, d, t) : null;
+        String next = f.autoPicks ? takeTool(f, d, type) : null;
         if (next != null) log(f, t, "info", fullName(d) + "'s " + broke + " broke. They took a " + Content.goodName(next).toLowerCase() + " from the warehouse.");
-        else log(f, t, "warn", fullName(d) + "'s " + broke + " broke. They dig on with a makeshift pick. Forge new pickaxes.");
+        else if (type.equals("pickaxe")) log(f, t, "warn", fullName(d) + "'s " + broke + " broke. They dig on with a makeshift pick. Forge new pickaxes.");
+        else log(f, t, "warn", fullName(d) + "'s " + broke + " broke. Forge a new " + Content.ITEMS.get(type).name().toLowerCase() + ".");
     }
 
-    /** Equip the best pickaxe in the warehouse. Returns its key, or null when there is none. */
-    static String takePick(Fortress f, Dwarf d, double t) {
+    /** Equip the best tool of a kind from the warehouse (picks: hardness first). Returns its key, or null when there is none. */
+    static String takeTool(Fortress f, Dwarf d, String type) {
         String best = null;
         for (Map.Entry<String, Integer> e : f.stock.entrySet()) {
-            if (e.getValue() <= 0 || !Content.isItem(e.getKey())) continue;
-            Content.ItemType it = Content.ITEMS.get(Content.parseItem(e.getKey())[0]);
-            if (!"tool".equals(it.slot())) continue;
-            if (best == null || pickScore(e.getKey()) > pickScore(best)) best = e.getKey();
+            if (e.getValue() <= 0 || !e.getKey().startsWith("item:" + type + ":")) continue;
+            if (best == null || toolScore(e.getKey()) > toolScore(best)) best = e.getKey();
         }
         if (best == null) return null;
         add(f, best, -1);
         d.tool = best;
         d.toolWear = 0;
         return best;
+    }
+
+    static double toolScore(String key) {
+        return (isPick(key) ? pickScore(key) : Magic.age(Content.METALS.get(Content.parseItem(key)[1])) * qualityPower(key)) + Content.baseValue(key) * 1e-7;
+    }
+
+    /** A worker without a tool takes the one for the job from the warehouse. */
+    static void toolUp(Fortress f, Dwarf d, String skill) {
+        if (d.tool != null || !f.autoPicks || skill == null) return;
+        for (Map.Entry<String, String> e : Magic.TOOL_SKILL.entrySet())
+            if (e.getValue().equals(skill) && !e.getKey().equals("pickaxe")) { takeTool(f, d, e.getKey()); return; }
     }
 
     /** Builders finish their work. */
@@ -335,7 +355,7 @@ public final class Sim {
             String k = d.dig;
             int[] c = Layouts.cell(k);
             double work = l.digs.getOrDefault(k, 0.0) + dt * workSpeed(f, d, "mining") * toolBonus(d);
-            wearPick(f, d, dt / H, t);
+            wearTool(f, d, dt / H, t, "mining");
             addXp(d, "mining", 10 * dt / H);
             if (work >= digSeconds(c[1])) {
                 Layouts.dugOut(f, k, t + dt);
@@ -469,6 +489,10 @@ public final class Sim {
                 b.status = "No worker assigned";
                 continue;
             }
+            for (Dwarf w : ws) {
+                toolUp(f, w, type.skill());
+                wearTool(f, w, dt / H, t, type.skill());
+            }
             if (type.kind().equals("continuous")) {
                 for (Dwarf w : ws) continuous(f, b, w, dt, t);
                 continue;
@@ -572,6 +596,7 @@ public final class Sim {
             case "gears" -> "cutting gears";
             case "inlay" -> "inlaying " + (j.inItem == null ? "" : Content.goodName(j.inItem).toLowerCase());
             case "cutgem" -> "cutting a gem";
+            case "enchant" -> "enchanting a gem (" + Magic.SCHOOLS.get(j.mat).name().toLowerCase() + ")";
             case "weave" -> "weaving cloth";
             case "sew" -> "sewing a " + Content.goodName(Content.wearKey(j.itype, j.mat)).toLowerCase();
             default -> j.recipe + "ing " + (j.inItem == null ? "" : Content.goodName(j.inItem));
@@ -619,6 +644,26 @@ public final class Sim {
             b.job = null;
             Smithed s = finishForging(f, g, 0, r, at, false);
             if (s.key != null && s.quality >= 3) log(f, at, "good", "The fine mechanic made a " + Content.goodName(s.key).toLowerCase() + ".");
+            return;
+        }
+        if (j.recipe.equals("cutgem")) {        // the cut is rolled now: crafting skill and the jeweler's level
+            int cut = Magic.rollCut(r, w == null ? 0 : skill(w, "crafting"), b.level);
+            add(f, Magic.gemKey(cut), 1);
+            if (cut >= 3) log(f, at, "good", "The jeweler cut a gem: " + Magic.CUTS.get(cut).toLowerCase() + "!");
+            fortressXp(f, 3);
+            b.job = null;
+            return;
+        }
+        if (j.recipe.equals("enchant")) {       // school chosen, effect and strength rolled
+            Magic.Gem in = Magic.parseGem(j.inItem);
+            int cut = in == null ? 0 : in.cut();
+            String fx = Magic.rollEffect(r, j.mat);
+            int word = Magic.rollWord(r, cut, w == null ? 0 : skill(w, "arcana"), b.level);
+            String key = Magic.gemKey(cut, fx, word);
+            add(f, key, 1);
+            log(f, at, word >= 3 ? "good" : "info", "The wizard enchanted a gem: " + Magic.gemEffectText(Magic.parseGem(key)) + ".");
+            fortressXp(f, 2 + 2 * word);
+            b.job = null;
             return;
         }
         for (Map.Entry<String, Integer> e : j.out.entrySet()) add(f, e.getKey(), e.getValue());
@@ -702,7 +747,7 @@ public final class Sim {
         if (r.chance(artifactChance(g, play))) {
             Artifact a = new Artifact();
             a.id = f.nextId++;
-            a.item = Content.itemKey(g.itype, g.mat, Content.ARTIFACT, "");
+            a.item = Content.itemKey(g.itype, g.mat, Content.ARTIFACT, "", "", Magic.rollLegend(r, g.itype));
             a.name = "Nameless " + Content.METALS.get(g.mat).name().toLowerCase() + " " + Content.ITEMS.get(g.itype).name().toLowerCase();
             a.desc = "Forged by " + who + ".";
             a.value = Content.baseValue(a.item);
@@ -718,6 +763,7 @@ public final class Sim {
         double m = smithMean(f, g, play);
         int q = (int) Math.round(m + r.gauss() * 0.6);
         q = Math.max(0, Math.min(Content.ARTIFACT - 1, q));
+        if (w != null && Magic.bears(w, "forgefather")) q = Math.min(Content.ARTIFACT - 1, q + 1);
         String key = Content.itemKey(g.itype, g.mat, q, "");
         add(f, key, 1);
         out.key = key;
@@ -835,7 +881,10 @@ public final class Sim {
             f.nextRaidAt = t + r.range(20, 40) * H;
             List<Dwarf> defenders = guards(f);
             double bonus = wallPower(f) + power(f, defenders) * (hallBonus(f) - 1);
-            Battle b = battle(f, defenders, bonus, raid.power, r, t, raid.name, "fell defending the gate");
+            boolean keeper = false;
+            for (Dwarf d : Magic.bearers(f, "gatekeeper")) keeper |= defenders.contains(d);
+            if (keeper) log(f, t, "good", "The Gatekeeper stands at the gate. The " + raid.name.toLowerCase() + " falter.");
+            Battle b = battle(f, defenders, bonus, raid.power * (keeper ? 0.7 : 1), r, t, raid.name, "fell defending the gate");
             if (b.win) {
                 int loot = (int) Math.round(raid.power * r.range(200, 400));
                 f.coins += loot;
@@ -1087,7 +1136,7 @@ public final class Sim {
 
     static void migrants(Fortress f, Rng r, double t) {
         if (t < f.nextMigrantsAt) return;
-        f.nextMigrantsAt = t + 8 * H;
+        f.nextMigrantsAt = t + (Magic.active(f, "voice") ? 4 : 8) * H;
         int free = beds(f) - f.dwarves.size();
         if (free <= 0 || f.dwarves.isEmpty()) return;
         double avg = 0;

@@ -15,16 +15,17 @@ public final class Recipes {
             "forge", List.of("craft"),
             "grindstone", List.of("sharpen"),
             "engraver", List.of("engrave", "inlay"),
-            "jeweler", List.of("cutgem", "setgem"),
+            "jeweler", List.of("cutgem"),
+            "wizard", List.of("enchant"),
             "mechanic", List.of("gears", "assemble"),
             "tailor", List.of("weave", "sew"));
 
     /** Mushrooms for one weave and the cloth it gives. */
     public static final int WEAVE_FOOD = 3, WEAVE_CLOTH = 2;
 
-    static final Map<String, String> MOD_OF = Map.of("sharpen", "s", "engrave", "e", "setgem", "g", "inlay", "i");
+    static final Map<String, String> MOD_OF = Map.of("sharpen", "s", "engrave", "e", "inlay", "i");
     public static final int GEAR_BRASS = 2;
-    /** Work seconds (at speed 1): smelting 6 min a bar, forging 5 min a bar, sharpening 8, engraving, setting and inlay 10, a gem 30, assembling 10 a part. */
+    /** Work seconds (at speed 1): smelting 6 min a bar, forging 5 min a bar, sharpening 8, engraving and inlay 10, cutting or enchanting a gem 30, assembling 10 a part. */
     public static final double SMELT_SECONDS = 360, FORGE_SECONDS = 300, SHARPEN_SECONDS = 480, FINISH_SECONDS = 600,
             CUT_SECONDS = 1800, ASSEMBLE_SECONDS = 600;
 
@@ -61,7 +62,11 @@ public final class Recipes {
             }
             case "gears" -> {
             }
-            case "sharpen", "engrave", "setgem", "inlay" -> {
+            case "enchant" -> {
+                if (!Magic.SCHOOLS.containsKey(e.mat)) return "Choose a school of magic.";
+                if (e.itype != null && !e.itype.equals("rough_gem") && !Magic.isPlainGem(e.itype)) return "Choose a gem that is not enchanted yet.";
+            }
+            case "sharpen", "engrave", "inlay" -> {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
                 if (t == null) return "Choose an item type.";
                 if (!t.mods().contains(MOD_OF.get(e.recipe))) return t.name() + " cannot be " + e.recipe + "ed.";
@@ -108,13 +113,24 @@ public final class Recipes {
             case "gears" -> in.put("bar:brass", GEAR_BRASS);
             case "inlay" -> in.put("bar:" + Content.INLAY_METAL, Content.INLAY_BARS);
             case "cutgem" -> in.put("rough_gem", 1);
-            case "setgem" -> in.put("cut_gem", 1);
+            case "enchant" -> {
+                String g = findGem(f, e);
+                in.put(g != null ? g : e.itype != null ? e.itype : "cut_gem", 1);
+            }
             case "weave" -> in.put("food", WEAVE_FOOD);
             case "sew" -> in.put("cloth", Content.CLOTHES.get(e.itype).cloth());
             default -> {
             }
         }
         return in;
+    }
+
+    /** The gem an enchanting order uses: the one asked for, else the best plain cut gem, else a rough gem. */
+    public static String findGem(Fortress f, QueueEntry e) {
+        if (e.itype != null) return stock(f, e.itype) > 0 ? e.itype : null;
+        for (int c = Magic.CUTS.size() - 1; c >= 0; c--) if (stock(f, Magic.gemKey(c)) > 0) return Magic.gemKey(c);
+        if (f.stock.getOrDefault("cut_gem", 0) > 0) return "cut_gem";
+        return stock(f, "rough_gem") > 0 ? "rough_gem" : null;
     }
 
     /** Find the best item in stock for a workshop entry: highest quality, matching, without the mod yet. */
@@ -160,7 +176,15 @@ public final class Recipes {
         switch (e.recipe) {
             case "smelt" -> prefix = "bar:" + Content.ORES.get(e.mat).metal();
             case "alloy" -> prefix = "bar:" + e.mat;
-            case "cutgem" -> prefix = "cut_gem";
+            case "cutgem" -> prefix = "gem:";
+            case "enchant" -> {
+                int n = 0;
+                for (Map.Entry<String, Integer> s : f.stock.entrySet()) {
+                    Magic.Gem g = Magic.parseGem(s.getKey());
+                    if (g != null && g.enchanted() && Magic.EFFECTS.get(g.effect()).school().equals(e.mat)) n += s.getValue();
+                }
+                return n;
+            }
             case "weave" -> prefix = "cloth";
             case "sew" -> prefix = Content.wearKey(e.itype, e.mat);
             case "gears" -> prefix = "gears";
@@ -175,6 +199,7 @@ public final class Recipes {
             String k = s.getKey();
             if (prefix.endsWith(":") ? !k.startsWith(prefix) : !k.equals(prefix)) continue;
             if (mod != null && !Content.parseItem(k)[3].contains(mod)) continue;
+            if (e.recipe.equals("cutgem") && !Magic.isPlainGem(k)) continue;
             n += s.getValue();
         }
         if (e.recipe.equals("craft"))
@@ -205,9 +230,11 @@ public final class Recipes {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
                 j.time = FORGE_SECONDS * t.bars() * Math.sqrt(Content.METALS.get(e.mat).heat());
             }
-            case "cutgem" -> {
-                j.time = CUT_SECONDS;
-                j.out.put("cut_gem", 1);
+            case "cutgem" -> j.time = CUT_SECONDS;      // the cut is rolled when it is done (Sim.complete)
+            case "enchant" -> {
+                j.time = Magic.ENCHANT_SECONDS;
+                j.inItem = in.keySet().iterator().next();
+                if (j.inItem.equals("cut_gem")) j.inItem = Magic.gemKey(1);
             }
             case "gears" -> {
                 j.time = 120;
@@ -226,7 +253,7 @@ public final class Recipes {
                 j.time = 80 * Content.CLOTHES.get(e.itype).cloth();
                 j.out.put(Content.wearKey(e.itype, e.mat), 1);
             }
-            case "sharpen", "engrave", "setgem", "inlay" -> {
+            case "sharpen", "engrave", "inlay" -> {
                 String item = findItem(f, e);
                 if (item == null) return null;
                 String[] p = Content.parseItem(item);
@@ -234,7 +261,7 @@ public final class Recipes {
                 j.mat = p[1];
                 j.time = e.recipe.equals("sharpen") ? SHARPEN_SECONDS : FINISH_SECONDS;
                 add(f, item, -1);
-                j.out.put(Content.itemKey(p[0], p[1], Integer.parseInt(p[2]), p[3] + MOD_OF.get(e.recipe)), 1);
+                j.out.put(Content.itemKey(p[0], p[1], Integer.parseInt(p[2]), p[3] + MOD_OF.get(e.recipe), p[4], p[5]), 1);
             }
             default -> {
                 return null;
