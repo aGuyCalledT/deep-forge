@@ -182,6 +182,8 @@ public final class State {
         public String armor;
         public String tool;
         public double toolWear;       // working hours the tool has done (it breaks at Rules.toolLife)
+        public List<String> specs = new ArrayList<>();   // specialisations chosen at journeyman and master rank
+        public String trinket;        // a piece of jewelry a master keeps for themself (taken from the warehouse)
         public Map<String, Double> gearWear = new TreeMap<>();   // weapon, helm, armor: share of their life used up (breaks at 1)
         public double arrived;
     }
@@ -200,6 +202,7 @@ public final class State {
         public double acc;        // continuous production accumulator
         public String status;     // human readable why idle
         public int machines = 1;  // workstations in the room; each one needs its own worker
+        public boolean practice;  // practice mode: half the output, three times the learning
         public boolean machinesByHand;   // the player took a machine out: the hold no longer adds them back on its own
         public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
         public String look = "";  // room template (art/props48/rooms), "" = the first; bays use the same name if there is one

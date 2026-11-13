@@ -1,6 +1,6 @@
 // Fortress overview, dwarves, war and "more" panels.
 import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue, moneyText } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp, hourglass } from './ui.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp, hourglass, statusIco } from './ui.js';
 import { reportCards } from './collect.js';
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
@@ -177,7 +177,9 @@ export function dwarfCard(x) {
     h('div', null,
       h('div', { class: 'row between' }, h('b', null, fullName(x)), h('span', { class: 'small muted' }, x.age + ' years')),
       profession(x, dd),
-      h('div', null, x.traits.map((t) => h('span', { class: 'chip', title: byId.traits[t].note }, byId.traits[t].name))),
+      h('div', null, h('span', { class: 'chip gold-t' }, D().ranks ? D().ranks[dd.rank || 0] : ''),
+        (x.specs || []).map((s) => h('span', { class: 'chip', title: D().specs[s][1] }, D().specs[s][0])),
+        x.traits.map((t) => h('span', { class: 'chip', title: byId.traits[t].note }, byId.traits[t].name))),
       h('div', { class: 'row small', style: { gap: '4px 10px' } },
         h('span', { class: 'grow' }, 'Health', bar(x.health / 100, 'hp')),
         h('span', { class: 'grow' }, 'Mood' + (dd.target > x.happiness + 3 ? ' ↑' : dd.target < x.happiness - 3 ? ' ↓' : ''), bar(x.happiness / 100, 'mood'))),
@@ -185,7 +187,29 @@ export function dwarfCard(x) {
       gear.length ? h('div', { class: 'row' }, gear.map((k) => h('span', { title: goodName(k) }, goodIcon(k, 'icon s')))) : null,
       !x.busy ? h('div', { class: 'row', style: { marginTop: '6px' } },
         h('button', { class: 'btn small', onclick: () => jobSheet(x) }, 'Job'),
-        h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear')) : null));
+        h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear'),
+        (dd.rank || 0) > 0 || (dd.wishes || []).length ? h('button', { class: 'btn small', onclick: () => rankSheet(x) }, (x.specs || []).length < (dd.rank || 0) ? [statusIco('good'), 'Rank'] : 'Rank') : null) : null));
+}
+
+/** Rank, specialisations to choose and what the dwarf wishes for. */
+export function rankSheet(x) {
+  openSheet(() => {
+    const d = D(), dd = d.dwarves[x.id] || {}, rk = dd.rank || 0, free = rk - (x.specs || []).length;
+    return h('div', null,
+      h('h2', null, `${fullName(x)}: ${d.ranks[rk]}`),
+      h('p', { class: 'small muted' }, `Journeyman at skill ${d.rankAt[1]}, master at ${d.rankAt[2]}. `,
+        info('Each rank lets a dwarf choose a specialisation. Journeymen and masters teach: others in the same room learn half again as fast. They also want more than food, ale and a bed.')),
+      h('h3', null, 'Specialisations'),
+      (x.specs || []).length ? (x.specs || []).map((s) => h('div', { class: 'row small' }, statusIco('good'), h('b', null, d.specs[s][0]), h('span', { class: 'muted' }, d.specs[s][1]))) : h('p', { class: 'small muted' }, 'None yet.'),
+      free > 0 ? [h('p', { class: 'small good-t' }, 'Choose one:'),
+        Object.entries(d.specs).filter(([k]) => !(x.specs || []).includes(k)).map(([k, v]) => h('button', { class: 'pick', style: { width: '100%' },
+          onclick: async () => { await bus.act({ type: 'specialize', dwarf: x.id, spec: k }); refreshSheet(); } },
+          h('span', { class: 'grow', style: { textAlign: 'left' } }, h('b', null, v[0]), h('span', { class: 'small muted' }, ' · ' + v[1]))))] : null,
+      h('h3', null, 'Wishes'),
+      (dd.wishes || []).length ? dd.wishes.map((w) => h('div', { class: 'row small' }, statusIco(w.ok ? 'good' : 'warn'), h('span', { class: 'grow' }, w.label)))
+        : h('p', { class: 'small muted' }, 'Food, ale and a bed are enough for an apprentice.'),
+      x.trinket ? h('p', { class: 'small' }, goodIcon(x.trinket, 'icon s'), ' Keeps ', goodName(x.trinket).toLowerCase(), '.') : null);
+  }, null, 'dwarf');
 }
 
 /** The skill a dwarf's job trains and uses. */

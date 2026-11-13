@@ -222,6 +222,19 @@ Masterwork 2, Artifact 3.
 - **Goldeinlage** (Veredelung `i`, Graveur, 1 Goldbarren): Wert + 2 × Goldwert vor Faktor und Qualität. Erlaubt auf
   Streitaxt, Helm, Kettenhemd, Kelch (goblet), Schild, Chalice, Parade axe.
 
+## Ränge, Lehre, Üben, Wünsche
+
+- **Rang** nach der besten Fertigkeit (`Rules.rank`): Lehrling 0–7, Geselle ab 8, Meister ab 15 (`JOURNEYMAN`, `MASTER`).
+- **Spezialisierung** (Aktion `specialize`, `Dwarf.specs`): eine als Geselle, eine zweite als Meister. Quick hands +20 %
+  Tempo, Weaponsmith +1 mittlere Qualität bei Waffen und Rüstung, Fine hand +0,5 Qualität bei jedem Stück,
+  Deep delver +20 % Bergbau, Teacher: Lehre +100 % statt +50 %.
+- **Lehre** (`Rules.learnMult`): arbeitet im selben Raum ein Geselle oder Meister, der in dieser Fertigkeit besser ist,
+  lernen die anderen +50 % (Teacher +100 %).
+- **Üben** (`Building.practice`, Aktion `practice`): Werkstatt arbeitet mit halbem Tempo (halber Ertrag), Lernen ×3.
+- **Wünsche** (`Rules.wishes`, je erfüllt +3, je offen −6 Stimmungsziel): Gesellen wollen etwas zum Anziehen und Kelche
+  oder Krug-Sätze im Lager (mit Taverne); Meister zusätzlich ein eigenes Werkzeug oder eine Waffe ab Fine und ein
+  Schmuckstück. Das Schmuckstück nimmt sich der Meister selbst: das billigste aus der Gruppe jewelry (`Dwarf.trinket`).
+
 ## Handelsdepot (`Depot.java`)
 
 - Gespeicherte Karawanen: `1 + Stufe`; Regeln (WENN Vorrat ≥ N DANN schicke Karawane nach Stadt): `Stufe`, eine Regel

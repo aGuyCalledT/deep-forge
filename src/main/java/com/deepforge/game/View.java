@@ -82,6 +82,9 @@ public final class View {
         }
         d.put("contractHave", have);
         d.put("mintMetals", MINT_METALS);
+        d.put("ranks", RANK_NAMES);
+        d.put("rankAt", List.of(0, JOURNEYMAN, MASTER));
+        d.put("specs", SPECS);
         d.put("mintPerHour", level(f, "vault") / MINT_HOURS);
 
         // per dwarf numbers
@@ -95,6 +98,10 @@ public final class View {
             m.put("skills", lv);
             if (x.job.equals("miner")) m.put("rate", round(minerRate(f, x, f.layers.get(x.layer))));
             m.put("pickHardness", pickHardness(x));
+            m.put("rank", rank(x));
+            List<Map<String, Object>> ws = new ArrayList<>();
+            for (Object[] w : wishes(f, x)) ws.add(Map.of("label", w[0], "ok", w[1]));
+            m.put("wishes", ws);
             if (x.tool != null) m.put("toolLeft", round(Math.max(0, 1 - x.toolWear / toolLife(x.tool))));
             Map<String, Double> left = new LinkedHashMap<>();
             for (Map.Entry<String, Double> e : x.gearWear.entrySet()) left.put(e.getKey(), round(Math.max(0, 1 - e.getValue())));

@@ -31,10 +31,87 @@ public final class Rules {
         return 0.6 + 0.8 * d.happiness / 100;
     }
 
+    // ------------------------------------------------------------ ranks, specialisations, teaching, wishes
+
+    public static final int JOURNEYMAN = 8, MASTER = 15;
+    public static final List<String> RANK_NAMES = List.of("Apprentice", "Journeyman", "Master");
+    /** Specialisations: id -> name and what it does. One at journeyman rank, a second at master rank. */
+    public static final Map<String, String[]> SPECS = new LinkedHashMap<>();
+    static {
+        SPECS.put("quick", new String[]{"Quick hands", "+20% work speed"});
+        SPECS.put("weaponsmith", new String[]{"Weaponsmith", "+1 quality on weapons and armor"});
+        SPECS.put("finesmith", new String[]{"Fine hand", "+0.5 quality on every piece"});
+        SPECS.put("delver", new String[]{"Deep delver", "+20% mining"});
+        SPECS.put("teacher", new String[]{"Teacher", "others in the room learn twice as fast instead of half again"});
+    }
+    public static final double TEACH = 0.5, TEACH_SPEC = 1.0, PRACTICE_XP = 3, PRACTICE_RATE = 0.5;
+
+    /** 0 apprentice, 1 journeyman, 2 master: by the best skill. */
+    public static int rank(Dwarf d) {
+        int best = 0;
+        for (String s : Content.SKILLS) best = Math.max(best, skill(d, s));
+        return best >= MASTER ? 2 : best >= JOURNEYMAN ? 1 : 0;
+    }
+
+    public static boolean spec(Dwarf d, String s) {
+        return d != null && d.specs.contains(s);
+    }
+
+    /** How fast a worker learns in a room: +50% with a journeyman or master of that skill there (+100% with a teacher), x3 when practising. */
+    public static double learnMult(Fortress f, Building b, Dwarf w, String skill) {
+        double m = 1;
+        if (b != null) {
+            double teach = 0;
+            for (Dwarf o : workers(f, b)) {
+                if (o == w || skill(o, skill) < JOURNEYMAN || skill(o, skill) <= skill(w, skill)) continue;
+                teach = Math.max(teach, spec(o, "teacher") ? TEACH_SPEC : TEACH);
+            }
+            m += teach;
+            if (b.practice) m *= PRACTICE_XP;
+        }
+        return m;
+    }
+
+    /** What a dwarf wants beyond food, ale and a bed: by rank. Each entry: [label, fulfilled]. */
+    public static List<Object[]> wishes(Fortress f, Dwarf d) {
+        List<Object[]> out = new ArrayList<>();
+        int rk = rank(d);
+        if (rk >= 1) {
+            out.add(new Object[]{"Something to wear", !d.wear.isEmpty()});
+            boolean mugs = false;
+            for (Map.Entry<String, Integer> e : f.stock.entrySet())
+                if (e.getValue() > 0 && (e.getKey().startsWith("item:goblet:") || e.getKey().startsWith("item:tankards:"))) mugs = true;
+            out.add(new Object[]{"Goblets or tankards in the tavern", mugs && level(f, "tavern") > 0});
+        }
+        if (rk >= 2) {
+            boolean fine = false;
+            for (String k : new String[]{d.tool, d.weapon}) if (k != null && Integer.parseInt(Content.parseItem(k)[2]) >= 2) fine = true;
+            out.add(new Object[]{"A Fine tool or weapon of their own", fine});
+            out.add(new Object[]{"A piece of jewelry", d.trinket != null});
+        }
+        return out;
+    }
+
+    /** A master takes the plainest ring, crown or music box from the warehouse for themself. */
+    public static void takeTrinket(Fortress f, Dwarf d) {
+        if (d.trinket != null || rank(d) < 2) return;
+        String best = null;
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) {
+            if (e.getValue() <= 0 || !Content.isItem(e.getKey())) continue;
+            if (!Content.ITEMS.get(Content.parseItem(e.getKey())[0]).category().equals("jewelry")) continue;
+            if (best == null || Content.baseValue(e.getKey()) < Content.baseValue(best)) best = e.getKey();
+        }
+        if (best == null) return;
+        add(f, best, -1);
+        d.trinket = best;
+    }
+
     /** Work speed for a skill, including skill level, mood, health and traits. */
     public static double workSpeed(Fortress f, Dwarf d, String skill) {
         double s = (1 + 0.06 * skill(d, skill)) * moodMult(d) * (d.health < 40 ? 0.5 : 1);
         if (has(d, "lazy")) s *= 0.85;
+        if (spec(d, "quick")) s *= 1.2;
+        if (skill.equals("mining") && spec(d, "delver")) s *= 1.2;
         if (skill.equals("mining")) {
             if (has(d, "strong")) s *= 1.2;
             if (has(d, "claustro")) s *= 0.75;
@@ -250,8 +327,11 @@ public final class Rules {
 
     /** Mean quality tier of a piece; play is 0..1 (0 = dwarves alone). */
     public static double smithMean(Fortress f, Forging g, double play) {
+        Dwarf w = g.dwarf == 0 ? null : dwarf(f, g.dwarf);
+        Content.ItemType t = Content.ITEMS.get(g.itype);
+        double spec = (spec(w, "finesmith") ? 0.5 : 0) + (spec(w, "weaponsmith") && ("weapons".equals(t.category()) || "armor".equals(t.category())) ? 1 : 0);
         return -0.3 + 0.18 * g.skill + 0.2 * (g.level - 1) + 1.2 * play + (g.nimble ? 0.3 : 0) + 0.2 * trad(f, "master_smiths")
-                - ITEM_SKILL_PENALTY * (Content.ITEMS.get(g.itype).skill() - 1);
+                - ITEM_SKILL_PENALTY * (t.skill() - 1) + spec;
     }
 
     /** Chance that the piece becomes an artifact. Perfect play makes it five times as likely. */

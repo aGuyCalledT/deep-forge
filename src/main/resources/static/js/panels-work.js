@@ -94,6 +94,9 @@ export function workCard(b) {
   })));
   out.append(h('div', { class: 'row', style: { marginTop: '8px' } },
     h('button', { class: 'btn primary', disabled: b.queue.length >= 10, onclick: () => orderSheet(b) }, ico('plus'), 'Add order'), upgradeBtn(b)));
+  out.append(h('div', { class: 'row', style: { marginTop: '8px' } },
+    h('label', { class: 'row grow small' }, h('input', { type: 'checkbox', checked: !!b.practice, onchange: (e) => bus.act({ type: 'practice', building: b.id, on: e.target.checked }) }), 'Practice'),
+    info('Practice mode: the workshop makes half as much, but its workers learn three times as fast. A journeyman or master working here teaches the others too.')));
   return out;
 }
 

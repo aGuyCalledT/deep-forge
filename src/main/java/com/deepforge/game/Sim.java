@@ -132,12 +132,14 @@ public final class Sim {
         for (Dwarf o : f.dwarves) if (has(o, "storyteller")) tellers++;
         h += 3 * Math.min(2, tellers);
         h += 2 * trad(f, "brewmasters");
+        for (Object[] w : wishes(f, d)) h += (Boolean) w[1] ? 3 : -6;   // journeymen and masters want more
         if (d.health < 40) h -= 10;
         return Math.max(0, Math.min(100, h));
     }
 
     static void happiness(Fortress f, double dt, double t) {
         for (Dwarf d : new ArrayList<>(f.dwarves)) {
+            takeTrinket(f, d);
             double target = happinessTarget(f, d, t);
             double max = 8 * dt / H;
             d.happiness += Math.max(-max, Math.min(max, target - d.happiness));
@@ -498,8 +500,8 @@ public final class Sim {
     }
 
     static void continuous(Fortress f, Building b, Dwarf w, double dt, double t) {
-        double speed = workSpeed(f, w, "farming") * buildingMult(b);
-        addXp(w, "farming", 10 * dt / H);
+        double speed = workSpeed(f, w, "farming") * buildingMult(b) * (b.practice ? PRACTICE_RATE : 1);
+        addXp(w, "farming", 10 * dt / H * learnMult(f, b, w, "farming"));
         if (b.type.equals("farm")) {
             // fertilizer from the minigame: more mushrooms until it is used up
             double fert = b.fertUntil <= t ? 0 : b.fert * Math.min(1, (b.fertUntil - t) / Math.max(1e-9, dt));
@@ -543,12 +545,13 @@ public final class Sim {
                 continue;
             }
             double heat = boostAt(b, now + rem / 2);
-            double rate = workSpeed(f, w, skill) * buildingMult(b) * (1 + heat / 100);
+            double slow = b.practice ? PRACTICE_RATE : 1;
+            double rate = workSpeed(f, w, skill) * buildingMult(b) * (1 + heat / 100) * slow;
             double need = (j.time - j.progress) / rate;
-            addXp(w, skill, 12 * Math.min(rem, need) / H);
+            addXp(w, skill, 12 * Math.min(rem, need) / H * learnMult(f, b, w, skill));
             if (need <= rem) {
                 rem -= need;
-                complete(f, b, w, r, t + dt - rem, workSpeed(f, w, skill) * buildingMult(b));
+                complete(f, b, w, r, t + dt - rem, workSpeed(f, w, skill) * buildingMult(b) * slow);
             } else {
                 j.progress += rem * rate;
                 rem = 0;

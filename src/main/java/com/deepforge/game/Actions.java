@@ -82,6 +82,8 @@ public final class Actions {
             case "quickSell" -> quickSell(f, a, t);
             case "sellVisitor" -> sellVisitor(f, a, t);
             case "fillContract" -> fillContract(f, a, t);
+            case "specialize" -> specialize(f, a, t);
+            case "practice" -> practice(f, a);
             case "mint" -> mint(f, a, t);
             case "sendVisitor" -> { check(f.visitor != null, "No caravan at the gate."); f.visitor.leaves = t; }
             case "unlockLayer" -> unlockLayer(f, a, t);
@@ -308,6 +310,26 @@ public final class Actions {
         log(f, t, "good", "The caravan from " + city + " bought " + n + " " + Content.goodName(key).toLowerCase() + " for " + money(coins) + ".");
         if (v.want <= 0) f.visitor = null;
         addRep(f, v.city, coins, t);
+    }
+
+    /** Choose a specialisation: one at journeyman rank, a second at master rank. */
+    static void specialize(Fortress f, Map<String, Object> a, double t) {
+        Dwarf d = dwarf(f, num(a, "dwarf", -1));
+        check(d != null, "No such dwarf.");
+        String s = str(a, "spec");
+        check(SPECS.containsKey(s), "Unknown specialisation.");
+        check(!d.specs.contains(s), "They already have that.");
+        check(d.specs.size() < rank(d), rank(d) == 0 ? "Only journeymen (skill " + JOURNEYMAN + ") can specialise. Let them work and learn."
+                : "Masters (skill " + MASTER + ") can choose a second one.");
+        d.specs.add(s);
+        log(f, t, "good", fullName(d) + " is now known as a " + SPECS.get(s)[0].toLowerCase() + ".");
+    }
+
+    /** Practice mode for a workshop: half the output, three times the learning. */
+    static void practice(Fortress f, Map<String, Object> a) {
+        Building b = building(f, str(a, "building"));
+        check(b != null && !"passive".equals(Content.BUILDINGS.get(b.type).kind()), "Only workshops can practise.");
+        b.practice = Boolean.TRUE.equals(a.get("on")) || "true".equals(str(a, "on"));
     }
 
     /** Hand a contract's pieces to the city's couriers: paid at once with the bonus, double reputation. */

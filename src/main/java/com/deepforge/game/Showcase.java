@@ -71,6 +71,12 @@ public final class Showcase {
 
         // dwarves: a worker at every machine, miners on every layer, guards in the hall
         while (f.dwarves.size() < DWARVES) f.dwarves.add(Factory.newDwarf(f, r, t, null));
+        for (int i = 0; i < f.dwarves.size(); i++) {   // a few journeymen and masters among them
+            Dwarf d = f.dwarves.get(i);
+            String sk = Content.SKILLS.get(i % Content.SKILLS.size());
+            int lv = i % 6 == 0 ? Rules.MASTER : i % 3 == 0 ? Rules.JOURNEYMAN : 0;
+            if (lv > 0) d.xp.merge(sk, 40.0 * lv * lv, Math::max);
+        }
         Iterator<Dwarf> free = f.dwarves.stream().filter(d -> d.busy == null).toList().iterator();
         for (Building b : f.buildings) {
             if (!Rules.isWorkshop(b) || !l.rooms.containsKey(b.id)) continue;

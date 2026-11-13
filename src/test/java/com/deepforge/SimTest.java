@@ -1009,4 +1009,41 @@ class SimTest {
         assertEquals(1, Rules.stock(f, "gears"), "two gears cut, one went into the lock");
         assertThrows(Actions.GameException.class, () -> act(f, m, f.t, "type", "queueAdd", "building", "forge-1", "recipe", "craft", "itype", "lock", "mat", "steel", "count", 1));
     }
+
+    @Test
+    void ranksTeachingPracticeAndWishes() {
+        Fortress f = fresh(45);
+        Market m = Market.inMemory(45, T0);
+        Dwarf a = f.dwarves.get(0), b = f.dwarves.get(1);
+        a.xp.clear();
+        b.xp.clear();
+        assertEquals(0, Rules.rank(a));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "specialize", "dwarf", a.id, "spec", "quick"));
+        a.xp.put("smithing", 40.0 * 8 * 8);
+        assertEquals(1, Rules.rank(a));
+        double before = Rules.workSpeed(f, a, "smithing");
+        act(f, m, T0, "type", "specialize", "dwarf", a.id, "spec", "quick");
+        assertEquals(1.2 * before, Rules.workSpeed(f, a, "smithing"), 1e-9);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "specialize", "dwarf", a.id, "spec", "teacher"), "one at journeyman rank");
+        // teaching: a journeyman in the same room, practice mode triples it
+        State.Building forge = f.buildings.stream().filter(x -> x.type.equals("forge")).findFirst().orElseThrow();
+        forge.machines = 2;
+        act(f, m, T0, "type", "assign", "dwarf", a.id, "job", "worker", "building", forge.id, "machine", 0);
+        act(f, m, T0, "type", "assign", "dwarf", b.id, "job", "worker", "building", forge.id, "machine", 1);
+        assertEquals(1.5, Rules.learnMult(f, forge, b, "smithing"), 1e-9);
+        assertEquals(1, Rules.learnMult(f, forge, a, "smithing"), 1e-9, "nobody better to learn from");
+        act(f, m, T0, "type", "practice", "building", forge.id, "on", true);
+        assertEquals(4.5, Rules.learnMult(f, forge, b, "smithing"), 1e-9);
+        // a master wants more, and takes a ring for themself
+        a.xp.put("smithing", 40.0 * 15 * 15);
+        assertEquals(2, Rules.rank(a));
+        assertEquals(4, Rules.wishes(f, a).size());
+        double unhappy = Sim.happinessTarget(f, a, T0);
+        String ring = Content.itemKey("ring", "silver", 1, "");
+        Rules.add(f, ring, 1);
+        Rules.takeTrinket(f, a);
+        assertEquals(ring, a.trinket);
+        assertEquals(0, Rules.stock(f, ring));
+        assertTrue(Sim.happinessTarget(f, a, T0) > unhappy, "a wish fulfilled lifts the mood");
+    }
 }
