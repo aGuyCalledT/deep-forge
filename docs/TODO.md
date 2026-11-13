@@ -271,6 +271,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
 - [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.
 - [x] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.
-- [ ] Schritt 4: Ruf, Aufträge, Aufnahme je Stadt und Warengruppe, Münze.
+- [x] Schritt 4: Ruf, Aufträge, Nachfrage alle 12 h mit Vorschau, Münze im Tresor. Aufnahme je Fach über Ruf
+      (Marktmacht); die Feineinstellung „eine Ware höchstens ein Viertel des Einkommens“ kommt mit dem Balance-Bot.
 - [ ] Schritt 5: Verbundwaren, Einlage, Feinmechaniker-Werkbank.
 - [ ] Schritt 6: Ränge, Lehre, Wünsche der Zwerge.

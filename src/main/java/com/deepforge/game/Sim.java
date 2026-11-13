@@ -41,6 +41,7 @@ public final class Sim {
             buildings(f, w, r, t);
             training(f, w);
             shiftReports(f, r, t + dt);
+            minting(f, w, t + dt);
         }
         builders(f, t + dt);
         anvil(f, r, t + dt);
@@ -51,6 +52,7 @@ public final class Sim {
         }
         caravans(f, r, t + dt, market);
         visitors(f, r, t + dt, market);
+        contracts(f, r, t + dt);
         Depot.step(f, r, t + dt, market);
         Expeditions.step(f, r, t + dt);
         migrants(f, r, t + dt);
@@ -877,6 +879,68 @@ public final class Sim {
                 + v.want + " " + Content.marketName(mk).toLowerCase() + ". Open Trade to sell.");
     }
 
+    /**
+     * Every 8 hours a known city posts a contract for plain pieces of one kind (up to three open). Any item and any
+     * metal the hold can get; the size grows with the hold. Paid with a bonus on delivery, and it counts double for
+     * reputation.
+     */
+    static void contracts(Fortress f, Rng r, double t) {
+        for (Iterator<Contract> it = f.contracts.iterator(); it.hasNext(); ) {
+            Contract c = it.next();
+            if (t >= c.until) {
+                it.remove();
+                log(f, t, "info", Content.CITIES.get(c.city).name() + " gave up waiting for " + contractName(c) + ".");
+            }
+        }
+        if (f.nextContract == 0) f.nextContract = t + r.range(1 * H, 3 * H);
+        if (t < f.nextContract || f.cities.isEmpty()) return;
+        f.nextContract = t + CONTRACT_EVERY * r.range(0.8, 1.2);
+        if (f.contracts.size() >= CONTRACTS_MAX) return;
+        Set<String> metals = knownMetals(f);
+        List<String[]> pairs = new ArrayList<>();
+        for (Content.ItemType it : Content.ITEMS.values()) {
+            if (it.blueprint() != null && !f.blueprints.contains(it.blueprint())) continue;
+            for (String m : metals) {
+                Content.Metal mt = Content.METALS.get(m);
+                if (mt != null && Content.metalFits(it, mt)) pairs.add(new String[]{it.id(), m});
+            }
+        }
+        if (pairs.isEmpty()) return;
+        String[] p = pairs.get(r.nextInt(pairs.size()));
+        double unit = Content.baseValue(Content.itemKey(p[0], p[1], 1, ""));
+        double target = (30 + 20 * f.level) * JOTS_PER_MARK * r.range(0.7, 1.3);   // grows with the hold
+        Contract c = new Contract();
+        c.id = f.nextId++;
+        c.city = r.pick(new ArrayList<>(f.cities));
+        c.type = p[0];
+        c.metal = p[1];
+        c.qty = Math.max(2, Math.min(40, (int) Math.round(target / Math.max(1, unit))));
+        c.reward = Math.round(c.qty * unit * CONTRACT_BONUS);
+        c.until = t + CONTRACT_TIME;
+        f.contracts.add(c);
+        log(f, t, "good", Content.CITIES.get(c.city).name() + " posted a contract: " + contractName(c)
+                + " within a day, for " + money(c.reward) + ". See Trade.");
+    }
+
+    /** The vault's mint turns billon, electrum and gold into coin at the base value: safe, but slow. */
+    static void minting(Fortress f, double dt, double t) {
+        int lv = level(f, "vault");
+        if (lv <= 0 || f.mint.isEmpty()) return;
+        f.minted += dt / (MINT_HOURS * H) * lv;
+        while (f.minted >= 1 && !f.mint.isEmpty()) {
+            f.minted -= 1;
+            String m = f.mint.keySet().iterator().next();
+            double v = Content.baseValue("bar:" + m);
+            f.coins += v;
+            f.stats.coinsEarned += v;
+            if (f.mint.merge(m, -1, Integer::sum) <= 0) {
+                f.mint.remove(m);
+                log(f, t, "info", "The mint has struck the last " + Content.METALS.get(m).name().toLowerCase() + " into coin.");
+            }
+        }
+        if (f.mint.isEmpty()) f.minted = 0;
+    }
+
     static void caravans(Fortress f, Rng r, double t, Market market) {
         for (Caravan c : new ArrayList<>(f.caravans)) {
             Content.City city = Content.CITIES.get(c.city);
@@ -940,18 +1004,20 @@ public final class Sim {
     static void sellAndBuy(Fortress f, Caravan c, Content.City city, Market market, double t) {
         List<Dwarf> ms = new ArrayList<>();
         for (int id : c.merchants) if (dwarf(f, id) != null) ms.add(dwarf(f, id));
-        double bonus = sellBonus(f, ms);
+        double bonus = sellBonus(f, ms) * (1 + REP_PRICE * repRank(f, c.city));
         double buyBonus = 1 + 0.03 * trad(f, "silver_tongues") + (bonus - 1 - 0.03 * trad(f, "silver_tongues")) / 2;
         double revenue = 0;
         int units = 0;
         for (Map.Entry<String, Integer> e : c.cargo.entrySet()) {
-            double got = market.sell(c.city, e.getKey(), e.getValue(), bonus, marketPower(f, e.getKey()));
+            double got = market.sell(c.city, e.getKey(), e.getValue(), bonus, cityPower(f, c.city, e.getKey()));
             recordTrade(f, t, e.getKey(), got);
             revenue += got;
             units += e.getValue();
         }
         for (Artifact a : c.artifacts) revenue += a.value * market.demand(c.city, "jewelry") * bonus;
         c.revenue = revenue;
+        String rose = addRep(f, c.city, revenue, t);
+        if (rose != null) c.report.add(rose);
         c.report.add("Sold " + units + " goods" + (c.artifacts.isEmpty() ? "" : " and " + c.artifacts.size() + " artifacts")
                 + " in " + city.name() + " for " + money(revenue) + ".");
         c.cargo.clear();

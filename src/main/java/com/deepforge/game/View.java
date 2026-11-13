@@ -64,6 +64,25 @@ public final class View {
         Building cons = underConstruction(f, now);
         if (cons != null) d.put("building", Map.of("id", cons.id, "until", cons.upUntil, "level", cons.level + 1));
         d.put("minePower", power(f, warriors(f, "mine")));
+        Map<String, Object> rep = new LinkedHashMap<>();
+        for (String c : f.cities) {
+            int rk = repRank(f, c);
+            rep.put(c, Map.of("rank", rk, "points", Math.floor(f.rep.getOrDefault(c, 0.0)),
+                    "from", repNeed(rk), "next", rk >= REP_MAX ? 0 : repNeed(rk + 1)));
+        }
+        d.put("rep", rep);
+        d.put("repPrice", REP_PRICE);
+        d.put("repTake", REP_TAKE);
+        d.put("repBlueprint", REP_BLUEPRINT);
+        Map<Integer, Integer> have = new LinkedHashMap<>();
+        for (Contract c : f.contracts) {
+            int n = 0;
+            for (String k : contractGoods(f, c)) n += stock(f, k);
+            have.put(c.id, n);
+        }
+        d.put("contractHave", have);
+        d.put("mintMetals", MINT_METALS);
+        d.put("mintPerHour", level(f, "vault") / MINT_HOURS);
 
         // per dwarf numbers
         Map<Integer, Object> dw = new LinkedHashMap<>();

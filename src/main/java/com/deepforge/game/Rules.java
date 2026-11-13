@@ -531,6 +531,87 @@ public final class Rules {
         return Math.max(1, Math.min(5, Math.sqrt(share(f, Content.marketKey(key)) / START_SHARE)));
     }
 
+    // ------------------------------------------------------------ reputation, contracts, mint
+
+    public static final int REP_MAX = 10;
+    public static final double REP_STEP = 100;          // rank r needs 100 × r² Marks delivered to that city
+    public static final double REP_PRICE = 0.02, REP_TAKE = 0.25;   // per rank: +2 % price, +25 % taken before the price falls
+    public static final int REP_BLUEPRINT = 5;          // at this rank a city hands over a blueprint you don't have yet
+    public static final int CONTRACTS_MAX = 3;
+    public static final double CONTRACT_EVERY = 8 * 3600, CONTRACT_TIME = 24 * 3600, CONTRACT_BONUS = 1.5;
+    public static final List<String> MINT_METALS = List.of("billon", "electrum", "gold");
+    public static final double MINT_HOURS = 1;          // one bar per hour per vault level
+
+    public static int repRank(Fortress f, String city) {
+        double p = f.rep.getOrDefault(city, 0.0);
+        return Math.min(REP_MAX, (int) Math.floor(Math.sqrt(p / REP_STEP)));
+    }
+
+    /** Points (Marks) needed for a rank. */
+    public static double repNeed(int rank) {
+        return REP_STEP * rank * rank;
+    }
+
+    /** How hard your sales in this city move the price: market share, softened by reputation. */
+    public static double cityPower(Fortress f, String city, String key) {
+        return marketPower(f, key) / (1 + REP_TAKE * repRank(f, city));
+    }
+
+    /** Count delivered value (Jots) towards a city's reputation; returns a line when the rank rose. */
+    public static String addRep(Fortress f, String city, double jots, double t) {
+        if (city == null || jots <= 0) return null;
+        int before = repRank(f, city);
+        f.rep.merge(city, jots / JOTS_PER_MARK, Double::sum);
+        int after = repRank(f, city);
+        if (after <= before) return null;
+        String name = Content.CITIES.get(city).name();
+        String line = name + " thinks highly of you: reputation rank " + after + ". Better prices there.";
+        if (before < REP_BLUEPRINT && after >= REP_BLUEPRINT) {
+            for (String b : Content.BLUEPRINTS) {
+                if (f.blueprints.contains(b)) continue;
+                f.blueprints.add(b);
+                line += " They gave you a blueprint: " + Content.BLUEPRINT_NAMES.getOrDefault(b, b) + ".";
+                break;
+            }
+        }
+        log(f, t, "good", line);
+        return line;
+    }
+
+    /** Metals the hold can get: from the ores of its open layers, alloys of those, and bars it has. */
+    public static Set<String> knownMetals(Fortress f) {
+        Set<String> m = new TreeSet<>();
+        for (LayerState l : f.layers) {
+            if (!l.unlocked) continue;
+            for (String ore : Content.LAYERS.get(l.index).weights().keySet()) {
+                Content.Ore o = Content.ORES.get(ore);
+                if (o != null && o.metal() != null) m.add(o.metal());
+            }
+        }
+        for (Map.Entry<String, Integer> e : f.stock.entrySet())
+            if (Content.isBar(e.getKey()) && e.getValue() > 0) m.add(e.getKey().substring(4));
+        for (int i = 0; i < 3; i++)
+            for (Content.Alloy a : Content.ALLOYS.values())
+                if (m.containsAll(a.inputs().keySet()) && (a.blueprint() == null || f.blueprints.contains(a.blueprint()))) m.add(a.metal());
+        return m;
+    }
+
+    public static String contractName(Contract c) {
+        return c.qty + " × " + Content.METALS.get(c.metal).name().toLowerCase() + " " + Content.ITEMS.get(c.type).name().toLowerCase();
+    }
+
+    /** Stock keys that fill a contract: its type and metal, Normal or better, plainest first. */
+    public static List<String> contractGoods(Fortress f, Contract c) {
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) {
+            if (e.getValue() <= 0 || !Content.isItem(e.getKey())) continue;
+            String[] p = Content.parseItem(e.getKey());
+            if (p[0].equals(c.type) && p[1].equals(c.metal) && Integer.parseInt(p[2]) >= 1 && Integer.parseInt(p[2]) < Content.ARTIFACT) out.add(e.getKey());
+        }
+        out.sort(Comparator.comparingDouble(Content::baseValue));
+        return out;
+    }
+
     public static double sellBonus(Fortress f, Collection<Dwarf> merchants) {
         double b = 0;
         for (Dwarf d : merchants) {

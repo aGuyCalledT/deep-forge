@@ -121,12 +121,17 @@ export function buyPrice(city, k, bonus = 1) {
 }
 
 /** How hard your trades move this price (1 for a small trader, more with a big market share). */
+/** Reputation rank with a city (0..10). */
+export function repRank(city) { const r = D().rep && D().rep[city]; return r ? r.rank : 0; }
+
 export function marketPower(mk) { return (G.market && G.market.power && G.market.power[mk]) || 1; }
 
 /** Revenue for selling q units at once, including the price drop. */
 export function saleEstimate(city, k, q, bonus = 1) {
   if (q <= 0) return 0;
-  const mk = marketKey(k), x = q / liquidity(mk) * marketPower(mk);
+  const rk = repRank(city);
+  bonus *= 1 + (D().repPrice || 0) * rk;
+  const mk = marketKey(k), x = q / liquidity(mk) * marketPower(mk) / (1 + (D().repTake || 0) * rk);
   return q * sellPrice(city, k, bonus) * (1 - Math.exp(-x)) / x;
 }
 

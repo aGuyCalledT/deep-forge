@@ -44,7 +44,7 @@ export const EFFECT = {
   barracks: (b) => `Warriors gain ${6 + 4 * b.level} combat xp per hour`,
   gate: (b) => b.level > 1 ? `+${15 * (b.level - 1)} defence against raids` : 'A plain wooden gate. Upgrade it for defence',
   entrance_hall: () => `Room for ${D().hallSeats} guards (${D().guards} posted), +${Math.round((D().hallBonus - 1) * 100)}% when they fight at home`,
-  vault: () => `Raiders can't touch ${Math.round(D().vaultProtect * 100)}% of your goods`,
+  vault: () => `Raiders can't touch ${Math.round(D().vaultProtect * 100)}% of your goods. Its mint strikes coin (see Trade)`,
   trade_depot: () => `${D().caravanSlots} caravan(s), ${D().caravanCapacity} goods per merchant, ${D().depot.maxRules} rule(s), ${D().depot.maxOrders} buy order(s)`,
   expedition_hall: () => `${D().expeditionSlots} expedition(s), up to ${D().partyMax} dwarves each`,
 };

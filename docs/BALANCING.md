@@ -140,7 +140,8 @@ Masterwork 2, Artifact 3.
   Der Kurs gilt für eine Bezugsware (Typ aus Bronze, Edles aus Silber, sonst Kupfer; Kleidung: Leinenhemd).
 - Stadtpreis = `Grundwert × e^(g + c)`, begrenzt auf 10 %–1000 % des Grundwerts (`Market.MIN/MAX`).
   `g` ist der Weltkurs (Rückkehr zum Grundwert in etwa 24 h, Streuung 0,25), `c` der Stadtkurs (Rückkehr zu ln(Nachfrage)
-  in etwa 6 h, Streuung 0,15). Die Nachfrage jeder Stadt wechselt alle 4 h und kommt mit einer Nachricht.
+  in etwa 6 h, Streuung 0,15). Die Nachfrage jeder Stadt wechselt alle 12 h (`DEMAND_EPOCH`); die Nachricht für die nächsten 12 h steht schon
+  vorher da (`nextNews`).
 - NPC-Städte handeln nicht untereinander; Preise bewegen sich nur durch Zufall und Spieler.
 - Handel: `x = q / L × Macht`. Die gehandelte Stadt bewegt sich um x (Verkauf runter, Kauf rauf), der Weltkurs um
   `x × Stadtanteil`, also bewegen sich alle anderen Städte um den Anteil der Stadt mit. Stadtanteile: Stonebridge 22 %,
@@ -179,7 +180,23 @@ Masterwork 2, Artifact 3.
 - **Besuchende Karawane** (`Fortress.visitor`, `Sim.visitors`): alle 8–16 h (die erste nach 2–6 h) kommt eine Karawane
   aus einer bekannten Stadt ans Tor und will 40–120 % des Bestands einer Sorte, die die Festung hat. Sie zahlt den
   Stadtkurs × 1,05–1,3 sofort, ohne Risiko und ohne Preiseinfluss, und wartet 6 h (`VISITOR_STAY`). Aktion
-  `sellVisitor`, wegschicken mit `sendVisitor`.
+  `sellVisitor`, wegschicken mit `sendVisitor`. Was man ihr verkauft, zählt für den Ruf.
+
+## Ruf, Aufträge, Münze
+
+- **Ruf** je Stadt (`Fortress.rep`, Punkte = gelieferte Marks): Rang `r = ⌊√(Punkte / 100)⌋`, höchstens 10
+  (Rang 1: 100, 5: 2 500, 10: 10 000 Marks). Es zählen Karawanen-Verkäufe, die besuchende Karawane und Aufträge
+  (doppelt). Je Rang +2 % Preis in der Stadt (`REP_PRICE`) und 25 % mehr Abnahme, bevor der Preis fällt: die
+  Marktmacht wird durch `1 + 0,25 × Rang` geteilt (`Rules.cityPower`, `REP_TAKE`). Bei Rang 5 gibt die Stadt einen
+  fehlenden Bauplan.
+- **Aufträge** (`Fortress.contracts`, `Sim.contracts`): alle 8 h ± 20 % hängt eine bekannte Stadt einen aus, bis zu
+  3 offen. Ware: ein beliebiger Gegenstand aus einem Metall, das die Festung bekommen kann (Erze offener Schichten,
+  Barren im Lager, Legierungen daraus, mit Bauplan). Menge so, dass der Grundwert etwa `(30 + 20 × Festungsstufe)`
+  Marks × 0,7–1,3 ergibt (2–40 Stück). Prämie: Grundwert (Normal) × 1,5. Zeit 24 h. Es zählen Stücke ab Normal mit
+  jeder Veredelung; geliefert wird am Tor (Aktion `fillContract`).
+- **Münze** im Tresor (`Fortress.mint`, `Sim.minting`): Billon, Elektrum und Gold werden zum Grundwert zu Geld, ohne
+  Markt und ohne Weg, eine Barre je Stunde und Tresorstufe (läuft mit dem Tagesplan). Aktion `mint` (`amount` < 0
+  holt Barren zurück).
 
 ## Handelsdepot (`Depot.java`)
 

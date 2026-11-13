@@ -216,6 +216,8 @@ function alerts() {
   if ((f.anvil || []).length) a.push(['good', 'work', `${f.anvil.length} hot piece(s) at the anvil. Forge them for better quality!`, '@anvil']);
   if ((f.artifacts || []).some((x) => x.unnamed)) a.push(['warn', 'fortress', 'A new artifact waits for its name.', '@name']);
   if (f.visitor && f.visitor.leaves > t) a.push(['good', 'trade', `A caravan from ${byId.cities[f.visitor.city].name} wants to buy. Sell at the gate!`]);
+  const ready = (f.contracts || []).filter((c) => c.until > t && ((D().contractHave || {})[c.id] || 0) >= c.qty).length;
+  if (ready) a.push(['good', 'trade', `${ready} contract${ready > 1 ? 's' : ''} ready to deliver. Open Trade.`]);
   const shifts = (f.reports || []).filter((r) => r.kind === 'shift').length;
   if (shifts) a.push(['good', 'fortress', `${shifts} shift report(s) with a find. Collect them in the Hold tab.`]);
   for (const r of (f.reports || []).filter((x) => x.kind !== 'shift')) a.push(['good', r.kind === 'caravan' ? 'trade' : 'explore', `${r.title}: collect the loot.`]);

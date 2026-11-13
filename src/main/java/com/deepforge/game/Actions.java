@@ -81,6 +81,8 @@ public final class Actions {
             case "autoPicks" -> autoPicks(f, a);
             case "quickSell" -> quickSell(f, a, t);
             case "sellVisitor" -> sellVisitor(f, a, t);
+            case "fillContract" -> fillContract(f, a, t);
+            case "mint" -> mint(f, a, t);
             case "sendVisitor" -> { check(f.visitor != null, "No caravan at the gate."); f.visitor.leaves = t; }
             case "unlockLayer" -> unlockLayer(f, a, t);
             case "queueAdd" -> queueAdd(f, a);
@@ -305,6 +307,49 @@ public final class Actions {
         String city = Content.CITIES.get(v.city).name();
         log(f, t, "good", "The caravan from " + city + " bought " + n + " " + Content.goodName(key).toLowerCase() + " for " + money(coins) + ".");
         if (v.want <= 0) f.visitor = null;
+        addRep(f, v.city, coins, t);
+    }
+
+    /** Hand a contract's pieces to the city's couriers: paid at once with the bonus, double reputation. */
+    static void fillContract(Fortress f, Map<String, Object> a, double t) {
+        int id = num(a, "id", -1);
+        Contract c = f.contracts.stream().filter(x -> x.id == id).findFirst().orElse(null);
+        check(c != null && t < c.until, "That contract is gone.");
+        List<String> goods = contractGoods(f, c);
+        int have = 0;
+        for (String k : goods) have += stock(f, k);
+        check(have >= c.qty, "You have " + have + " of " + c.qty + ". Make more " + Content.ITEMS.get(c.type).name().toLowerCase() + "s first.");
+        int left = c.qty;
+        for (String k : goods) {
+            int n = Math.min(left, stock(f, k));
+            add(f, k, -n);
+            left -= n;
+            if (left == 0) break;
+        }
+        f.coins += c.reward;
+        f.stats.coinsEarned += c.reward;
+        f.contracts.remove(c);
+        log(f, t, "good", "Delivered " + contractName(c) + " to " + Content.CITIES.get(c.city).name() + " for " + money(c.reward) + ".");
+        addRep(f, c.city, 2 * c.reward, t);
+    }
+
+    /** Put bars into the vault's mint (amount > 0) or take waiting ones back (amount < 0). */
+    static void mint(Fortress f, Map<String, Object> a, double t) {
+        check(level(f, "vault") > 0, "Build the vault first. Its mint strikes coin.");
+        String m = str(a, "metal");
+        check(MINT_METALS.contains(m), "The mint only takes billon, electrum and gold.");
+        int n = num(a, "amount", 0);
+        if (n > 0) {
+            n = Math.min(n, stock(f, "bar:" + m));
+            check(n > 0, "You have no " + Content.METALS.get(m).name().toLowerCase() + " bars.");
+            add(f, "bar:" + m, -n);
+            f.mint.merge(m, n, Integer::sum);
+        } else {
+            int back = Math.min(-n, f.mint.getOrDefault(m, 0));
+            check(back > 0, "Nothing of that waits in the mint.");
+            add(f, "bar:" + m, back);
+            if (f.mint.merge(m, -back, Integer::sum) <= 0) f.mint.remove(m);
+        }
     }
 
     static void autoPicks(Fortress f, Map<String, Object> a) {

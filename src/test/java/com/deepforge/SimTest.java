@@ -900,4 +900,75 @@ class SimTest {
         assertTrue(Content.baseValue("bar:star_steel") * 2 > Content.baseValue("bar:steel") * 2 + Content.baseValue("bar:platinum") + Content.baseValue("bar:aluminum"),
                 "star steel is worth more than what goes in");
     }
+
+    @Test
+    void contractsPayABonusAndBuildReputation() {
+        Fortress f = fresh(40);
+        Market m = Market.inMemory(40, T0);
+        f.lastVisit = 0;
+        for (int h = 1; h <= 12 && f.contracts.isEmpty(); h++) Sim.advance(f, T0 + h * 3600, m);
+        assertFalse(f.contracts.isEmpty(), "a city posts a contract within hours");
+        State.Contract c = f.contracts.get(0);
+        assertTrue(Rules.knownMetals(f).contains(c.metal));
+        String key = Content.itemKey(c.type, c.metal, 2, "");
+        Rules.add(f, Content.itemKey(c.type, c.metal, 0, ""), c.qty);   // Crude does not count
+        assertThrows(Actions.GameException.class, () -> act(f, m, f.t, "type", "fillContract", "id", c.id));
+        Rules.add(f, key, c.qty);
+        double before = f.coins;
+        act(f, m, f.t, "type", "fillContract", "id", c.id);
+        assertEquals(c.reward, f.coins - before, 1e-6);
+        assertEquals(1.5 * c.qty * Content.baseValue(Content.itemKey(c.type, c.metal, 1, "")), c.reward, 1);
+        assertEquals(0, Rules.stock(f, key));
+        assertEquals(2 * c.reward / 1000, f.rep.get(c.city), 1e-6);
+        // ranks cost more and more, and soften the price drop
+        f.rep.put(c.city, 2500.0);
+        assertEquals(5, Rules.repRank(f, c.city));
+        assertEquals(Rules.marketPower(f, "bar:iron") / 2.25, Rules.cityPower(f, c.city, "bar:iron"), 1e-9);
+        f.rep.put(c.city, 0.0);
+        f.blueprints.clear();
+        Rules.addRep(f, c.city, 2500.0 * 1000, f.t);
+        assertFalse(f.blueprints.isEmpty(), "rank 5 brings a blueprint");
+    }
+
+    @Test
+    void theMintStrikesCoinSlowly() {
+        Fortress f = fresh(41);
+        Market m = Market.inMemory(41, T0);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "mint", "metal", "gold", "amount", 3));
+        State.Building v = f.buildings.stream().filter(b -> b.type.equals("vault")).findFirst().orElseGet(() -> {
+            State.Building b = new State.Building();
+            b.id = "vault";
+            b.type = "vault";
+            f.buildings.add(b);
+            return b;
+        });
+        v.level = 2;
+        f.layout = null;   // no floor plan: every room counts as connected
+        Rules.add(f, "bar:gold", 5);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "mint", "metal", "iron", "amount", 1));
+        act(f, m, T0, "type", "mint", "metal", "gold", "amount", 5);
+        assertEquals(0, Rules.stock(f, "bar:gold"));
+        double before = f.coins;
+        f.lastVisit = 0;
+        Sim.advance(f, T0 + 3700, m);
+        assertEquals(3, f.mint.get("gold"), "two bars an hour at vault level 2");
+        assertEquals(2 * Content.baseValue("bar:gold"), f.coins - before, Content.baseValue("bar:gold"));
+        act(f, m, f.t, "type", "mint", "metal", "gold", "amount", -3);
+        assertEquals(3, Rules.stock(f, "bar:gold"));
+        assertTrue(f.mint.isEmpty());
+    }
+
+    @Test
+    void demandChangesEveryTwelveHoursWithNewsAhead() {
+        Market m = Market.inMemory(42, T0);
+        Map<String, Object> s = m.snapshot(Content.CITIES.keySet(), 1, 1);
+        @SuppressWarnings("unchecked") Map<String, Map<String, Object>> cities = (Map<String, Map<String, Object>>) s.get("cities");
+        String next = (String) cities.get("stonebridge").get("nextNews");
+        assertNotNull(next);
+        double change = ((Number) s.get("nextDemandChange")).doubleValue();
+        assertTrue(change - T0 <= 12 * 3600 && change > T0);
+        m.tick(change + 60);
+        @SuppressWarnings("unchecked") Map<String, Map<String, Object>> later = (Map<String, Map<String, Object>>) m.snapshot(Content.CITIES.keySet(), 1, 1).get("cities");
+        assertEquals(next, later.get("stonebridge").get("news"), "the news came true");
+    }
 }

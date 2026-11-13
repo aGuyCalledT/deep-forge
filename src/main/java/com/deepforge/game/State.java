@@ -29,6 +29,11 @@ public final class State {
         public double findAt;            // the next shift report with a find (every 4 h, up to 3 wait)
         public Visitor visitor;          // a caravan from a city at the gate that wants to buy (no risk, no road)
         public double nextVisitor;       // when the next one may come (0: soon)
+        public Map<String, Double> rep = new TreeMap<>();   // reputation points per city (Marks delivered, contracts count double)
+        public List<Contract> contracts = new ArrayList<>(); // orders the cities posted (up to 3 open)
+        public double nextContract;      // when the next city posts one (0: soon)
+        public Map<String, Integer> mint = new TreeMap<>();  // bars waiting in the vault's mint: metal -> count
+        public double minted;            // progress on the next coin bar (0..1)
         public List<Expedition> expeditions = new ArrayList<>();
         public List<Report> reports = new ArrayList<>();   // returned caravans and expeditions whose loot waits to be collected
         public List<Offer> offers = new ArrayList<>();
@@ -248,6 +253,17 @@ public final class State {
         public double leaves;
     }
 
+    /** A city wants qty pieces of one item (any metal of the kind asked, Normal or better) within a day. */
+    public static class Contract {
+        public int id;
+        public String city;
+        public String type;        // item type
+        public String metal;
+        public int qty;
+        public double reward;      // Jots, paid on delivery
+        public double until;
+    }
+
     public static class Caravan {
         public int id;
         public String city;
@@ -426,6 +442,7 @@ public final class State {
         public double chistAt;
         public long demandEpoch = -1;
         public Map<String, Map<String, Double>> demand = new TreeMap<>(); // city -> category -> multiplier
+        public Map<String, String> nextNews = new TreeMap<>();   // what each city will want in the next 12 h
         public Map<String, String> news = new TreeMap<>();
     }
 }
