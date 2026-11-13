@@ -246,3 +246,15 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Eigene Sounds: Takt-Klick, Hammerschlag je Wertung, `quench-hiss` fehlt noch.
 - [ ] Eigener Hammer im Zwergen-Satz statt des im Screen gezeichneten.
 - [ ] Artefakte ausrüsten (heute nur Wert, Stimmung und Verkauf).
+
+## Minispiele der Produktionsräume
+
+- [x] Gemeinsames Screen-Gerüst (`minigame.js`) wie beim Amboss; die Spiele stehen in `games.js`.
+- [x] Schmelze: Blasebalg im Takt (0,5 s zum Aufblähen). Brauerei: Fässer schütteln. Schleifstein: Nadel in der grünen
+      Zone halten. Graveur: Runen antippen. Juwelier: Funkeln oben treffen. Schneiderei: Schiffchen am Rand fangen.
+      Alle heizen den Raum (Aktion `boost`, bis ×2).
+- [x] Pilzfarm: Dünger streuen (Aktion `fertilize`, bis +60 % für 2 h). Mine: Ader mit Ausdauerleiste freischlagen
+      (Aktion `vein`, alle 20 min je Schicht), Knopf „Vein“ im Minen-Screen und im Minen-Tab.
+- [ ] Eigene Sounds: `bellows-puff`, `barrel-slosh`, `grind-scrape`, `rune-tap`, `shuttle-clack` fehlen.
+- [ ] Werkstätten außer der Schmelze in der Festung direkt anklicken (heute über den Knopf im Raumfenster).
+- [ ] Nahaufnahmen als Sprites (Edelstein, Runenplatte, Kettfäden sind im Screen gezeichnet).

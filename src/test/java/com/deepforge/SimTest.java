@@ -216,6 +216,44 @@ class SimTest {
     }
 
     @Test
+    void minigameBoostIsCappedByTime() {
+        Fortress f = fresh(31);
+        Market m = Market.inMemory(31, T0);
+        Building b = f.buildings.stream().filter(x -> x.id.equals("brewery-1")).findFirst().orElseThrow();
+        act(f, m, T0, "type", "boost", "building", "brewery-1", "taps", 4);
+        double first = b.heat;
+        assertEquals(4 * Rules.BOOST_PER_TAP, first, 1e-6);
+        act(f, m, T0, "type", "boost", "building", "brewery-1", "taps", 12);   // spamming calls gives at most 2 taps each
+        assertEquals(first + 2 * Rules.BOOST_PER_TAP, b.heat, 1e-6);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 10, "type", "boost", "building", "farm-1", "taps", 3));
+    }
+
+    @Test
+    void fertilizerGivesMoreMushroomsOncePerTwoHours() {
+        Fortress f = fresh(32);
+        Market m = Market.inMemory(32, T0);
+        act(f, m, T0, "type", "fertilize", "building", "farm-1", "cover", 1);
+        Building b = f.buildings.stream().filter(x -> x.id.equals("farm-1")).findFirst().orElseThrow();
+        assertEquals(Rules.FERT_MAX, b.fert, 1e-9);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 60, "type", "fertilize", "building", "farm-1", "cover", 1));
+        act(f, m, T0 + Rules.FERT_TIME + 1, "type", "fertilize", "building", "farm-1", "cover", 0.5);
+        assertEquals(Rules.FERT_MAX / 2, b.fert, 1e-9);
+    }
+
+    @Test
+    void aVeinBrokenOutByHandFillsTheCart() {
+        Fortress f = fresh(33);
+        Market m = Market.inMemory(33, T0);
+        LayerState l = f.layers.get(0);
+        int before = l.cart.values().stream().mapToInt(Integer::intValue).sum();
+        act(f, m, T0, "type", "vein", "layer", 0);
+        int after = l.cart.values().stream().mapToInt(Integer::intValue).sum();
+        assertTrue(after - before >= Rules.veinOre(l) - 0 && after > before, "ore in the cart: " + before + " -> " + after);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 60, "type", "vein", "layer", 0));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 60, "type", "vein", "layer", f.layers.size() - 1));
+    }
+
+    @Test
     void oldQualitiesAreMappedToTheNewOnes() {
         String json = "{\"stock\":{\"item:axe:iron:5:s\":2,\"item:goblet:gold:4:\":1,\"item:goblet:gold:3:\":1,\"item:ring:silver:1:\":3}}";
         String out = Factory.toVersion3(json);

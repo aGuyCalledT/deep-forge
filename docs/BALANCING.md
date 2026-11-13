@@ -34,7 +34,7 @@ und hier.
 | Gebäudestufe | `+25 %` Tempo pro Stufe |
 | Maschinen | jede Werkstatt hat `min(5, Stufe)` Maschinen, jede braucht einen eigenen Zwerg und arbeitet ihre eigene Bestellung ab (gemeinsame Warteschlange, gemeinsame Hitze im Schmelzofen) |
 | Maschine | kommt mit jedem Ausbau dazu (keine eigenen Kosten). Abgebaute Maschinen wieder aufstellen kostet `6 × Stufe` Marks + `15 × Stufe` Stein (`Rules.machineCost`); der Raum wird um `MACHINE_CELLS` Zellen breiter. Ist rechts kein Platz, rückt er nach links oder zieht an die nächste freie Stelle (gleiche Etage zuerst) |
-| Schmelzen | 180 s × Hitzefaktor des Metalls, Blasebalg bis ×2 (+7 Hitze pro Tipp, −4 pro Sekunde) |
+| Schmelzen | 180 s × Hitzefaktor des Metalls, Blasebalg bis ×2 (siehe Minispiele) |
 | Legierung | 120 s × Hitzefaktor × max(1, Ausbeute/2) |
 | Schmieden | 100 s × Barren × √Hitzefaktor |
 | Schleifen / Gravieren / Edelstein | 90 / 150 / 150 s, Edelstein schleifen 180 s |
@@ -148,3 +148,16 @@ Zwerge sofort fertig.
 - Beute-Berichte (`Rules.MAX_REPORTS`): höchstens 20 warten aufs Einsammeln, sonst wird der älteste von selbst eingesammelt.
 - Festungsstufe: `150 × 1,5^(Stufe−1)` xp. Xp aus Verkäufen (1 pro Mark), Schmelzen, Schmieden, Expeditionen,
   Kämpfen, Ausbau.
+
+## Minispiele der Werkstätten (`games.js`, `Rules.BOOSTED`)
+
+| Was | Wert |
+|---|---|
+| Hitze | Schmelze, Brauerei, Schleifstein, Graveur, Juwelier, Schneiderei: Tempo × `(1 + Hitze/100)`, also bis ×2. +7 Hitze je guter Bewegung (`BOOST_PER_TAP`), −4 pro Sekunde |
+| Obergrenze | der Server gibt je Aufruf höchstens `2 + 2,5 × Sekunden seit dem letzten` Bewegungen (höchstens 4 s angespart), also etwa 2,5 pro Sekunde (`BOOST_TAPS_PER_SEC`) |
+| Blasebalg | füllt sich in 0,5 s: voll gedrückt 1, ab 80 % 0,6, sonst fast nichts |
+| Fässer | ein Fass gibt nach 1,2 s Ruhe wieder voll, drei Fässer im Wechsel |
+| Schleifstein | 2,2 je Sekunde in der grünen Zone |
+| Runen, Edelstein, Webstuhl | je Treffer bis 1 (Runen: schneller getippt mehr; Edelstein und Schiffchen nach Abstand zur Marke) |
+| Dünger (Pilzfarm) | alle 2 h einmal: +60 % × Anteil der bedüngten Pilze (`FERT_MAX`, `FERT_TIME`); der Sack reicht für 10 s Streuen |
+| Ader (Mine) | je Schicht alle 20 min (`VEIN_WAIT`): `8 + 2 × Schachtstufe` Erz (`Rules.veinOre`) nach den Erz-Gewichten der Schicht direkt in den Wagen. Ausdauer 100, ein Schlag kostet 20 und erholt sich mit 45/s ab 0,25 s nach dem Schlag; Schlagkraft `0,4 + 0,6 × Ausdauer` (müde 0,15); Fels um die Ader hält `1 + ⌊Schicht/2⌋` Treffer (+1 innen) |

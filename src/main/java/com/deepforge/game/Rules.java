@@ -215,6 +215,27 @@ public final class Rules {
 
     // ------------------------------------------------------------ smithing at the anvil
 
+    /** Workshops the player can speed up in a minigame (bellows, shaking barrels, ...): heat 0..100 makes them up to twice as fast. */
+    public static final java.util.Set<String> BOOSTED = java.util.Set.of("smelter", "brewery", "grindstone", "engraver", "jeweler", "tailor");
+    public static final double BOOST_PER_TAP = 7;     // heat per good tap
+    public static final double BOOST_TAPS_PER_SEC = 2.5;   // the server never gives more than this (bellows refill in about half a second)
+    public static final double FERT_MAX = 0.6, FERT_TIME = 2 * 3600;   // fertilizer: up to +60 % mushrooms for two hours
+    public static final double VEIN_WAIT = 20 * 60;   // minutes between two veins broken out by hand, per layer
+
+    /** Heat 0..100 for a boosted building (0 for every other one). */
+    public static double boostAt(Building b, double t) { return BOOSTED.contains(b.type) ? heatAt(b, t) : 0; }
+
+    /** "1 h 20 min", "5 min", "30 s" for player texts. */
+    public static String duration(double sec) {
+        long s = Math.max(1, Math.round(sec));
+        if (s < 60) return s + " s";
+        long m = (s + 59) / 60;
+        return m < 60 ? m + " min" : (m / 60) + " h" + (m % 60 > 0 ? " " + (m % 60) + " min" : "");
+    }
+
+    /** Ore a vein broken out by hand gives. */
+    public static int veinOre(LayerState l) { return 8 + 2 * l.level; }
+
     public static final int ANVIL_MAX = 10;
     public static final double ANVIL_WAIT = 2 * 3600;     // then the dwarves finish the piece themselves
     public static final double ARTIFACT_PER_HOUR = 0.009; // best smith (skill 20), forge level 1, no help: ~1.5 a week

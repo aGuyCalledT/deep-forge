@@ -14,7 +14,7 @@ public final class Cheats {
     private Cheats() {}
 
     static final Set<String> TIME_FIELDS = Set.of("t", "created", "offersAt", "nextRaidAt", "nextMigrantsAt", "griefUntil",
-            "heatT", "quenchStart", "departAt", "arriveAt", "returnAt", "expires", "at", "since", "nextHarm", "arrivesAt",
+            "heatT", "fertUntil", "veinAt", "quenchStart", "departAt", "arriveAt", "returnAt", "expires", "at", "since", "nextHarm", "arrivesAt",
             "announcedAt", "until", "arrived", "fightAt", "retryAt", "tradedAt", "shareAt", "firedAt", "histAt");
 
     public static Fortress apply(Fortress f, Map<String, Object> a, double now, Market market, ObjectMapper om, Rng r) {

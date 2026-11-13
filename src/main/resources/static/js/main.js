@@ -9,10 +9,12 @@ import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt a
 import { drawLoginArt } from './views.js';
 import { mineScreen, mineLayer } from './mine48.js';
 import { openSmithy, smithyUpdate, nameArtifact, askForNames, smithyState } from './smithy.js';
+import { gameUpdate, gameState } from './minigame.js';
+import { openRoomGame, openVein } from './games.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
-import { renderWork, animateWork, pump, currentHeat } from './panels-work.js';
+import { renderWork, animateWork, currentHeat } from './panels-work.js';
 import { renderMines } from './panels-mines.js';
 import { renderTrade, renderExplore, loadMarket } from './panels-trade.js';
 import * as A from './audio.js';
@@ -43,6 +45,7 @@ function setState(s) {
   renderAlerts();
   render();
   smithyUpdate();
+  gameUpdate();
   askForNames();
 }
 
@@ -166,6 +169,8 @@ function renderAudioBtn() {
 
 bus.render = () => render();
 bus.smithy = () => openSmithy();
+bus.minigame = (id) => openRoomGame(id);
+bus.vein = (layer) => openVein(layer);
 bus.nameArtifact = (id) => nameArtifact(id);
 bus.go = (tab) => go(tab);
 
@@ -368,7 +373,7 @@ function keepClear(id) {
 
 function onPick(q, at) {
   if (!q) { if (popOpen()) closeSheet(); return; }
-  if (q.kind === 'bellows') return pump(q.id);
+  if (q.kind === 'bellows' || q.kind === 'machine') return openRoomGame(q.id);
   if (q.kind === 'anvil') return openSmithy();
   if (q.kind === 'room') {
     const b = F().buildings.find((x) => x.id === q.id);
@@ -412,6 +417,7 @@ function renderToolbar() {
       h('button', { class: 'tool', 'aria-label': 'Layer above', disabled: i === 0, onclick: () => showLayer(i - 1) }, img(S.icon('up'), 'icon s')),
       h('span', { class: 'tool-label' }, name),
       h('button', { class: 'tool', 'aria-label': 'Layer below', disabled: i === G.data.layers.length - 1, onclick: () => showLayer(i + 1) }, img(S.icon('down'), 'icon s')),
+      F().layers[i] && F().layers[i].unlocked ? h('button', { class: 'tool', title: 'Break a vein out of the rock yourself', onclick: () => openVein(i) }, img(S.icon('mines'), 'icon s'), 'Vein') : null,
       wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom in', onclick: () => zoomBy(1) }, img(S.icon('zoom_in'), 'icon s')) : null,
       wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom out', onclick: () => zoomBy(-1) }, img(S.icon('zoom_out'), 'icon s')) : null));
     return;
@@ -528,5 +534,5 @@ G.tab = null;
 G.heat = currentHeat;
 G.act = (a) => bus.act(a).then(() => renderToolbar());
 G.onBuildChange = () => renderToolbar();
-window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom, agents, smithy: () => smithyState() };
+window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom, agents, smithy: () => smithyState(), minigame: () => gameState(), openGame: (id) => openRoomGame(id), openVein: (i) => openVein(i) };
 boot();

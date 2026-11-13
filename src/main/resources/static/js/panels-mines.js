@@ -1,5 +1,5 @@
 // The mines: lift, layers, miners.
-import { G, F, D, byId, fmt, goodName, building, stock, now } from './data.js';
+import { G, F, D, byId, fmt, goodName, building, stock, now, dur } from './data.js';
 import { h, img, goodIcon, bar, bus, ico, info } from './ui.js';
 import { mineLayer } from './mine48.js';
 import * as S from './sprites.js';
@@ -40,6 +40,11 @@ export function renderMines() {
       card.append(h('div', { class: 'row between', style: { marginTop: '6px' } }, h('span', null, 'Ore cart ', info('Miners fill the cart. When it is as full as you set below (or the time is up) it rolls to the lift, and only then is the ore in your warehouse.')),
         h('span', { class: inCart >= target && f.storageFull ? 'bad-t' : 'muted' }, `${fmt(Math.min(inCart, size))} / ${fmt(target)}`)), bar(Math.min(1, inCart / target)));
       card.append(cartRule(i, ls, inCart));
+      const veinIn = Math.max(0, (ls.veinAt || 0) - now());
+      card.append(h('div', { class: 'row between', style: { marginTop: '6px' } },
+        h('span', null, 'Vein ', info(`Break a vein out of the rock yourself: ${dl.veinOre || 10} ore go straight into the cart. A new vein shows every 20 minutes.`)),
+        veinIn > 0 ? h('span', { class: 'muted small' }, 'next in ', h('span', { 'data-until': ls.veinAt }, dur(veinIn)))
+          : h('button', { class: 'btn small primary', disabled: !!th, onclick: () => bus.vein(i) }, ico('mines'), 'Break a vein')));
       if (inCart >= target && f.storageFull) card.append(h('p', { class: 'bad-t small' }, 'The cart is ready but the warehouse is full. Make room to send it up.'));
       card.append(h('div', { class: 'row between', style: { marginTop: '6px' } },
         h('span', null, h('b', { class: 'gold-t' }, fmt(dl.rate) + ' ore/h'), h('span', { class: 'muted' }, ` from ${dl.miners} miner${dl.miners === 1 ? '' : 's'}`)),

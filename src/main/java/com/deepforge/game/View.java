@@ -101,6 +101,7 @@ public final class View {
             m.put("miners", miners[l.index]);
             m.put("cartSize", cartSize(l));
             m.put("cartTarget", cartTarget(l));
+            m.put("veinOre", veinOre(l));
             m.put("upgrade", l.unlocked ? layerUpgradeCost(l) : null);
             m.put("unlock", l.unlocked ? null : layerUnlockCost(l.index));
             m.put("discovered", !Content.LAYERS.get(l.index).needsDiscovery() || f.discovered.contains(String.valueOf(l.index)));
@@ -140,7 +141,9 @@ public final class View {
             List<Double> speeds = new ArrayList<>();
             if (skill != null) for (Dwarf x : workers(f, b)) speeds.add(round(workSpeed(f, x, skill) * buildingMult(b)));
             m.put("speeds", speeds);
-            m.put("heat", round(heatAt(b, now)));
+            m.put("heat", round(boostAt(b, now)));
+            if (BOOSTED.contains(b.type)) m.put("boost", true);
+            if (b.type.equals("farm")) m.put("fert", b.fertUntil > now ? round(b.fert) : 0);
             if (b.job != null) m.put("jobName", Sim.jobName(b.job));
             Map<Integer, Object> q = new LinkedHashMap<>();
             for (QueueEntry e : b.queue) q.put(e.id, Recipes.missing(f, e));

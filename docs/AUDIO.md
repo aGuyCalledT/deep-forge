@@ -44,10 +44,14 @@ Ersatz-Sound oder gar nichts. So kann jeder Platzhalter jetzt schon im Code steh
 | `defeat` | **`defeat`** (fehlt, sonst `heavy-sword-armor-hit`) | Kampf verloren |
 | `door` | **`door-creak`** (fehlt, still) | noch nicht benutzt |
 | `ignite` | `igniting-fire` | erster Blasebalg-Stoß in kaltem Ofen |
-| `bellows` | **`bellows-puff`** (fehlt, still) | jeder Blasebalg-Stoß |
+| `bellows` | **`bellows-puff`** (fehlt, still) | jeder Blasebalg-Stoß (Blasebalg-Spiel) |
 | `quench` | **`quench-hiss`** (fehlt, still) | Abschrecken am Amboss |
 | `anvil` | `anvil-hit` | Ersatz für `build` |
 | `pickaxe` | `pickaxe-hit` | Minen-Screen, solange gegraben wird |
+| `slosh` | **`barrel-slosh`** (fehlt, sonst `click`) | Fass geschüttelt (Brauerei-Spiel) |
+| `grind` | **`grind-scrape`** (fehlt, still) | Klinge in der grünen Zone (Schleifstein-Spiel) |
+| `rune` | **`rune-tap`** (fehlt, sonst `click`) | Rune getroffen (Graveur-Spiel) |
+| `shuttle` | **`shuttle-clack`** (fehlt, sonst `click`) | Schiffchen gefangen (Webstuhl-Spiel) |
 | `moo` | `cow-moo` | ab und zu in der Pilzfarm. Frag nicht. |
 | `unsheathe` | `unsheathing-sword` | Zwerg wird Krieger, Kampfbeginn |
 | `unsheathe2` | `unsheathing-sword2` | Axt ausrüsten |

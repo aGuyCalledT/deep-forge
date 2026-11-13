@@ -182,6 +182,8 @@ public final class State {
         public Job job;
         public double heat;       // bellows heat 0..100 at heatT
         public double heatT;
+        public double fert;       // mushroom farm: extra yield (0..0.6) from fertilizer until fertUntil
+        public double fertUntil;
         public double acc;        // continuous production accumulator
         public String status;     // human readable why idle
         public int machines = 1;  // workstations in the room; each one needs its own worker
@@ -223,6 +225,7 @@ public final class State {
         public double cartStart;  // when the first ore went into the empty cart
         public int cartFill = 100;   // the cart goes up when it is this full (percent of its size)
         public int cartMinutes;      // ... or this many minutes after the first ore went in (0: no time limit)
+        public double veinAt;        // the player may break the next vein out by hand from this time on
     }
 
     public static class Caravan {

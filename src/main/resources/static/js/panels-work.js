@@ -72,13 +72,15 @@ export function workCard(b) {
     w && !multi && !b.job ? h('p', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, label) : '');
 
   if (t.kind === 'continuous') {
-    out.append(h('p', { class: 'small' }, b.type === 'farm' ? `About ${fmt(5 * (info_.speed || 0))} mushrooms per hour.` : `About ${fmt(5 * (info_.speed || 0))} ale per hour from half as many mushrooms.`),
+    const more = b.type === 'farm' ? (b.fertUntil > now() ? info_.fert || 0 : 0) : (info_.heat || 0) / 100;
+    out.append(h('p', { class: 'small' }, b.type === 'farm' ? `About ${fmt(5 * (info_.speed || 0) * (1 + more))} mushrooms per hour.` : `About ${fmt(5 * (info_.speed || 0) * (1 + more))} ale per hour from half as many mushrooms.`),
+      b.type === 'farm' ? fertBlock(b) : boostBlock(b),
       h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(b)));
     return out;
   }
   if (b.type === 'forge') out.append(anvilBlock());
   for (let i = 0; i < (info_.machines || 1); i++) { const j = jobOf(b, i); if (j && !multi) out.append(jobBlock(b, i)); }
-  if (b.type === 'smelter') out.append(bellows(b));
+  if (info_.boost) out.append(boostBlock(b));
   out.append(h('h3', null, 'Orders', info('The worker takes the first order that has its materials. Orders without materials wait.')));
   if (!b.queue.length) out.append(h('p', { class: 'small muted' }, 'No orders yet.'));
   out.append(h('div', { class: 'list' }, b.queue.map((e, i) => {
@@ -138,29 +140,34 @@ function jobBlock(b, i = 0) {
 
 // ------------------------------------------------------------------ bellows
 
-let pending = 0, timer = null, localHeat = {};
+let localHeat = {};
 
-/** One pump of the bellows: heat shows at once, taps go to the server in small batches. */
-export function pump(id) {
-  if (currentHeat(id) < 5) A.sfx('ignite');
-  A.sfx('bellows');
-  localHeat[id] = { v: Math.min(100, currentHeat(id) + 7), t: Date.now() / 1000 };
-  pending++;
-  if (navigator.vibrate) navigator.vibrate(8);
-  if (!timer) timer = setTimeout(async () => {
-    const taps = pending; pending = 0; timer = null;
-    try { await bus.act({ type: 'bellows', building: id, taps }, true); } catch { /* shown by act */ }
-  }, 700);
+/** A minigame tap (0..1 of a full one) heats a workshop up at once; the minigame sends the taps to the server. */
+export function heatUp(id, v) {
+  localHeat[id] = { v: Math.min(100, currentHeat(id) + 7 * v), t: Date.now() / 1000 };
 }
 
-function bellows(b) {
-  const heat = D().buildings[b.id].heat || 0;
+const GAME_BTN = { smelter: 'Pump the bellows', brewery: 'Shake the barrels', grindstone: 'Grind by hand', engraver: 'Cut runes by hand',
+  jeweler: 'Facet by hand', tailor: 'Weave by hand' };
+/** Heat of a workshop and the way to its minigame, which heats it up. */
+function boostBlock(b) {
+  const heat = (D().buildings[b.id] || {}).heat || 0;
   const hb = bar(heat / 100, 'heat');
   hb.querySelector('i').dataset.heat = b.id;
-  return h('div', { style: { marginTop: '8px' } },
-    h('div', { class: 'row between small' }, h('span', null, 'Heat', info('More heat smelts faster, up to twice as fast. Click the furnace in the hold to pump the bellows.')),
-      h('span', { class: 'muted' }, 'Click the furnace to pump')),
-    hb);
+  return h('div', { class: 'boost-block' },
+    h('div', { class: 'row between small' }, h('span', null, 'Heat', info('Lend a hand in a small game: the room heats up and works up to twice as fast while the heat lasts.')),
+      h('span', { class: 'muted' }, 'up to ×2')),
+    hb,
+    h('button', { class: 'btn primary', onclick: () => bus.minigame(b.id) }, ico('work'), GAME_BTN[b.type] || 'Lend a hand'));
+}
+
+/** Fertilizer for a mushroom farm: once per two hours, a small game decides how much more it grows. */
+function fertBlock(b) {
+  const until = b.fertUntil || 0, on = until > now(), fert = (D().buildings[b.id] || {}).fert || 0;
+  return h('div', { class: 'boost-block' },
+    h('div', { class: 'row between small' }, h('span', null, 'Fertilizer', info('Spread fertilizer over the beds in a small game. The more mushrooms get some, the more the farm grows for two hours (up to +60 %).')),
+      on ? h('span', { class: 'good-t' }, `+${Math.round(100 * fert)} % for `, h('span', { 'data-until': until }, dur(until - now()))) : h('span', { class: 'muted' }, 'none')),
+    h('button', { class: 'btn ' + (on ? '' : 'primary'), disabled: on, onclick: () => bus.minigame(b.id) }, ico('work'), on ? 'Beds fertilized' : 'Spread fertilizer'));
 }
 
 export function currentHeat(id) {
@@ -196,7 +203,7 @@ export function animateWork() {
     const i = +(el.dataset.machine || 0), j = b && jobOf(b, i);
     if (!j) return;
     const info = D().buildings[b.id] || {};
-    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
+    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (info.boost ? currentHeat(b.id) / 100 : 0));
     const since = Math.max(0, t - G.state.now);
     const done = (j.progress + speed * since) / j.time;
     if (el.classList.contains('hg')) setSand(el, done); else el.style.width = Math.min(100, done * 100) + '%';
@@ -207,7 +214,7 @@ export function animateWork() {
     const i = +(el.dataset.machine || 0), j = b && jobOf(b, i);
     if (!j) { el.textContent = ''; return; }
     const info = D().buildings[b.id] || {};
-    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
+    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (info.boost ? currentHeat(b.id) / 100 : 0));
     el.textContent = speed > 0 ? dur((j.time - j.progress) / speed - Math.max(0, t - G.state.now)) + ' left' : 'Stopped';
   });
   document.querySelectorAll('[data-heat]').forEach((el) => { el.style.width = currentHeat(el.dataset.heat) + '%'; });

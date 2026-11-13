@@ -368,7 +368,7 @@ public final class Sim {
                 continue;
             }
             if (type.kind().equals("continuous")) {
-                for (Dwarf w : ws) continuous(f, b, w, dt);
+                for (Dwarf w : ws) continuous(f, b, w, dt, t);
                 continue;
             }
             // every machine runs its own job from the shared queue; machine 1 is b.job, the others live in b.more
@@ -398,11 +398,13 @@ public final class Sim {
         }
     }
 
-    static void continuous(Fortress f, Building b, Dwarf w, double dt) {
+    static void continuous(Fortress f, Building b, Dwarf w, double dt, double t) {
         double speed = workSpeed(f, w, "farming") * buildingMult(b);
         addXp(w, "farming", 10 * dt / H);
         if (b.type.equals("farm")) {
-            b.acc += 5 * speed * dt / H;
+            // fertilizer from the minigame: more mushrooms until it is used up
+            double fert = b.fertUntil <= t ? 0 : b.fert * Math.min(1, (b.fertUntil - t) / Math.max(1e-9, dt));
+            b.acc += 5 * speed * (1 + fert) * dt / H;
             int n = (int) Math.floor(b.acc);
             if (n > 0) {
                 add(f, "food", n);
@@ -410,8 +412,8 @@ public final class Sim {
             }
             b.status = "Growing mushrooms";
         } else {
-            // 2 ale from 1 mushroom
-            b.acc += 5 * speed * dt / H;
+            // 2 ale from 1 mushroom; shaking the barrels (minigame) makes it faster
+            b.acc += 5 * speed * (1 + boostAt(b, t + dt / 2) / 100) * dt / H;
             int pairs = (int) Math.floor(b.acc / 2);
             int n = Math.min(pairs, stock(f, "food"));
             if (pairs > 0 && n == 0) {
@@ -441,7 +443,7 @@ public final class Sim {
                 toAnvil(f, b, w, 0.05, r, now);
                 continue;
             }
-            double heat = b.type.equals("smelter") ? heatAt(b, now + rem / 2) : 0;
+            double heat = boostAt(b, now + rem / 2);
             double rate = workSpeed(f, w, skill) * buildingMult(b) * (1 + heat / 100);
             double need = (j.time - j.progress) / rate;
             addXp(w, skill, 12 * Math.min(rem, need) / H);

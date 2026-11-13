@@ -79,7 +79,9 @@ public final class Actions {
             case "queueAdd" -> queueAdd(f, a);
             case "queueRemove" -> queueRemove(f, a);
             case "queueMove" -> queueMove(f, a);
-            case "bellows" -> bellows(f, a, t);
+            case "bellows", "boost" -> boost(f, a, t);
+            case "fertilize" -> fertilize(f, a, t);
+            case "vein" -> vein(f, a, t, r);
             case "smith" -> smith(f, a, t, r);
             case "nameArtifact" -> nameArtifact(f, a);
             case "equip" -> equip(f, a);
@@ -430,12 +432,41 @@ public final class Actions {
         }
     }
 
-    static void bellows(Fortress f, Map<String, Object> a, double t) {
+    /** Minigames at the workshops (bellows, shaking barrels, grinding, ...): good taps heat the room up, so it works faster.
+     *  The client counts the taps; the server never gives more than BOOST_TAPS_PER_SEC since the last call. */
+    static void boost(Fortress f, Map<String, Object> a, double t) {
         Building b = building(f, str(a, "building"));
-        check(b != null && b.type.equals("smelter"), "Bellows only work at a smelter.");
-        int taps = Math.max(0, Math.min(12, num(a, "taps", 1)));
-        b.heat = Math.min(100, heatAt(b, t) + taps * 7);
+        check(b != null && BOOSTED.contains(b.type), "Nothing to speed up here.");
+        double taps = Math.max(0, Math.min(12, dbl(a, "taps", 1)));
+        double room = 2 + BOOST_TAPS_PER_SEC * Math.max(0, Math.min(4, t - b.heatT));   // a burst can't save up more
+        b.heat = Math.min(100, heatAt(b, t) + Math.min(taps, room) * BOOST_PER_TAP);
         b.heatT = t;
+    }
+
+    /** Fertilizer from the farm minigame: cover 0..1 is how much of the beds got some. Once per two hours. */
+    static void fertilize(Fortress f, Map<String, Object> a, double t) {
+        Building b = building(f, str(a, "building"));
+        check(b != null && b.type.equals("farm"), "Only mushroom farms take fertilizer.");
+        check(b.fertUntil <= t, "The beds are still fertilized. Come back in " + Rules.duration(b.fertUntil - t) + ".");
+        double cover = Math.max(0, Math.min(1, dbl(a, "cover", 0)));
+        b.fert = FERT_MAX * cover;
+        b.fertUntil = t + FERT_TIME;
+        log(f, "good", "The mushroom beds are fertilized: +" + Math.round(100 * b.fert) + " % mushrooms for two hours.");
+    }
+
+    /** The player broke a vein out of the rock by hand (mine minigame): its ore goes into the cart. */
+    static void vein(Fortress f, Map<String, Object> a, double t, Rng r) {
+        int idx = num(a, "layer", -1);
+        check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
+        LayerState l = f.layers.get(idx);
+        check(l.threat == null, "Something lurks in this layer. Drive it out first.");
+        check(l.veinAt <= t, "No vein shows yet. Look again in " + Rules.duration(l.veinAt - t) + ".");
+        Content.Layer layer = Content.LAYERS.get(idx);
+        int n = veinOre(l);
+        if (l.cart.isEmpty()) l.cartStart = t;
+        for (int i = 0; i < n; i++) l.cart.merge(r.weighted(layer.weights()), 1, Integer::sum);
+        l.veinAt = t + VEIN_WAIT;
+        log(f, "good", "You broke a vein out of the " + layer.name() + ": " + n + " ore in the cart.");
     }
 
     /** The player hammered (forge 0..1, in time) and quenched (quench 0..1, at the golden mark) a piece at the anvil. */

@@ -32,6 +32,10 @@ export const SFX = {
   bellows: { file: 'bellows-puff', vol: 0.4, fallback: null, cooldown: 90 },
   quench: { file: 'quench-hiss', vol: 0.55, fallback: null },
   pickaxe: { file: 'pickaxe-hit', vol: 0.3, cooldown: 400 },
+  slosh: { file: 'barrel-slosh', vol: 0.4, fallback: 'click', cooldown: 120 },
+  grind: { file: 'grind-scrape', vol: 0.3, fallback: null, cooldown: 600 },
+  rune: { file: 'rune-tap', vol: 0.4, fallback: 'click' },
+  shuttle: { file: 'shuttle-clack', vol: 0.4, fallback: 'click' },
   moo: { file: 'cow-moo', vol: 0.35, cooldown: 30000 },
   // war
   unsheathe: { file: 'unsheathing-sword', vol: 0.45 },

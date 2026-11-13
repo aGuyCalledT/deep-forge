@@ -822,3 +822,12 @@ label.inline input { display: inline-block; margin: 0; }
 .name-win { width: min(440px, 100%); padding: 26px 22px 20px; display: grid; gap: 12px; }
 .name-win > *:not(.corner):not(.crest):not(.runes) { position: relative; z-index: 1; }
 .name-win input { min-height: 44px; font: 400 16px var(--f-body, inherit); padding: 6px 10px; }
+
+/* minigames of the production rooms (games.js): the anvil's frame, plus the way in from the room window */
+.boost-block { display: grid; gap: 6px; margin-top: 8px; }
+.boost-block .btn { justify-self: start; }
+.minigame .smithy-panel .row > .bar { flex: 1; }
+.minigame .smithy-panel .row > b { min-width: 48px; text-align: right; color: var(--hl); }
+.bar.gold > i { background: linear-gradient(180deg, #fff0b8, #e3c06e 55%, #a8743a); }
+.bar.good > i { background: linear-gradient(180deg, #d8f5c0, #6fb84a 55%, #3d7a2c); }
+.bar.good.bad > i { background: linear-gradient(180deg, #ffd0c0, #d9704a 55%, #8a3a2c); }
