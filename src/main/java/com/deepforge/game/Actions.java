@@ -67,6 +67,7 @@ public final class Actions {
             case "build" -> build(f, a);
             case "upgrade" -> upgrade(f, a);
             case "upgradeLayer" -> upgradeLayer(f, a);
+            case "cartRule" -> cartRule(f, a);
             case "unlockLayer" -> unlockLayer(f, a, t);
             case "queueAdd" -> queueAdd(f, a);
             case "queueRemove" -> queueRemove(f, a);
@@ -339,6 +340,18 @@ public final class Actions {
         log(f, "info", name + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
                 + (moved ? " It needed more space, so it moved to floor " + (f.layout.rooms.get(b.id)[1] + 1) + "." : "")
                 + (grows ? " A new machine stands in it: put another dwarf to work there." : "")));
+    }
+
+    /** When a layer's ore cart goes up the lift: this full (percent), or this many minutes after the first ore (0: off). */
+    static void cartRule(Fortress f, Map<String, Object> a) {
+        int idx = num(a, "layer", -1);
+        check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
+        int fill = num(a, "fill", 100), minutes = num(a, "minutes", 0);
+        check(fill >= 10 && fill <= 100, "Pick how full the cart should be (10 to 100 percent).");
+        check(minutes >= 0 && minutes <= 240, "Pick a time up to 4 hours, or none.");
+        LayerState l = f.layers.get(idx);
+        l.cartFill = fill;
+        l.cartMinutes = minutes;
     }
 
     static void upgradeLayer(Fortress f, Map<String, Object> a) {

@@ -4,6 +4,12 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 
 ## Grafik und Festung
 
+- [x] Parallax-Hintergrund im Tal (ferne Gipfel, Bergkette, Waldhügel, Waldrand, Massiv hinter der Festung), für Dämmerung und Nacht eingefärbt.
+- [x] Tor als Mauer mit zwei Statuen, Bogen und Runenfries; Zwerge verschwinden im Tor und kommen in der Eingangshalle heraus.
+- [x] Raumfenster docken am Desktop rechts an und fahren von rechts herein; die Kamera schiebt den Raum links ins Bild.
+- [x] Erzwagen: einstellbar, wann er hochfährt (Füllstand und/oder Minuten), im Minen-Tab je Schicht.
+- [ ] Tor je Stufe sichtbar verändern (Stufe 2 Runen leuchten, Stufe 4 Banner an der Mauer).
+
 - [x] **Höher aufgelöster Grafikstil.** Mehr Pixel pro Figur und Raum (z. B. doppelte Auflösung der Sprites),
       dabei Pixel-Look und harte Kanten behalten. Eigene PNGs über `sprites/` bleiben möglich.
 - [x] **Mehr Abwechslung bei Zwergen:** mehr Bart- und Haarformen, Frisuren, Hüte und Kapuzen, Kleidung, Körperbau,

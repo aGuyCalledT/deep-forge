@@ -87,6 +87,7 @@ public final class View {
             m.put("rate", round(rate[l.index]));
             m.put("miners", miners[l.index]);
             m.put("cartSize", cartSize(l));
+            m.put("cartTarget", cartTarget(l));
             m.put("upgrade", l.unlocked ? layerUpgradeCost(l) : null);
             m.put("unlock", l.unlocked ? null : layerUnlockCost(l.index));
             m.put("discovered", !Content.LAYERS.get(l.index).needsDiscovery() || f.discovered.contains(String.valueOf(l.index)));

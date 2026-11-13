@@ -238,7 +238,7 @@ export const mineScreen = {
     // miners, their ore boulders, the cart
     const miners = f.dwarves.filter((d) => d.job === 'miner' && d.layer === i && !d.busy && !d.dig).sort((a, b) => a.id - b.id);
     const threat = ls.threat ? f.threats.find((th) => String(th.id) === ls.threat) : null;
-    const size = (D().layers[i] || {}).cartSize || 10;
+    const dl = D().layers[i] || {}, size = dl.cartSize || 10, target = dl.cartTarget || size;
     const cart = cartState(i, ls, size, performance.now() / 1000);
     if (!threat) miners.forEach((d, k) => { const m = minerAt(d, k, miners.length, t); Art.draw(ctx, 'boulder_ore', 0, m.spot + 34, FEET - 2, { recolour: { ...R, ingot: oreRamp(P.seams[(d.id + k) % P.seams.length].ore) } }); });
     if (cart.alpha > 0) {
@@ -246,6 +246,7 @@ export const mineScreen = {
       Art.draw(ctx, 'minecart', cart.frame, cart.x, RAIL, { recolour: { ...R, ingot: oreRamp(cart.heap) } });
       ctx.globalAlpha = 1;
     }
+    cart.target = target;
     this._cart = cart;
     const people = [];
     if (threat) {
@@ -306,8 +307,8 @@ export const mineScreen = {
     for (const r of P.fgRocks) put(ctx, dark(r.kind, i, 0.66, r.flip), r.x, FLOOR + 46 + r.dy);
     // the cart's load as a little sign over it
     const c = this._cart;
-    if (c && c.alpha > 0.5 && !c.moving) text(ctx, `${Math.min(c.total, c.size)}/${c.size}`, Math.round(c.x), RAIL - 46, c.total >= c.size ? '#9ee08e' : '#e3c06e', 'center');
-    if (f.storageFull && c && c.total >= c.size) text(ctx, 'WAREHOUSE FULL', Math.round(c.x), RAIL - 54, '#d9704a', 'center');
+    if (c && c.alpha > 0.5 && !c.moving) text(ctx, `${Math.min(c.total, c.size)}/${c.target}`, Math.round(c.x), RAIL - 46, c.total >= c.target ? '#9ee08e' : '#e3c06e', 'center');
+    if (f.storageFull && c && c.total >= c.target) text(ctx, 'WAREHOUSE FULL', Math.round(c.x), RAIL - 54, '#d9704a', 'center');
   },
 };
 

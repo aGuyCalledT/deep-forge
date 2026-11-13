@@ -305,6 +305,12 @@ function render() {
   }
   if (drawerOut) { drawerOut.cancel(); drawerOut = null; }
   const fresh = p.hidden;
+  // an open drop-down in the drawer would close if it were drawn anew: wait until it is done
+  const fe = document.activeElement;
+  if (!fresh && fe && fe.tagName === 'SELECT' && p.contains(fe)) {
+    if (!fe.dataset.later) { fe.dataset.later = '1'; fe.addEventListener('blur', () => render(), { once: true }); }
+    return;
+  }
   const py = fresh ? 0 : scroller().scrollTop;
   setMaterial(p, MATERIAL[tab[0]]);
   const stores = storesView(false);
@@ -345,13 +351,26 @@ function showLayer(i) {
 }
 bus.showLayer = showLayer;
 
+/** Room windows dock at the right edge: if the room would sit under it, slide the camera so it stays in view. */
+const DOCK_W = 440;
+function keepClear(id) {
+  if (!window.matchMedia('(min-width: 700px)').matches) return;
+  const r = roomRect(id), wrap = $('scene-wrap').getBoundingClientRect();
+  if (!r) return;
+  const s = toScreen(r.x, r.y, r.w, r.h).rect, free = window.innerWidth - DOCK_W;
+  if (s.x + s.w <= free || s.w > free - 40) return;
+  const c = roomCenter(id);
+  const z = camera().zoom;
+  lookAt(c.x, camera().y + wrap.height / 2 / z, (free - wrap.left));
+}
+
 function onPick(q, at) {
   if (!q) { if (popOpen()) closeSheet(); return; }
   if (q.kind === 'bellows') return pump(q.id);
   if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id, machine: q.machine || 0 });
   if (q.kind === 'room') {
     const b = F().buildings.find((x) => x.id === q.id);
-    if (b) { A.sfx('open'); openRoomSheet(b, at); }
+    if (b) { A.sfx('open'); keepClear(q.id); openRoomSheet(b, at); }
     return;
   }
   if (q.kind === 'dwarf') {

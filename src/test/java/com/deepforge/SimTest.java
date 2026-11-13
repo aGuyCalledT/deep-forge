@@ -73,6 +73,29 @@ class SimTest {
     }
 
     @Test
+    void cartRulesSendItEarly() {
+        // half full is enough
+        Fortress f = fresh(12);
+        Market m = Market.inMemory(12, T0);
+        Rules.building(f, "smelter-1").queue.clear();
+        f.nextRaidAt = Double.MAX_VALUE;
+        State.LayerState l = f.layers.get(0);
+        l.cartFill = 50;
+        Sim.advance(f, T0 + 3 * 3600, m);
+        assertTrue(l.cartSent > T0, "a half full cart should have left");
+        assertTrue(l.cartLoad >= Rules.cartTarget(l) && l.cartLoad < Rules.cartSize(l), "it left at the fill rule, not full");
+        // or after a minute, however little is in it
+        Fortress g = fresh(13);
+        Rules.building(g, "smelter-1").queue.clear();
+        g.nextRaidAt = Double.MAX_VALUE;
+        State.LayerState k = g.layers.get(0);
+        k.cartMinutes = 1;
+        Sim.advance(g, T0 + 900, Market.inMemory(13, T0));
+        assertTrue(k.cartSent > T0, "the cart should have left after a minute");
+        assertTrue(k.cartLoad < Rules.cartSize(k));
+    }
+
+    @Test
     void caravanSellsAndComesBack() {
         Fortress f = fresh(3);
         Market m = Market.inMemory(3, T0);

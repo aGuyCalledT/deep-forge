@@ -1,5 +1,5 @@
 // The mines: lift, layers, miners.
-import { G, F, D, byId, fmt, goodName, building, stock } from './data.js';
+import { G, F, D, byId, fmt, goodName, building, stock, now } from './data.js';
 import { h, img, goodIcon, bar, bus, ico, info } from './ui.js';
 import { mineLayer } from './mine48.js';
 import * as S from './sprites.js';
@@ -36,10 +36,11 @@ export function renderMines() {
     if (ls.unlocked) {
       if (th) card.append(h('p', { class: 'bad-t' }, img(S.monster(th.monster, 0), 'icon'), ` ${th.name} blocks this layer! `,
         h('button', { class: 'btn small danger', onclick: () => bus.go('war') }, 'Send warriors')));
-      const inCart = Object.values(ls.cart || {}).reduce((s, v) => s + v, 0), size = dl.cartSize || 10;
-      card.append(h('div', { class: 'row between', style: { marginTop: '6px' } }, h('span', null, 'Ore cart ', info('Miners fill the cart. When it is full it rolls to the lift, and only then is the ore in your warehouse.')),
-        h('span', { class: inCart >= size && f.storageFull ? 'bad-t' : 'muted' }, `${fmt(Math.min(inCart, size))} / ${fmt(size)}`)), bar(Math.min(1, inCart / size)));
-      if (inCart >= size && f.storageFull) card.append(h('p', { class: 'bad-t small' }, 'The cart is full but the warehouse is too. Make room to send it up.'));
+      const inCart = Object.values(ls.cart || {}).reduce((s, v) => s + v, 0), size = dl.cartSize || 10, target = dl.cartTarget || size;
+      card.append(h('div', { class: 'row between', style: { marginTop: '6px' } }, h('span', null, 'Ore cart ', info('Miners fill the cart. When it is as full as you set below (or the time is up) it rolls to the lift, and only then is the ore in your warehouse.')),
+        h('span', { class: inCart >= target && f.storageFull ? 'bad-t' : 'muted' }, `${fmt(Math.min(inCart, size))} / ${fmt(target)}`)), bar(Math.min(1, inCart / target)));
+      card.append(cartRule(i, ls, inCart));
+      if (inCart >= target && f.storageFull) card.append(h('p', { class: 'bad-t small' }, 'The cart is ready but the warehouse is full. Make room to send it up.'));
       card.append(h('div', { class: 'row between', style: { marginTop: '6px' } },
         h('span', null, h('b', { class: 'gold-t' }, fmt(dl.rate) + ' ore/h'), h('span', { class: 'muted' }, ` from ${dl.miners} miner${dl.miners === 1 ? '' : 's'}`)),
         h('span', { class: 'row', style: { gap: '6px' } },
@@ -61,4 +62,19 @@ export function renderMines() {
     out.push(card);
   });
   return out;
+}
+
+/** When the cart goes up: how full it must be, and an optional time limit after the first ore went in. */
+const FILLS = [[25, 'a quarter full'], [50, 'half full'], [75, 'three quarters full'], [100, 'full']];
+const MINUTES = [[0, 'no time limit'], [5, 'or after 5 min'], [10, 'or after 10 min'], [15, 'or after 15 min'], [30, 'or after 30 min'], [60, 'or after 1 hour']];
+function cartRule(i, ls, inCart) {
+  const fill = ls.cartFill || 100, min = ls.cartMinutes || 0;
+  const set = (o) => bus.act({ type: 'cartRule', layer: i, fill, minutes: min, ...o });
+  const pick = (opts, v, key) => h('select', { 'aria-label': key === 'fill' ? 'How full the cart goes up' : 'Time limit',
+    onchange: (e) => set({ [key]: +e.target.value }) },
+    (opts.some(([x]) => x === v) ? opts : [...opts, [v, key === 'fill' ? v + '% full' : `or after ${v} min`]]).map(([x, label]) => h('option', { value: x, selected: x === v }, label)));
+  const left = min && inCart > 0 ? Math.max(0, Math.ceil((ls.cartStart + min * 60 - now()) / 60)) : null;
+  return h('div', { class: 'row wrap cart-rule' }, h('span', { class: 'small muted' }, 'Goes up when'),
+    pick(FILLS, fill, 'fill'), pick(MINUTES, min, 'minutes'),
+    left != null ? h('span', { class: 'small dim' }, left ? `leaves in ${left} min` : 'leaves now') : null);
 }

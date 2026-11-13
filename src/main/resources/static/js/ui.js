@@ -183,6 +183,7 @@ export function openSheet(render, anchor = null, material = null) {
   const fresh = el.hidden;
   if (fresh) A.sfx('open');
   el.classList.toggle('pop', !!anchor);
+  el.classList.toggle('dock', !!(anchor && anchor.dock));
   el.classList.remove('peek');
   setMaterial(body, material || (sheetBack && sheetBack.material) || MATERIAL[G.tab] || 'neutral');
   const c = document.getElementById('sheet-content');
@@ -192,7 +193,7 @@ export function openSheet(render, anchor = null, material = null) {
   if (fresh) {
     // a pop-over comes in from the screen edge it is closest to; a big window drops out of the ceiling; phones: from below
     const r = body.getBoundingClientRect(), phone = !window.matchMedia('(min-width: 700px)').matches;
-    sheetSide = phone ? 'bottom' : !anchor ? 'top' : r.left + r.width / 2 > window.innerWidth / 2 ? 'right' : 'left';
+    sheetSide = phone ? 'bottom' : !anchor ? 'top' : anchor.dock ? 'right' : r.left + r.width / 2 > window.innerWidth / 2 ? 'right' : 'left';
     slideIn(body, sheetSide);
   }
   const first = c.querySelector('input, select, button');
@@ -204,6 +205,12 @@ function place() {
   const body = sheetEl().querySelector('.sheet-body');
   body.style.left = body.style.top = '';
   if (!sheetAnchor || !window.matchMedia('(min-width: 700px)').matches) return;
+  if (sheetAnchor.dock) {
+    // docked at the right edge, under the tabs, so the room you clicked stays in view
+    const top = Math.round(document.querySelector('.main').getBoundingClientRect().top) + 12;
+    body.style.top = top + 'px'; body.style.maxHeight = (window.innerHeight - top - 12) + 'px';
+    return;
+  }
   const W = window.innerWidth, H = window.innerHeight, r = body.getBoundingClientRect();
   const a = sheetAnchor.rect || { x: sheetAnchor.x, y: sheetAnchor.y, w: 0, h: 0 };
   const gap = 14, room = (x) => x >= 12 && x + r.width <= W - 12;

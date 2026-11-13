@@ -218,6 +218,9 @@ public final class State {
         public Map<String, Integer> cart = new TreeMap<>();   // ore in the mine cart; it goes up the lift when full
         public double cartSent;   // when the last full cart left (0: never)
         public int cartLoad;      // how much it carried
+        public double cartStart;  // when the first ore went into the empty cart
+        public int cartFill = 100;   // the cart goes up when it is this full (percent of its size)
+        public int cartMinutes;      // ... or this many minutes after the first ore went in (0: no time limit)
     }
 
     public static class Caravan {

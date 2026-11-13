@@ -170,23 +170,24 @@ public final class Sim {
         f.storageFull = used >= cap;
         if (f.storageFull) return;
         for (LayerState l : f.layers) {
-            // a full cart waiting for room in the warehouse goes as soon as there is some
-            if (cartTotal(l) >= cartSize(l) && used < cap) used += sendCart(f, l, t);
+            // a ready cart (full enough, or waited long enough) goes as soon as the warehouse has room
+            if (cartReady(l, t) && used < cap) used += sendCart(f, l, t);
             if (rate[l.index] == 0) continue;
             l.pending += rate[l.index] * scale;
             Content.Layer layer = Content.LAYERS.get(l.index);
             double sniffChance = 0.15 * sniff[l.index] / Math.max(1, miners[l.index]);
             // the miners fill the cart; a full cart goes up the lift and only then the ore is in the warehouse
             while (l.pending >= 1) {
-                if (cartTotal(l) >= cartSize(l)) {
+                if (cartTotal(l) >= cartTarget(l)) {
                     if (used >= cap) { l.pending = Math.min(l.pending, 1); f.storageFull = true; break; }
                     used += sendCart(f, l, t);
                 }
                 String ore = r.weighted(layer.weights());
+                if (l.cart.isEmpty()) l.cartStart = t;
                 l.cart.merge(ore, r.chance(sniffChance) ? 2 : 1, Integer::sum);
                 l.pending -= 1;
             }
-            if (cartTotal(l) >= cartSize(l) && used < cap) used += sendCart(f, l, t);
+            if (cartReady(l, t) && used < cap) used += sendCart(f, l, t);
             if (used >= cap) f.storageFull = true;
         }
     }

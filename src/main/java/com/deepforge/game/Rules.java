@@ -189,6 +189,18 @@ public final class Rules {
         return 10 + 5 * (l.level - 1);
     }
 
+    /** How much ore makes the cart go up: the player's fill rule, at least 1. */
+    public static int cartTarget(LayerState l) {
+        return Math.max(1, (int) Math.ceil(cartSize(l) * Math.max(10, Math.min(100, l.cartFill)) / 100.0));
+    }
+
+    /** Does the cart go up now: full enough, or loaded and waited long enough (the player's rules). */
+    public static boolean cartReady(LayerState l, double t) {
+        int n = cartTotal(l);
+        if (n <= 0) return false;
+        return n >= cartTarget(l) || (l.cartMinutes > 0 && t - l.cartStart >= l.cartMinutes * 60.0);
+    }
+
     public static int cartTotal(LayerState l) {
         int n = 0;
         for (int v : l.cart.values()) n += v;

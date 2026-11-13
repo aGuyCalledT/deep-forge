@@ -40,7 +40,7 @@ export function openRoomSheet(b, at) {
       ...extra,
       look,
       upgradeBtn(cur));
-  }, at || null, roomMaterial(b.type));
+  }, { ...(at || {}), dock: true }, roomMaterial(b.type));
 }
 
 const lookName = (n) => n.replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase());
