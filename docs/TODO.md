@@ -179,6 +179,8 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       die gebauten Treppenhäuser).
 - [x] Fels ohne helle Linien an den Kachelkanten und ohne Helligkeitsverlauf je Etage (Voronoi oben/unten nahtlos,
       Steinfarben gut gemischt).
+- [x] Tiefe: Schatten an allen vier Innenkanten jedes Raums; Säule mit Tür im Vordergrund zwischen Räumen, die Tür
+      öffnet sich, wenn ein Zwerg hindurchgeht.
 - [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
 - [x] Raum-Editor im Spiel (Raumfenster → „Change look“): Liste aller Vorlagen mit Bild, Spieler-Vorlagen auf dem
       Server (`room_templates`), für alle sichtbar, nur vom Ersteller änderbar.

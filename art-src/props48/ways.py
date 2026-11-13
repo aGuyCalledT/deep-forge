@@ -5,6 +5,8 @@
 #   arcade, arcade_grand   stone arch over a hallway cell, half a pier on each side (48 x 135)
 #   statue      a dwarf in stone with a hammer, on a plinth
 #   runeplate   small brass plate with runes over a door (hangs from its top)
+#   walldoor, walldoor_stone, walldoor_grand   pillar in front of the wall between two rooms, with a door at its
+#               foot, 4 frames like the stairwell doors (32 x 144, anchor at the middle of the foot)
 #   wall_hewn   tile 96 x 144: rock cut back in courses, chisel strokes slanting the same way in each course
 #   python3 ways.py <out dir>     a preview of every piece (ways_x3.png)
 import sys, os
@@ -290,8 +292,96 @@ def wall_hewn():
     return g
 
 
+# ------------------------------------------------------------------ pillar with a door, between two rooms
+# Drawn in front of everything where a wall parts two rooms (or a room and a hallway): the wall seen end-on as a
+# pillar, with a door at its foot that opens while a dwarf goes through. 32 x 144, anchor at the middle of the foot
+# (the cell edge, the bottom of the floor). 4 frames like the stairwell doors: shut, ajar, half open, open.
+PW = 32
+DA, DB, DSPRING, DR = 8, 23, 90, 8          # doorway: x DA..DB, round top springs at y DSPRING
+def door_mask():
+    m = np.zeros((RH, PW), bool)
+    for y in range(RH):
+        for x in range(PW):
+            if DA <= x <= DB and DSPRING <= y < FLOOR: m[y, x] = True
+            elif y < DSPRING and (x + 0.5 - 16) ** 2 + (y + 0.5 - DSPRING) ** 2 <= DR * DR: m[y, x] = True
+    return m
+def door_in(g, frame, leaf='oak', studs=None):
+    """The dark of the next room behind the doorway, and the leaf, narrower and darker the further it is open."""
+    m = door_mask()
+    for y, x in zip(*np.nonzero(m)): g[y, x] = ('rock', 1 if y >= FLOOR - 5 else 0)
+    frac = OPEN[frame % 4]
+    lw = int(round((DB - DA + 1) * frac))
+    for y, x in zip(*np.nonzero(m)):
+        if x >= DA + lw: continue
+        u = x - DA
+        t = 1 if u % 4 == 3 else 2
+        if u == 0 and frac > 0.5: t = 3
+        if y in (DSPRING + 6, FLOOR - 9): t = None
+        if t is None: g[y, x] = ('iron', 3 if frac > 0.5 else 2)
+        else:
+            if frac < 0.7: t = max(0, t - 1)
+            g[y, x] = (leaf, t)
+        if studs and y in (DSPRING + 6, FLOOR - 9) and u % 4 == 1: g[y, x] = (studs, 4 if frac > 0.5 else 3)
+        if x == DA + lw - 1: g[y, x] = (leaf, 0)                     # the free edge of the leaf
+    if frac > 0.5:
+        hx = DA + lw - 4; g[FLOOR - 26, hx] = ('iron', 4); g[FLOOR - 25, hx] = ('iron', 1)
+def silhouette(g, ramp):
+    """A dark edge down both sides, the left one lit just inside (light from the top left)."""
+    for y in range(RH):
+        xs = [x for x in range(PW) if g[y, x] is not None]
+        if not xs: continue
+        a, b = xs[0], xs[-1]
+        g[y, a] = (ramp, 0); g[y, b] = (ramp, 0)
+        if g[y, a + 1] is not None and g[y, a + 1][0] == ramp: g[y, a + 1] = (ramp, min(4, g[y, a + 1][1] + 1))
+def walldoor_of(ramp, leaf, key=None, frame=0):
+    g = grid(PW, RH)
+    ids = np.full((RH, PW), -1)
+    dm = door_mask()
+    for y in range(RH):
+        for x in range(PW):
+            if y < 8: ids[y, x] = 900                                  # capital, into the ceiling
+            elif y >= FLOOR - 8: ids[y, x] = 901 + (y >= FLOOR)        # plinth, down over the floor
+            elif 2 <= x <= 29:
+                d = math.hypot(x + 0.5 - 16, y + 0.5 - DSPRING)
+                if y < DSPRING and DR < d <= DR + 4:                       # voussoirs round the door
+                    ids[y, x] = 50 + int(math.atan2(DSPRING - y - 0.5, x + 0.5 - 16) / (math.pi / 5))
+                else:
+                    row = (y - 8) // 12
+                    split = 16 + (5 if row % 2 else -5)
+                    ids[y, x] = row * 2 + (x >= split)
+    ids[dm] = -1
+    base = lambda i: 3 if i in (900, 901) else 1 if i == 902 else 3 if i == 52 else pick(2, 2, 3)(i)
+    b = blocks(ids, ramp, base, wrap=False)
+    for y, x in zip(*np.nonzero(ids >= 0)): g[y, x] = b[y, x]
+    if key:                                                            # keystone and a band on the capital
+        for y, x in zip(*np.nonzero(ids == 52)): g[y, x] = (key, 3 if g[y, x][1] > 1 else 1)
+        for x in range(PW): g[5, x] = (key, 3); g[6, x] = (key, 1)
+    door_in(g, frame, leaf, studs=key)
+    silhouette(g, ramp)
+    return {'grid': g, 'anchor': (PW // 2, RH)}
+def walldoor(frame=0):
+    """Timber: two squared posts under a lintel, boards above, a plank door."""
+    g = grid(PW, RH)
+    beam(g, 2, 0, 7, RH - 1, horiz=False); beam(g, 24, 0, 29, RH - 1, horiz=False)
+    for y in range(0, DSPRING - 12):                                   # boards between the posts
+        for x in range(8, 24): g[y, x] = ('wood', 1 if (x - 8) % 5 == 4 else 2)
+    beam(g, 2, DSPRING - 12, 29, DSPRING - 6)                          # lintel
+    for y in range(DSPRING - 6, DSPRING):
+        for x in range(8, 24): g[y, x] = ('wood', 1 if (x - 8) % 5 == 4 else 2)
+    for x in (4, 26): g[DSPRING - 9, x] = ('iron', 4)
+    for x0 in (2, 24):                                                 # stone footings over the floor
+        for y in range(FLOOR, RH):
+            for x in range(x0 - 1, x0 + 7): g[y, x] = ('stone', 3 if y == FLOOR else 2 if x < x0 + 5 else 1)
+    door_in(g, frame, 'wood')
+    silhouette(g, 'oak')
+    return {'grid': g, 'anchor': (PW // 2, RH)}
+def walldoor_stone(frame=0): return walldoor_of('sand', 'oak', frame=frame)
+def walldoor_grand(frame=0): return walldoor_of('stone', 'oak', key='gold', frame=frame)
+
+
 WAYS = {'stairdoor': stairdoor, 'stairdoor_stone': stairdoor_stone, 'stairdoor_grand': stairdoor_grand,
-        'runeplate': runeplate, 'statue': statue}
+        'runeplate': runeplate, 'statue': statue,
+        'walldoor': walldoor, 'walldoor_stone': walldoor_stone, 'walldoor_grand': walldoor_grand}
 WAY_SPRITES = {'gallery': gallery, 'arcade': arcade, 'arcade_grand': arcade_grand}
 WAY_TILES = {'wall_hewn': wall_hewn}
 

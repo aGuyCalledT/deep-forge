@@ -149,7 +149,9 @@ function grid() {
     for (let c = 0; c < plan.shaft; c++) cells.set(c + ',' + fl, { kind: 'shaft', well: s });
   }
   const hall = levelOf('entrance_hall') ? tplOf('entrance_hall', 'room', style, FACE / CELL) : null;
-  return { cells, rooms, wells, shafts, marks, critters, hall };
+  const g = { cells, rooms, wells, shafts, marks, critters, hall };
+  g.walls = wallsOf(g);
+  return g;
 }
 
 /**
@@ -784,31 +786,70 @@ function drawUnderground(ctx, t, g, inRoom) {
   if (gateLevel() >= 3) Art.draw(ctx, 'brazier', Math.floor(t * 6) % 4, SURFACE.gate - 70, GROUND);
 }
 
+/** Which space a cell belongs to: a room, or the open ways (hallways, stairwells, the shaft, the gate tunnel). */
+function spaceOf(g, c, fl) {
+  if (fl === ENTRY && c < 0 && c >= -FACE / CELL) return 'open';
+  const v = fl >= 0 && g.cells.get(c + ',' + fl);
+  return !v ? null : v.kind === 'room' ? 'room:' + v.id : v.kind === 'cave' ? 'cave' : 'open';
+}
+/** Walls between two spaces where one of them is a room: a pillar stands in front, with a door at its foot. */
+function wallsOf(g) {
+  const out = [];
+  for (let fl = 0; fl < plan.floors; fl++) for (let c = 0; c < plan.cols - 1; c++) {
+    const a = spaceOf(g, c, fl), b = spaceOf(g, c + 1, fl);
+    if (a && b && a !== b && (a.startsWith('room:') || b.startsWith('room:'))) out.push({ c: c + 1, f: fl, x: (c + 1) * CELL });
+  }
+  return out;
+}
+
+const SHADE = 'rgba(16,10,24,';
 /**
- * Depth: light comes from the top left, so the rock throws a soft shadow down into every opening and onto its left
- * wall where rock is beside it, and the rock just right of an opening catches a little light.
+ * Depth: every room (and every run of hallways and stairwells) is a hollow in the rock, so all four of its inner
+ * edges lie in shadow, in steps like pixel art light. Light comes from the top left: the ceiling throws the deepest
+ * shadow, and the rock just right of an opening catches a little light.
  */
 function drawEdges(ctx, g) {
-  const open = (c, fl) => fl >= 0 && g.cells.has(c + ',' + fl);
-  const each = (fn) => {
-    for (const k of g.cells.keys()) { const [c, fl] = k.split(',').map(Number); if (seen(c * CELL, ftop(fl), CELL, RH, 10)) fn(c, fl); }
-    for (let c = -FACE / CELL; c < 0; c++) fn(c, ENTRY, true);
-  };
-  each((c, fl, tunnel) => {
-    const x = c * CELL, y = ftop(fl);
-    const shade = [0.42, 0.3, 0.2, 0.12, 0.06];
-    for (let i = 0; i < shade.length; i++) { ctx.fillStyle = `rgba(16,10,24,${shade[i]})`; ctx.fillRect(x, y + i * 2, CELL, 2); }
-    const leftRock = !tunnel && !open(c - 1, fl) && !(c === 0 && fl === ENTRY);
-    if (leftRock) for (let i = 0; i < 4; i++) { ctx.fillStyle = `rgba(16,10,24,${0.35 - i * 0.08})`; ctx.fillRect(x + i * 2, y, 2, RH); }
-    const here = g.cells.get(c + ',' + fl), next = g.cells.get((c + 1) + ',' + fl);
-    if (here && next && here.kind === 'room' && next.kind === 'room' && here.id !== next.id) {
-      // two rooms side by side: a wall of cut stone between them
-      ctx.fillStyle = '#2a2026'; ctx.fillRect(x + CELL - 3, y, 6, RH);
-      ctx.fillStyle = '#5a4a48'; ctx.fillRect(x + CELL - 2, y, 1, RH); ctx.fillStyle = 'rgba(16,10,24,0.35)'; ctx.fillRect(x + CELL + 3, y, 4, RH);
+  const walls = new Set(g.walls.map((w) => w.c + ',' + w.f));
+  const top = [0.42, 0.3, 0.2, 0.12, 0.06], side = [0.34, 0.24, 0.15, 0.08, 0.04], bottom = [0.3, 0.18, 0.08];
+  for (let fl = 0; fl < plan.floors; fl++) {
+    const y = ftop(fl);
+    if (!seen(view.x, y, view.w, RH, 10)) continue;
+    let c = fl === ENTRY ? -FACE / CELL : 0;
+    while (c < plan.cols) {
+      const sp = spaceOf(g, c, fl);
+      if (!sp) { c++; continue; }
+      let e = c;
+      while (e + 1 < plan.cols && spaceOf(g, e + 1, fl) === sp) e++;
+      const x0 = c * CELL, x1 = (e + 1) * CELL, w = x1 - x0;
+      if (seen(x0, y, w, RH, 10)) {
+        for (let i = 0; i < top.length; i++) { ctx.fillStyle = SHADE + top[i] + ')'; ctx.fillRect(x0, y + i * 2, w, 2); }
+        for (let i = 0; i < bottom.length; i++) { ctx.fillStyle = SHADE + bottom[i] + ')'; ctx.fillRect(x0, y + RH - 2 - i * 2, w, 2); }
+        // the sides: from the rock edge, or from just behind the pillar where a wall parts two spaces
+        const tunnelEnd = fl === ENTRY && c === -FACE / CELL;
+        const li = walls.has(c + ',' + fl) ? 16 : 0, ri = walls.has((e + 1) + ',' + fl) ? 16 : 0;
+        if (!tunnelEnd) for (let i = 0; i < side.length; i++) { ctx.fillStyle = SHADE + side[i] + ')'; ctx.fillRect(x0 + li + i * 2, y, 2, RH); }
+        for (let i = 0; i < side.length; i++) { ctx.fillStyle = SHADE + (side[i] * 0.8).toFixed(3) + ')'; ctx.fillRect(x1 - ri - (i + 1) * 2, y, 2, RH); }
+        if (!spaceOf(g, e + 1, fl)) { ctx.fillStyle = 'rgba(232,190,140,0.3)'; ctx.fillRect(x1, y + 4, 1, RH - 4); }
+      }
+      c = e + 1;
     }
-    const rightRock = tunnel ? false : !open(c + 1, fl);
-    if (rightRock) { ctx.fillStyle = 'rgba(232,190,140,0.3)'; ctx.fillRect(x + CELL, y + 4, 1, RH - 4); ctx.fillStyle = 'rgba(16,10,24,0.35)'; ctx.fillRect(x + CELL - 2, y, 2, RH); }
-  });
+  }
+}
+
+/** The pillars between rooms, in front of everything; a door opens while a dwarf is right at it. */
+const wallDoors = new Map();   // "c,f" -> how far open (0 shut .. 3 open)
+function drawWalls(ctx, dt) {
+  const names = { timber: 'walldoor', stone: 'walldoor_stone', grand: 'walldoor_grand' };
+  const name = names[wayStyle()] || names[tierStyle()] || 'walldoor';     // a player's own entrance-hall look: by level
+  const near = [...agents.values()].filter((a) => !a.hidden && a.f >= 0 && a.path.length);   // only dwarves on their way
+  for (const w of G_.walls) {
+    const k = w.c + ',' + w.f;
+    const want = near.some((a) => a.f === w.f && Math.abs(a.x - w.x) < 30) ? 3 : 0;
+    let v = wallDoors.get(k) || 0;
+    v = want > v ? Math.min(want, v + dt * 16) : Math.max(want, v - dt * 9);
+    if (v) wallDoors.set(k, v); else wallDoors.delete(k);
+    if (seen(w.x - 16, ftop(w.f), 32, RH, 10)) Art.draw(ctx, name, Math.round(v), w.x, ftop(w.f) + RH);
+  }
 }
 
 /** A room: wall, floor and back furniture, the dwarves in it, then the furniture in front of them; fire and smoke. */
@@ -958,6 +999,7 @@ export const holdScreen = {
     drawUnderground(ctx, t, G_, inRoom);
     drawStrangers(ctx, t, 'road');
     for (const p of outside) p();
+    drawWalls(ctx, dt);
     drawParticles(ctx, dt);
   },
   ambient(t) {
