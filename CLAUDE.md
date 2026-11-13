@@ -48,7 +48,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/views.js` | Login-Bild |
 | `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen (öffnen sich neben dem Objekt), Cheat-Werkzeuge |
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
-| `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall um, liefert Zwerge, Fremde und Porträts |
+| `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall um, liefert Zwerge, Fremde und Porträts (`portrait()` aus dem 48-px-Satz über `look48` in `dwarf48.js`, damit sie aussehen wie in der Festung) |
 | `art-src/props48/` | Grafik 48 px als Code (Räume aus Teilen, Tal, Fels, Monster, Effekte, Wege in `ways.py`), `export.py` schreibt `static/art/props48/` (Sheet, Glow, JSON), Lader `static/js/art48.js` |
 | `static/editor/` | Raumvorlagen-Editor (Möbel und Punkte setzen), im Spiel über „Change look“ im Raumfenster als Fenster (`openEditor` in `popups.js`, `?embed=1`, meldet `saved`/`close` per `postMessage`). Spieler-Vorlagen speichert der Server (`game/RoomTemplates.java`, Tabelle `room_templates`, API `/api/rooms…`): jeder darf anlegen, alle sehen und nutzen sie, ändern/löschen nur der Ersteller (auch kein Admin). Am Handy (≤ 760 px) wird der Editor nicht angeboten, nur die Auswahl. Format und Zeichnen in `static/js/rooms48.js`, eingebaute Vorlagen `RoomLooks.java`, Wahl je Raum `Building.look` |
 | `tools/room-editor/` | `serve.py` (Port 8099) startet denselben Editor lokal ohne Spiel und speichert eingebaute Vorlagen als Dateien nach `static/art/props48/rooms/` |

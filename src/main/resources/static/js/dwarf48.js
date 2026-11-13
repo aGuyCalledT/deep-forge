@@ -4,6 +4,8 @@
 // look: {sex: 'm'|'f', hair, beard, hat, vest: true, mood, prop, quilt: true, ramps: {skin: [5 colours], hair: [...], ...}}
 // The hold (hold.js) draws every dwarf with it (look48 turns a dwarf into a look); the room editor shows its spots with it.
 
+import * as S from './sprites.js';   // colours and looks of a dwarf (used at call time only)
+
 let kit = null;
 const strips = {}, cache = new Map();
 const image = src => new Promise((ok, fail) => { const im = new Image(); im.onload = () => ok(im); im.onerror = fail; im.src = src; });
@@ -85,4 +87,40 @@ export function draw(ctx, look, pose, f, x, y, opts = {}) {
   if (opts.flip) ctx.scale(-1, 1);
   ctx.drawImage(c, -ax, -ay);
   ctx.restore();
+}
+
+// ------------------------------------------------------------------ how a dwarf of the hold looks in this kit
+
+const OLD_HAIR = { short: 'short', fringe: 'short', bald: 'bald', topknot: 'topknot', long: 'long', wavy: 'long', braids: 'braids', bun: 'bun', pigtails: 'braids', mohawk: 'topknot' };
+const OLD_BEARD = { full: 'full', wide: 'wide', braid: 'long', fork: 'fork', long: 'long', goatee: 'short', chops: 'wide', moustache: 'short' };
+const HAIRS = Object.keys(OLD_HAIR), BEARDS = Object.keys(OLD_BEARD);
+
+/** Five tones from one colour (tone 3 is the colour itself), the way the kit's ramps are built. */
+export function ramp(hex) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return null;
+  const dark = '#140c16', light = '#fff2dc';
+  return [S.mix(hex, dark, 0.66), S.mix(hex, dark, 0.44), S.mix(hex, dark, 0.22), hex.toLowerCase(), S.mix(hex, light, 0.32)];
+}
+
+const lookCache = new Map();
+/** The dwarf48 look of a dwarf of the hold: hair, beard, colours from its looks and clothes, its mood. */
+export function look48(d, extra = {}) {
+  const md = S.mood(d);
+  const key = [d.id, d.sex, d.hairStyle, d.beardStyle, d.skin, d.hair, d.outfit, d.helm, JSON.stringify(d.wear || {}), md, extra.prop || '', extra.quilt, extra.hat || ''].join('|');
+  let L = lookCache.get(key);
+  if (L) return L;
+  const o = S.look(d), wear = {};
+  for (const [slot, k] of Object.entries(d.wear || {})) { const w = S.parseWear(k); if (w) wear[slot] = w.color; }
+  const ramps = {};
+  const put = (name, hex) => { const r = ramp(hex); if (r) ramps[name] = r; };
+  put('skin', o.skin); put('hair', o.hair);
+  put('tunic', wear.top || d.outfit || '#4b8a4f'); put('pants', wear.legs); put('boots', wear.feet);
+  if (wear.apron) put('vest', wear.apron);
+  L = {
+    sex: o.sex, hair: OLD_HAIR[HAIRS[o.hairStyle]] || 'short', beard: o.sex === 'm' ? OLD_BEARD[BEARDS[o.beard]] || 'full' : null,
+    hat: extra.hat || (d.helm ? 'helm' : null), vest: true, mood: md, prop: extra.prop || null, quilt: extra.quilt, ramps,
+  };
+  if (lookCache.size > 600) lookCache.clear();
+  lookCache.set(key, L);
+  return L;
 }

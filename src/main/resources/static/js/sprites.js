@@ -6,6 +6,7 @@
 import { byId, G } from './data.js';
 import Figure from './figure.js';
 import * as Kit from './dwarfkit.js';
+import * as DW from './dwarf48.js';
 
 let sheet = null;          // HTMLImageElement
 let frames = {};           // name -> {x, y, w, h}
@@ -315,11 +316,14 @@ export function placeDwarf(ctx, spr, x, y, flip = false, shadow = true) {
   return { sx, sy };
 }
 
-/** Just the dwarf, trimmed: for portraits in panels. */
+/** Just the dwarf, trimmed: for portraits in panels. Drawn from the same 48-px kit as in the hold (dwarf48), so it
+ * looks the same there and here; the old figure only until that kit has loaded. */
+const PORTRAIT48 = { idle: 'idle', walk: 'walkFront', talk: 'talk' };
 export function portrait(d, pose = 'idle') {
-  const key = 'pt|' + d.id + '|' + pose + '|' + JSON.stringify(look(d)) + JSON.stringify(d.wear || {}) + d.armor + d.helm + mood(d);
+  const kit = DW.ready(), L = kit ? DW.look48(d) : null;
+  const key = 'pt|' + d.id + '|' + pose + '|' + (kit ? '48|' + JSON.stringify(L) : JSON.stringify(look(d)) + JSON.stringify(d.wear || {}) + d.armor + d.helm + mood(d));
   if (cache.has(key)) return cache.get(key);
-  const s = dwarfSprite(d, pose, 0);
+  const s = kit ? DW.frame(L, PORTRAIT48[pose] || 'idle', 0) : dwarfSprite(d, pose, 0);
   const g = s.getContext('2d'), id = g.getImageData(0, 0, s.width, s.height).data;
   let x0 = s.width, y0 = s.height, x1 = 0, y1 = 0;
   for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) if (id[(y * s.width + x) * 4 + 3]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }

@@ -181,6 +181,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Steinfarben gut gemischt).
 - [x] Tiefe: Schatten an allen vier Innenkanten jedes Raums; Säule mit Tür im Vordergrund zwischen Räumen, die Tür
       öffnet sich, wenn ein Zwerg hindurchgeht.
+- [x] Porträts in Fenstern und Listen aus demselben 48-px-Zwergensatz wie in der Festung (`look48` in `dwarf48.js`).
 - [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
 - [x] Raum-Editor im Spiel (Raumfenster → „Change look“): Liste aller Vorlagen mit Bild, Spieler-Vorlagen auf dem
       Server (`room_templates`), für alle sichtbar, nur vom Ersteller änderbar.
