@@ -150,7 +150,9 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   kein anderes Material dieser Teile eine Platzhalterfarbe hat.
 - **Im Spiel:** `static/js/art48.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). `hold.js` lädt Sheet,
   Zwerge und alle Raumvorlagen vor dem ersten Bild (`loadArt()`), zeichnet Himmel, Berge (`mountains_*` nach Tageszeit),
-  Wiese, Bäume, Stand, Brunnen, Fels (`rock_0..4` nach Tiefe), Gänge (`hallway`), Schacht, Treppenhäuser, Tunnel, Tor,
+  Wiese, Bäume, Stand, Brunnen, Fels (`rock_0..4` nach Tiefe, nahtlos in beide Richtungen: `voronoi(..., wrap_y=True)`,
+  `blocks(..., wrap_y=True)` in `rock.py`), Gänge (`hallway`), Schacht (auf jeder Etage die Treppenhaus-Vorlage mit
+  Tür, keine Leitern), Treppenhäuser, Tunnel, Tor,
   Höhlen mit Bewuchs (`moss_*`, `glowshrooms`, `roots`, `stalactites`), Risse beim Graben und Monster. Räume: Hülle
   und hintere Möbel, die Zwerge im Raum, vordere Möbel; die leuchtenden Pixel (`glow`) kommen nach der Lichtschicht.
   Lichter, Rauch, Funken, Dampf und Klickflächen kommen aus den Punkten der Vorlage. Alte Symbole (Status, Pfeile,

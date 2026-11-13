@@ -25,7 +25,7 @@ def hsh(*a):
     return v
 def grid(w, h): return np.full((h, w), None, object)
 
-def blocks(ids, ramp, base, joint=0, wrap=True, rim=True):
+def blocks(ids, ramp, base, joint=0, wrap=True, rim=True, wrap_y=False):
     """ids: int array (-1 = empty). base(id) -> tone. Joint pixel where the right or lower neighbour is another block."""
     h, w = ids.shape
     def nb(dy, dx):
@@ -35,7 +35,7 @@ def blocks(ids, ramp, base, joint=0, wrap=True, rim=True):
         out[ys - dy:ye - dy, xs - dx:xe - dx] = ids[ys:ye, xs:xe]
         return out
     r, d, l, u = nb(0, 1), nb(1, 0), nb(0, -1), nb(-1, 0)
-    if wrap: d[-1] = ids[-1]; u[0] = ids[0]             # no joint across the top/bottom of a tile
+    if wrap and not wrap_y: d[-1] = ids[-1]; u[0] = ids[0]   # no joint across the top/bottom of a tile (walls)
     jnt = (ids >= 0) & ((r != ids) | (d != ids))
     g = grid(w, h)
     for y, x in zip(*np.nonzero(ids >= 0)):
@@ -52,9 +52,10 @@ def blocks(ids, ramp, base, joint=0, wrap=True, rim=True):
 def pick(*tones): return lambda i: tones[hsh(i, 7) % len(tones)]
 
 # ------------------------------------------------------------------ walls (96 x 144, period 96)
-def voronoi(w, h, cw, ch, seed, wrap=True):
+def voronoi(w, h, cw, ch, seed, wrap=True, wrap_y=False):
+    """Stones as Voronoi cells, wrap: seamless left to right; wrap_y: also top to bottom (rock that tiles both ways)."""
     pts = []
-    for gy in range(-1, h // ch + 2):
+    for gy in (range(h // ch) if wrap_y else range(-1, h // ch + 2)):
         for gx in range(w // cw):
             k = hsh(gx, gy, seed)
             pts.append((gx * cw + (k % 997) / 997 * cw, gy * ch + (k // 997 % 991) / 991 * ch + (gx % 2) * ch / 2))
@@ -62,7 +63,9 @@ def voronoi(w, h, cw, ch, seed, wrap=True):
     yy, xx = np.mgrid[0:h, 0:w]
     dx = np.abs(xx[..., None] + 0.5 - P[:, 0])
     if wrap: dx = np.minimum(dx, w - dx)
-    dy = (yy[..., None] + 0.5 - P[:, 1]) * 1.25          # stones a little wider than tall
+    dy = np.abs(yy[..., None] + 0.5 - P[:, 1])
+    if wrap_y: dy = np.minimum(dy % h, h - dy % h)
+    dy = dy * 1.25                                       # stones a little wider than tall
     return np.argmin(dx * dx + dy * dy, axis=2)
 def wall_rock(dark=0, w=96, h=RH, seed=3):
     ids = voronoi(w, h, 16, 13, seed)

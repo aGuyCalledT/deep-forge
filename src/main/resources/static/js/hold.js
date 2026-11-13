@@ -141,10 +141,10 @@ function grid() {
   const doorX = ((wellTpl.spots || []).find((s) => s.kind === 'door') || { x: CELL }).x;
   const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + doorX, tpl: wellTpl }; });
   for (const w of wells) for (let dx = 0; dx < 2; dx++) cells.set((w.c + dx) + ',' + w.f, { kind: 'well', well: w });
-  // the mine shaft: a stairwell on every floor, and the way down to the mines
+  // the mine shaft: a stairwell on every floor (same look, a door in the back wall), and the way down to the mines
   const shafts = [];
   for (let fl = 0; fl < plan.floors; fl++) {
-    const s = { c: 0, f: fl, x: plan.shaft * CELL / 2, shaft: true };
+    const s = { c: 0, f: fl, x: doorX, tpl: wellTpl, shaft: true };
     shafts.push(s);
     for (let c = 0; c < plan.shaft; c++) cells.set(c + ',' + fl, { kind: 'shaft', well: s });
   }
@@ -771,8 +771,7 @@ function drawUnderground(ctx, t, g, inRoom) {
     if (v.kind === 'cave') drawCave(ctx, k, c, fl, v.since);
     else { R.drawShell(ctx, v.tpl, c * CELL, ftop(fl), CELL, c * CELL); R.drawProps(ctx, v.tpl, c * CELL, ftop(fl), t + c * 0.37); }
   }
-  for (const s of g.shafts) Art.tile(ctx, 'shaft', 0, ftop(s.f), plan.shaft * CELL);
-  for (const s of g.wells) {
+  for (const s of [...g.shafts, ...g.wells]) {
     const x0 = s.c * CELL, y0 = ftop(s.f), door = doorFrame(s);
     R.drawShell(ctx, s.tpl, x0, y0, 2 * CELL, x0);
     R.drawProps(ctx, s.tpl, x0, y0, t, { frameOf: (p) => (p.s.startsWith('stairdoor') ? door : null) });
@@ -986,8 +985,7 @@ export const holdScreen = {
       const [c, fl] = k.split(',').map(Number);
       out.push(...tplLights(v.tpl, c * CELL, ftop(fl)));
     }
-    for (const w of G_.wells) out.push(...tplLights(w.tpl, w.c * CELL, ftop(w.f)));
-    for (const w of G_.shafts) out.push({ x: w.x, y: ftop(w.f) + 50, r: 70, color: '#ffd98e', flicker: 1, power: 0.5 });
+    for (const w of [...G_.wells, ...G_.shafts]) out.push(...tplLights(w.tpl, w.c * CELL, ftop(w.f)));
     for (const w of [...G_.wells, ...G_.shafts]) {
       if ((wellLit.get(wellKey(w)) || 0) > performance.now()) out.push({ x: w.x, y: ftop(w.f) + 100, r: 50, color: '#ffb070', power: 0.8 });
     }
@@ -1032,7 +1030,7 @@ export const holdScreen = {
       const [c, fl] = k.split(',').map(Number);
       if (seen(c * CELL, ftop(fl), CELL, RH, 40)) R.drawProps(ctx, v.tpl, c * CELL, ftop(fl), t + c * 0.37, { glow: true });
     }
-    for (const w of G_.wells) R.drawProps(ctx, w.tpl, w.c * CELL, ftop(w.f), t, { glow: true, frameOf: (p) => (p.s.startsWith('stairdoor') ? doorFrame(w) : null) });
+    for (const w of [...G_.wells, ...G_.shafts]) R.drawProps(ctx, w.tpl, w.c * CELL, ftop(w.f), t, { glow: true, frameOf: (p) => (p.s.startsWith('stairdoor') ? doorFrame(w) : null) });
     for (const r of G_.rooms) {
       if (!seen(r.x, r.y, r.pw, RH, 40)) continue;
       // what glows in the dark (fire, embers, mushrooms) is not dimmed by the lighting
