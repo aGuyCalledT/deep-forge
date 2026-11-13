@@ -4,31 +4,74 @@
 //
 // A template: {version, type, part: 'room'|'bay', name, cells, wall, floor, vault,
 //              props: [{s: sprite, x, y, flip, z, frame: null = animate | n, layer: 'back' | 'front'}],
-//              spots: [{kind, x, y, ...}]}       x, y in room pixels; the floor line is y 135
+//              spots: [{kind, x, y, face: front|left|right|back, sit, ...}]}   x, y in room pixels; floor line y 135
+// spotPose(spot) gives the dwarf48 pose for a spot (e.g. a worker facing 'back' with sit: workSitBack).
 import * as Art from './art48.js';
 
 export const FLOOR = 135, RH = 144, CELL = 48;
-export const WALLS = ['wall_rock', 'wall_brick', 'wall_ashlar', 'wall_panel'];
+export const WALLS = ['wall_rock', 'wall_hewn', 'wall_brick', 'wall_ashlar', 'wall_panel'];
 export const FLOORS = ['floor_planks', 'floor_flags', 'floor_earth'];
 
-/** Spot kinds: what the game reads from a template. Colour and letter are for the editor's markers. */
+/** Spot kinds: what the game reads from a template. Colour and letter are for the editor's markers; help is the short
+ * tooltip, about the longer explanation behind the editor's info button. */
 export const SPOTS = {
-  worker:  { c: '#6fd06f', t: 'W', face: true, help: 'where a worker stands (one per machine)' },
-  seat:    { c: '#6fb0f0', t: 'S', help: 'a place to sit (tavern, barracks, guild)' },
-  bar:     { c: '#f0c060', t: 'B', help: 'a place to stand and drink at the bar' },
-  bed:     { c: '#d080f0', t: 'Z', help: 'a sleeping place, y = the mattress' },
-  light:   { c: '#ffd98e', t: 'L', light: true, help: 'a light: radius, colour, strength' },
-  fire:    { c: '#ff8040', t: 'F', size: true, help: 'the fire area (smoke, sparks, heat glow)' },
-  chimney: { c: '#a09090', t: 'C', help: 'where smoke leaves the room' },
-  bellows: { c: '#ff6060', t: 'b', help: 'click target: bellows' },
-  anvil:   { c: '#c0c0d0', t: 'A', help: 'hammer point: sparks fly here' },
-  quench:  { c: '#60c0e0', t: 'Q', help: 'click target: quench barrel' },
-  wheel:   { c: '#e0e080', t: 'G', help: 'grindstone wheel centre' },
-  work:    { c: '#80e0c0', t: 'w', help: 'the piece being worked on' },
-  kettle:  { c: '#f0a060', t: 'K', help: 'brew kettle' },
-  steam:   { c: '#f0f0f0', t: 's', help: 'where steam rises' },
-  stand:   { c: '#b0b0b0', t: 'I', help: 'an idle spot to stand around' },
+  worker:  { c: '#6fd06f', t: 'W', face: 'right', sit: true, help: 'where a worker stands or sits (one per machine)',
+    about: "Where a dwarf works in this room. The room's own machine uses the first worker spot; every machine bay has its own template with one. Pick where the dwarf faces and whether it sits: back + sits is a dwarf at a bench with its back to you." },
+  seat:    { c: '#6fb0f0', t: 'S', face: 'front', help: 'a place to sit (tavern, barracks, guild)',
+    about: 'A place where a dwarf sits down: to eat and drink in the tavern, to rest in the barracks, to plan in the guild. Each seat holds one dwarf, so more seats mean more guests at once. Put it on the bench or chair, at floor height.' },
+  bar:     { c: '#f0c060', t: 'B', face: 'front', help: 'a place to stand and drink at the bar',
+    about: 'A place to stand at the counter and drink (tavern). Dwarves queue here when the seats are full.' },
+  bed:     { c: '#d080f0', t: 'Z', face: 'right', sides: true, help: 'a sleeping place, y = the mattress',
+    about: 'One sleeping place. Each bed spot holds one sleeping dwarf, so a bunk bed needs two. Put it on the mattress; facing right puts the head on the left end, facing left on the right end.' },
+  light:   { c: '#ffd98e', t: 'L', light: true, help: 'a light: radius, colour, strength',
+    about: 'A light source. Everything within the radius is lit in its colour, strength sets how bright; outside every light the room stays dim. Put it on the flame of a torch, candle or fire.' },
+  fire:    { c: '#ff8040', t: 'F', size: true, help: 'the fire area (smoke, sparks, heat glow)',
+    about: 'The burning area of a forge, smelter or fireplace. Smoke, sparks and the heat glow come from here, and it burns brighter while the bellows are worked.' },
+  chimney: { c: '#a09090', t: 'C', help: 'where smoke leaves the room',
+    about: 'Where smoke leaves the room, usually the top of the flue or hood.' },
+  bellows: { c: '#ff6060', t: 'b', help: 'click target: bellows',
+    about: 'Click target: players click here to work the bellows, which makes the forge or smelter hotter.' },
+  anvil:   { c: '#c0c0d0', t: 'A', help: 'hammer point: sparks fly here',
+    about: 'Where the hammer lands: sparks fly from this point while the smith works.' },
+  quench:  { c: '#60c0e0', t: 'Q', help: 'click target: quench barrel',
+    about: 'Click target: players click here to quench a hot piece in the barrel.' },
+  wheel:   { c: '#e0e080', t: 'G', help: 'grindstone wheel centre',
+    about: 'Centre of the grinding wheel: it turns and throws sparks while someone grinds.' },
+  work:    { c: '#80e0c0', t: 'w', help: 'the piece being worked on',
+    about: 'The piece being worked on: the game shows the item and its progress here.' },
+  kettle:  { c: '#f0a060', t: 'K', help: 'brew kettle',
+    about: 'The brew kettle: it bubbles while a brew is on.' },
+  steam:   { c: '#f0f0f0', t: 's', help: 'where steam rises',
+    about: 'Where steam rises while brewing.' },
+  door:    { c: '#e0b0ff', t: 'D', help: 'stairwell door: where dwarves go in and come out',
+    about: 'The door of a stairwell. Dwarves walk up to it, the door opens, they step into the dark and come out of the door of another stairwell on their floor. Put it at the foot of the stairdoor prop.' },
+  stand:   { c: '#b0b0b0', t: 'I', face: 'front', sit: true, help: 'an idle spot to stand (or sit) around',
+    about: 'A place to hang around when there is nothing to do: waiting, chatting, watching. Can be standing or sitting.' },
 };
+
+/** Where a dwarf on a spot looks: 'front', 'left', 'right' or 'back' (back = back to the viewer). */
+export const FACINGS = ['front', 'left', 'right', 'back'];
+export function facing(s) {
+  if (typeof s.face === 'number') return s.face < 0 ? 'left' : s.face > 0 ? 'right' : 'front';   // old templates
+  return FACINGS.includes(s.face) ? s.face : ((SPOTS[s.kind] || {}).face || 'front');
+}
+/** Seated? Seats always, workers and idle spots when `sit` is set. */
+export const sits = s => s.kind === 'seat' || (!!s.sit && !!(SPOTS[s.kind] || {}).sit);
+// pose of the dwarf48 kit per spot kind and view, [standing, seated]
+const POSE = {
+  worker: { front: ['hands', 'workSitFront'], side: ['work', 'workSit'], back: ['workBack', 'workSitBack'] },
+  seat: { front: ['sit', 'sit'], side: ['sitSide', 'sitSide'], back: ['sitBack', 'sitBack'] },
+  bar: { front: ['drink', 'drink'], side: ['idleSide', 'sitSide'], back: ['idleBack', 'sitBack'] },
+  stand: { front: ['idle', 'sit'], side: ['idleSide', 'sitSide'], back: ['idleBack', 'sitBack'] },
+  bed: { front: ['sleep', 'sleep'], side: ['sleep', 'sleep'], back: ['sleep', 'sleep'] },
+};
+/** The pose a dwarf takes on a spot: {pose, flip} (side poses face right, flip = left), or null for spots without dwarves. */
+export function spotPose(s) {
+  const t = POSE[s.kind];
+  if (!t) return null;
+  const f = facing(s), view = f === 'left' || f === 'right' ? 'side' : f;
+  return { pose: t[view][sits(s) ? 1 : 0], flip: f === 'left' };
+}
 
 /** What each room needs at least (the game's old anchors), as {kind: count}. Bays need one worker. */
 export const NEEDS = {
@@ -47,6 +90,8 @@ export const NEEDS = {
   barracks: { worker: 1, seat: 3, light: 1 },
   trade_depot: { light: 1 },
   expedition_hall: { seat: 2, light: 1 },
+  stairwell: { door: 1, light: 1 },
+  entrance_hall: { light: 2 },
 };
 export const BAY_NEEDS = { worker: 1 };
 
@@ -70,18 +115,21 @@ export const PROP_SPOTS = {
   chair: [{ kind: 'seat', dx: 0, dy: 0 }],
   stool: [{ kind: 'seat', dx: 0, dy: 0 }],
   bar: [{ kind: 'bar', dx: -18, dy: 0 }, { kind: 'bar', dx: 18, dy: 0 }],
-  anvil: [{ kind: 'anvil', dx: -4, dy: -23 }, { kind: 'worker', dx: -22, dy: 0, face: 1 }],
+  anvil: [{ kind: 'anvil', dx: -4, dy: -23 }, { kind: 'worker', dx: -22, dy: 0, face: 'right' }],
   bellows: [{ kind: 'bellows', dx: 0, dy: -10 }],
   quench: [{ kind: 'quench', dx: 0, dy: -14 }],
-  grindstone: [{ kind: 'wheel', dx: 0, dy: -22 }, { kind: 'worker', dx: 24, dy: 0, face: -1 }],
-  engraver: [{ kind: 'work', dx: -10, dy: -24 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
-  jeweler: [{ kind: 'work', dx: -6, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
-  sewing: [{ kind: 'work', dx: 0, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
-  loom: [{ kind: 'work', dx: 0, dy: -40 }, { kind: 'worker', dx: 0, dy: 0, face: 0 }],
+  grindstone: [{ kind: 'wheel', dx: 0, dy: -22 }, { kind: 'worker', dx: 24, dy: 0, face: 'left' }],
+  engraver: [{ kind: 'work', dx: -10, dy: -24 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
+  jeweler: [{ kind: 'work', dx: -6, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
+  sewing: [{ kind: 'work', dx: 0, dy: -22 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
+  loom: [{ kind: 'work', dx: 0, dy: -40 }, { kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
   mushbed_2: [{ kind: 'work', dx: 0, dy: -10 }],
-  desk: [{ kind: 'worker', dx: 0, dy: 0, face: 0 }],
+  desk: [{ kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
   maptable: [{ kind: 'seat', dx: -18, dy: 0 }, { kind: 'seat', dx: 18, dy: 0 }],
-  dummy: [{ kind: 'worker', dx: -22, dy: 0, face: 1 }],
+  dummy: [{ kind: 'worker', dx: -22, dy: 0, face: 'right' }],
+  stairdoor: [{ kind: 'door', dx: 0, dy: 0 }],
+  stairdoor_stone: [{ kind: 'door', dx: 0, dy: 0 }],
+  stairdoor_grand: [{ kind: 'door', dx: 0, dy: 0 }],
 };
 
 /** Suggested spots for the props of a template (kinds the template already has are left out). */
@@ -92,7 +140,7 @@ export function autoSpots(tpl) {
     for (const s of PROP_SPOTS[p.s] || []) {
       if (have.has(s.kind) && s.kind !== 'light') continue;
       const { dx, dy, ...rest } = s;
-      out.push({ ...rest, x: Math.round(p.x + (p.flip ? -dx : dx)), y: Math.round(p.y + dy), ...(s.face !== undefined ? { face: p.flip ? -s.face : s.face } : {}) });
+      out.push({ ...rest, x: Math.round(p.x + (p.flip ? -dx : dx)), y: Math.round(p.y + dy), ...(s.face !== undefined ? { face: p.flip ? ({ left: 'right', right: 'left' }[s.face] || s.face) : s.face } : {}) });
     }
   }
   return out;
@@ -109,22 +157,36 @@ export function blank(type, part, cells) {
 }
 
 // ------------------------------------------------------------------ loading
-let idx = null;
+// Looks come from the server (/api/rooms): the built-in templates (files under art/props48/rooms) and the ones
+// players made with the room editor (database). meta: "type/part/name" -> {author, mine} for players' looks.
+let idx = null, meta = {};
 const cache = new Map();
-export async function load(base = 'art/props48/rooms/') {
-  idx = await fetch(base + 'index.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
-  load.base = base;
+export async function load() {
+  const d = await fetch('/api/rooms', { cache: 'no-store', headers: authHeaders() }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  idx = d.index || {};
+  meta = d.looks || {};
   return idx;
+}
+function authHeaders() {
+  try { const t = localStorage.getItem('deepforge-token'); return t ? { Authorization: 'Bearer ' + t } : {}; } catch { return {}; }
 }
 export const index = () => idx || {};
 export const looks = (type, part = 'room') => ((idx || {})[type] || {})[part] || [];
+/** Who made a look ({author, mine}), null for built-in looks. */
+export const lookInfo = (type, part, name) => meta[`${type}/${part}/${name}`] || null;
+/** Forget a cached look (after it was saved again in the editor). */
+export const forget = (type, part, name) => cache.delete(`${type}/${part}_${name}`);
 /** The template for a room: the chosen look, else the first one there is (null if the type has none). */
 export async function get(type, part = 'room', name = '') {
   const list = looks(type, part);
   const pick = list.includes(name) ? name : list[0];
   if (!pick) return null;
   const k = `${type}/${part}_${pick}`;
-  if (!cache.has(k)) cache.set(k, fetch(`${load.base}${type}/${part}_${pick}.json`).then(r => r.json()));
+  if (!cache.has(k)) {
+    const q = `type=${encodeURIComponent(type)}&part=${part}&name=${encodeURIComponent(pick)}`;
+    cache.set(k, fetch('/api/rooms/template?' + q).then(r => r.ok ? r.json() : Promise.reject(new Error('look ' + k))));
+    cache.get(k).catch(() => cache.delete(k));
+  }
   return cache.get(k);
 }
 
@@ -142,7 +204,8 @@ export function drawShell(ctx, tpl, x0, y0, w, worldX = x0) {
   ctx.fillStyle = 'rgba(20,10,16,0.35)'; ctx.fillRect(x0, y0 + FLOOR - 1, w, 1);     // shadow where wall meets floor
   if (tpl.vault) { Art.draw(ctx, 'vault', 0, x0, y0); Art.draw(ctx, 'vault', 0, x0 + w - 1, y0, { flip: true }); }
 }
-/** Props of one layer ('back', 'front', or null for both) in z order; t = seconds, animated ones run ~6 frames/s. */
+/** Props of one layer ('back', 'front', or null for both) in z order; t = seconds, animated ones run ~6 frames/s.
+ * opts.frameOf(prop) may return a frame to show instead (e.g. how far a stairwell door is open). */
 export function drawProps(ctx, tpl, x0, y0, t = 0, opts = {}) {
   const list = tpl.props.map((p, i) => ({ p, i }))
     .filter(({ p }) => !opts.layer || layerOf(p) === opts.layer)
@@ -150,7 +213,8 @@ export function drawProps(ctx, tpl, x0, y0, t = 0, opts = {}) {
   for (const { p, i } of list) {
     const n = Art.frames(p.s);
     if (!n) continue;
-    const f = p.frame != null ? p.frame : Math.floor(t * 6 + i * 1.7) % n;
+    const fo = opts.frameOf ? opts.frameOf(p) : null;            // the game sets some frames itself (doors)
+    const f = fo != null ? Math.min(n - 1, fo) : p.frame != null ? p.frame : Math.floor(t * 6 + i * 1.7) % n;
     Art.draw(ctx, p.s, f, x0 + p.x, y0 + p.y, { flip: !!p.flip, glow: !!opts.glow });
   }
 }

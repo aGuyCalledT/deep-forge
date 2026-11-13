@@ -1,0 +1,52 @@
+{
+ "version": 1,
+ "type": "engraver",
+ "part": "bay",
+ "name": "furnished",
+ "cells": 2,
+ "wall": "wall_ashlar",
+ "floor": "floor_planks",
+ "vault": false,
+ "props": [
+  {
+   "s": "engraver",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 84,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 38,
+   "y": 111
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "sit": true,
+   "x": 48,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 84,
+   "y": 61
+  }
+ ]
+}

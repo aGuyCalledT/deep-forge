@@ -85,7 +85,7 @@
   },
   {
    "kind": "worker",
-   "face": 1,
+   "face": "right",
    "x": 153,
    "y": 135
   },

@@ -9,7 +9,7 @@ import java.util.*;
 /**
  * Which looks (room templates of the 48-px art) exist for each room type. Made with tools/room-editor, listed in
  * static/art/props48/rooms/index.json as {type: {room: [names], bay: [names]}}. The look is only how a room is drawn;
- * it changes no rule.
+ * it changes no rule. Looks players make with the in-game editor live in the database (RoomTemplates).
  */
 public final class RoomLooks {
     private RoomLooks() {}
@@ -32,7 +32,10 @@ public final class RoomLooks {
         return index().getOrDefault(type, Map.of()).getOrDefault(part, List.of());
     }
 
+    /** Looks players made in the game (set by RoomTemplates at start): (type, name) -> exists. */
+    public static volatile java.util.function.BiPredicate<String, String> custom = (t, n) -> false;
+
     public static boolean exists(String type, String look) {
-        return looks(type, "room").contains(look);
+        return looks(type, "room").contains(look) || custom.test(type, look);
     }
 }

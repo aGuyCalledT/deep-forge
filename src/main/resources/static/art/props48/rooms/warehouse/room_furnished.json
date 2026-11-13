@@ -1,0 +1,144 @@
+{
+ "version": 1,
+ "type": "warehouse",
+ "part": "room",
+ "name": "furnished",
+ "cells": 7,
+ "wall": "wall_brick",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "rack",
+   "x": 40,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "rack",
+   "x": 108,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "goods",
+   "x": 180,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "stool",
+   "x": 212,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "crate",
+   "x": 240,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "crate",
+   "x": 240,
+   "y": 115,
+   "flip": false,
+   "z": 1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "crate",
+   "x": 264,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "barrel",
+   "x": 300,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "barrel",
+   "x": 322,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "lantern",
+   "x": 168,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 236,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "mouse",
+   "x": 152,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "seat",
+   "x": 212,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 168,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 236,
+   "y": 61
+  }
+ ]
+}

@@ -2,7 +2,7 @@
 // (built by art-src/props48/export.py) and hands out single frames as canvases, recoloured and mirrored on demand.
 //   await Art.load();  Art.draw(ctx, 'anvil', 0, x, floorY);  Art.draw(ctx, 'ingots', 0, x, y, {recolour: {ingot: ramp}})
 // Frames are drawn with their anchor at x, y: props stand on it, wall things hang from it, tiles start there.
-// Not used by the game yet; it switches over together with the new scale (docs/TODO.md).
+// The hold (hold.js) draws valley, rock, rooms, monsters and effects with it; the room editor uses it too.
 
 let meta = null, sheet = null, glowSheet = null;
 const cache = new Map();

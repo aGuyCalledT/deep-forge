@@ -1,0 +1,96 @@
+{
+ "version": 1,
+ "type": "jeweler",
+ "part": "room",
+ "name": "furnished",
+ "cells": 6,
+ "wall": "wall_ashlar",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "chest",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "shelf",
+   "x": 48,
+   "y": 87,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "jeweler",
+   "x": 124,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "scales",
+   "x": 216,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "lantern",
+   "x": 124,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 172,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 118,
+   "y": 113
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "sit": true,
+   "x": 124,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 124,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 172,
+   "y": 61
+  }
+ ]
+}

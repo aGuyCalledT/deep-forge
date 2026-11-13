@@ -93,8 +93,19 @@ def front_arms(sex, frame):
     else:
         right = arm((rx, ry), (28.5, 31.5), elbow=(rx + 2.2, 41.0))
     return compose_parts([left, right])
+def back_reach(sh, elbow, toward):
+    """An arm seen from behind that reaches forward: upper arm out to the elbow, forearm going in front of the body
+    (the hand is hidden by the back)."""
+    return Part().fill(cap(sh, elbow, 2.4) | cap(elbow, toward, 2.2), 'tunic')
 def back_arms(sex, frame):
+    """frame: 0 walk A, 1 stand, 2 walk B, 3 both hands at the bench, 4 right hand raised (hammer up), 5 striking."""
     (lx, ly), (rx, ry) = SHOULDER[(sex, 'front')]
+    if frame >= 3:
+        left = back_reach((lx, ly), (lx - 2.0, 43.0), (lx + 2.0, 46.0))
+        if frame == 3: right = back_reach((rx, ry), (rx + 2.0, 43.0), (rx - 2.0, 46.0))
+        elif frame == 4: right = arm((rx, ry), (rx + 0.5, 26.5), elbow=(rx + 3.0, 32.5))
+        else: right = back_reach((rx, ry), (rx + 2.6, 40.0), (rx - 1.5, 43.5))
+        return compose_parts([left, right])
     left = arm((lx, ly), (lx - 1.7, 47.5 - (1 if frame == 0 else 0)))
     right = arm((rx, ry), (rx + 1.7, 47.5 - (1 if frame == 2 else 0)))
     return compose_parts([left, right])
@@ -130,7 +141,21 @@ def side_leg(hip, foot, lift=0, far=False, sex='m'):
     p.fill(poly([(foot - 3.2, 55.5 - lift), (foot + 2.6, 55.5 - lift), (foot + 3.2, 58 - lift), (foot + 6.2, 59.2 - lift), (foot + 6.4, 61.5 - lift), (foot - 3.4, 61.5 - lift)]), 'boots', bias=b)
     return p
 def legs(sex, view, frame):
-    """frame: 0 walk A, 1 stand, 2 walk B, 3 seated (front only)."""
+    """frame: 0 walk A, 1 stand, 2 walk B, 3 seated (body dy 5)."""
+    if view == 'back' and frame == 3:            # seen from behind the legs point away: only the heels show
+        p = Part()
+        for xc in (19, 29):
+            p.fill(poly([(xc - 3.4, 59.5), (xc + 3.4, 59.5), (xc + 3.6, 61.5), (xc - 3.6, 61.5)]), 'boots', bias=-0.2)
+        return p
+    if view == 'side' and frame == 3:            # thigh forward on the seat, shin down, foot to the front
+        def seated(dx, far):
+            b = -0.3 if far else 0.0
+            q = Part()
+            if sex == 'm':
+                q.fill(poly([(17 + dx, 53.5), (35 + dx, 53.5), (38 + dx, 55), (38 + dx, 58.5), (17 + dx, 58.5)]), 'pants', bias=b)
+            q.fill(poly([(32.6 + dx, 57), (37.6 + dx, 57), (37.8 + dx, 59), (40.8 + dx, 59.6), (41.2 + dx, 61.5), (32.4 + dx, 61.5)]), 'boots', bias=b)
+            return q
+        return compose_parts([seated(-2.5, True), seated(0, False)])
     if view in ('front', 'back'):
         if frame == 3:
             p = Part()

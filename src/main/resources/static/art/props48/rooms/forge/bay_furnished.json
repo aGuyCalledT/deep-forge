@@ -1,0 +1,65 @@
+{
+ "version": 1,
+ "type": "forge",
+ "part": "bay",
+ "name": "furnished",
+ "cells": 3,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "anvil",
+   "x": 64,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "quench",
+   "x": 112,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 100,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "anvil",
+   "x": 60,
+   "y": 112
+  },
+  {
+   "kind": "worker",
+   "face": "right",
+   "x": 42,
+   "y": 135
+  },
+  {
+   "kind": "quench",
+   "x": 112,
+   "y": 121
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 100,
+   "y": 61
+  }
+ ]
+}

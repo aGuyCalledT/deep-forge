@@ -1,0 +1,136 @@
+{
+ "version": 1,
+ "type": "farm",
+ "part": "room",
+ "name": "furnished",
+ "cells": 7,
+ "wall": "wall_rock",
+ "floor": "floor_earth",
+ "vault": true,
+ "props": [
+  {
+   "s": "mushbed_2",
+   "x": 44,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "mushbed_1",
+   "x": 108,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "mushbed_2",
+   "x": 172,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "mushbed_0",
+   "x": 236,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "barrel",
+   "x": 316,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "glowshrooms",
+   "x": 312,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "front"
+  },
+  {
+   "s": "roots",
+   "x": 80,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "roots",
+   "x": 252,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "moss_1",
+   "x": 176,
+   "y": 3,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 140,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 284,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "work",
+   "x": 44,
+   "y": 125
+  },
+  {
+   "kind": "work",
+   "x": 172,
+   "y": 125
+  },
+  {
+   "kind": "light",
+   "r": 46,
+   "c": "#90e0c8",
+   "p": 0.55,
+   "x": 312,
+   "y": 127
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 140,
+   "y": 61
+  }
+ ]
+}

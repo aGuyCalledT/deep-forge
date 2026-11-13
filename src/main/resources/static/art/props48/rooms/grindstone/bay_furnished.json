@@ -1,0 +1,51 @@
+{
+ "version": 1,
+ "type": "grindstone",
+ "part": "bay",
+ "name": "furnished",
+ "cells": 2,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "grindstone",
+   "x": 40,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 76,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "wheel",
+   "x": 40,
+   "y": 113
+  },
+  {
+   "kind": "worker",
+   "face": "left",
+   "x": 64,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 76,
+   "y": 61
+  }
+ ]
+}

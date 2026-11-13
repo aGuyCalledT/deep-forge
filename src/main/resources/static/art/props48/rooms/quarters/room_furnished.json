@@ -1,0 +1,153 @@
+{
+ "version": 1,
+ "type": "quarters",
+ "part": "room",
+ "name": "furnished",
+ "cells": 7,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "rug",
+   "x": 180,
+   "y": 131,
+   "flip": false,
+   "z": -1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bunk",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bunk",
+   "x": 132,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bed",
+   "x": 228,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "flowerpot",
+   "x": 268,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "chest",
+   "x": 300,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "candle",
+   "x": 308,
+   "y": 115,
+   "flip": false,
+   "z": 1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "shelf",
+   "x": 300,
+   "y": 87,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "lantern",
+   "x": 132,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 184,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "bed",
+   "x": 48,
+   "y": 125
+  },
+  {
+   "kind": "bed",
+   "x": 48,
+   "y": 99
+  },
+  {
+   "kind": "bed",
+   "x": 132,
+   "y": 125
+  },
+  {
+   "kind": "bed",
+   "x": 132,
+   "y": 99
+  },
+  {
+   "kind": "bed",
+   "x": 228,
+   "y": 125
+  },
+  {
+   "kind": "light",
+   "r": 44,
+   "c": "#ffd98e",
+   "p": 0.4,
+   "x": 308,
+   "y": 105
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 132,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 184,
+   "y": 61
+  }
+ ]
+}

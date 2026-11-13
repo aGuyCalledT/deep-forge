@@ -1,0 +1,66 @@
+{
+ "version": 1,
+ "type": "smelter",
+ "part": "bay",
+ "name": "furnished",
+ "cells": 3,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "smelter",
+   "x": 56,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 116,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 112,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "light",
+   "r": 90,
+   "c": "#ff8a4a",
+   "p": 0.95,
+   "x": 55,
+   "y": 119
+  },
+  {
+   "kind": "fire",
+   "w": 18,
+   "h": 14,
+   "x": 55,
+   "y": 125
+  },
+  {
+   "kind": "chimney",
+   "x": 55,
+   "y": 47
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 116,
+   "y": 61
+  }
+ ]
+}

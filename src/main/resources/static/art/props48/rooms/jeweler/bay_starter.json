@@ -25,9 +25,10 @@
   },
   {
    "kind": "worker",
-   "face": 0,
+   "face": "back",
    "x": 48,
-   "y": 135
+   "y": 135,
+   "sit": true
   }
  ]
 }

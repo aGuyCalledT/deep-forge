@@ -1,0 +1,100 @@
+{
+ "version": 1,
+ "type": "brewery",
+ "part": "room",
+ "name": "furnished",
+ "cells": 6,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "brewkettle",
+   "x": 64,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "vats",
+   "x": 156,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "barrel",
+   "x": 220,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "barrel",
+   "x": 244,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "barrel",
+   "x": 232,
+   "y": 107,
+   "flip": false,
+   "z": 1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 112,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "x": 108,
+   "y": 135,
+   "face": "left"
+  },
+  {
+   "kind": "light",
+   "r": 60,
+   "c": "#ffb070",
+   "p": 0.6,
+   "x": 64,
+   "y": 127
+  },
+  {
+   "kind": "kettle",
+   "x": 64,
+   "y": 105
+  },
+  {
+   "kind": "steam",
+   "x": 64,
+   "y": 79
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 112,
+   "y": 61
+  }
+ ]
+}

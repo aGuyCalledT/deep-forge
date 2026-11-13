@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-# Room template editor for the 48-px art, local only. Needs Python 3 and nothing else.
+# Room template editor for the 48-px art, local copy for the built-in looks. Needs Python 3 and nothing else.
 #   python3 tools/room-editor/serve.py [port]        then open http://localhost:8099
-# Serves the editor, the game's static files and the dwarf previews, and saves templates as JSON into
+# The editor itself is part of the game (static/editor/, in the game it saves players' looks to the database). Here it
+# runs against the game's static files and saves built-in templates as JSON into
 #   src/main/resources/static/art/props48/rooms/<type>/<part>_<name>.json   (part = room | bay)
 # plus rooms/index.json, which the game and the server read. Room types and widths come from Layouts.java.
 import json, os, re, sys
@@ -11,9 +12,11 @@ from urllib.parse import urlparse, parse_qs
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 STATIC = os.path.join(ROOT, 'src/main/resources/static')
 ROOMS = os.path.join(STATIC, 'art/props48/rooms')
-EDITOR = os.path.dirname(os.path.abspath(__file__))
+EDITOR = os.path.join(STATIC, 'editor')
 DWARVES = os.path.join(ROOT, 'art-src/props48/dwarves')
 LAYOUTS = os.path.join(ROOT, 'src/main/java/com/deepforge/game/Layouts.java')
+# ways: not rooms on the server's list, but drawn from templates too (the gate tunnel is the entrance hall)
+WAYS = [('entrance_hall', 6), ('stairwell', 2), ('hallway', 1)]
 NAME = re.compile(r'^[a-z0-9][a-z0-9_-]{0,31}$')
 
 def room_types():
@@ -23,7 +26,8 @@ def room_types():
     m = re.search(r'ORDER\s*=\s*List\.of\(([^;]*)\);', src)
     order = re.findall(r'"(\w+)"', m.group(1)) if m else list(cells)
     order += [k for k in cells if k not in order]
-    return [{'type': t, 'cells': cells[t], 'bay': bays.get(t, 0)} for t in order if t in cells]
+    out = [{'type': t, 'cells': cells[t], 'bay': bays.get(t, 0)} for t in order if t in cells]
+    return out + [{'type': t, 'cells': n, 'bay': 0, 'way': True} for t, n in WAYS]
 
 def index():
     idx = {}
@@ -51,7 +55,7 @@ class Handler(SimpleHTTPRequestHandler):
         p = urlparse(path).path
         for prefix, base in (('/static/', STATIC), ('/dwarves/', DWARVES)):
             if p.startswith(prefix): return os.path.join(base, p[len(prefix):])
-        return os.path.join(EDITOR, p.lstrip('/') or 'index.html')
+        return os.path.join(STATIC, 'editor', p.lstrip('/') or 'index.html')
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store'); super().end_headers()
     def target(self, q):
@@ -62,8 +66,10 @@ class Handler(SimpleHTTPRequestHandler):
         return os.path.join(ROOMS, t, f'{part}_{name}.json')
     def do_GET(self):
         u = urlparse(self.path)
-        if u.path == '/api/rooms': return self.send_json({'types': room_types(), 'index': index()})
-        if u.path == '/api/template':
+        if u.path in ('/', '/index.html'):                       # the editor loads ../js/ and ../art/ from /static/
+            self.send_response(302); self.send_header('Location', '/static/editor/'); self.end_headers(); return
+        if u.path == '/api/rooms': return self.send_json({'types': room_types(), 'index': index(), 'looks': {}, 'local': True})
+        if u.path == '/api/rooms/template':
             q = {k: v[0] for k, v in parse_qs(u.query).items()}
             try: fn = self.target(q)
             except ValueError as e: return self.send_json({'error': str(e)}, 400)
@@ -77,16 +83,16 @@ class Handler(SimpleHTTPRequestHandler):
             fn = self.target(q)
         except (ValueError, json.JSONDecodeError) as e:
             return self.send_json({'error': str(e)}, 400)
-        if u.path == '/api/save':
+        if u.path == '/api/rooms/save':
             data = q.get('data')
             if not isinstance(data, dict): return self.send_json({'error': 'no data'}, 400)
             data.update({'type': q['type'], 'part': q.get('part', 'room'), 'name': q['name']})
             os.makedirs(os.path.dirname(fn), exist_ok=True)
             with open(fn, 'w', encoding='utf-8') as fh: json.dump(data, fh, indent=1)
-            write_index(); return self.send_json({'ok': True, 'index': index()})
-        if u.path == '/api/delete':
+            write_index(); return self.send_json({'types': room_types(), 'index': index(), 'looks': {}, 'local': True})
+        if u.path == '/api/rooms/delete':
             if os.path.exists(fn): os.remove(fn)
-            write_index(); return self.send_json({'ok': True, 'index': index()})
+            write_index(); return self.send_json({'types': room_types(), 'index': index(), 'looks': {}, 'local': True})
         self.send_json({'error': 'unknown'}, 404)
 
 if __name__ == '__main__':

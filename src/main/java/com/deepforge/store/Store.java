@@ -100,4 +100,42 @@ public class Store {
             db.update("INSERT INTO world (id, state, updated_at) VALUES ('main', ?, ?)", json, System.currentTimeMillis());
         }
     }
+
+    // ---- room templates made by players
+    public record Template(String type, String part, String name, long authorId, String author, String data, long updatedAt) {}
+
+    private static final String TPL_COLS = "t.type, t.part, t.name, t.author_id, COALESCE(u.name, '?'), t.data, t.updated_at";
+
+    private Template tpl(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new Template(rs.getString(1), rs.getString(2), rs.getString(3), rs.getLong(4), rs.getString(5), rs.getString(6), rs.getLong(7));
+    }
+
+    /** Every template without its data (for the list). */
+    public List<Template> templates() {
+        return db.query("SELECT t.type, t.part, t.name, t.author_id, COALESCE(u.name, '?'), '', t.updated_at FROM room_templates t "
+                + "LEFT JOIN users u ON u.id = t.author_id ORDER BY t.type, t.part, t.updated_at", (rs, i) -> tpl(rs));
+    }
+
+    public Template template(String type, String part, String name) {
+        List<Template> l = db.query("SELECT " + TPL_COLS + " FROM room_templates t LEFT JOIN users u ON u.id = t.author_id "
+                + "WHERE t.type = ? AND t.part = ? AND t.name = ?", (rs, i) -> tpl(rs), type, part, name);
+        return l.isEmpty() ? null : l.get(0);
+    }
+
+    public void saveTemplate(String type, String part, String name, long authorId, String data) {
+        long now = System.currentTimeMillis();
+        int n = db.update("UPDATE room_templates SET data = ?, updated_at = ? WHERE type = ? AND part = ? AND name = ?",
+                data, now, type, part, name);
+        if (n == 0) db.update("INSERT INTO room_templates (type, part, name, author_id, data, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                type, part, name, authorId, data, now);
+    }
+
+    public void deleteTemplate(String type, String part, String name) {
+        db.update("DELETE FROM room_templates WHERE type = ? AND part = ? AND name = ?", type, part, name);
+    }
+
+    public int templatesBy(long authorId) {
+        Integer n = db.queryForObject("SELECT COUNT(*) FROM room_templates WHERE author_id = ?", Integer.class, authorId);
+        return n == null ? 0 : n;
+    }
 }

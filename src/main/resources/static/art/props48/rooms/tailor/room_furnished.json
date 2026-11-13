@@ -1,0 +1,99 @@
+{
+ "version": 1,
+ "type": "tailor",
+ "part": "room",
+ "name": "furnished",
+ "cells": 6,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "props": [
+  {
+   "s": "loom",
+   "x": 64,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "sewing",
+   "x": 168,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "goods",
+   "x": 248,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "lantern",
+   "x": 116,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 216,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 64,
+   "y": 95
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "sit": true,
+   "x": 64,
+   "y": 135
+  },
+  {
+   "kind": "work",
+   "x": 168,
+   "y": 113
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "sit": true,
+   "x": 168,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 116,
+   "y": 28
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 216,
+   "y": 61
+  }
+ ]
+}

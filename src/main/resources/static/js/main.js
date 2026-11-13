@@ -5,7 +5,7 @@ import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costC
 import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
-import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus } from './hold.js';
+import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt as loadArt48 } from './hold.js';
 import { minesScreen, drawLoginArt } from './views.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
@@ -121,7 +121,7 @@ function ambience() {
     // the workshop nearest the middle of the view sets the sound, if it is busy
     const b = roomAt(viewCenter());
     const working = b && (b.job && !b.job.quenching || (byId.buildings[b.type].kind === 'continuous' && D().buildings[b.id] && D().buildings[b.id].worker)) && !f.siege;
-    if (b && working && camera().zoom >= 2) {
+    if (b && working && camera().zoom >= 1) {
       if (b.type === 'forge') wanted.add('forge');
       if (b.type === 'smelter') wanted.add('furnace');
       if (b.type === 'grindstone') wanted.add('grindstone');
@@ -321,7 +321,7 @@ function showRoom(id) {
   if (G.screen !== 'hold') setScreen('hold');
   // leave space for the window: to the right on wide screens, below on phones
   if (wide()) lookAt(c.x, c.y, Math.max(300, freeWidth() - 400));
-  else { camera().zoom = 2; lookAt(c.x, c.y, null, $('scene-wrap').getBoundingClientRect().height * 0.5); }
+  else { camera().zoom = 1; lookAt(c.x, c.y, null, $('scene-wrap').getBoundingClientRect().height * 0.5); }
   const b = F().buildings.find((x) => x.id === id);
   requestAnimationFrame(() => { const r = roomRect(id); if (b && r) openRoomSheet(b, toScreen(r.x, r.y, r.w, r.h)); });
 }
@@ -450,7 +450,7 @@ async function start() {
 
 async function boot() {
   try { await Promise.all(['16px "Germania One"', '500 16px "Alegreya Sans"', '800 16px "Alegreya Sans SC"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
-  await S.loadArt();
+  await Promise.all([S.loadArt(), loadArt48()]);
   document.querySelector('.sheet-x').replaceChildren(ico('close'));
   const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
   A.initAudio(audio);

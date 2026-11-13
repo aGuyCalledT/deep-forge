@@ -1,7 +1,11 @@
 // The hold: surface, rock, mine shaft, hallways, stairwells and rooms where the player placed them,
-// and the dwarves walking between them.
+// and the dwarves walking between them. Drawn in the 48-px art: rooms from their templates (rooms48.js, made with
+// tools/room-editor), dwarves from the dwarf48 kit, valley and rock from the props48 sheet (art48.js).
 import { G, F, D, byId, now, stock, fullName, moneyText } from './data.js';
 import * as S from './sprites.js';
+import * as Art from './art48.js';
+import * as R from './rooms48.js';
+import * as DW from './dwarf48.js';
 import { sun, daylight, skyColors, berlinHour } from './sun.js';
 import { text, sign } from './pixfont.js';
 import { roomPlate } from './plate.js';
@@ -9,20 +13,20 @@ import { roomPlate } from './plate.js';
 // The hold is cut into a mountain from its left side. Left of the grid (x < 0) lies the valley with the
 // market and the gate; the mountain face rises at x = -FACE, a short tunnel leads from the gate to the shaft.
 // SURF is the top of the first floor; floors above ENTRY are above the valley floor, the rest below it.
-export const CELL = 24, RH = 96, SURF = 220;
-const WALK = 90;
+// One cell is 48 px wide, a floor 144 px high with its floor line 135 px below its top (rooms48: CELL, RH, FLOOR).
+export const CELL = R.CELL, RH = R.RH, SURF = 440;
+const WALK = R.FLOOR;
 export const ENTRY = 2;                          // the floor whose floor line is the valley's ground
 const GROUND = SURF + ENTRY * RH + WALK;
 const GRASS = GROUND;
-export const VW = 720;                           // width of the valley
+export const VW = 1440;                          // width of the valley
 const VC = VW / CELL;
-const FACE = 144;                                // the gate tunnel: from x = -FACE to the shaft
-// the valley: where things stand (left x; they stand on the grass). Clicks, lights and dwarves use the same numbers.
-// wall: where the village begins (raiders gather beyond it); the stall is the market, the trees sway in the wind.
-const SURFACE = { wall: -620, stall: -540, sign: -330, gate: -FACE - 30, treeA: -760, treeB: -400 };
-const STALL_W = 130, CARAVAN_HOME = -350;
-/** Draw a sprite so its bottom row stands on the grass. */
-function onGrass(ctx, name, x, flip) { const s = S.sprite(name); if (s) S.draw(ctx, name, x, GRASS - s.height + 1, flip); }
+const FACE = 288;                                // the gate tunnel: from x = -FACE to the shaft
+// the valley: where things stand (the middle of their foot, on the grass). Clicks, lights and dwarves use the same
+// numbers. wall: where the village begins (raiders gather beyond it); the stall is the market.
+const SURFACE = { wall: -1250, stall: -1010, well: -870, sign: -640, gate: -FACE };
+const STALL_W = 70, CARAVAN_HOME = -720;
+const TREES = [['oak', -1390], ['fir', -1330], ['fir', -1150], ['oak', -780], ['fir', -470], ['oak', -400]];
 
 let plan = null;   // { cols, floors, shaft, rooms: {type: cells} }
 const particles = [];
@@ -32,26 +36,110 @@ export function H() { return SURF + G.data.plan.floors * RH; }
 const fy = (f) => (f < 0 ? GROUND : SURF + f * RH + WALK);      // feet line of a floor (-1: the valley)
 const ftop = (f) => SURF + f * RH;
 
+// ------------------------------------------------------------------ art and room templates
+
+const tpls = new Map();   // "type/part/look" -> template; built-in looks load at start, players' looks when first used
+const asked = new Set();
+
+/** Load the 48-px art, the dwarf kit and the built-in room templates. Called once before the first frame. */
+export async function loadArt() {
+  await Promise.all([Art.load(), DW.load(), R.load()]);
+  await preload();
+}
+function preload() {
+  const jobs = [];
+  for (const [type, parts] of Object.entries(R.index())) for (const [part, names] of Object.entries(parts)) {
+    for (const n of names) if (!R.lookInfo(type, part, n)) jobs.push(fetchTpl(type, part, n));
+  }
+  return Promise.all(jobs);
+}
+function fetchTpl(type, part, n) {
+  const k = `${type}/${part}/${n}`;
+  asked.add(k);
+  return R.get(type, part, n).then((t) => { if (t) tpls.set(k, t); }).catch(() => {});
+}
+/**
+ * Read the list of looks again (players may have made new ones). `changed` = {type, part, name} of a look that was
+ * saved or deleted just now: it is fetched again.
+ */
+export async function refreshLooks(changed) {
+  if (changed) {
+    const k = `${changed.type}/${changed.part || 'room'}/${changed.name}`;
+    R.forget(changed.type, changed.part || 'room', changed.name); tpls.delete(k); asked.delete(k);
+  }
+  await R.load();
+  await preload();
+}
+/** A look's template if it is loaded (asks the server for it once otherwise). */
+export function lookTpl(type, part, name) {
+  const k = `${type}/${part}/${name}`;
+  if (!tpls.has(k) && !asked.has(k) && R.looks(type, part).includes(name)) fetchTpl(type, part, name);
+  return tpls.get(k) || null;
+}
+export const lookInfo = R.lookInfo;
+export const artReady = () => Art.ready() && DW.ready();
+
+/** The looks a room type can pick (template names), the first is the default. */
+export function roomLooks(type) {
+  const list = R.looks(type, 'room');
+  return type === 'entrance_hall' ? [...list].sort((a, b) => WAY_STYLES.indexOf(a) - WAY_STYLES.indexOf(b)) : list;
+}
+
+/** The template of a room (part 'room') or of its machine bays ('bay'), in its chosen look; a bare shell if none. */
+function tplOf(type, part, look, cells) {
+  const list = R.looks(type, part), name = list.includes(look) ? look : list[0];
+  // a player's look still on its way from the server: show the default look meanwhile
+  return (name && lookTpl(type, part, name)) || (list[0] && tpls.get(`${type}/${part}/${list[0]}`))
+    || { ...R.blank(type, part, cells), vault: part === 'room' };
+}
+
+/**
+ * A room's parts: the room itself and one bay per extra machine, side by side, each with its template and its
+ * spots in world pixels ({kind, x, y, spot, machine}).
+ */
+function roomParts(r) {
+  const b = r.b, look = b.look || '';
+  const room = tplOf(b.type, 'room', look, r.w);
+  const machines = Math.max(1, b.machines || 1);
+  const parts = [{ tpl: room, x: r.x, w: Math.min(r.w, room.cells || r.w) * CELL, i: 0 }];
+  let x = r.x + parts[0].w;
+  for (let i = 1; i < machines; i++) {
+    const bay = tplOf(b.type, 'bay', look, 2), w = (bay.cells || 2) * CELL;
+    parts.push({ tpl: bay, x, w, i });
+    x += w;
+  }
+  const spots = [];
+  for (const p of parts) for (const s of p.tpl.spots || []) spots.push({ kind: s.kind, x: p.x + s.x, y: r.y + s.y, spot: s, machine: p.i });
+  return { parts, spots };
+}
+/** The spots of one kind (of one machine, if given). */
+const spotsOf = (r, kind, machine) => r.spots.filter((s) => s.kind === kind && (machine === undefined || s.machine === machine));
+
 // ------------------------------------------------------------------ the plan as a grid
 
 function grid() {
   plan = G.data.plan;
   const f = F(), L = f.layout || { rooms: {}, halls: [], wells: [], caves: {}, marks: [], digs: {} };
   const cells = new Map();    // "c,f" -> {kind, id?}
+  const style = wayStyle();   // entrance hall, hallways and stairwells share one look
   const rooms = [];
   for (const [id, [c, fl]] of Object.entries(L.rooms)) {
     const b = f.buildings.find((x) => x.id === id);
     if (!b) continue;
-    const w = (D().buildings[id] || {}).cells || S.roomWidth(b) / CELL;
-    rooms.push({ b, c, f: fl, w, x: c * CELL, y: ftop(fl), pw: w * CELL });
+    const w = (D().buildings[id] || {}).cells || (plan.rooms || {})[b.type] || 5;
+    const r = { b, c, f: fl, w, x: c * CELL, y: ftop(fl), pw: w * CELL };
+    Object.assign(r, roomParts(r));
+    rooms.push(r);
     for (let x = c; x < c + w; x++) cells.set(x + ',' + fl, { kind: 'room', id });
   }
-  for (const k of L.halls) cells.set(k, { kind: 'hall' });
+  for (const k of L.halls) cells.set(k, { kind: 'hall', tpl: hallTpl(style, hallVariant(k)) });
   for (const [k, since] of Object.entries(L.caves || {})) cells.set(k, { kind: 'cave', since });
   const marks = new Map((L.marks || []).map((k) => [k, (L.digs || {})[k] || 0]));   // rock to dig: cell -> work done
   const critters = (f.threats || []).filter((th) => th.cell).map((th) => { const [c, fl] = th.cell.split(',').map(Number); return { th, c, f: fl }; });
   // stairwells: two cells wide, the way in is an arch in the middle of the back wall
-  const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + CELL }; });
+  const wellTpl = tplOf('stairwell', 'room', wayLook('stairwell', style), 2);
+  const doorX = ((wellTpl.spots || []).find((s) => s.kind === 'door') || { x: CELL }).x;
+  const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + doorX, tpl: wellTpl }; });
   for (const w of wells) for (let dx = 0; dx < 2; dx++) cells.set((w.c + dx) + ',' + w.f, { kind: 'well', well: w });
   // the mine shaft: a stairwell on every floor, and the way down to the mines
   const shafts = [];
@@ -60,11 +148,43 @@ function grid() {
     shafts.push(s);
     for (let c = 0; c < plan.shaft; c++) cells.set(c + ',' + fl, { kind: 'shaft', well: s });
   }
-  return { cells, rooms, wells, shafts, marks, critters };
+  const hall = levelOf('entrance_hall') ? tplOf('entrance_hall', 'room', style, FACE / CELL) : null;
+  return { cells, rooms, wells, shafts, marks, critters, hall };
 }
 
-/** The rock band of a floor: every two floors the stone gets harder (Rules.rockBand). */
-const band = (fl) => Math.max(0, Math.min(3, Math.floor(fl / 2)));
+/**
+ * The style of the ways (entrance hall, hallways, stairwells): the look the player picked for the entrance hall, else
+ * one by its level (timber, stone, grand). Hallways and stairwells take the same style, so the hold looks of a piece.
+ */
+const WAY_STYLES = ['timber', 'stone', 'grand'];
+function wayStyle() {
+  const b = F().buildings.find((x) => x.type === 'entrance_hall');
+  if (b && b.look && R.looks('entrance_hall').includes(b.look)) return b.look;
+  return tierStyle();
+}
+function tierStyle() {
+  const b = F().buildings.find((x) => x.type === 'entrance_hall');
+  return WAY_STYLES[b && b.level ? hallTier(b.level) : 0];
+}
+/** The way look of a type in a style; a player's hall look without a matching hallway or stairwell keeps the level's. */
+const wayLook = (type, style) => (R.looks(type).includes(style) ? style : tierStyle());
+/** A hallway template: the style's variant if there is one, else the plain style. */
+function hallTpl(style, variant) {
+  const looks = R.looks('hallway'), base = wayLook('hallway', style);
+  return tplOf('hallway', 'room', looks.includes(base + variant) ? base + variant : base, 1);
+}
+/** Lights of a way's template at x0, y0. */
+function tplLights(tpl, x0, y0) {
+  return (tpl.spots || []).filter((s) => s.kind === 'light')
+    .map((s) => ({ x: x0 + s.x, y: y0 + s.y, r: s.r || 90, color: s.c || '#ffb060', flicker: 1, power: 0.6 * (0.5 + (s.p ?? 0.8) / 2) }));
+}
+/** How far a stairwell door is open (frame 0 shut .. 3 open): it swings open when someone steps in or out. */
+function doorFrame(w) {
+  const until = wellLit.get(wellKey(w)) || 0, dt = performance.now() - (until - 900);
+  if (dt < 0 || dt > 1000) return 0;
+  return dt < 70 ? 1 : dt < 140 ? 2 : dt < 760 ? 3 : dt < 880 ? 2 : 1;
+}
+
 
 function walkable(g, c, fl) {
   if (fl === -1) return c >= -VC && c < 0;
@@ -79,7 +199,7 @@ function zone(g, c, fl) {
 }
 
 const SIDE_WALL = 10;   // dwarves would rather take a hallway than squeeze through the side of a room
-const WELL_SPEED = 60;  // px per second on the hidden way behind the stairwell arches (walking is 34)
+const WELL_SPEED = 120; // px per second on the hidden way behind the stairwell arches (walking is 68)
 
 /** Seconds from one stairwell to another: the way behind the wall is as long as the distance between them. */
 function wellTime(a, b) {
@@ -148,33 +268,42 @@ const FADE = 350;            // ms to step into (or out of) the dark of an arch
 
 // ------------------------------------------------------------------ dwarves on the move
 
+
+// ------------------------------------------------------------------ dwarves on the move
+
 export const agents = new Map();   // dwarf id -> agent (exported for tests)
 const CYCLE = 12, WORK = 9; // minutes: 9 at work, 3 off
+const SPEED = 68;           // walking, px per second
 
 function schedule(d) {
   const t = Date.now() / 60000 + (S.hash('cyc' + d.id) % CYCLE);
   return { k: Math.floor(t / CYCLE), off: (t % CYCLE) >= WORK };
 }
 
-/** Where a dwarf wants to be right now: {f, x, pose, hidden, tool, sleep}. */
+/** The standing (or sitting) pose that looks the same way as a spot, for when there is nothing to do there. */
+function restPose(spot) { return R.spotPose({ ...spot, kind: 'stand' }); }
+
+/**
+ * Where a dwarf wants to be right now: {f, x, feet?, pose, flip?, face?, hidden, prop, sleep}.
+ * pose is a dwarf48 pose; side poses look right unless flip (or face < 0).
+ */
 function want(g, d, ctx) {
-  if (d.busy) return { hidden: true, f: -1, x: -VW + 4 };
+  if (d.busy) return { hidden: true, f: -1, x: -VW + 8 };
   const sch = schedule(d);
   const night = ctx.hour >= 22 || ctx.hour < 6;
-  const room = (type) => g.rooms.filter((r) => r.b.type === type);
   const free = () => {
     if (night) {
       const bed = ctx.beds.shift();
-      if (bed) return { f: bed.f, x: bed.x, feet: bed.y, pose: 'sleep', sleep: true };
+      if (bed) return { f: bed.f, x: bed.x, feet: bed.y, pose: 'sleep', flip: bed.flip, sleep: true, quilt: false };
     }
     const r = S.hash('free' + d.id + ':' + sch.k) % 10;
-    if (r < 6 && ctx.seats.length) { const s = ctx.seats.shift(); return { f: s.f, x: s.x, pose: s.pose }; }
+    if (r < 6 && ctx.seats.length) { const s = ctx.seats.shift(); return { f: s.f, x: s.x, feet: s.y, pose: s.pose, flip: s.flip }; }
     const chat = S.hash('chat' + d.id + sch.k) % 2 ? 'talk' : 'idle';     // half of them stand and chat
     if (r < 8) {
       const cells = [...g.cells.entries()].filter(([, v]) => (v.kind === 'hall' || v.kind === 'well' || v.kind === 'room') && !(v.kind === 'room' && !roomActive(v.id)));
       if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + CELL / 2, pose: chat }; }
     }
-    return { f: -1, x: SURFACE.wall + 110 + (S.hash('stroll' + d.id) % (-FACE - 40 - SURFACE.wall - 110)), pose: chat };
+    return { f: -1, x: SURFACE.wall + 160 + (S.hash('stroll' + d.id) % (-FACE - 80 - SURFACE.wall - 160)), pose: chat };
   };
   if (d.job === 'worker') {
     const r = g.rooms.find((x) => x.b.id === d.building);
@@ -182,13 +311,13 @@ function want(g, d, ctx) {
       const info = D().buildings[r.b.id] || {};
       const i = (info.seats || info.workers || [info.worker]).indexOf(d.id);
       if (i >= 0) {
-        const m = S.machineAt(r.b, i), a = m.a || {};
-        const wx = a.worker ? r.x + m.x + a.worker[0] : r.x + r.pw / 2;
-        const busy = jobOf(r.b, i) || byId.buildings[r.b.type].kind === 'continuous';
-        return { f: r.f, x: wx, pose: busy && !F().siege ? 'work' : 'idle', tool: TOOL_OF[r.b.type], face: a.face || 1 };
+        const sp = spotsOf(r, 'worker', i)[0];
+        const busy = (jobOf(r.b, i) || byId.buildings[r.b.type].kind === 'continuous') && !F().siege;
+        if (sp) { const p = busy ? R.spotPose(sp.spot) : restPose(sp.spot); return { f: r.f, x: sp.x, feet: sp.y, pose: p.pose, flip: p.flip, working: busy }; }
+        return { f: r.f, x: r.x + r.pw / 2, pose: busy ? 'hands' : 'idle', working: busy };
       }
       // waiting for a free machine: stands by the door
-      return { f: r.f, x: r.x + 10 + (S.hash('wait' + d.id) % 20), pose: 'idle', face: 1 };
+      return { f: r.f, x: r.x + 20 + (S.hash('wait' + d.id) % 40), pose: 'idle' };
     }
     return free();
   }
@@ -196,19 +325,18 @@ function want(g, d, ctx) {
     // digging out marked rock: stand beside it in the open cell and swing the pick
     const [c, fl] = d.dig.split(',').map(Number);
     const left = walkable(g, c - 1, fl);
-    return { f: fl, x: left ? c * CELL - 7 : (c + 1) * CELL + 7, pose: 'work', tool: 'pick', face: left ? 1 : -1, digging: d.dig };
+    return { f: fl, x: left ? c * CELL - 14 : (c + 1) * CELL + 14, pose: 'work', face: left ? 1 : -1, digging: d.dig };
   }
-  if (d.job === 'miner') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 8, hidden: true };
+  if (d.job === 'miner') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 16, hidden: true };
   if (d.job === 'warrior') {
-    if (d.post === 'mine') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 8, hidden: true };
+    if (d.post === 'mine') return sch.off ? free() : { mines: true, f: plan.floors - 1, x: 16, hidden: true };
     // on the way to a critter in the hold, or back from it
     const th = (F().threats || []).find((x) => x.cell && x.fightAt > now() - 60 && (x.guards || []).includes(d.id));
-    if (th) { const [c, fl] = th.cell.split(',').map(Number); return { f: fl, x: c * CELL + 12, pose: 'work', tool: 'axe', face: 1 }; }
+    if (th) { const [c, fl] = th.cell.split(',').map(Number); return { f: fl, x: c * CELL + 24, pose: 'work', face: 1 }; }
     if (sch.off && !F().raid && !F().siege) return free();
     return guardSpot(d, ctx.gate++);
   }
-  if (d.job === 'merchant') { const i = ctx.stall++; return { f: -1, x: SURFACE.stall + STALL_W + 12 + i * 20, pose: 'idle', tool: 'sack', face: -1 }; }
-  void room;
+  if (d.job === 'merchant') { const i = ctx.stall++; return { f: -1, x: SURFACE.stall + STALL_W / 2 + 24 + i * 40, pose: 'idle', prop: 'sack' }; }
   return free();
 }
 
@@ -218,12 +346,12 @@ function want(g, d, ctx) {
  */
 function guardSpot(d, i) {
   const f = F();
-  if (f.raid || f.siege) return { f: -1, x: -FACE + 14 + i * 12, pose: 'idle', tool: 'axe', face: -1 };
-  const pair = Math.floor(i / 2), x0 = -FACE + 78 + pair * 18;
+  if (f.raid || f.siege) return { f: -1, x: -FACE + 28 + i * 24, pose: 'idleSide', face: -1, prop: 'axe' };
+  const pair = Math.floor(i / 2), x0 = -FACE + 150 + pair * 40;
   const partner = f.dwarves.filter((x) => x.job === 'warrior' && x.post === 'hall' && !x.busy).length > (i ^ 1);
   const spar = partner && pair < 2 && S.hash('spar' + pair + ':' + Math.floor(now() / 240)) % 3 === 0;
-  if (spar) return { f: -1, x: x0 + (i % 2 ? 12 : 0), pose: 'work', tool: 'stick', face: i % 2 ? -1 : 1 };
-  return { f: -1, x: -FACE + 76 + i * 8, pose: 'idle', tool: 'axe', face: i % 2 ? 1 : -1 };
+  if (spar) return { f: -1, x: x0 + (i % 2 ? 26 : 0), pose: 'work', face: i % 2 ? -1 : 1 };
+  return { f: -1, x: -FACE + 140 + i * 18, pose: 'idle', prop: 'axe' };
 }
 
 /** Level of a building type (0 when the hold has none). */
@@ -232,22 +360,29 @@ function levelOf(type) { const b = F().buildings.find((x) => x.type === type); r
 /** The job running on machine i (machine 0 uses b.job). */
 export function jobOf(b, i) { return i === 0 ? b.job : (b.more || [])[i - 1] || null; }
 
-/** What each workshop's worker holds while working (the same work animation for all). */
+/** What each workshop's worker holds while working (kept for the panels; the 48-px dwarves work bare-handed). */
 export const TOOL_OF = { forge: 'hammer', smelter: 'shovel', brewery: 'paddle', farm: 'hoe', engraver: 'chisel', jeweler: 'chisel', grindstone: 'hammer', tailor: 'chisel' };
 
+/** Free places for this round of planning: seats, bar places and idle spots of every room, and the beds. */
 function placeCtx(g) {
   const seats = [], beds = [];
+  const TAVERN = ['sitTalk', 'eat', 'drink', 'sitTalk'];
   for (const r of g.rooms) {
-    const a = S.META.ROOMS[r.b.type];
-    if (!a) continue;
-    if (r.b.type === 'tavern') {
-      (a.seats || []).forEach(([x], i) => seats.push({ f: r.f, x: r.x + x, pose: ['sitTalk', 'eat', 'drink', 'sitTalk'][i % 4] }));
-      (a.bar || []).forEach(([x]) => seats.push({ f: r.f, x: r.x + x, pose: 'drink' }));
+    if (!roomActive(r.b.id)) continue;
+    let n = 0;
+    for (const s of r.spots) {
+      if (s.kind === 'bed') { beds.push({ f: r.f, x: s.x, y: s.y, flip: R.facing(s.spot) === 'left' }); continue; }
+      if (s.kind !== 'seat' && s.kind !== 'bar' && s.kind !== 'stand') continue;
+      const p = R.spotPose(s.spot);
+      let pose = p.pose;
+      if (pose === 'sit' && r.b.type === 'tavern') pose = TAVERN[n++ % 4];
+      else if (pose === 'sit') pose = n++ % 2 ? 'sitTalk' : 'sit';
+      seats.push({ f: r.f, x: s.x, y: s.y, pose, flip: p.flip });
     }
-    if (r.b.type === 'barracks' || r.b.type === 'warehouse') (a.seats || []).forEach(([x], i) => seats.push({ f: r.f, x: r.x + x, pose: i % 2 ? 'sitTalk' : 'sit' }));
-    if (r.b.type === 'quarters') (a.beds || []).forEach(([x, y]) => beds.push({ f: r.f, x: r.x + x, y: r.y + y }));
   }
-  return { seats, beds, gate: 0, stall: 0, hour: berlinHour() };
+  // the same dwarves get the same places as long as nothing changes
+  const shuffle = (a, salt) => a.sort((p, q) => S.hash(salt + p.x + ',' + p.f) - S.hash(salt + q.x + ',' + q.f));
+  return { seats: shuffle(seats, 'seat'), beds, gate: 0, stall: 0, hour: berlinHour() };
 }
 
 function nodeOf(g, f, x) {
@@ -276,7 +411,7 @@ function updateAgents(g, dt) {
       if (!a) {
         a = { id: d.id, x: w.x, y: w.feet || fy(w.f), f: w.f, path: [], want: w, face: w.face || 1, hidden: !!w.hidden, frameT: Math.random() * 10 };
         agents.set(d.id, a);
-      } else if (!a.want || a.want.f !== w.f || Math.abs(a.want.x - w.x) > 2 || a.want.pose !== w.pose || a.want.hidden !== w.hidden) {
+      } else if (!a.want || a.want.f !== w.f || Math.abs(a.want.x - w.x) > 2 || a.want.pose !== w.pose || a.want.hidden !== w.hidden || a.want.feet !== w.feet) {
         const before = a.want;
         a.want = w;
         const from = nodeOf(g, a.f, a.x), to = nodeOf(g, w.f, w.x);
@@ -290,7 +425,7 @@ function updateAgents(g, dt) {
               // up from the mines: out of the shaft's arch on the floor they are going to
               a.f = w.f >= 0 ? w.f : ENTRY; a.x = g.shafts[a.f].x;
               a.emerge = performance.now(); wellLit.set(wellKey(g.shafts[a.f]), a.emerge + 900);
-            } else { a.x = -VW + 4; a.f = -1; }
+            } else { a.x = -VW + 8; a.f = -1; }
             a.y = fy(a.f); a.hidden = false; a.path = path(g, nodeOf(g, a.f, a.x), to) || [];
           }
         } else a.path = p || [];
@@ -321,21 +456,19 @@ function updateAgents(g, dt) {
         a.inWell = 0; a.hidden = true; a.mode = null; a.path.length = 0;
         break;
       }
-      const sp = 34;
       const dx = p.x - a.x, dy = p.y - a.y, dist = Math.hypot(dx, dy);
-      const can = sp * step;
+      const can = SPEED * step;
       a.mode = p.mode;
       if (Math.abs(dx) > 0.5) a.face = dx > 0 ? 1 : -1;
-      if (dist <= can) { a.x = p.x; a.y = p.y; a.f = p.f; a.path.shift(); step -= dist / sp; }
+      if (dist <= can) { a.x = p.x; a.y = p.y; a.f = p.f; a.path.shift(); step -= dist / SPEED; }
       else { a.x += dx / dist * can; a.y += dy / dist * can; step = 0; }
     }
     if (!a.path.length && a.want) {
       // last few pixels inside the cell to the exact spot
       const tx = a.want.x, ty = a.want.feet || fy(a.want.f);
       const dx = tx - a.x;
-      if (Math.abs(dx) > 0.5) { a.x += Math.sign(dx) * Math.min(Math.abs(dx), 34 * dt); a.face = Math.sign(dx); a.mode = 'walk'; }
-      else { a.x = tx; a.mode = null; if (a.want.face) a.face = a.want.face; }
-      a.y = ty;
+      if (Math.abs(dx) > 0.5) { a.x += Math.sign(dx) * Math.min(Math.abs(dx), SPEED * dt); a.face = Math.sign(dx); a.mode = 'walk'; a.y = fy(a.want.f); }
+      else { a.x = tx; a.mode = null; a.y = ty; if (a.want.face) a.face = a.want.face; }
       if (a.leave && !a.mode) a.hidden = true;
     }
     a.frameT += dt;
@@ -343,301 +476,269 @@ function updateAgents(g, dt) {
   for (const id of [...agents.keys()]) if (!alive.has(id)) agents.delete(id);
 }
 
-function agentSprite(d, a) {
-  const moving = a.mode === 'walk' || a.mode === 'well';
-  let pose = moving ? 'walk' : (a.want && a.want.pose) || 'idle';
-  const fps = { walk: 8, work: 5, talk: 3, sitTalk: 3, eat: 1.6, drink: 0.5, sleep: 0.7 }[pose] || 1.2;
-  const n = S.FRAMES[pose] || 1;
-  const fr = Math.floor(a.frameT * fps) % n;
-  return S.dwarfSprite(d, pose, fr, a.want && !moving ? a.want.tool : null);
+// ------------------------------------------------------------------ how a dwarf looks in the 48-px kit
+
+const OLD_HAIR = { short: 'short', fringe: 'short', bald: 'bald', topknot: 'topknot', long: 'long', wavy: 'long', braids: 'braids', bun: 'bun', pigtails: 'braids', mohawk: 'topknot' };
+const OLD_BEARD = { full: 'full', wide: 'wide', braid: 'long', fork: 'fork', long: 'long', goatee: 'short', chops: 'wide', moustache: 'short' };
+const HAIRS = Object.keys(OLD_HAIR), BEARDS = Object.keys(OLD_BEARD);
+
+/** Five tones from one colour (tone 3 is the colour itself), the way the kit's ramps are built. */
+function ramp(hex) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return null;
+  const dark = '#140c16', light = '#fff2dc';
+  return [S.mix(hex, dark, 0.66), S.mix(hex, dark, 0.44), S.mix(hex, dark, 0.22), hex.toLowerCase(), S.mix(hex, light, 0.32)];
 }
 
-// ------------------------------------------------------------------ drawing
+const lookCache = new Map();
+/** The dwarf48 look of a dwarf of the hold: hair, beard, colours from its looks and clothes, its mood. */
+export function look48(d, extra = {}) {
+  const md = S.mood(d);
+  const key = [d.id, d.sex, d.hairStyle, d.beardStyle, d.skin, d.hair, d.outfit, d.helm, JSON.stringify(d.wear || {}), md, extra.prop || '', extra.quilt].join('|');
+  let L = lookCache.get(key);
+  if (L) return L;
+  const o = S.look(d), wear = {};
+  for (const [slot, k] of Object.entries(d.wear || {})) { const w = S.parseWear(k); if (w) wear[slot] = w.color; }
+  const ramps = {};
+  const put = (name, hex) => { const r = ramp(hex); if (r) ramps[name] = r; };
+  put('skin', o.skin); put('hair', o.hair);
+  put('tunic', wear.top || d.outfit || '#4b8a4f'); put('pants', wear.legs); put('boots', wear.feet);
+  if (wear.apron) put('vest', wear.apron);
+  L = {
+    sex: o.sex, hair: OLD_HAIR[HAIRS[o.hairStyle]] || 'short', beard: o.sex === 'm' ? OLD_BEARD[BEARDS[o.beard]] || 'full' : null,
+    hat: d.helm ? 'helm' : null, vest: true, mood: md, prop: extra.prop || null, quilt: extra.quilt, ramps,
+  };
+  if (lookCache.size > 600) lookCache.clear();
+  lookCache.set(key, L);
+  return L;
+}
 
-function drawSky(ctx, t, view) {
+const FPS = { walk: 8, walkFront: 6, walkBack: 6, work: 6, hands: 5, workSit: 5, workBack: 5, workSitBack: 5, workSitFront: 5, talk: 3, sitTalk: 3, eat: 2, drink: 0.5, sleep: 0.7, idle: 0.6, sit: 0.6 };
+/** The frame to draw for an agent: {canvas, ax, ay} (canvas mirrored when it looks left). */
+function agentFrame(d, a) {
+  const moving = a.mode === 'walk' || a.mode === 'well';
+  const w = a.want || {};
+  const pose = moving ? 'walk' : w.pose || 'idle';
+  const fr = Math.floor(a.frameT * (FPS[pose] || 1));
+  const flip = moving ? a.face < 0 : w.flip !== undefined ? w.flip : a.face < 0;
+  return dwarfFrame(look48(d, { prop: moving ? null : w.prop, quilt: w.quilt }), pose, fr, flip);
+}
+const flipCache = new WeakMap();
+function dwarfFrame(look, pose, f, flip) {
+  const c = DW.frame(look, pose, f), [ax, ay] = pose === 'sleep' ? [37, 36] : [24, 62];
+  if (!flip) return { canvas: c, ax, ay };
+  let m = flipCache.get(c);
+  if (!m) { m = S.mk(c.width, c.height); const g = m.getContext('2d'); g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(c, 0, 0); flipCache.set(c, m); }
+  return { canvas: m, ax: c.width - ax, ay };
+}
+
+// ------------------------------------------------------------------ drawing helpers
+
+/** Old 16-px interface sprites (status signs, arrows, zzz) and the pixel font at twice their size. */
+function big(ctx, x, y, fn) { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(2, 2); fn(); ctx.restore(); }
+const ui = (ctx, name, x, y) => big(ctx, x, y, () => S.draw(ctx, name, 0, 0));
+const say = (ctx, str, x, y, color, align) => big(ctx, x, y, () => text(ctx, str, 0, 0, color, align));
+
+/** Is a world rectangle on screen? */
+let view = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 };
+const seen = (x, y, w, h, m = 0) => x + w > view.x - m && x < view.x + view.w + m && y + h > view.y - m && y < view.y + view.h + m;
+
+// ------------------------------------------------------------------ the sky and the far mountains
+
+function drawSky(ctx, t) {
   const s = sun();
   const sky = skyColors(s.elev);
   const X0 = -VW, w = W() + VW;              // the sky spans the valley and the mountain
-  const g = ctx.createLinearGradient(0, 0, 0, GRASS);
+  const g = ctx.createLinearGradient(0, -100, 0, GRASS);
   g.addColorStop(0, sky.top); g.addColorStop(1, sky.bottom);
   ctx.fillStyle = g;
-  ctx.fillRect(X0, -200, w, GRASS + 200);
+  ctx.fillRect(X0, -400, w, GRASS + 400);
   const day = daylight(s.elev);
   if (day < 0.6) {
     const r = S.rand(42);
     ctx.globalAlpha = 1 - day / 0.6;
-    for (let i = 0; i < 90; i++) {
-      const x = X0 + Math.floor(r() * w), y = Math.floor(r() * (GRASS - 30)) - 10;
-      if ((Math.floor(t * 1.5) + i) % 11) { ctx.fillStyle = i % 7 ? '#d8d6f0' : '#fff6d6'; ctx.fillRect(x, y, 1, 1); }
+    for (let i = 0; i < 220; i++) {
+      const x = X0 + Math.floor(r() * w), y = Math.floor(r() * (GRASS - 80)) - 80;
+      if ((Math.floor(t * 1.5) + i) % 11) { ctx.fillStyle = i % 7 ? '#d8d6f0' : '#fff6d6'; ctx.fillRect(x, y, i % 5 ? 1 : 2, i % 5 ? 1 : 2); }
     }
     ctx.globalAlpha = 1;
   }
-  // sun and moon on an arc across the sky, following the real sun over Essen
-  // the arc runs over the valley, where the mountain does not hide it
+  // sun and moon on an arc across the sky, following the real sun over Essen; the arc runs over the valley
   const arcX = (ha) => (X0 - FACE) / 2 + (ha / 110) * (VW * 0.7);
-  const sy = GRASS - 14 - Math.max(-30, s.elev) * 7;
-  if (s.elev > -4) {
-    const x = arcX(s.hourAngle);
-    ctx.fillStyle = '#fff3c4'; ctx.beginPath(); ctx.arc(x, sy, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ffd98e'; ctx.beginPath(); ctx.arc(x, sy, 6, 0, Math.PI * 2); ctx.fill();
-  } else {
+  if (s.elev > -4) Art.draw(ctx, 'sun', 0, arcX(s.hourAngle), GRASS - 60 - Math.max(-30, s.elev) * 12);
+  else {
     const ha = s.hourAngle > 0 ? s.hourAngle - 180 : s.hourAngle + 180;
-    const x = arcX(ha), y = 90 + Math.abs(ha) * 2.4;
-    ctx.fillStyle = '#f4f0dc'; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = sky.top; ctx.beginPath(); ctx.arc(x + 3, y - 2, 5, 0, Math.PI * 2); ctx.fill();
+    Art.draw(ctx, 'moon', 0, arcX(ha), 140 + Math.abs(ha) * 4);
   }
   // soft clouds in daylight
   ctx.globalAlpha = 0.25 + day * 0.6;
-  for (let i = 0; i < 5; i++) {
-    const x = X0 + ((t * (2 + i * 0.6)) + i * 330) % (w + 80) - 40, y = 30 + i * 22;
+  for (let i = 0; i < 7; i++) {
+    const x = X0 + ((t * (4 + i * 1.2)) + i * 560) % (w + 160) - 80, y = 40 + i * 36;
     ctx.fillStyle = day > 0.4 ? '#ffffff' : '#a8a6c8';
-    ctx.beginPath(); ctx.ellipse(x, y, 16, 4, 0, 0, Math.PI * 2); ctx.ellipse(x + 8, y - 3, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, y, 32, 8, 0, 0, Math.PI * 2); ctx.ellipse(x + 16, y - 6, 18, 8, 0, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  // rolling hills: two soft layers
-  const hill = (col, base, amp, seed) => {
-    const r = S.rand(seed);
-    ctx.fillStyle = col;
-    let hgt = 10;
-    for (let x = X0; x < X0 + w; x += 2) { hgt += (r() - 0.5) * 2.2 * amp; hgt = Math.max(4, Math.min(26, hgt)); ctx.fillRect(x, base - hgt, 2, GRASS - base + hgt); }
+  // the far mountains: day, dusk and night versions blend into each other; they slide slower than the world
+  const dusk = Math.max(0, 1 - Math.abs(s.elev - 2) / 9), k = 0.55;
+  const far = (name, a) => {
+    if (a <= 0.01) return;
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(view.x * k, 0);
+    Art.tile(ctx, name, view.x * (1 - k) - 4, GRASS - 18, view.w + 8);
+    ctx.restore();
   };
-  // parallax: far layers slide slower than the world when the camera pans
-  const x0 = Math.floor(view.x) - 2, x1 = Math.ceil(view.x + view.w) + 2;
-  const ridge = (u, seed, s) => Math.sin(u / (31 * s) + seed) * 0.5 + Math.sin(u / (13 * s) + seed * 2.3) * 0.3 + Math.sin(u / (5.3 * s) + seed * 4.1) * 0.12;
-  const layer = (k, fn) => { const off = view.x * k; for (let x = x0 - (x0 & 1); x < x1; x += 2) fn(x, x - off); };
-  // far mountains with snow caps, then a haze band, then wooded hills, then the near meadow
-  const far = S.mix('#a8b6d4', '#2a2d58', 1 - day), farLit = S.mix('#c6d0e6', '#3a3e6e', 1 - day), snow = S.mix('#f4f6fb', '#6a6f9e', 1 - day);
-  layer(0.8, (x, u) => {
-    const hgt = Math.round(30 + ridge(u, 1.7, 1.4) * 22 + Math.abs(Math.sin(u / 9 + 0.6)) * 6);
-    const peak = GRASS - 4 - hgt;
-    ctx.fillStyle = far; ctx.fillRect(x, peak, 2, hgt + 4);
-    const slope = ridge(u + 2, 1.7, 1.4) - ridge(u - 2, 1.7, 1.4);
-    if (slope < 0) { ctx.fillStyle = farLit; ctx.fillRect(x, peak, 2, Math.min(10, hgt)); }   // sunny west faces
-    if (hgt > 40) { ctx.fillStyle = snow; ctx.fillRect(x, peak, 2, Math.round((hgt - 40) * 0.6) + 1); }
-  });
-  const haze = ctx.createLinearGradient(0, GRASS - 40, 0, GRASS);
-  haze.addColorStop(0, hexA(sky.bottom, 0)); haze.addColorStop(1, hexA(sky.bottom, 0.75));
-  ctx.fillStyle = haze; ctx.fillRect(x0, GRASS - 40, x1 - x0, 40);
-  const wood = S.mix('#7fa48c', '#26365a', 1 - day), pine = S.mix('#5f8a72', '#1f2c4c', 1 - day);
-  layer(0.5, (x, u) => {
-    const hgt = Math.round(12 + ridge(u, 4.2, 0.8) * 7);
-    ctx.fillStyle = wood; ctx.fillRect(x, GRASS - 2 - hgt, 2, hgt + 2);
-    const n = Math.floor(u / 6);
-    if (S.hash('pine' + n) % 3 === 0 && ((u % 6) + 6) % 6 < 2) {
-      const th = 6 + (S.hash('p' + n) % 5);
-      ctx.fillStyle = pine;
-      for (let j = 0; j < th; j++) { const hw = Math.floor(j / 2.2); ctx.fillRect(x + 1 - hw, GRASS - 2 - hgt - th + j, hw * 2 + 1, 1); }
-    }
-  });
-  hill(S.mix('#5e8a6a', '#22304a', 1 - day), GRASS - 6, 1.4, 29);
+  far('mountains_night', 1);
+  far('mountains_day', Math.min(1, day * 1.4));
+  far('mountains_dusk', dusk * 0.9);
 }
 
-function hexA(hex, a) {
-  const n = parseInt(hex.slice(1, 7), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-}
+// ------------------------------------------------------------------ the mountain and the rock inside it
 
-// ------------------------------------------------------------------ strangers in the valley
-
-// The merchant at the stall and travellers on the road. Not dwarves of the hold: their looks are fixed here.
-const NPCS = [
-  { id: 'merchant', body: 6, skin: '#e2b08a', hair: '#c4622d', eye: '#3f8a56', hairStyle: 'bun', nose: 2, tall: true,
-    wear: { top: { look: 'dress', color: '#7d5a8a' }, apron: { color: '#e7dbc5' }, hat: { look: 'bandana', color: '#d9704a' }, feet: { color: '#4f3a37' } } },
-  { id: 'pilgrim', body: 2, skin: '#f0c8a0', hair: '#9a9a9a', eye: '#7d8ba0', hairStyle: 'short', beard: 'long', tall: true, tool: 'sack',
-    wear: { top: { look: 'linen', color: '#8a7a5a' }, legs: { look: 'plain', color: '#4b3f4f' }, hat: { look: 'hood', color: '#5e6e4a' }, feet: { color: '#3a2a26' } } },
-  { id: 'bard', body: 7, skin: '#d9a77c', hair: '#e0b04a', eye: '#7a4a2a', hairStyle: 'long', nose: 1, tall: true,
-    wear: { top: { look: 'embroid', color: '#466e98' }, legs: { look: 'plain', color: '#653f27' }, hat: { look: 'pointy', color: '#a9473c' }, feet: { color: '#4f3a37' } } },
-  { id: 'peddler', body: 1, skin: '#d9a77c', hair: '#7a3b1e', eye: '#5b7fc0', hairStyle: 'short', beard: 'chops', tool: 'sack',
-    wear: { top: { look: 'vest', color: '#5e8f73' }, legs: { look: 'patched', color: '#6e5246' }, hat: { look: 'bandana', color: '#3f6659' }, feet: { color: '#3a2a26' } } },
-];
-
-/** Where the strangers are now: the merchant behind the stall by day, travellers walking the road and resting. */
-function drawStrangers(ctx, t, which) {
-  const day = daylight(sun().elev) > 0.3;
-  const placed = [];
-  if (which === 'stall') {   // by day the merchant stands at the side of her stall
-    if (day) placed.push({ n: NPCS[0], x: SURFACE.stall - 4, pose: Math.floor(t / 3) % 4 === 0 ? 'talk' : 'idle', face: 1 });
-  }
-  // travellers: a slow walk along the road, a rest by the signpost, then back; each on its own clock
-  const road0 = -VW + 10, road1 = SURFACE.gate - 20;
-  NPCS.slice(1).forEach((n, i) => {
-    if (which === 'stall') return;
-    const period = 140 + i * 37, k = ((t + i * 61) % period) / period;
-    if (!day && i > 0) return;               // at night only the pilgrim is out
-    let x, pose = 'walk', face = 1;
-    if (k < 0.4) x = road0 + (road1 - road0) * (k / 0.4);
-    else if (k < 0.55) { x = road1; pose = 'idle'; face = -1; }
-    else if (k < 0.95) { x = road1 - (road1 - road0) * ((k - 0.55) / 0.4); face = -1; }
-    else { x = road0; pose = 'idle'; }
-    placed.push({ n, x: Math.round(x + i * 14), pose, face });
-  });
-  for (const p of placed) {
-    const spr = S.npcSprite(p.n, p.pose, Math.floor(t * (p.pose === 'walk' ? 6 : 2)));
-    S.placeDwarf(ctx, spr, p.x, GRASS, p.face < 0);
-  }
-}
-
-// ------------------------------------------------------------------ the mountain
-
-const FACE_TOP = GROUND - 116;   // the cliff over the gate
+const FACE_TOP = GROUND - 288;   // the cliff over the gate
 
 /** Height of the mountain's surface at x (y of its top edge); Infinity where there is no mountain (the valley). */
 export function mtop(x) {
-  if (x < -FACE - 6) return Infinity;
+  if (x < -FACE) return Infinity;
   if (x < 0) {
     // a cliff with the gate, then a rough slope up to the shoulder over the first floor
     const k = Math.max(0, (x + FACE) / FACE);
-    return Math.round(FACE_TOP - (FACE_TOP - (SURF - 40)) * Math.pow(k, 0.75) + Math.sin(x / 6) * 2 + (x < -FACE + 4 ? 0 : Math.sin(x / 17) * 4));
+    return Math.round(FACE_TOP - (FACE_TOP - (SURF - 80)) * Math.pow(k, 0.75) + Math.sin(x / 12) * 4 + (x < -FACE + 8 ? 0 : Math.sin(x / 34) * 8));
   }
-  const h = 40 + 100 * (1 - Math.exp(-x / 180)) + 42 * Math.max(0, Math.sin(x / 170 - 0.6)) + 6 * Math.sin(x / 23) + 3 * Math.sin(x / 9);
+  const h = 80 + 200 * (1 - Math.exp(-x / 360)) + 84 * Math.max(0, Math.sin(x / 340 - 0.6)) + 12 * Math.sin(x / 46) + 6 * Math.sin(x / 18);
   return Math.round(SURF - h);
 }
 
-/** The valley: grass, the path, the market, the gate wall, caravans and raiders. */
+let shape = { key: '', path: null };
+/** The rock: the mountain, and everything under the valley's soil. */
+function rockShape() {
+  const key = W() + 'x' + H();
+  if (shape.key === key) return shape.path;
+  const p = new Path2D();
+  p.moveTo(-VW - 40, GROUND + 1); p.lineTo(-FACE, GROUND + 1);
+  for (let x = -FACE; x <= W() + 4; x += 4) p.lineTo(x, mtop(x));
+  p.lineTo(W() + 40, mtop(W())); p.lineTo(W() + 40, H() + 80); p.lineTo(-VW - 40, H() + 80); p.closePath();
+  shape = { key, path: p };
+  return p;
+}
+/** The stone of a depth: every two floors it gets harder (Rules.rockBand), rock_0 near the surface. */
+const band = (fl) => Math.max(0, Math.min(3, Math.floor(fl / 2)));
+const rockAt = (y) => 'rock_' + (y < SURF ? 0 : Math.min(4, band(Math.floor((y - SURF) / RH)) + (y >= H() ? 1 : 0)));
+
+function drawRock(ctx) {
+  ctx.save();
+  ctx.clip(rockShape());
+  const tw = 96, th = RH;
+  const x0 = Math.floor(view.x / tw) * tw, y0 = SURF + Math.floor((view.y - SURF) / th) * th;
+  for (let y = y0; y < view.y + view.h; y += th) for (let x = x0; x < view.x + view.w; x += tw) {
+    const fr = Art.frame(rockAt(y), 0);
+    ctx.drawImage(fr.canvas, x, y);
+  }
+  // deeper is darker and cooler
+  const fade = ctx.createLinearGradient(0, GROUND, 0, H());
+  fade.addColorStop(0, 'rgba(20,12,30,0)'); fade.addColorStop(1, 'rgba(14,10,30,0.4)');
+  ctx.fillStyle = fade; ctx.fillRect(view.x, GROUND, view.w, H() + 80 - GROUND);
+  ctx.restore();
+  // the mountain's skin: a lit rim, grass on the gentle parts, snow on the peaks, a few firs
+  const xa = Math.max(-FACE, Math.floor(view.x / 2) * 2), xb = Math.min(W(), view.x + view.w);
+  for (let x = xa; x < xb; x += 2) {
+    const y = mtop(x);
+    if (!isFinite(y) || y > view.y + view.h || y < view.y - 40) continue;
+    const slope = Math.abs(mtop(x + 4) - mtop(x - 4)) / 8;
+    ctx.fillStyle = '#a6abbe'; ctx.fillRect(x, y, 2, 3);
+    ctx.fillStyle = 'rgba(29,20,32,0.3)'; ctx.fillRect(x, y + 3, 2, 5);
+    if (y < SURF - 300) { ctx.fillStyle = '#f4f6fb'; ctx.fillRect(x, y, 2, 5 + Math.round((SURF - 300 - y) / 3)); }
+    else if (slope < 1.2) { ctx.fillStyle = '#5b8350'; ctx.fillRect(x, y - 2, 2, 6); ctx.fillStyle = '#86b06a'; ctx.fillRect(x, y - 2, 2, 2); }
+  }
+  for (let x = Math.ceil(xa / 30) * 30; x < xb + 40; x += 30) {
+    const y = mtop(x);
+    if (!isFinite(y) || y < SURF - 290 || x < 0) continue;
+    if (Math.abs(mtop(x + 8) - mtop(x - 8)) / 16 > 0.7 || S.hash('fir' + x) % 4) continue;
+    Art.draw(ctx, 'fir', Math.floor(t0() * 2 + x) % 4, x, y + 6);
+  }
+  // the cliff over the gate: lit on its face, a shadow just inside
+  ctx.fillStyle = '#a6abbe'; ctx.fillRect(-FACE, FACE_TOP, 2, ftop(ENTRY) - FACE_TOP);
+  ctx.fillStyle = 'rgba(29,20,32,0.3)'; ctx.fillRect(-FACE + 2, FACE_TOP, 5, ftop(ENTRY) - FACE_TOP);
+}
+const t0 = () => performance.now() / 1000;
+
+// ------------------------------------------------------------------ the valley
+
+/** The valley: meadow, trees, the market stall, the well, the road, caravans and raiders. */
 function drawSurface(ctx, t) {
   const f = F(), x0 = -VW, x1 = -FACE;
-  ctx.fillStyle = '#5b8350'; ctx.fillRect(x0, GRASS - 2, x1 - x0, 3);
-  ctx.fillStyle = '#86b06a'; ctx.fillRect(x0, GRASS - 3, x1 - x0, 1);
-  const r = S.rand(5);
-  for (let x = x0 + 4; x < x1; x += 9 + Math.floor(r() * 8)) { ctx.fillStyle = r() < 0.5 ? '#86b06a' : '#b5d48c'; ctx.fillRect(x, GRASS - 4, 1, 2); }
-  ctx.fillStyle = '#b07a4e'; ctx.fillRect(x0, GRASS - 1, x1 - x0 + 10, 2);       // the road into the mountain
-  onGrass(ctx, 'tree_a_' + (Math.floor(t * 2) % 4), SURFACE.treeA);
-  onGrass(ctx, 'tree_b_' + (Math.floor(t * 2 + 1) % 4), SURFACE.treeB);
-  for (const x of [-660, -250]) onGrass(ctx, 'bush', x);
-  drawStall(ctx, t);
+  Art.tile(ctx, 'meadow', x0, GRASS, x1 - x0 + 16);
+  Art.draw(ctx, 'fence', 0, SURFACE.wall - 52, GRASS); Art.draw(ctx, 'fence', 0, SURFACE.wall, GRASS);
+  for (const [name, x] of TREES) Art.draw(ctx, name, Math.floor(t * 2 + x) % 4, x, GRASS);
+  for (const x of [-1200, -560, -330]) Art.draw(ctx, 'bush', 0, x, GRASS);
+  for (const x of [-1210, -760, -620, -500, -420]) Art.draw(ctx, 'flowers', 0, x, GRASS);
+  Art.draw(ctx, 'well', 0, SURFACE.well, GRASS);
+  Art.draw(ctx, 'stall', Math.floor(t * 3) % 4, SURFACE.stall, GRASS);
   drawStrangers(ctx, t, 'stall');
-  onGrass(ctx, 'signpost', SURFACE.sign);
-  for (const x of [-604, -380, -310, -236, -206]) onGrass(ctx, 'flowers', x);
+  Art.draw(ctx, 'signpost', 0, SURFACE.sign, GRASS);
   // caravans on the road, out to the left
-  const t0 = now();
+  const tn = now();
   for (const c of f.caravans) {
     const out = c.state === 'outbound';
-    const p = out ? (t0 - c.departAt) / (c.arriveAt - c.departAt) : 1 - (t0 - c.arriveAt) / (c.returnAt - c.arriveAt);
-    const x = CARAVAN_HOME - Math.max(0, Math.min(1, p)) * (CARAVAN_HOME - SURFACE.wall + 40);
-    onGrass(ctx, 'wagon_' + (Math.floor(t * 4) % 2), x, out);
+    const p = out ? (tn - c.departAt) / (c.arriveAt - c.departAt) : 1 - (tn - c.arriveAt) / (c.returnAt - c.arriveAt);
+    const x = CARAVAN_HOME - Math.max(0, Math.min(1, p)) * (CARAVAN_HOME - SURFACE.wall + 80);
+    Art.draw(ctx, 'wagon', 0, x, GRASS + (Math.floor(t * 4) % 2), { flip: out });
   }
   if (f.raid) {
-    const p = Math.max(0, Math.min(1, (t0 - f.raid.announcedAt) / (f.raid.arrivesAt - f.raid.announcedAt)));
-    if (p > 0.5) for (let i = 0; i < 3; i++) onGrass(ctx, 'mon_goblin_scouts_' + (Math.floor(t * 3 + i) % 2), -VW - 6 + (p - 0.5) * 60 + i * 14);
+    const p = Math.max(0, Math.min(1, (tn - f.raid.announcedAt) / (f.raid.arrivesAt - f.raid.announcedAt)));
+    if (p > 0.5) for (let i = 0; i < 3; i++) Art.draw(ctx, 'goblin_scouts', Math.floor(t * 6 + i), -VW + 20 + (p - 0.5) * 120 + i * 30, GRASS);
   }
   if (f.siege) {
-    for (let i = 0; i < 4; i++) onGrass(ctx, 'mon_goblin_scouts_' + (Math.floor(t * 3 + i) % 2), -VW + 4 + i * 18);
-    onGrass(ctx, 'fire_place_' + (Math.floor(t * 6) % 4), SURFACE.wall - 30);
+    for (let i = 0; i < 4; i++) Art.draw(ctx, 'goblin_scouts', Math.floor(t * 6 + i), -VW + 30 + i * 40, GRASS);
+    Art.draw(ctx, 'brazier', Math.floor(t * 6) % 4, SURFACE.wall - 70, GRASS);
   }
 }
 
-/** The market stall: the stall, and its striped awning fluttering in the wind on top. */
-function stallTop() { const s = S.sprite('market_stall'); return GRASS - (s ? s.height : 84) + 1; }
-function drawStall(ctx, t) {
-  onGrass(ctx, 'market_stall', SURFACE.stall);
-  S.draw(ctx, 'stall_awning_' + (Math.floor(t * 3) % 4), SURFACE.stall - 4, stallTop() - 6);
+// The merchant at the stall and travellers on the road. Not dwarves of the hold: their looks are fixed here.
+const NPCS = [
+  { id: 'merchant', look: { sex: 'f', hair: 'bun', ramps: { skin: ramp('#e2b08a'), hair: ramp('#c4622d'), tunic: ramp('#7d5a8a'), vest: ramp('#e7dbc5') } } },
+  { id: 'pilgrim', look: { sex: 'm', hair: 'short', beard: 'long', hat: 'hood', prop: 'sack', ramps: { skin: ramp('#f0c8a0'), hair: ramp('#9a9a9a'), tunic: ramp('#8a7a5a'), metal: ramp('#5e6e4a'), cloth: ramp('#5e6e4a') } } },
+  { id: 'bard', look: { sex: 'f', hair: 'long', ramps: { skin: ramp('#d9a77c'), hair: ramp('#e0b04a'), tunic: ramp('#466e98'), pants: ramp('#653f27') } } },
+  { id: 'peddler', look: { sex: 'm', hair: 'short', beard: 'wide', hat: 'cap', prop: 'sack', ramps: { skin: ramp('#d9a77c'), hair: ramp('#7a3b1e'), tunic: ramp('#5e8f73'), pants: ramp('#6e5246') } } },
+];
+
+/** Where the strangers are now: the merchant beside the stall by day, travellers walking the road and resting. */
+function drawStrangers(ctx, t, which) {
+  const day = daylight(sun().elev) > 0.3;
+  const placed = [];
+  if (which === 'stall') {
+    if (day) placed.push({ n: NPCS[0], x: SURFACE.stall - STALL_W / 2 - 16, pose: Math.floor(t / 3) % 4 === 0 ? 'talk' : 'idle', face: 1 });
+  } else {
+    // travellers: a slow walk along the road, a rest by the signpost, then back; each on its own clock
+    const road0 = -VW + 20, road1 = SURFACE.sign + 40;
+    NPCS.slice(1).forEach((n, i) => {
+      const period = 140 + i * 37, k = ((t + i * 61) % period) / period;
+      if (!day && i > 0) return;               // at night only the pilgrim is out
+      let x, pose = 'walk', face = 1;
+      if (k < 0.4) x = road0 + (road1 - road0) * (k / 0.4);
+      else if (k < 0.55) { x = road1; pose = 'idle'; face = -1; }
+      else if (k < 0.95) { x = road1 - (road1 - road0) * ((k - 0.55) / 0.4); face = -1; }
+      else { x = road0; pose = 'idle'; }
+      placed.push({ n, x: Math.round(x + i * 28), pose, face });
+    });
+  }
+  for (const p of placed) {
+    const L = p.pose === 'walk' ? { ...p.n.look, prop: null } : p.n.look;
+    const fr = dwarfFrame(L, p.pose, Math.floor(t * (p.pose === 'walk' ? 8 : 2)), p.face < 0);
+    S.groundShadow(ctx, p.x, GRASS, 10);
+    ctx.drawImage(fr.canvas, Math.round(p.x - fr.ax), Math.round(GRASS - fr.ay));
+  }
 }
 
-// ------------------------------------------------------------------ depth: the rock face and the shadows it casts
-// The mountain is the front plane; rooms, halls, the shaft and the gate tunnel are cut into it. Light comes from the
-// top left, so the rock throws a soft shadow down and right into every opening, and the lower and right lips of each
-// opening catch light. The layers only change with the plan, so they are drawn once into canvases and cached.
-// They start at x = -VW (the canvases are VW wider than the grid).
+// ------------------------------------------------------------------ inside the mountain
 
-let depth = { key: '', rock: null, shadow: null, lips: null };
-
-function depthLayers(g) {
-  const w = W() + VW, h = H();
-  const key = [w, h, [...g.cells.keys()].sort().join(';'), g.wells.map(wellKey).join(';')].join('|');
-  if (depth.key === key) return depth;
-  // where there is rock: the mountain, and everything under the valley's soil
-  const shape = S.mk(w, h), shp = shape.getContext('2d');
-  shp.fillStyle = '#000';
-  for (let x = 0; x < w; x++) { const y = mtop(x - VW); if (y < h) shp.fillRect(x, y, 1, h - y); }
-  shp.fillRect(0, GROUND + 1, w, h - GROUND - 1);
-
-  // rock: tiles in a few variants, gentle strata, darker and cooler with depth
-  const rock = S.mk(w, h), rc = rock.getContext('2d');
-  // each band of stone fills its own two floors (the top band also everything above the hold)
-  for (let bd = 0; bd < 4; bd++) {
-    const y0 = bd === 0 ? 0 : ftop(bd * 2), y1 = bd === 3 ? h : ftop(bd * 2 + 2);
-    rc.save(); rc.beginPath(); rc.rect(0, y0, w, y1 - y0); rc.clip();
-    for (let y = y0 - ((y0 - SURF) % 64 + 64) % 64; y < y1; y += 64) for (let x = 0; x < w; x += 64) S.draw(rc, 'stone_' + bd + '_' + (S.hash('rock' + x + ',' + y) % 3), x, y);
-    rc.restore();
-  }
-  const r = S.rand(77);
-  const fade = rc.createLinearGradient(0, GROUND, 0, h);
-  fade.addColorStop(0, 'rgba(20,12,30,0)'); fade.addColorStop(1, 'rgba(14,10,30,0.45)');
-  rc.fillStyle = fade; rc.fillRect(0, GROUND, w, h - GROUND);
-  // the valley's soil and roots under the grass
-  rc.fillStyle = '#65514c'; rc.fillRect(0, GROUND + 1, VW - FACE, 11); rc.fillStyle = '#7e6860'; rc.fillRect(0, GROUND + 1, VW - FACE, 1);
-  for (let i = 0; i < (VW - FACE) / 30; i++) {
-    let x = 6 + r() * (VW - FACE - 12), y = GROUND + 2;
-    rc.fillStyle = '#4a3530';
-    for (let k = 0; k < 8 + r() * 18; k++) { rc.fillRect(Math.round(x), y, 1, 1); y++; x += (r() - 0.5) * 1.4; }
-  }
-  // the mountain's skin: a lit rim, grass on the gentle parts, snow on the peaks, a few pines
-  const rim = (x, y, col, n = 1) => { rc.fillStyle = col; rc.fillRect(x, y, 1, n); };
-  for (let x = 0; x < w; x++) {
-    const wx = x - VW, y = mtop(wx);
-    if (!isFinite(y)) continue;
-    const slope = Math.abs(mtop(wx + 2) - mtop(wx - 2)) / 4;
-    rim(x, y, '#a6abbe', 2); rim(x, y + 2, 'rgba(29,20,32,0.25)', 3);
-    if (y < SURF - 160) rim(x, y, '#f4f6fb', 3 + Math.round((SURF - 160 - y) / 3));
-    else if (slope < 1.2) { rim(x, y - 1, '#5b8350', 3); rim(x, y - 1, '#86b06a', 1); }
-    if (slope < 0.8 && y > SURF - 150 && S.hash('pine' + Math.floor(wx / 9)) % 5 === 0 && ((wx % 9) + 9) % 9 === 0) {
-      const th = 9 + S.hash('ph' + wx) % 7;
-      for (let j = 0; j < th; j++) { const hw = Math.floor(j / 2.4); rc.fillStyle = j % 3 ? '#3c5a3a' : '#5b8350'; rc.fillRect(x - hw, y - th + j, hw * 2 + 1, 1); }
-      rc.fillStyle = '#6e5246'; rc.fillRect(x, y - 1, 1, 2);
-    }
-  }
-  rc.globalCompositeOperation = 'destination-in'; rc.drawImage(shape, 0, 0); rc.globalCompositeOperation = 'source-over';
-
-  // where the rock is cut away
-  const hole = S.mk(w, h), hc = hole.getContext('2d');
-  hc.fillStyle = '#000';
-  for (let fl = 0; fl < plan.floors; fl++) S.draw(hc, 'shaft', VW, ftop(fl));
-  for (let x = -FACE; x < 0; x += CELL) S.draw(hc, 'hall_a', VW + x, ftop(ENTRY));
-  for (const [k, v] of g.cells) {
-    if (v.kind !== 'hall' && v.kind !== 'cave') continue;
-    const [c, fl] = k.split(',').map(Number);
-    S.draw(hc, v.kind === 'hall' ? 'hall_a' : caveSprite(k, fl), VW + c * CELL, ftop(fl));
-  }
-  for (const s of g.wells) S.draw(hc, 'well', VW + s.c * CELL, ftop(s.f));
-  for (const rm of g.rooms) hc.drawImage(S.roomImage(rm.b), VW + rm.x, rm.y);
-  hc.globalCompositeOperation = 'destination-out';
-  for (const [k, v] of g.cells) {
-    if (v.kind !== 'hall' && v.kind !== 'cave') continue;
-    const [c, fl] = k.split(',').map(Number);
-    if (!walkable(g, c - 1, fl)) S.draw(hc, 'cap_l_0', VW + c * CELL, ftop(fl));
-    if (!walkable(g, c + 1, fl)) S.draw(hc, 'cap_r_0', VW + c * CELL + CELL - 8, ftop(fl));
-  }
-  for (const s of [...g.wells, ...g.shafts]) {
-    if (!walkable(g, s.c - 1, s.f) && !(s.shaft && s.f === ENTRY)) S.draw(hc, 'cap_l_0', VW + s.c * CELL, ftop(s.f));
-    if (!walkable(g, s.c + 2, s.f)) S.draw(hc, 'cap_r_0', VW + s.c * CELL + 2 * CELL - 8, ftop(s.f));
-  }
-  const solid = S.mk(w, h), sc = solid.getContext('2d');
-  sc.drawImage(shape, 0, 0); sc.globalCompositeOperation = 'destination-out'; sc.drawImage(hole, 0, 0);
-
-  // shadow: the rock shifted down-right in steps, kept only inside the openings
-  const shadow = S.mk(w, h), shc = shadow.getContext('2d');
-  [[1, 1, 0.5], [1, 2, 0.4], [2, 3, 0.3], [2, 4, 0.25], [3, 6, 0.2], [4, 8, 0.14]].forEach(([dx, dy, a]) => { shc.globalAlpha = a; shc.drawImage(solid, dx, dy); });
-  shc.globalAlpha = 1;
-  shc.globalCompositeOperation = 'destination-in'; shc.drawImage(hole, 0, 0);
-  shc.globalCompositeOperation = 'source-in'; shc.fillStyle = '#150c1e'; shc.fillRect(0, 0, w, h);
-
-  // lips: the rock just below and right of an opening is lit, just above and left is in shade
-  const lips = S.mk(w, h), lc = lips.getContext('2d');
-  const edge = (dx, dy, color) => {
-    const e = S.mk(w, h), ec = e.getContext('2d');
-    ec.drawImage(hole, dx, dy); ec.globalCompositeOperation = 'destination-in'; ec.drawImage(solid, 0, 0);
-    ec.globalCompositeOperation = 'source-in'; ec.fillStyle = color; ec.fillRect(0, 0, w, h);
-    lc.drawImage(e, 0, 0);
-  };
-  edge(0, 1, 'rgba(232,190,140,0.55)'); edge(1, 0, 'rgba(232,190,140,0.3)');
-  edge(0, -1, 'rgba(18,10,24,0.6)'); edge(-1, 0, 'rgba(18,10,24,0.45)');
-  edge(0, -2, 'rgba(18,10,24,0.25)'); edge(-2, 0, 'rgba(18,10,24,0.2)');
-  depth = { key, rock, shadow, lips };
-  return depth;
+/** A dug-out cell nobody built anything in yet: rough rock, and over time moss, mushrooms, roots, a wild cave. */
+function drawCave(ctx, k, c, fl, since) {
+  const x = c * CELL, y = ftop(fl), dark = band(fl);
+  Art.tile(ctx, 'wall_rock', x, y, CELL); Art.tile(ctx, 'floor_earth', x, y + WALK, CELL);
+  ctx.fillStyle = `rgba(16,10,20,${0.3 + dark * 0.06})`; ctx.fillRect(x, y, CELL, RH);
+  const st = overgrowth(since), h = S.hash('g' + k);
+  if (st >= 1) Art.draw(ctx, 'moss_' + Math.min(2, st - 1), 0, x + 24, y + 2, { flip: !!(h & 1) });
+  if (st >= 2) { Art.draw(ctx, h & 2 ? 'glowshrooms' : 'roots', 0, x + 24, h & 2 ? y + WALK : y + 1); }
+  if (st >= 3) { Art.draw(ctx, 'stalactites', 0, x + 24, y, { flip: !!(h & 4) }); if (h & 8) Art.draw(ctx, 'cobweb', 0, x, y); }
 }
-
-/** A dug-out cell: rough walls in the stone of its depth. */
-function caveSprite(k, fl) { return 'cave_' + band(fl) + '_' + (S.hash(k) % 2); }
 
 /** How overgrown an empty cave is: 0 fresh, 1 moss, 2 mushrooms and roots, 3 a wild cave. */
 function overgrowth(since) {
@@ -650,51 +751,89 @@ function overgrowth(since) {
 /** A room that stands still because no hallway, stairwell or shaft is beside it. */
 export function roomActive(id) { const i = D().buildings[id]; return !i || i.active !== false; }
 
-function drawUnderground(ctx, t, view, g) {
-  const dl = depthLayers(g);
-  ctx.drawImage(dl.rock, -VW, 0);
-  ctx.drawImage(dl.lips, -VW, 0);
-  // the gate tunnel from the valley to the shaft
-  const hallLvl = levelOf('entrance_hall');
-  if (hallLvl) {
-    S.draw(ctx, 'entrance_hall_' + hallTier(hallLvl), -FACE, ftop(ENTRY));
-    if (hallTier(hallLvl) === 2) for (const x of HALL_BRAZIERS) { S.draw(ctx, 'brazier', -FACE + x - 7, fy(ENTRY) - 21); S.draw(ctx, 'fire_place_' + ((Math.floor(t * 6) + x) % 4), -FACE + x - 10, fy(ENTRY) - 32); }
-  } else for (let x = -FACE, i = 0; x < 0; x += CELL, i++) S.draw(ctx, ['hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_d', 'hall_a'][i % 6], x, ftop(ENTRY));
-  // hallways with rounded ends where they meet rock
+/** The entrance hall's look: 0 timber, 1 with torches, 2 grand (banners, braziers). */
+const hallTier = (lvl) => Math.max(0, Math.min(2, lvl - 1));
+/** The gate's level (1..4); from level 3 on braziers burn beside it. */
+const gateLevel = () => Math.max(1, Math.min(4, levelOf('gate') || 1));
+/** Which hallway template a cell uses: every fourth cell has a torch ('_lit'), the one two further on a banner or the
+ * like ('_deco', where the style has one), the rest are plain. */
+const hallVariant = (k) => { const c = +k.split(',')[0]; return c % 4 === 1 ? '_lit' : c % 4 === 3 ? '_deco' : ''; };
+
+function drawUnderground(ctx, t, g, inRoom) {
+  // the gate tunnel from the valley to the shaft; once built, the entrance hall in its look
+  if (g.hall) { R.drawShell(ctx, g.hall, -FACE, ftop(ENTRY), FACE); R.drawProps(ctx, g.hall, -FACE, ftop(ENTRY), t); }
+  else Art.tile(ctx, 'tunnel', -FACE, ftop(ENTRY), FACE);
+  // hallways and caves
   for (const [k, v] of g.cells) {
     if (v.kind !== 'hall' && v.kind !== 'cave') continue;
     const [c, fl] = k.split(',').map(Number);
-    if (v.kind === 'cave') {
-      S.draw(ctx, caveSprite(k, fl), c * CELL, ftop(fl));
-      const st = overgrowth(v.since);
-      if (st) S.draw(ctx, 'grow_' + st + '_' + (S.hash('g' + k) % 2), c * CELL, ftop(fl));
-    } else S.draw(ctx, ['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8], c * CELL, ftop(fl));
-    if (!walkable(g, c - 1, fl)) S.draw(ctx, 'cap_l_' + band(fl), c * CELL, ftop(fl));
-    if (!walkable(g, c + 1, fl)) S.draw(ctx, 'cap_r_' + band(fl), c * CELL + CELL - 8, ftop(fl));
+    if (!seen(c * CELL, ftop(fl), CELL, RH, 40)) continue;
+    if (v.kind === 'cave') drawCave(ctx, k, c, fl, v.since);
+    else { R.drawShell(ctx, v.tpl, c * CELL, ftop(fl), CELL, c * CELL); R.drawProps(ctx, v.tpl, c * CELL, ftop(fl), t + c * 0.37); }
   }
-  const nowMs = performance.now();
-  for (const s of [...g.wells, ...g.shafts]) {
-    const kind = s.shaft ? 'shaft' : 'well';
-    S.draw(ctx, (wellLit.get(wellKey(s)) || 0) > nowMs ? kind + '_lit' : kind, s.c * CELL, ftop(s.f));
-    if (!walkable(g, s.c - 1, s.f) && !(s.shaft && s.f === ENTRY)) S.draw(ctx, 'cap_l_' + band(s.f), s.c * CELL, ftop(s.f));
-    if (!walkable(g, s.c + 2, s.f)) S.draw(ctx, 'cap_r_' + band(s.f), s.c * CELL + 2 * CELL - 8, ftop(s.f));
+  for (const s of g.shafts) Art.tile(ctx, 'shaft', 0, ftop(s.f), plan.shaft * CELL);
+  for (const s of g.wells) {
+    const x0 = s.c * CELL, y0 = ftop(s.f), door = doorFrame(s);
+    R.drawShell(ctx, s.tpl, x0, y0, 2 * CELL, x0);
+    R.drawProps(ctx, s.tpl, x0, y0, t, { frameOf: (p) => (p.s.startsWith('stairdoor') ? door : null) });
   }
-  for (const r of g.rooms) drawRoom(ctx, t, r);
-  ctx.drawImage(dl.shadow, -VW, 0);
+  for (const r of g.rooms) if (seen(r.x, r.y, r.pw, RH, 40)) drawRoom(ctx, t, r, inRoom.get(r.b.id) || []);
+  drawEdges(ctx, g);
   drawMarks(ctx, t, g);
   drawCritters(ctx, t, g);
-  const gl = gateLevel(), gs = S.sprite('gate_' + gl);
-  if (gs) {
-    S.draw(ctx, 'gate_' + gl, -FACE - (gs.width >> 1), GROUND - gs.height + 1);
-    if (gl >= 3) for (const s of [-1]) { const x = -FACE + s * ((gs.width >> 1) + 9); S.draw(ctx, 'brazier', x - 7, GROUND - 21); S.draw(ctx, 'fire_place_' + ((Math.floor(t * 6) + (s > 0 ? 2 : 0)) % 4), x - 10, GROUND - 32); }
-  } else S.draw(ctx, 'gate', SURFACE.gate + 6, GROUND - 71);
+  Art.draw(ctx, 'gate', 0, SURFACE.gate, GROUND);
+  if (gateLevel() >= 3) Art.draw(ctx, 'brazier', Math.floor(t * 6) % 4, SURFACE.gate - 70, GROUND);
 }
 
-/** The entrance hall's look: 0 timber, 1 cut stone, 2 grand (banners, braziers). */
-const hallTier = (lvl) => Math.max(0, Math.min(2, lvl - 1));
-const HALL_BRAZIERS = [76, 108];       // tunnel pixels of the grand hall's braziers
-/** The gate grows with its level (gate_1..gate_4). */
-const gateLevel = () => Math.max(1, Math.min(4, levelOf('gate') || 1));
+/**
+ * Depth: light comes from the top left, so the rock throws a soft shadow down into every opening and onto its left
+ * wall where rock is beside it, and the rock just right of an opening catches a little light.
+ */
+function drawEdges(ctx, g) {
+  const open = (c, fl) => fl >= 0 && g.cells.has(c + ',' + fl);
+  const each = (fn) => {
+    for (const k of g.cells.keys()) { const [c, fl] = k.split(',').map(Number); if (seen(c * CELL, ftop(fl), CELL, RH, 10)) fn(c, fl); }
+    for (let c = -FACE / CELL; c < 0; c++) fn(c, ENTRY, true);
+  };
+  each((c, fl, tunnel) => {
+    const x = c * CELL, y = ftop(fl);
+    const shade = [0.42, 0.3, 0.2, 0.12, 0.06];
+    for (let i = 0; i < shade.length; i++) { ctx.fillStyle = `rgba(16,10,24,${shade[i]})`; ctx.fillRect(x, y + i * 2, CELL, 2); }
+    const leftRock = !tunnel && !open(c - 1, fl) && !(c === 0 && fl === ENTRY);
+    if (leftRock) for (let i = 0; i < 4; i++) { ctx.fillStyle = `rgba(16,10,24,${0.35 - i * 0.08})`; ctx.fillRect(x + i * 2, y, 2, RH); }
+    const here = g.cells.get(c + ',' + fl), next = g.cells.get((c + 1) + ',' + fl);
+    if (here && next && here.kind === 'room' && next.kind === 'room' && here.id !== next.id) {
+      // two rooms side by side: a wall of cut stone between them
+      ctx.fillStyle = '#2a2026'; ctx.fillRect(x + CELL - 3, y, 6, RH);
+      ctx.fillStyle = '#5a4a48'; ctx.fillRect(x + CELL - 2, y, 1, RH); ctx.fillStyle = 'rgba(16,10,24,0.35)'; ctx.fillRect(x + CELL + 3, y, 4, RH);
+    }
+    const rightRock = tunnel ? false : !open(c + 1, fl);
+    if (rightRock) { ctx.fillStyle = 'rgba(232,190,140,0.3)'; ctx.fillRect(x + CELL, y + 4, 1, RH - 4); ctx.fillStyle = 'rgba(16,10,24,0.35)'; ctx.fillRect(x + CELL - 2, y, 2, RH); }
+  });
+}
+
+/** A room: wall, floor and back furniture, the dwarves in it, then the furniture in front of them; fire and smoke. */
+function drawRoom(ctx, t, r, dwarves) {
+  const b = r.b;
+  for (const p of r.parts) { R.drawShell(ctx, p.tpl, p.x, r.y, p.w, p.x); R.drawProps(ctx, p.tpl, p.x, r.y, t, { layer: 'back' }); }
+  for (const dw of dwarves) dw();
+  for (const p of r.parts) R.drawProps(ctx, p.tpl, p.x, r.y, t, { layer: 'front' });
+  // smoke, steam, sparks
+  const f = F(), info = D().buildings[b.id] || {};
+  const continuous = byId.buildings[b.type].kind === 'continuous';
+  const workers = info.seats || info.workers || (info.worker ? [info.worker] : []);
+  const rnd = Math.random;
+  for (const p of r.parts) {
+    const i = p.i, job = jobOf(b, i);
+    const working = !f.siege && (job && !job.quenching || (continuous && workers[i] != null));
+    for (const s of spotsOf(r, 'chimney', i)) if ((working || b.type === 'tavern') && rnd() < 0.25) particles.push({ x: s.x - 6 + rnd() * 12, y: s.y, vx: (rnd() - 0.5) * 6, vy: -12, life: 1.8, c: '#9a92a8', s: 2 });
+    if (working) for (const s of spotsOf(r, 'anvil', i)) if (rnd() < 0.3) for (let k = 0; k < 3; k++) particles.push({ x: s.x, y: s.y, vx: (rnd() - 0.5) * 60, vy: -20 - rnd() * 28, life: 0.45, c: rnd() < 0.5 ? '#ffd98e' : '#fff6d6', g: 60 });
+    if (job && job.quenching) for (const s of spotsOf(r, 'quench', i)) if (rnd() < 0.7) particles.push({ x: s.x - 6 + rnd() * 12, y: s.y, vx: (rnd() - 0.5) * 6, vy: -14, life: 1.2, c: '#e8eef4', s: 2 });
+    if (working) for (const s of spotsOf(r, 'steam', i)) if (rnd() < 0.4) particles.push({ x: s.x - 6 + rnd() * 12, y: s.y, vx: (rnd() - 0.5) * 4, vy: -10, life: 1.4, c: '#e8eef4', s: 2 });
+    if (working) for (const s of spotsOf(r, 'wheel', i)) if (rnd() < 0.5) particles.push({ x: s.x + (s.spot.flip ? -16 : 16), y: s.y + 6, vx: 20 + rnd() * 28, vy: -12, life: 0.4, c: '#fff6d6', g: 60 });
+    if (working && (b.type === 'jeweler' || b.type === 'farm')) for (const s of spotsOf(r, 'work', i)) if (rnd() < 0.06) particles.push({ x: s.x - 8 + rnd() * 16, y: s.y - rnd() * 10, vx: 0, vy: b.type === 'farm' ? -6 : 0, life: 0.6, c: b.type === 'farm' ? '#c6e3b8' : '#ffffff' });
+  }
+}
 
 /** Rock marked for digging: a chalk outline, cracks that spread as the miner works, and how far along it is. */
 function drawMarks(ctx, t, g) {
@@ -703,18 +842,19 @@ function drawMarks(ctx, t, g) {
   for (const [k, work] of g.marks) {
     const [c, fl] = k.split(',').map(Number);
     const x = c * CELL, y = ftop(fl), p = Math.min(1, work / (secs[fl] || 300));
+    if (!seen(x, y, CELL, RH, 20)) continue;
     // a dashed chalk outline around the marked stretch (no lines between marked neighbours), marching slowly
     ctx.fillStyle = 'rgba(251,244,230,0.75)';
-    const off = Math.floor(t * 6) % 6;
-    const dash = (x0, y0, len, horiz) => { for (let i = -off; i < len; i += 6) { const a = Math.max(0, i), b = Math.min(len, i + 3); if (b > a) horiz ? ctx.fillRect(x0 + a, y0, b - a, 1) : ctx.fillRect(x0, y0 + a, 1, b - a); } };
-    dash(x, y + 4, CELL, true); dash(x, y + RH - 5, CELL, true);
-    if (!g.marks.has((c - 1) + ',' + fl)) dash(x + 1, y + 4, RH - 8, false);
-    if (!g.marks.has((c + 1) + ',' + fl)) dash(x + CELL - 2, y + 4, RH - 8, false);
+    const off = Math.floor(t * 8) % 10;
+    const dash = (x0, y0, len, horiz) => { for (let i = -off; i < len; i += 10) { const a = Math.max(0, i), b = Math.min(len, i + 5); if (b > a) horiz ? ctx.fillRect(x0 + a, y0, b - a, 2) : ctx.fillRect(x0, y0 + a, 2, b - a); } };
+    dash(x, y + 6, CELL, true); dash(x, y + RH - 8, CELL, true);
+    if (!g.marks.has((c - 1) + ',' + fl)) dash(x + 2, y + 6, RH - 12, false);
+    if (!g.marks.has((c + 1) + ',' + fl)) dash(x + CELL - 4, y + 6, RH - 12, false);
     if (p > 0) {
-      S.draw(ctx, 'dig_crack_' + Math.min(2, Math.floor(p * 3)), x, y);
-      ctx.fillStyle = 'rgba(20,14,30,0.7)'; ctx.fillRect(x + 3, y + 10, CELL - 6, 3);
-      ctx.fillStyle = '#e3c06e'; ctx.fillRect(x + 4, y + 11, Math.round((CELL - 8) * p), 1);
-    } else text(ctx, String(order.indexOf(k) + 1), x + CELL / 2 - 2, y + 44, 'rgba(251,244,230,0.8)');
+      Art.draw(ctx, 'cracks_' + (1 + Math.min(2, Math.floor(p * 3))), 0, x + 24, y + 116);
+      ctx.fillStyle = 'rgba(20,14,30,0.7)'; ctx.fillRect(x + 5, y + 18, CELL - 10, 5);
+      ctx.fillStyle = '#e3c06e'; ctx.fillRect(x + 6, y + 19, Math.round((CELL - 12) * p), 3);
+    } else say(ctx, String(order.indexOf(k) + 1), x + CELL / 2, y + 66, 'rgba(251,244,230,0.8)', 'center');
   }
 }
 
@@ -723,73 +863,32 @@ const critterHits = [];
 function drawCritters(ctx, t, g) {
   critterHits.length = 0;
   for (const cr of g.critters) {
+    if (!Art.frames(cr.th.monster)) continue;
     // the stretch of cave it lives in
     let a = cr.c, b = cr.c;
     while (g.cells.get((a - 1) + ',' + cr.f)?.kind === 'cave') a--;
     while (g.cells.get((b + 1) + ',' + cr.f)?.kind === 'cave') b++;
-    const span = (b - a + 1) * CELL - 24, ph = t * 0.35 + cr.th.id;
+    const span = Math.max(0, (b - a + 1) * CELL - 48), ph = t * 0.35 + cr.th.id;
     const k = (Math.sin(ph) + 1) / 2, face = Math.cos(ph) > 0 ? 1 : -1;
-    const spr = S.monster(cr.th.monster, Math.floor(t * 5));
-    if (!spr) continue;
-    const sx = Math.round(a * CELL + 12 + k * span - spr.width / 2), sy = fy(cr.f) - spr.height + 1;
-    S.draw(ctx, `mon_${cr.th.monster}_${Math.floor(t * 5) % 2}`, sx, sy, face < 0);
-    critterHits.push({ x: sx, y: sy, w: spr.width, h: spr.height });
+    const fr = Art.draw(ctx, cr.th.monster, Math.floor(t * 6), a * CELL + 24 + k * span, fy(cr.f), { flip: face < 0 });
+    critterHits.push({ x: Math.round(a * CELL + 24 + k * span - fr.ax), y: Math.round(fy(cr.f) - fr.ay), w: fr.canvas.width, h: fr.canvas.height });
   }
 }
 
-/** A room and everything that moves in it (fire, wheels, smoke). Also used by the workshop screen. */
-export function drawRoom(ctx, t, r) {
-  const b = r.b;
-  ctx.drawImage(S.roomImage(b), r.x, r.y);
-  const f = F(), info = D().buildings[b.id] || {};
-  const continuous = byId.buildings[b.type].kind === 'continuous';
-  const workers = info.seats || info.workers || (info.worker ? [info.worker] : []);
-  const fr = Math.floor(t * 8) % 4;
-  const n = S.META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
-  for (let i = 0; i < n; i++) {
-    const m = S.machineAt(b, i), a = m.a || {}, x = r.x + m.x, job = jobOf(b, i);
-    const working = !f.siege && (job && !job.quenching || (continuous && workers[i] != null));
-    if (b.type === 'smelter' && (working || (G.heat && G.heat(b.id) > 2 && (i === 0 || job)))) S.draw(ctx, 'fire_furnace_' + ((fr + i) % 4), x + a.fire[0], r.y + a.fire[1]);
-    if (b.type === 'forge' && (working || (job && job.quenching))) S.draw(ctx, 'fire_hearth_' + ((fr + i) % 4), x + a.fire[0], r.y + a.fire[1] - 2);
-    if (b.type === 'grindstone' && working) S.draw(ctx, 'wheel_spin_' + fr, x + a.wheel[0] - 15, r.y + a.wheel[1] - 15);
-    // smoke, steam, sparks
-    if (a.chimney && working && Math.random() < 0.25) particles.push({ x: x + a.chimney[0] - 3 + Math.random() * 6, y: r.y + 22, vx: (Math.random() - 0.5) * 3, vy: -6, life: 1.6, c: '#9a92a8' });
-    if (b.type === 'forge' && working && Math.random() < 0.3) for (let k = 0; k < 3; k++) particles.push({ x: x + a.anvil[0], y: r.y + a.anvil[1] - 5, vx: (Math.random() - 0.5) * 30, vy: -10 - Math.random() * 14, life: 0.45, c: Math.random() < 0.5 ? '#ffd98e' : '#fff6d6', g: 30 });
-    const q = a.quench || a.anvil;
-    if (job && job.quenching && q && Math.random() < 0.7) particles.push({ x: x + q[0] - 3 + Math.random() * 6, y: r.y + 72, vx: (Math.random() - 0.5) * 3, vy: -7, life: 1.2, c: '#e8eef4' });
-    if (b.type === 'brewery' && working && Math.random() < 0.4) particles.push({ x: x + a.steam[0] + Math.random() * 6, y: r.y + a.steam[1], vx: (Math.random() - 0.5) * 2, vy: -5, life: 1.4, c: '#e8eef4' });
-    if (b.type === 'grindstone' && working && Math.random() < 0.5) particles.push({ x: x + a.wheel[0] + 13, y: r.y + a.wheel[1] - 2, vx: 10 + Math.random() * 14, vy: -6, life: 0.4, c: '#fff6d6', g: 30 });
-  }
-  const a = S.META.ROOMS[b.type] || {};
-  if (b.type === 'tavern') S.draw(ctx, 'fire_place_' + (Math.floor(t * 6) % 4), r.x + a.fire[0], r.y + a.fire[1] + 4);
-  if (b.type === 'farm' && Math.random() < 0.05) particles.push({ x: r.x + 10 + Math.random() * (r.pw - 20), y: r.y + 80, vx: 0, vy: -3, life: 2, c: '#c6e3b8' });
-  if (b.type === 'jeweler' && Math.random() < 0.06) particles.push({ x: r.x + 76 + Math.random() * 32, y: r.y + 32 + Math.random() * 50, vx: 0, vy: 0, life: 0.5, c: '#ffffff' });
-}
-
-/** Lights of a room: every machine's own, plus the extra lamps of its tier. */
+/** Lights of a room: its template's light spots; fires burn low while their machine stands still. */
 export function roomLights(r) {
   const b = r.b, out = [];
   const info = D().buildings[b.id] || {};
   const continuous = byId.buildings[b.type].kind === 'continuous';
   const workers = info.seats || info.workers || (info.worker ? [info.worker] : []);
   const heat = b.type === 'smelter' && G.heat ? G.heat(b.id) / 100 : 0;
-  const n = S.META.BAYS[b.type] ? Math.max(1, b.machines || 1) : 1;
-  for (let i = 0; i < n; i++) {
-    const m = S.machineAt(b, i), a = m.a || {};
-    const working = jobOf(b, i) || (continuous && workers[i] != null);
-    for (const [x, y, rr, col] of a.lights || []) {
-      const isFire = a.fire && Math.abs(x - a.fire[0] - a.fire[2] / 2) < 14 && Math.abs(y - a.fire[1]) < 14;
-      if (isFire && !working && b.type !== 'tavern') { out.push({ x: r.x + m.x + x, y: r.y + y, r: rr * 0.45, color: col, power: 0.4 }); continue; }
-      out.push({ x: r.x + m.x + x, y: r.y + y, r: rr * (1 + (isFire ? heat : 0) * 0.35), color: col, flicker: isFire ? 3 : 1, power: isFire ? 1.3 + heat : 0.8 });
-    }
-  }
-  const tier = (S.META.TIER_LIGHTS || {})[b.type] || {};
-  const T = S.roomTier(b);
-  for (const [x, y, rr, col] of tier[T] || (T === 3 ? tier[2] : null) || []) out.push({ x: r.x + x, y: r.y + y, r: rr, color: col, flicker: 1, power: 0.7 });
-  if (T === 3) {   // the crystal lamps of the king's hall (positions as in rooms.px.js, royalTouches and bay)
-    const v = S.roomVariant(b), base = (S.META.ROOMS[b.type].w - 1) * CELL;
-    for (let x = 30 + (v ? 12 : 0); x < base - 10; x += 72) out.push({ x: r.x + x, y: r.y + 30, r: 30, color: '#aacde4', power: 0.8 });
-    for (let i = 1; i < n; i++) { const m = S.machineAt(b, i), bw = S.META.BAYS[b.type].w * CELL; out.push({ x: r.x + m.x + Math.floor(bw / 2) + (S.roomVariant(b, i) ? 8 : -8), y: r.y + 30, r: 26, color: '#aacde4', power: 0.7 }); }
+  for (const s of r.spots) {
+    if (s.kind !== 'light') continue;
+    const fire = spotsOf(r, 'fire', s.machine).some((q) => Math.abs(q.x - s.x) < 40 && Math.abs(q.y - s.y) < 40);
+    const working = jobOf(b, s.machine) || (continuous && workers[s.machine] != null) || b.type === 'tavern';
+    const rr = s.spot.r || 90, col = s.spot.c || '#ffd98e', pw = s.spot.p ?? 0.8;
+    if (fire && !working) { out.push({ x: s.x, y: s.y, r: rr * 0.45, color: col, power: 0.4 }); continue; }
+    out.push({ x: s.x, y: s.y, r: rr * (1 + (fire ? heat : 0) * 0.35), color: col, flicker: fire ? 3 : 1, power: (fire ? 1.3 + heat : 0.6) * (0.5 + pw / 2) });
   }
   return out;
 }
@@ -799,53 +898,67 @@ function drawParticles(ctx, dt) {
     const p = particles[i];
     p.life -= dt;
     if (p.life <= 0) { particles.splice(i, 1); continue; }
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g || 3) * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g || 6) * dt;
     ctx.globalAlpha = Math.min(1, p.life * 1.4);
     ctx.fillStyle = p.c;
-    ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), p.s || 1, p.s || 1);
   }
   ctx.globalAlpha = 1;
-  if (particles.length > 400) particles.splice(0, particles.length - 400);
+  if (particles.length > 500) particles.splice(0, particles.length - 500);
 }
 
 // ------------------------------------------------------------------ the screen object
 
 let prevT = 0, G_ = null;
-const drawn = [];   // dwarf sprites drawn this frame, for hit tests
+const drawn = [];   // dwarves drawn this frame, for hit tests: {id, sx, sy, spr, a}
+
+/** Which room a point on a floor lies in. */
+function roomOf(g, f, x) { return g.rooms.find((r) => r.f === f && x >= r.x && x < r.x + r.pw); }
 
 export const holdScreen = {
   camera: true,
   size: () => ({ w: W(), h: H() }),
-  bounds: () => ({ x0: -VW, y0: -40, x1: W(), y1: H() + 10 }),
+  bounds: () => ({ x0: -VW, y0: -80, x1: W(), y1: H() + 20 }),
   home(r) {
     // start at the gate: the valley on the left, the mountain with the first floors on the right
-    const zoom = 2, vw = r.width / zoom, vh = r.height / zoom;
-    if (vw < 360) return { zoom, x: -16, y: ftop(0) - 40 };   // narrow screens: the rooms first, the valley is a drag away
-    return { zoom, x: Math.max(-VW, -FACE - Math.min(160, vw * 0.3)), y: Math.max(ftop(0) - 40, GROUND + 30 - vh) };
+    const zoom = 1, vw = r.width / zoom, vh = r.height / zoom;
+    if (vw < 720) return { zoom, x: -32, y: ftop(0) - 80 };   // narrow screens: the rooms first, the valley is a drag away
+    return { zoom, x: Math.max(-VW, -FACE - Math.min(320, vw * 0.3)), y: Math.max(ftop(0) - 80, GROUND + 60 - vh) };
   },
-  draw(ctx, t, view) {
+  draw(ctx, t, v) {
+    view = v;
     G_ = grid();
     const dt = Math.min(0.2, t - prevT); prevT = t;
     updateAgents(G_, dt);
-    drawSky(ctx, t, view);
-    drawSurface(ctx, t);
-    drawUnderground(ctx, t, view, G_);
-    drawStrangers(ctx, t, 'road');
     drawn.length = 0;
-    const f = F();
-    const nowMs = performance.now();
+    // every dwarf: drawn inside its room between the back and front furniture, the others after the rock
+    const f = F(), nowMs = performance.now();
+    const inRoom = new Map(), outside = [];
     const list = [...agents.values()].filter((a) => !a.hidden && !(a.mode === 'well' && nowMs - a.wellAt > FADE)).sort((a, b) => a.y - b.y);
     for (const a of list) {
       const d = f.dwarves.find((x) => x.id === a.id);
-      if (!d) continue;
-      const spr = agentSprite(d, a);
-      // stepping into the dark of an arch, or out of it
-      const k = a.mode === 'well' ? 1 - (nowMs - a.wellAt) / FADE : a.emerge && nowMs - a.emerge < FADE ? (nowMs - a.emerge) / FADE : 1;
-      ctx.globalAlpha = Math.max(0, Math.min(1, k));
-      const p = S.placeDwarf(ctx, spr, a.x, a.y, a.face < 0);
-      ctx.globalAlpha = 1;
-      if (a.mode !== 'well') drawn.push({ id: a.id, sx: p.sx, sy: p.sy, spr: a.face < 0 ? flipped(spr) : spr, a });
+      if (!d || !seen(a.x - 40, a.y - 70, 80, 80)) continue;
+      const paint = () => {
+        const fr = agentFrame(d, a);
+        // stepping into the dark of an arch, or out of it
+        const k = a.mode === 'well' ? 1 - (nowMs - a.wellAt) / FADE : a.emerge && nowMs - a.emerge < FADE ? (nowMs - a.emerge) / FADE : 1;
+        ctx.globalAlpha = Math.max(0, Math.min(1, k));
+        const sleeping = a.want && a.want.sleep && !a.mode;
+        if (!sleeping) S.groundShadow(ctx, a.x, a.y, 10);
+        const sx = Math.round(a.x - fr.ax), sy = Math.round(a.y - fr.ay);
+        ctx.drawImage(fr.canvas, sx, sy);
+        ctx.globalAlpha = 1;
+        if (a.mode !== 'well') drawn.push({ id: a.id, sx, sy, spr: fr.canvas, a });
+      };
+      const r = a.f >= 0 && roomOf(G_, a.f, a.x);
+      if (r) { if (!inRoom.has(r.b.id)) inRoom.set(r.b.id, []); inRoom.get(r.b.id).push(paint); } else outside.push(paint);
     }
+    drawSky(ctx, t);
+    drawRock(ctx);
+    drawSurface(ctx, t);
+    drawUnderground(ctx, t, G_, inRoom);
+    drawStrangers(ctx, t, 'road');
+    for (const p of outside) p();
     drawParticles(ctx, dt);
   },
   ambient(t) {
@@ -853,18 +966,17 @@ export const holdScreen = {
     // the sky goes dark at night; inside the mountain it is always dim. The mountain's outline is stepped.
     const sky = { color: '#0e1236', a: 0.62 * (1 - day) }, rock = { color: '#140f20', a: 0.38 + 0.14 * (1 - day) };
     const out = [
-      { ...sky, x0: -VW - 50, x1: -FACE, y0: -400, y1: GROUND + 1 },
-      { ...rock, x0: -VW - 50, x1: -FACE, y0: GROUND + 1, y1: H() + 50 },
+      { ...sky, x0: -VW - 50, x1: -FACE, y0: -600, y1: GROUND + 1 },
+      { ...rock, x0: -VW - 50, x1: -FACE, y0: GROUND + 1, y1: H() + 80 },
     ];
-    for (let x = -FACE; x < W(); x += 24) {
-      const top = Math.min(mtop(x), mtop(x + 12), mtop(x + 23));
-      const tunnel = x < 0 ? ftop(ENTRY) + 8 : null;
-      out.push({ ...sky, x0: x, x1: x + 24, y0: -400, y1: tunnel !== null ? Math.max(top, tunnel) : top });
-      out.push({ ...rock, x0: x, x1: x + 24, y0: tunnel !== null ? tunnel : top, y1: H() + 50 });
+    for (let x = -FACE; x < W(); x += 6) {
+      const top = Math.max(mtop(x), mtop(x + 3), mtop(x + 5));
+      out.push({ ...sky, x0: x, x1: x + 6, y0: -600, y1: top });
+      out.push({ ...rock, x0: x, x1: x + 6, y0: top, y1: H() + 80 });
     }
     return out;
   },
-  lights(t) {
+  lights() {
     if (!G_) return [];
     const out = [];
     const f = F();
@@ -872,24 +984,23 @@ export const holdScreen = {
     for (const [k, v] of G_.cells) {
       if (v.kind !== 'hall') continue;
       const [c, fl] = k.split(',').map(Number);
-      if (['hall_a', 'hall_e', 'hall_a', 'hall_b', 'hall_a', 'hall_c', 'hall_e', 'hall_d'][S.hash(k) % 8] === 'hall_b') out.push({ x: c * CELL + CELL / 2, y: ftop(fl) + 19, r: 32, color: '#ffd98e', flicker: 1 });
+      out.push(...tplLights(v.tpl, c * CELL, ftop(fl)));
     }
+    for (const w of G_.wells) out.push(...tplLights(w.tpl, w.c * CELL, ftop(w.f)));
+    for (const w of G_.shafts) out.push({ x: w.x, y: ftop(w.f) + 50, r: 70, color: '#ffd98e', flicker: 1, power: 0.5 });
     for (const w of [...G_.wells, ...G_.shafts]) {
-      out.push({ x: w.c * CELL + 44, y: ftop(w.f) + 34, r: 30, color: '#ffd98e', flicker: 1 });
-      if ((wellLit.get(wellKey(w)) || 0) > performance.now()) out.push({ x: w.c * CELL + 29, y: ftop(w.f) + 68, r: 22, color: '#ffb070', power: 0.8 });
+      if ((wellLit.get(wellKey(w)) || 0) > performance.now()) out.push({ x: w.x, y: ftop(w.f) + 100, r: 50, color: '#ffb070', power: 0.8 });
     }
-    const hl = levelOf('entrance_hall');
-    if (hl) for (const x of hallTier(hl) === 2 ? HALL_BRAZIERS : [75, 107]) out.push({ x: -FACE + x, y: hallTier(hl) === 2 ? fy(ENTRY) - 26 : ftop(ENTRY) + 51, r: 34, color: '#ffb070', flicker: 2 });
-    const gs = S.sprite('gate_' + gateLevel());
-    if (gs && gateLevel() >= 3) for (const sd of [-1]) out.push({ x: -FACE + sd * ((gs.width >> 1) + 9), y: GROUND - 26, r: 40, color: '#ffb070', flicker: 2 });
+    if (G_.hall) out.push(...tplLights(G_.hall, -FACE, ftop(ENTRY)));
+    if (gateLevel() >= 3) out.push({ x: SURFACE.gate - 70, y: GROUND - 30, r: 90, color: '#ffb070', flicker: 2 });
     const day = daylight(sun().elev);
     if (day < 0.8) {
-      for (const lx of [23, 107]) out.push({ x: SURFACE.stall + lx, y: stallTop() + 25, r: 40, color: '#ffd98e', flicker: 1, power: 0.8 });
-      if (f.siege) out.push({ x: SURFACE.wall - 22, y: GRASS - 8, r: 56, color: '#ff8a4a', flicker: 3, power: 1.4 });
-      out.push({ x: SURFACE.gate + 30, y: GROUND - 40, r: 30, color: '#ffd98e', flicker: 1, power: 0.8 });
+      out.push({ x: SURFACE.stall, y: GRASS - 40, r: 80, color: '#ffd98e', flicker: 1, power: 0.8 });
+      if (f.siege) out.push({ x: SURFACE.wall - 70, y: GRASS - 24, r: 110, color: '#ff8a4a', flicker: 3, power: 1.4 });
+      out.push({ x: SURFACE.gate, y: GROUND - 80, r: 60, color: '#ffd98e', flicker: 1, power: 0.8 });
     }
     // little lamps on miner helmets
-    for (const dw of drawn) { const d = f.dwarves.find((x) => x.id === dw.id); if (d && S.look(d).hat === 2) out.push({ x: dw.sx + (dw.a.face > 0 ? 14 : 4), y: dw.sy + 5, r: 10, color: '#fff0c0' }); }
+    for (const dw of drawn) { const d = f.dwarves.find((x) => x.id === dw.id); if (d && d.job === 'miner' && d.helm) out.push({ x: dw.a.x + (dw.a.face > 0 ? 4 : -4), y: dw.sy + 14, r: 22, color: '#fff0c0' }); }
     return out;
   },
   hit(x, y) {
@@ -901,44 +1012,51 @@ export const holdScreen = {
     if (!G_) return null;
     for (const c of critterHits) if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return { kind: 'tab', id: 'war', rect: [c.x, c.y, c.w, c.h], round: true };
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return machineHit(r, x, y) || { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
-    for (const type of ['entrance_hall', 'gate']) {
+    for (const type of ['gate', 'entrance_hall']) {
       const b = F().buildings.find((q) => q.type === type), r = b && fixedRect(type);
       if (r && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return { kind: 'room', id: b.id, rect: [r.x, r.y, r.w, r.h], round: true };
     }
-    if (x < -FACE && y < GRASS + 2 && y > GRASS - 100) {
-      const X = SURFACE;
-      const st = stallTop() - 6;
-      if (x >= X.stall - 4 && x < X.stall + STALL_W + 4 && y > st) return { kind: 'tab', id: 'trade', rect: [X.stall - 4, st, STALL_W + 8, GRASS - st + 1], round: true };
-    }
-    if (x < plan.shaft * CELL && y >= SURF) return { kind: 'tab', id: 'mines', rect: [0, SURF, plan.shaft * CELL, H() - SURF] };
+    const st = stallRect();
+    if (x >= st.x && x < st.x + st.w && y >= st.y && y < st.y + st.h) return { kind: 'tab', id: 'trade', rect: [st.x, st.y, st.w, st.h], round: true };
+    if (x >= 0 && x < plan.shaft * CELL && y >= SURF) return { kind: 'tab', id: 'mines', rect: [0, SURF, plan.shaft * CELL, H() - SURF] };
     return null;
   },
   overlay(ctx, t, hover, mouse) {
     if (!G_) return;
-    const f = F(), d = D();
+    const f = F();
     const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
     roomPlate(hover);
+    if (G_.hall) R.drawProps(ctx, G_.hall, -FACE, ftop(ENTRY), t, { glow: true });
+    for (const [k, v] of G_.cells) {
+      if (v.kind !== 'hall') continue;
+      const [c, fl] = k.split(',').map(Number);
+      if (seen(c * CELL, ftop(fl), CELL, RH, 40)) R.drawProps(ctx, v.tpl, c * CELL, ftop(fl), t + c * 0.37, { glow: true });
+    }
+    for (const w of G_.wells) R.drawProps(ctx, w.tpl, w.c * CELL, ftop(w.f), t, { glow: true, frameOf: (p) => (p.s.startsWith('stairdoor') ? doorFrame(w) : null) });
     for (const r of G_.rooms) {
-      if (!roomActive(r.b.id)) { ctx.fillStyle = 'rgba(20,14,30,0.35)'; ctx.fillRect(r.x, r.y + 12, r.pw, RH - 12); }
+      if (!seen(r.x, r.y, r.pw, RH, 40)) continue;
+      // what glows in the dark (fire, embers, mushrooms) is not dimmed by the lighting
+      for (const p of r.parts) R.drawProps(ctx, p.tpl, p.x, r.y, t, { glow: true });
+      if (!roomActive(r.b.id)) { ctx.fillStyle = 'rgba(20,14,30,0.35)'; ctx.fillRect(r.x, r.y + 16, r.pw, RH - 16); }
       const st = roomStatus(r.b, idle);
-      if (st === 'run') S.draw(ctx, 'arrow_' + (Math.floor(t * 3) % 2), r.x + r.pw / 2 - 5, r.y + 18);
-      else if (st) statusIcon(ctx, t, st, r.x + r.pw / 2, r.y + 17);
+      if (st === 'run') ui(ctx, 'arrow_' + (Math.floor(t * 3) % 2), r.x + r.pw / 2 - 10, r.y + 22);
+      else if (st) statusIcon(ctx, t, st, r.x + r.pw / 2, r.y + 20);
       if (!roomActive(r.b.id)) continue;
       machineOverlay(ctx, t, r);
       if (f.siege && byId.buildings[r.b.type].kind !== 'passive') { ctx.fillStyle = 'rgba(169,71,60,0.25)'; ctx.fillRect(r.x, r.y, r.pw, RH); }
     }
     for (const type of ['entrance_hall', 'gate']) {
       const b = f.buildings.find((q) => q.type === type), st = b && roomStatus(b, idle), rr = b && fixedRect(type);
-      if (st && st !== 'run' && rr) statusIcon(ctx, t, st, rr.x + rr.w / 2, rr.y + 17);
+      if (st && st !== 'run' && rr) statusIcon(ctx, t, st, rr.x + rr.w / 2, rr.y + 20);
     }
-    // idle dwarves: grey dots over the head
+    // idle dwarves: grey dots over the head; sleepers: zzz
     for (const dw of drawn) {
       const x = f.dwarves.find((q) => q.id === dw.id);
-      if (x && x.job === 'idle' && !(dw.a.want && dw.a.want.sleep)) S.draw(ctx, 'ui_idle', dw.sx + (dw.spr.width >> 1) - 8, dw.sy - 12 + Math.round(Math.sin(t * 2 + dw.id)));
+      if (x && x.job === 'idle' && !(dw.a.want && dw.a.want.sleep)) ui(ctx, 'ui_idle', dw.a.x - 16, dw.sy + 2 + Math.round(Math.sin(t * 2 + dw.id) * 2));
     }
     for (const dw of drawn) if (dw.a.want && dw.a.want.sleep && !dw.a.mode) {
       const k = (t * 0.7 + dw.id * 0.3) % 1;
-      ctx.globalAlpha = 1 - k; S.draw(ctx, 'zzz', dw.sx + 12 + k * 4, dw.sy - k * 10); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 1 - k; ui(ctx, 'zzz', dw.sx + 20 + k * 8, dw.sy - 10 - k * 20); ctx.globalAlpha = 1;
     }
     if (G.build) buildOverlay(ctx, t, mouse);
   },
@@ -948,19 +1066,25 @@ export const holdScreen = {
   cancel() { if (G.build) { G.build.held = null; if (G.onBuildChange) G.onBuildChange(); } },
 };
 
+/** The market stall in world pixels (clicking it opens the Trade tab). */
+function stallRect() { return { x: SURFACE.stall - STALL_W / 2 - 4, y: GRASS - 70, w: STALL_W + 8, h: 72 }; }
+
 /** The bellows of a smelter and the quench barrel of a forge waiting for it: things you use by clicking. */
 function machineHit(r, x, y) {
   const b = r.b;
   if (F().siege) return null;
-  if (b.type === 'smelter') for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
-    const m = S.machineAt(b, i), [fx, , fw] = m.a.fire, x0 = r.x + m.x + fx - 13, ww = fw + (i ? 26 : 43);
-    if (x >= x0 && x < x0 + ww && y >= r.y + 24 && y < r.y + 90) return { kind: 'bellows', id: b.id, rect: [x0, r.y + 24, ww, 66], round: true };
+  const inside = (rx, ry, rw, rh) => x >= rx && x < rx + rw && y >= ry && y < ry + rh;
+  if (b.type === 'smelter') {
+    // the bellows, and the fire of every furnace (machine bays have no bellows of their own)
+    const boxes = [...spotsOf(r, 'bellows').map((s) => [s.x - 22, s.y - 30, 44, 50]),
+      ...spotsOf(r, 'fire').map((s) => [s.x - (s.spot.w || 30) / 2 - 8, s.y - 40, (s.spot.w || 30) + 16, 70])];
+    for (const bx of boxes) if (inside(...bx)) return { kind: 'bellows', id: b.id, rect: bx.map(Math.round), round: true };
   }
   if (b.type === 'forge') for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
-    const job = jobOf(b, i), m = S.machineAt(b, i), q = m.a.quench || m.a.anvil;
+    const job = jobOf(b, i), q = spotsOf(r, 'quench', i)[0];
     if (!job || !job.quenching || !q) continue;
-    const qx = r.x + m.x + q[0];
-    if (x >= qx - 10 && x < qx + 10 && y >= r.y + 62 && y < r.y + 92) return { kind: 'quench', id: b.id, machine: i, rect: [qx - 9, r.y + 66, 18, 24], round: true };
+    const bx = [q.x - 20, q.y - 26, 40, 50];
+    if (inside(...bx)) return { kind: 'quench', id: b.id, machine: i, rect: bx.map(Math.round), round: true };
   }
   return null;
 }
@@ -970,16 +1094,16 @@ function machineOverlay(ctx, t, r) {
   const b = r.b;
   if (b.type === 'smelter') {
     const heat = G.heat ? G.heat(b.id) : 0;
-    const tx = r.x + (S.META.ROOMS.smelter.w - 1) * CELL - 16, ty = r.y + 26, hh = 44;
-    ctx.fillStyle = '#1d1b2c'; ctx.fillRect(tx - 1, ty - 1, 6, hh + 6);
-    ctx.fillStyle = '#33364a'; ctx.fillRect(tx, ty, 4, hh);
+    const tx = r.x + r.parts[0].w - 22, ty = r.y + 36, hh = 70;
+    ctx.fillStyle = '#1d1b2c'; ctx.fillRect(tx - 2, ty - 2, 10, hh + 10);
+    ctx.fillStyle = '#33364a'; ctx.fillRect(tx, ty, 6, hh);
     const fill = Math.round((heat / 100) * (hh - 2));
-    for (let i = 0; i < fill; i++) { ctx.fillStyle = S.mix('#a9473c', '#ffd98e', i / hh); ctx.fillRect(tx + 1, ty + hh - 1 - i, 2, 1); }
-    ctx.fillStyle = heat > 5 ? '#d9704a' : '#623e45'; ctx.fillRect(tx - 1, ty + hh, 6, 4);
+    for (let i = 0; i < fill; i++) { ctx.fillStyle = S.mix('#a9473c', '#ffd98e', i / hh); ctx.fillRect(tx + 1, ty + hh - 1 - i, 4, 1); }
+    ctx.fillStyle = heat > 5 ? '#d9704a' : '#623e45'; ctx.fillRect(tx - 2, ty + hh, 10, 6);
   }
   if (b.type === 'forge' && Math.floor(t * 3) % 2) for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
-    const job = jobOf(b, i), m = S.machineAt(b, i), q = m.a.quench || m.a.anvil;
-    if (job && job.quenching && q) sign(ctx, 'QUENCH!', r.x + m.x + q[0], r.y + 54, '#e3c06e');
+    const job = jobOf(b, i), q = spotsOf(r, 'quench', i)[0];
+    if (job && job.quenching && q) big(ctx, q.x, q.y - 50, () => sign(ctx, 'QUENCH!', 0, 0, '#e3c06e'));
   }
 }
 
@@ -991,14 +1115,7 @@ export function roomAt(p) {
     const d = Math.hypot(r.x + r.pw / 2 - p.x, (r.y + RH / 2 - p.y) * 2);
     if (d < bd) { bd = d; best = r; }
   }
-  return best && bd < 160 ? best.b : null;
-}
-
-const flipCache = new WeakMap();
-function flipped(spr) {
-  let f = flipCache.get(spr);
-  if (!f) { f = S.mk(spr.width, spr.height); const c = f.getContext('2d'); c.translate(spr.width, 0); c.scale(-1, 1); c.drawImage(spr, 0, 0); flipCache.set(spr, f); }
-  return f;
+  return best && bd < 320 ? best.b : null;
 }
 
 const alphaCache = new WeakMap();
@@ -1008,6 +1125,7 @@ function opaque(spr, x, y) {
   x = Math.floor(x); y = Math.floor(y);
   return x >= 0 && y >= 0 && x < spr.width && y < spr.height && d[(y * spr.width + x) * 4 + 3] > 0;
 }
+
 
 /**
  * What a room shows over its door:
@@ -1034,7 +1152,7 @@ export function roomStatus(b, idle) {
 
 /** A status sign (ui_stop, ui_warn, ui_idle) centred on x, bobbing a little. */
 function statusIcon(ctx, t, st, x, y) {
-  S.draw(ctx, 'ui_' + st, Math.round(x - 8), y + (st === 'idle' ? 0 : Math.round(Math.sin(t * 3))));
+  ui(ctx, 'ui_' + st, x - 16, y + (st === 'idle' ? 0 : Math.round(Math.sin(t * 3) * 2)));
 }
 
 /** Green arrow: the workshop stands still but could run (materials, worker, or an idle dwarf there). */
@@ -1167,27 +1285,31 @@ function buildOverlay(ctx, t, mouse) {
   const g = ghostFor(mouse);
   if (g && !G.build.stroke) {
     const x = g.c * CELL, y = ftop(g.f), w = g.w * CELL, h = g.h * RH;
-    if (g.room) { ctx.globalAlpha = 0.55; ctx.drawImage(S.roomImage(g.room.b), x, y); ctx.globalAlpha = 1; }
+    if (g.room) {
+      ctx.save(); ctx.globalAlpha = 0.55;
+      for (const p of g.room.parts) { const px = x + p.x - g.room.x; R.drawShell(ctx, p.tpl, px, y, p.w, px); R.drawProps(ctx, p.tpl, px, y, t); }
+      ctx.restore();
+    }
     const col = g.ok ? [144, 224, 140] : g.warn ? [240, 168, 90] : [217, 112, 74];
     ctx.fillStyle = `rgba(${col},0.28)`;
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = `rgb(${col})`;
     ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
-    if (g.why) text(ctx, g.why, x, y - 8, `rgb(${col})`);
+    if (g.why) say(ctx, g.why, x, y - 14, `rgb(${col})`);
   }
   const st = G.build.stroke;
   if (st) {
     const n = st.cells.size, tool = G.build.tool;
     ctx.fillStyle = tool === 'fill' || st.unmark ? 'rgba(217,112,74,0.35)' : 'rgba(144,224,140,0.35)';
     for (const c of st.cells.keys()) ctx.fillRect(c * CELL + 1, ftop(st.f) + 1, CELL - 2, RH - 2);
-    const at = (st.last ?? st.from) * CELL, ty = ftop(st.f) - 8;
+    const at = (st.last ?? st.from) * CELL, ty = ftop(st.f) - 14;
     if (tool === 'hall' && n) {
       const cost = (D().layoutCosts || {}).hall, can = cost ? Math.floor(F().coins / cost.coins) : n;
-      text(ctx, n + ' CELLS ' + moneyText(n * (cost ? cost.coins : 0)) + (can < n ? ' - ONLY ' + can : ''), at, ty, can < n ? '#ff9a7a' : '#fbf4e6');
+      say(ctx, n + ' CELLS ' + moneyText(n * (cost ? cost.coins : 0)) + (can < n ? ' - ONLY ' + can : ''), at, ty, can < n ? '#ff9a7a' : '#fbf4e6');
     }
     if (tool === 'dig' && n && !st.unmark) {
       const dig = D().dig || {}, secs = (dig.seconds || [])[st.f] || 300, m = Math.max(1, dig.miners || 0);
-      text(ctx, n + ' CELLS ABOUT ' + Math.ceil(n * secs / Math.min(m, n) / 60) + ' MIN' + (dig.miners ? '' : ' - NO MINERS'), at, ty, dig.miners ? '#fbf4e6' : '#ff9a7a');
+      say(ctx, n + ' CELLS ABOUT ' + Math.ceil(n * secs / Math.min(m, n) / 60) + ' MIN' + (dig.miners ? '' : ' - NO MINERS'), at, ty, dig.miners ? '#fbf4e6' : '#ff9a7a');
     }
   }
   const hd = G_ && held();
@@ -1269,7 +1391,7 @@ export function roomRect(id) {
 /** Buildings that are not on the grid: the entrance hall (the gate tunnel) and the gate in the mountain face. */
 function fixedRect(type) {
   if (type === 'entrance_hall') return { x: -FACE, y: ftop(ENTRY), w: FACE, h: RH };
-  if (type === 'gate') { const s = S.sprite('gate_' + gateLevel()); return s ? { x: -FACE - (s.width >> 1), y: GROUND - s.height + 1, w: s.width >> 1, h: s.height } : null; }
+  if (type === 'gate') { const s = Art.frame('gate', 0); return { x: SURFACE.gate - s.ax, y: GROUND - s.ay + 1, w: s.canvas.width, h: s.canvas.height }; }
   return null;
 }
 

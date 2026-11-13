@@ -131,7 +131,7 @@
    "kind": "worker",
    "x": 372,
    "y": 135,
-   "face": -1
+   "face": "left"
   },
   {
    "kind": "light",

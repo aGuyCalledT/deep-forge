@@ -32,13 +32,19 @@ export function initCanvas(c, w, s, pick) {
 export function zoomBy(d) {
   if (!screen || !screen.camera) return;
   const r = wrap.getBoundingClientRect();
-  setZoom(cam.zoom + d, r.width / 2, r.height / 2);
+  setZoom(stepZoom(d), r.width / 2, r.height / 2);
 }
 
 export function camera() { return cam; }
 
+/** Zoom steps: whole art pixels per css pixel; half a pixel only where the screen has two device pixels for it. */
+const zooms = () => (DPR() >= 2 ? [0.5, 1, 2, 3, 4] : [1, 2, 3, 4]);
+/** The zoom step d steps away from the current one. */
+function stepZoom(d) { const z = zooms(), i = z.indexOf(cam.zoom); return z[Math.max(0, Math.min(z.length - 1, (i < 0 ? 1 : i) + d))]; }
+
 function setZoom(z, sx, sy) {
-  z = Math.max(1, Math.min(5, Math.round(z)));
+  const steps = zooms();
+  z = steps.reduce((best, s) => (Math.abs(Math.log(s / z)) < Math.abs(Math.log(best / z)) ? s : best), steps[0]);
   if (z === cam.zoom) return;
   const wx = cam.x + sx / cam.zoom, wy = cam.y + sy / cam.zoom;
   cam.zoom = z;
@@ -141,7 +147,7 @@ function wheel(e) {
   if (!screen || !screen.camera) return;
   e.preventDefault();
   const r = canvas.getBoundingClientRect();
-  setZoom(cam.zoom + (e.deltaY < 0 ? 1 : -1), e.clientX - r.left, e.clientY - r.top);
+  setZoom(stepZoom(e.deltaY < 0 ? 1 : -1), e.clientX - r.left, e.clientY - r.top);
 }
 
 // ------------------------------------------------------------------ main loop
@@ -287,7 +293,7 @@ function outline(h, t) {
 /** Scroll the hold camera so a world point sits in the middle of the first `width` css pixels. */
 export function lookAt(x, y, width, height) {
   const r = wrap.getBoundingClientRect();
-  if (cam.zoom < 2) cam.zoom = 2;
+  if (cam.zoom < 1) cam.zoom = 1;
   cam.x = x - (width || r.width) / cam.zoom / 2; cam.y = y - (height || r.height) / cam.zoom / 2;
   clamp();
 }

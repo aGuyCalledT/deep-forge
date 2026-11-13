@@ -2,106 +2,159 @@
  "barracks": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "brewery": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "engraver": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
+  ]
+ },
+ "entrance_hall": {
+  "bay": [],
+  "room": [
+   "grand",
+   "stone",
+   "timber"
   ]
  },
  "expedition_hall": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "farm": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "forge": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "grindstone": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
+  ]
+ },
+ "hallway": {
+  "bay": [],
+  "room": [
+   "grand",
+   "grand_deco",
+   "grand_lit",
+   "stone",
+   "stone_deco",
+   "stone_lit",
+   "timber",
+   "timber_deco",
+   "timber_lit"
   ]
  },
  "jeweler": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "quarters": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "smelter": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
+  ]
+ },
+ "stairwell": {
+  "bay": [],
+  "room": [
+   "grand",
+   "stone",
+   "timber"
   ]
  },
  "tailor": {
   "bay": [
+   "furnished",
    "starter"
   ],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "tavern": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "trade_depot": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "vault": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  },
  "warehouse": {
   "bay": [],
   "room": [
+   "furnished",
    "starter"
   ]
  }

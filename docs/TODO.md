@@ -158,8 +158,10 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] **Alle Zwerg-Teile im Stil des Basismodells** (`static/art/dwarf48/`, Quelle `art-src/dwarf48/`): Mann und Frau,
       drei Ansichten, gehen, stehen, reden, sitzen, essen, trinken, Hände, arbeiten (Seite), schlafen, 6 Stimmungen,
       6 Frisuren, 5 Bärte, Helm/Mütze/Kapuze, Krug, Löffel, Axt, Sack, umfärbbar. Reisende im Tal als Zwerge.
-- [ ] Einbauen, sobald die Räume im neuen Maßstab sind: `dwarfkit.js` auf `kit.json` aus `dwarf48` umstellen, alte Posen
-      zuordnen (`climb` -> `walkBack`), Reisende und Wachen darüber, Auswahllisten im Cheat-Fenster.
+- [x] Eingebaut: die Festung zeichnet alle Zwerge, Wachen und Reisenden mit `dwarf48.js` (`look48()` in `hold.js`
+      übersetzt Frisur, Bart, Haut-, Haar- und Kleiderfarben in Farbreihen).
+- [ ] Porträts in den Panels und das Cheat-Fenster „Change looks“ noch mit dem alten Kit (`dwarfkit.js`).
+- [ ] Werkzeug in der Hand bei der Arbeit (Hammer, Spitzhacke, Axt) in der Seitenansicht; heute arbeiten sie mit leeren Händen.
 - [ ] Gesichter in der Seitenansicht deutlicher (Stimmungen kaum zu sehen).
 
 ## Grafik 48 px (Räume aus Teilen)
@@ -170,10 +172,25 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       (prüft die Pixel danach); Lader `static/js/art48.js` (Bilder, Anker, Umfärben, Spiegeln, Kacheln).
 - [x] Raumvorlagen-Editor (`tools/room-editor/serve.py`), Format und Zeichnen in `static/js/rooms48.js`, Vorlage
       „starter“ für alle 15 Raumtypen und 8 Erweiterungen, `Building.look` + Aktion `roomLook` (Server prüft).
-- [ ] Renderer: `hold.js` zeichnet Räume aus der Vorlage (`look`), Sitze, Betten, Arbeitsplätze und Klickflächen
-      aus den Punkten statt aus `shared.js` `ROOMS`/`BAYS`; Auswahl der Vorlage im Raumfenster (`popups.js`).
+- [x] Renderer: `hold.js` zeichnet Räume aus der Vorlage (`look`), Sitze, Betten, Arbeitsplätze, Lichter, Rauch und
+      Klickflächen (Blasebalg, Abschreckfass) aus den Punkten; Auswahl der Vorlage im Raumfenster (`popups.js`).
+- [x] Zweite Vorlage „furnished“ für alle 15 Räume und 8 Erweiterungen (Standard, weil alphabetisch zuerst).
 - [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
-- [ ] Maßstab umstellen (`hold.js`: `CELL 48`, `RH 144`, Boden 135) zusammen mit den Zwergen 48 × 64.
+- [x] Raum-Editor im Spiel (Raumfenster → „Change look“): Liste aller Vorlagen mit Bild, Spieler-Vorlagen auf dem
+      Server (`room_templates`), für alle sichtbar, nur vom Ersteller änderbar.
+- [ ] Spieler-Vorlagen: Sortieren nach Beliebtheit.
+- [x] Punkte mit Blickrichtung (vorne, links, rechts, Rücken) und sitzen; neue Zwerg-Posen sitzend/arbeitend in jeder Ansicht.
+- [ ] Schlafende in Betten: liegender Zwerg ist höher als die Matratze, im oberen Stockbett stößt er an; Decke passend zum Bett.
+- [x] Maßstab umgestellt (`hold.js`: `CELL 48`, `RH 144`, Boden 135), Tal, Fels, Gänge, Schacht, Treppenhäuser, Tor,
+      Monster aus `props48`; Zoomstufen 0,5 (nur bei 2 Gerätepixeln) bis 4, Start bei 1.
+- [ ] Feuer, Räder und Kessel laufen in der Vorlage immer; besser nur, wenn die Maschine arbeitet (Bild 0 = kalt).
+- [x] Wege aus Vorlagen: Eingangshalle, Gänge und Treppenhäuser je in drei Stilen (`timber`, `stone`, `grand`), neue
+      Teile in `art-src/props48/ways.py` (Treppenhaus-Türen mit 4 Bildern, Stützrahmen, Bögen, Statue, Runenschild,
+      gehauene Wand). Der Stil folgt der Eingangshalle (Stufe 1 Holz, 2 Stein, ab 3 prächtig, oder die gewählte Vorlage).
+      Treppenhaus-Türen gehen auf, wenn jemand hinein- oder herauskommt.
+- [ ] Tor-Stufen haben noch kein eigenes Bild (nur Kohlebecken ab Stufe 3).
+- [ ] Stil der Gänge und Treppenhäuser einzeln wählbar machen (heute folgt er der Eingangshalle).
+- [ ] Login-Bild (`views.js`) und Minen-Screen noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.
 - [ ] Kleinigkeiten: Fächer-Muster im Fels glätten, größere Scheren der Magmakrabbe, zweiter Arm des Ogers,

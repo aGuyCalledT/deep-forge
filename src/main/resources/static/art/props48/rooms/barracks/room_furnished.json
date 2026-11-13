@@ -1,0 +1,106 @@
+{
+ "version": 1,
+ "type": "barracks",
+ "part": "room",
+ "name": "furnished",
+ "cells": 7,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "weaponrack",
+   "x": 44,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "armorstand",
+   "x": 108,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "dummy",
+   "x": 196,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "bench",
+   "x": 268,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "stool",
+   "x": 312,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "banner",
+   "x": 268,
+   "y": 19,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 148,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "worker",
+   "face": "right",
+   "x": 174,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 259,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 277,
+   "y": 135
+  },
+  {
+   "kind": "seat",
+   "x": 312,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 148,
+   "y": 61
+  }
+ ]
+}

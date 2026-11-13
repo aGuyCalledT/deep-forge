@@ -103,10 +103,10 @@ pixelgenau dieselben und ab jetzt die Quelle: zum Ändern die PNG in Aseprite, K
   kommen weiter aus `figure.js`.
 - `sprites.js` (`dwarfSprite`, `npcSprite`, `placeDwarf`, `portrait`) speichert fertige Bilder zwischen.
 
-## Zwerge 48 × 64 (neuer Stil, noch nicht im Spiel)
+## Zwerge 48 × 64 (im Spiel)
 
-Der nächste Satz Zwerge liegt fertig in `static/art/dwarf48/`, wird aber erst eingebaut, wenn die Räume im neuen
-Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
+Die Festung zeichnet alle Zwerge mit dem Satz in `static/art/dwarf48/` (die Figuren sind etwa 47 px hoch, Räume 144 px).
+Porträts in den Panels und das Cheat-Fenster nutzen noch das alte Kit (`dwarfkit.js`).
 
 - **Vorlage:** das Basismodell (Mann, kurze Haare, Vollbart, grüne Tunika, Lederweste), `art-src/dwarf48/preview/base_walk.png`,
   im Raster der Laufvorlage: Zellen 48 × 64, Reihen hinten, rechts, vorn, links (links = rechts gespiegelt), Spalten Schritt, Stand, Schritt.
@@ -114,16 +114,21 @@ Maßstab da sind (die Figuren sind etwa 47 px hoch, die heutigen Räume 96 px).
   (Licht von oben links, 5 Töne je Farbe, Umriss im dunkelsten Ton des Teils). `python3 build.py <ordner>` schreibt
   die Streifen und `kit.json`, `python3 preview.py <ordner>` die Vorschauen. Wer eine PNG von Hand verbessert, darf
   `build.py` danach nicht mehr über den Ordner laufen lassen.
-- **Teile:** Beine (gehen 3, sitzen), Körper Mann/Frau, Weste, Arme (gehen, Hände unten/Brust/Mund), Kopf, Gesichter
+- **Teile:** Beine (gehen 3, sitzen in allen Ansichten), Körper Mann/Frau, Weste, Arme (gehen, Hände unten/Brust/Mund;
+  von hinten an der Werkbank, Hammer oben, Schlag), Kopf, Gesichter
   (`neutral happy angry open blink sleep`), 6 Frisuren, 5 Bärte, 3 Hüte, Dinge in der Hand, Decke zum Schlafen; je Ansicht.
 - **Posen** stehen mit Bildern und Reihenfolge in `kit.json` (`poses`, `order`): `idle talk hands sit sitTalk eat drink
-  walkFront walkBack idleBack walk idleSide work sleep`. Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
+  walkFront walkBack idleBack walk idleSide work sleep`, dazu sitzend und arbeitend in jeder Ansicht: `sitSide sitBack
+  workSit workBack workSitBack workSitFront` (Vorschau `preview/seated_work.png`). Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
   schiebt alles außer den Beinen. Schlafen ist das Seitenbild, eine Vierteldrehung nach links.
 - **Augen** wie bei den CC0-Vorlagen in `art-src/bases/`: 3 px breit, Lid oben, zwei Reihen Weiß und Iris.
 - **Umfärben:** `ramps` in `kit.json` sind Platzhalter (Haut, Haar, Tunika, Weste, Hose, Stiefel, Metall, Stoff …);
   Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `Figure.ramp(farbe, 5)`. `fixed` (Augen, Umriss) bleibt.
+- **Lader:** `static/js/dwarf48.js` (`load`, `frame(look, pose, f)`, `draw(ctx, look, pose, f, x, y, {flip})`, Umfärben
+  über `look.ramps`, `quilt: false` lässt die Decke weg). Der Raum-Editor zeigt seine Punkte damit. Im Spiel übersetzt
+  `look48(d)` in `hold.js` einen Zwerg (Frisur, Bart, Haut, Haar, Kleidung, Helm, Stimmung) in einen `look`.
 
-## Grafik 48 px (neuer Stil, noch nicht im Spiel)
+## Grafik 48 px (im Spiel)
 
 Räume, Tal, Fels, Monster und Effekte im Maßstab der Zwerge 48 × 64: Zelle 48 px, Raum 144 px hoch, Boden bei y 135.
 Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetzt (Wand, Boden, Gewölbe, Möbel).
@@ -143,30 +148,62 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
 - **Umfärben:** Platzhalter-Reihen in `placeholders`: `ingot` (Barren, Erz; Ton 3 = Metallfarbe, neue Reihe aus
   `Figure.ramp`) und `rockd` (Höhlen, Risse, Brocken; Reihen der Minenschichten in `depths`). Der Export prüft, dass
   kein anderes Material dieser Teile eine Platzhalterfarbe hat.
-- **Im Spiel:** `static/js/art48.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). Noch nicht eingebunden,
-  das kommt mit dem neuen Maßstab (`docs/TODO.md`).
+- **Im Spiel:** `static/js/art48.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). `hold.js` lädt Sheet,
+  Zwerge und alle Raumvorlagen vor dem ersten Bild (`loadArt()`), zeichnet Himmel, Berge (`mountains_*` nach Tageszeit),
+  Wiese, Bäume, Stand, Brunnen, Fels (`rock_0..4` nach Tiefe), Gänge (`hallway`), Schacht, Treppenhäuser, Tunnel, Tor,
+  Höhlen mit Bewuchs (`moss_*`, `glowshrooms`, `roots`, `stalactites`), Risse beim Graben und Monster. Räume: Hülle
+  und hintere Möbel, die Zwerge im Raum, vordere Möbel; die leuchtenden Pixel (`glow`) kommen nach der Lichtschicht.
+  Lichter, Rauch, Funken, Dampf und Klickflächen kommen aus den Punkten der Vorlage. Alte Symbole (Status, Pfeile,
+  Pixelschrift) werden doppelt groß gezeichnet.
 
 ### Raumvorlagen (Editor)
 
 Wie ein Raum eingerichtet ist, steht in Vorlagen: Wand, Boden, Gewölbe, Möbel mit Position, Ebene (`layer`: `back`
 hinter den Zwergen, `front` vor ihnen, z. B. ein Tisch, hinter dem sie sitzen), Reihenfolge, Spiegelung und Bild,
-dazu Punkte, die das Spiel liest (`worker` mit Blickrichtung, `seat`, `bar`, `bed`, `light` mit Radius, Farbe und
+dazu Punkte, die das Spiel liest (`worker` mit Blickrichtung `face` – `front`, `left`, `right`, `back` = Rücken zum
+Betrachter – und `sit`, `seat`, `bar`, `bed`, `light` mit Radius, Farbe und
 Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kettle`, `steam`, `stand`).
 
-- **Editor starten:** `python3 tools/room-editor/serve.py`, dann `http://localhost:8099` öffnen. Er braucht nur
-  Python 3. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
+- **Im Spiel:** Raumfenster → „Change look“ zeigt alle Vorlagen des Raumtyps mit Bild (eingebaut und von Spielern).
+  „Use“ wählt, „Copy“ öffnet eine Kopie im Editor, „Edit“ die eigene, „Make a new look“ eine Kopie der aktuellen. Der
+  Editor (`static/editor/`) läuft als Fenster über dem Spiel (`openEditor` in `popups.js`, `?embed=1&type=&part=&name=&copy=1`)
+  und meldet `saved`, `deleted` und `close` per `postMessage`; nach dem Speichern bekommt der Raum die neue Vorlage.
+  Am Handy (≤ 760 px) gibt es nur die Liste mit „Use“, Editor-Knöpfe fehlen dort.
+- **Spieler-Vorlagen** speichert der Server in der Tabelle `room_templates` (`RoomTemplates.java`): jeder Eingeloggte
+  darf Vorlagen anlegen (höchstens 40), alle sehen und nutzen sie, ändern oder löschen darf nur der Ersteller (auch kein
+  Admin). Namen eingebauter Vorlagen sind vergeben. Der Server baut jede Vorlage aus bekannten Feldern neu auf
+  (Sprites und Kacheln aus `sheet.json`, bekannte Punkte, Zahlen begrenzt). API: `GET /api/rooms` (Liste mit Ersteller),
+  `GET /api/rooms/template`, `POST /api/rooms/save`, `POST /api/rooms/delete`.
+- **Lokal (eingebaute Vorlagen):** `python3 tools/room-editor/serve.py`, dann `http://localhost:8099` öffnen. Braucht nur
+  Python 3, speichert als Dateien. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
+- **Hilfe:** Jedes Bedienelement, jeder Punkt und jede Möbel-Gruppe hat einen Info-Knopf (i) und einen Tooltip mit
+  einer kurzen englischen Erklärung. Texte: Bedienung und Möbel in `static/editor/info.js`, Punkte in
+  `rooms48.js` (`SPOTS[kind].about`, das Spiel nutzt sie mit).
+- **Raster:** „Snap“ (Standard 4 px) rastet Platzieren, Ziehen und Pfeiltasten ein, gezählt ab der Bodenlinie, die
+  Decke (y 0) rastet auch. Alt platziert pixelgenau. Der Schalter „grid“ zeigt die Rasterpunkte, die 48-px-Zellen und
+  die Raummitte.
+- **Mehrfachauswahl:** Shift+Klick, Rahmen auf freier Fläche aufziehen, Strg+A. Dann: linke Kante und Oberkante der
+  Gruppe eingeben, ausrichten (links, Mitte, rechts, oben, Mitte, unten), im Raum zentrieren, gleichmäßig verteilen
+  (zwischen dem ersten und letzten) oder über die ganze Raumbreite bzw. -höhe verteilen. Einzelne Teile: x/y eingeben
+  und zentrieren. Ziehen, Pfeile, F, S, L und Bild auf/ab wirken auf die ganze Auswahl.
 - **Bedienen:** Links Möbel oder Punkt wählen und in den Raum klicken. Möbel rasten am Boden ein (Alt hält sie frei).
   Ziehen verschiebt. Tasten: Pfeile (mit Shift 8 px), F spiegeln, Bild auf/ab für die Ebene, Entf, Strg+D, Strg+S,
-  Esc, L wechselt die Ebene. Links „New props go“ wählt, wohin neue Möbel kommen; der Schalter „front“ macht die
+  Esc, L wechselt die Ebene. Bei einem Punkt dreht F die Blickrichtung weiter, S schaltet sitzen/stehen; rechts steht
+  die Pose, die daraus wird (`spotPose(spot)` in `rooms48.js`, z. B. Arbeiter `back` + `sit` = `workSitBack`). Links „New props go“ wählt, wohin neue Möbel kommen; der Schalter „front“ macht die
   vordere Ebene durchsichtig. „auto spots“ setzt die Punkte, die die Möbel mitbringen (Fackel gibt Licht, Bank zwei Sitze, Amboss Funken
   und Arbeitsplatz …). Rechts steht, welche Punkte der Raumtyp mindestens braucht. Schalter für Licht, Zwerge an den
   Punkten, Animation, Raster und Zoom.
+- **Wege:** Eingangshalle (`entrance_hall`, 6 Zellen), Treppenhaus (`stairwell`, 2) und Gang (`hallway`, 1) sind im
+  Editor zusätzliche Typen (`WAYS` in `RoomTemplates.java` und `serve.py`). Vorlagen je Stil `timber`, `stone`, `grand`; Gänge dazu `<stil>_lit`
+  (jede vierte Zelle, Fackel) und `<stil>_deco` (Banner, Fass, Waffen). Ein Treppenhaus braucht einen Punkt `door` (am Fuß
+  der Tür `stairdoor*`, dort gehen Zwerge hinein); das Spiel setzt das Bild der Tür selbst (0 zu bis 3 offen). Teile in
+  `art-src/props48/ways.py`.
 - **Ablage:** `static/art/props48/rooms/<typ>/<room|bay>_<name>.json`, Liste in `rooms/index.json` (schreibt der
   Editor). `bay` ist eine Maschinen-Erweiterung. Format und Pflichtpunkte stehen in `static/js/rooms48.js`
   (`SPOTS`, `NEEDS`, `PROP_SPOTS`), zeichnen mit `drawRoom(ctx, tpl, x, y, t, {between})`: Hülle und hintere Ebene, dann `between` (die Zwerge),
   dann die vordere Ebene, jede Ebene für sich beleuchtet.
 - **Im Spiel:** `Building.look` (leer = erste Vorlage) und die Aktion `roomLook {building, look}`. Der Server prüft
-  gegen `rooms/index.json` (`RoomLooks.java`). Ein Test verlangt für jeden Raumtyp und jede Erweiterung mindestens
+  gegen `rooms/index.json` (`RoomLooks.java`) und die Spieler-Vorlagen. Ein Test verlangt für jeden Raumtyp und jede Erweiterung mindestens
   eine Vorlage. Zu sehen ist das erst mit dem neuen Renderer.
 
 ## Tiefe

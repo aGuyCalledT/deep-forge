@@ -46,8 +46,8 @@
  ],
  "sheets": {
   "front_legs_m": 4,
-  "back_legs_m": 3,
-  "side_legs_m": 3,
+  "back_legs_m": 4,
+  "side_legs_m": 4,
   "front_body_m": 1,
   "front_vest_m": 1,
   "back_body_m": 1,
@@ -55,12 +55,12 @@
   "side_body_m": 1,
   "side_vest_m": 1,
   "front_arms_m": 6,
-  "back_arms_m": 3,
+  "back_arms_m": 6,
   "front_face_m": 6,
   "side_face_m": 6,
   "front_legs_f": 4,
-  "back_legs_f": 3,
-  "side_legs_f": 3,
+  "back_legs_f": 4,
+  "side_legs_f": 4,
   "front_body_f": 1,
   "front_vest_f": 1,
   "back_body_f": 1,
@@ -68,7 +68,7 @@
   "side_body_f": 1,
   "side_vest_f": 1,
   "front_arms_f": 6,
-  "back_arms_f": 3,
+  "back_arms_f": 6,
   "front_face_f": 6,
   "side_face_f": 6,
   "side_arm_far": 6,
@@ -450,6 +450,176 @@
      0,
      "sleep",
      1
+    ]
+   ]
+  },
+  "sitSide": {
+   "view": "side",
+   "frames": [
+    [
+     3,
+     1,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     1,
+     6,
+     null,
+     null
+    ]
+   ]
+  },
+  "sitBack": {
+   "view": "back",
+   "frames": [
+    [
+     3,
+     1,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     1,
+     6,
+     null,
+     null
+    ]
+   ]
+  },
+  "workSit": {
+   "view": "side",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     5,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ]
+   ]
+  },
+  "workBack": {
+   "view": "back",
+   "frames": [
+    [
+     1,
+     3,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     5,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "workSitBack": {
+   "view": "back",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     5,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ]
+   ]
+  },
+  "workSitFront": {
+   "view": "front",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
     ]
    ]
   }
