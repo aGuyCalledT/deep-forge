@@ -27,6 +27,7 @@ def build_sheets():
         S[f'{v}_beard'] = [beard(v, b) for b in BEARDS]
         S[f'{v}_hat'] = [hat(v, h) for h in HATS]
     S['front_prop'] = [prop(k) for k in PROPS]
+    S['side_prop'] = [side_prop(k) for k in SIDE_PROPS]
     S['side_quilt'] = [quilt(0), quilt(1)]
     return S
 
@@ -54,6 +55,8 @@ POSES = {
  'workBack': ('back', [(1, 3, 0, None, None), (1, 4, 0, None, None), (1, 5, 0, None, None), (1, 4, 0, None, None)]),
  'workSitBack': ('back', [(3, 3, 5, None, None), (3, 4, 5, None, None), (3, 5, 5, None, None), (3, 4, 5, None, None)]),
  'workSitFront': ('front', [(3, 3, 5, None, None), (3, 4, 5, None, None), (3, 3, 5, None, None), (3, 4, 5, None, None)]),
+ # mining: the pick raised, swung, striking (twice as long on the strike)
+ 'mine':    ('side', [(1, 5, 0, None, 'pick_up'), (1, 4, 0, None, 'pick_mid'), (1, 3, 0, None, 'pick_down'), (1, 3, 0, 'angry', 'pick_down')]),
 }
 
 def frame_of(S, name, i):
@@ -84,9 +87,10 @@ def compose(S, look, pose, frame):
         layers = [S[f'back_legs_{sex}'][lf], up(S[f'back_body_{sex}'][0]), up(vest_p), up(beard_p), up(S['back_head'][0]),
                   up(hair_p), up(hat_p), up(S[f'back_arms_{sex}'][af])]
     else:
-        layers = [up(S['side_arm_far'][af]), S[f'side_legs_{sex}'][lf], up(S[f'side_body_{sex}'][0]), up(vest_p),
+        back_prop = isinstance(extra, str) and extra.endswith('_up')
+        layers = [up(S['side_prop'][SIDE_PROPS.index(extra)] if back_prop else None), up(S['side_arm_far'][af]), S[f'side_legs_{sex}'][lf], up(S[f'side_body_{sex}'][0]), up(vest_p),
                   up(S['side_head'][0]), up(S[f'side_face_{sex}'][MOODS.index(mood)]), up(hair_p), up(hat_p), up(beard_p),
-                  up(S['side_arm_near'][af])]
+                  up(S['side_prop'][SIDE_PROPS.index(extra)] if isinstance(extra, str) and not back_prop else None), up(S['side_arm_near'][af])]
         if pose == 'sleep': layers.append(S['side_quilt'][extra])
     g = compose_parts([l for l in layers if l is not None]).c
     if pose == 'sleep': g = np.rot90(g)            # lie down: head to the left
@@ -139,13 +143,13 @@ def export(S, out):
         im.save(f'{out}/{name}.png')
     meta = {
         'cell': [W, H], 'anchor': [24, 62], 'hatClip': HAT_CLIP,
-        'styles': STYLES, 'beards': BEARDS, 'hats': HATS, 'moods': MOODS, 'props': PROPS,
+        'styles': STYLES, 'beards': BEARDS, 'hats': HATS, 'moods': MOODS, 'props': PROPS, 'sideProps': SIDE_PROPS,
         'sheets': {k: len(v) for k, v in S.items()},
         'poses': {k: {'view': v, 'frames': [list(f) for f in fr]} for k, (v, fr) in POSES.items()},
         'order': {
             'front': ['legs', 'body', 'vest', 'head', 'face', 'hair', 'hat', 'beard', 'arms', 'prop'],
             'back': ['legs', 'body', 'vest', 'beard', 'head', 'hair', 'hat', 'arms'],
-            'side': ['arm_far', 'legs', 'body', 'vest', 'head', 'face', 'hair', 'hat', 'beard', 'arm_near', 'quilt'],
+            'side': ['side_prop_back', 'arm_far', 'legs', 'body', 'vest', 'head', 'face', 'hair', 'hat', 'beard', 'side_prop', 'arm_near', 'quilt'],
         },
         'ramps': {k: v for k, v in R.items()},
         'fixed': EX,

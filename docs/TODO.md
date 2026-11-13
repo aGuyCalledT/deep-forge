@@ -4,6 +4,12 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 
 ## Grafik und Festung
 
+- [x] Parallax-Hintergrund im Tal (ferne Gipfel, Bergkette, Waldhügel, Waldrand, Massiv hinter der Festung), für Dämmerung und Nacht eingefärbt.
+- [x] Tor als Mauer mit zwei Statuen, Bogen und Runenfries; Zwerge verschwinden im Tor und kommen in der Eingangshalle heraus.
+- [x] Raumfenster docken am Desktop rechts an und fahren von rechts herein; die Kamera schiebt den Raum links ins Bild.
+- [x] Erzwagen: einstellbar, wann er hochfährt (Füllstand und/oder Minuten), im Minen-Tab je Schicht.
+- [ ] Tor je Stufe sichtbar verändern (Stufe 2 Runen leuchten, Stufe 4 Banner an der Mauer).
+
 - [x] **Höher aufgelöster Grafikstil.** Mehr Pixel pro Figur und Raum (z. B. doppelte Auflösung der Sprites),
       dabei Pixel-Look und harte Kanten behalten. Eigene PNGs über `sprites/` bleiben möglich.
 - [x] **Mehr Abwechslung bei Zwergen:** mehr Bart- und Haarformen, Frisuren, Hüte und Kapuzen, Kleidung, Körperbau,
@@ -99,7 +105,7 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [x] Keine Namensschilder mehr über den Räumen; beim Hovern fällt ein Metallschild an Ketten aus der Decke.
 - [ ] Quests gibt es noch nicht als eigenes System; das Papier (`paper.js`) ist dafür vorbereitet.
 - [ ] Felsgrafik aus den Referenzbildern des Nutzers für den Berg übernehmen (Bilder fehlen noch in `art-src/ref/`).
-- [ ] Hover-Schild nur mit Maus; auf dem Handy öffnet ein Tipp gleich das Fenster.
+- [x] Hover-Schild entfernt (Raumfenster docken rechts an, Hover zeigt nur den Umriss).
 
 ## Aus früheren Runden
 
@@ -181,6 +187,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Steinfarben gut gemischt).
 - [x] Tiefe: Schatten an allen vier Innenkanten jedes Raums; Säule mit Tür im Vordergrund zwischen Räumen, die Tür
       öffnet sich, wenn ein Zwerg hindurchgeht.
+- [x] Porträts in Fenstern und Listen aus demselben 48-px-Zwergensatz wie in der Festung (`look48` in `dwarf48.js`).
 - [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
 - [x] Raum-Editor im Spiel (Raumfenster → „Change look“): Liste aller Vorlagen mit Bild, Spieler-Vorlagen auf dem
       Server (`room_templates`), für alle sichtbar, nur vom Ersteller änderbar.
@@ -196,8 +203,79 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Treppenhaus-Türen gehen auf, wenn jemand hinein- oder herauskommt.
 - [ ] Tor-Stufen haben noch kein eigenes Bild (nur Kohlebecken ab Stufe 3).
 - [ ] Stil der Gänge und Treppenhäuser einzeln wählbar machen (heute folgt er der Eingangshalle).
-- [ ] Login-Bild (`views.js`) und Minen-Screen noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
+- [x] Minen-Screen neu im 48-px-Stil (`mine48.js`): eine Szene je Schicht, Erzwagen, Grubenhelm.
+- [ ] Login-Bild (`views.js`) noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
+- [ ] Mine: Wachen und Monster nur einfach gezeigt (Monster läuft hin und her, Bergleute warten am Wagen); Kampf nicht zu sehen.
+- [ ] Mine: Wagen hat noch keinen Sound (Rollen, Erz fällt hinein).
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.
 - [ ] Kleinigkeiten: Fächer-Muster im Fels glätten, größere Scheren der Magmakrabbe, zweiter Arm des Ogers,
       Lichtringe in Stufen statt Kreisen.
+
+## Zeichen, Trennsäulen, neue Wände
+
+- [x] **Symmetrische Symbole:** Stoppschild (geprägtes Achteck), gelbes Dreieck, grüner Pfeil und X als gespiegelte
+  Hälften neu gezeichnet.
+- [x] **Grünes Abzeichen** (Smaragd mit !) statt rotem Punkt auf den Tabs.
+- [x] **Neues Fenster-X** als Pixel-Platte, die sich eindrückt (Fenster und Schublade).
+- [x] **Knopfplatten** in Eisen, Gold, Grün, Rot als dehnbares `border-image` für alle `.btn` und `.tool`.
+- [x] Klick ins Tal öffnet nicht mehr die Mine; Logzeilen der Art `info` wurden vom Info-Knopf-Stil zerdrückt.
+- [ ] Übrige Symbole noch nicht ganz symmetrisch: Totenkopf, Herz, Info, Schloss, Pfeile hoch/runter.
+- [x] Status überall mit den drei Zeichen (`statusIco`): Stopp-Achteck, gelbes Dreieck, grüner Kreis mit ! (fertig,
+      einsammeln). Ersetzt die Farbkreise in den Hinweis-Chips, Toasts, Tab-Abzeichen und der Werkstatt-Liste.
+- [x] Raum-Status „fertig“ (grün) für Handelsdepot und Abenteurergilde mit Berichten und für heißes Metall zum Abschrecken.
+- [x] Trennsäulen halb so breit, Material nach der Rückwand, Gewölbe-Ecken oben, Tür nur beim Öffnen sichtbar,
+      Schmuck (Band, Runen, Banner).
+- [x] Drei neue Rückwände: Fachwerk, Schiefer, Fliesen (im Editor wählbar).
+- [x] Helle Fugen im Bergfels (Kacheln bei krummem Zoom) und die helle Kante neben dem Schacht entfernt.
+- [ ] Neue Rückwände in eingebauten Vorlagen nutzen (z. B. Fliesen im Badehaus, Fachwerk in der Taverne).
+- [ ] Alte `walldoor*`-Bilder aus `ways.py` entfernen, wenn niemand sie mehr braucht.
+- [ ] Säulen-Schmuck im Editor wählbar machen (heute zufällig je Lage).
+- [x] Ungenutzter Fels ist schwarz (Nebel): eine Raumhöhe um jeden gegrabenen Raum sichtbar, weich auslaufend; Tal und
+      Bergaußenseite bleiben hell, beim Bauen schimmert der Fels durch.
+- [ ] Nebel: Höhlen mit Monstern weiter weg später erst zeigen, wenn ein Späher sie gefunden hat?
+- [x] Patchnotes im Spiel (More → „What's new“, Details aufklappbar, Hinweis-Chip nach neuem Release).
+
+## Amboss (Schmiede-Minispiele)
+
+- [x] Geschmiedete Stücke warten am Amboss (max. 10, 2 h), sonst machen die Zwerge sie schlechter fertig.
+- [x] Eigener Screen (`smithy.js`): Taktspiel (Marken laufen zum roten Pfeil) und Abschrecken (Zeiger mit wechselndem
+      Tempo, goldene Mitte); Ergebnis mit Qualitätsleiste.
+- [x] Qualitäten Crude, Normal, Fine, Exceptional, Masterwork, Artifact; Artefakte bekommen vom Spieler einen Namen.
+- [x] Waren im Lager als Stapel („Gold goblets“), aufgeklappt nach Wert sortiert mit Qualität.
+- [ ] Eigene Sounds: Takt-Klick, Hammerschlag je Wertung, `quench-hiss` fehlt noch.
+- [ ] Eigener Hammer im Zwergen-Satz statt des im Screen gezeichneten.
+- [ ] Artefakte ausrüsten (heute nur Wert, Stimmung und Verkauf).
+
+## Minispiele der Produktionsräume
+
+- [x] Gemeinsames Screen-Gerüst (`minigame.js`) wie beim Amboss; die Spiele stehen in `games.js`.
+- [x] Schmelze: Blasebalg im Takt (0,5 s zum Aufblähen). Brauerei: Fässer schütteln. Schleifstein: Nadel in der grünen
+      Zone halten. Graveur: Runen antippen. Juwelier: Funkeln oben treffen. Schneiderei: Schiffchen am Rand fangen.
+      Alle heizen den Raum (Aktion `boost`, bis ×2).
+- [x] Pilzfarm: Dünger streuen (Aktion `fertilize`, bis +60 % für 2 h). Mine: Ader mit Ausdauerleiste freischlagen
+      (Aktion `vein`, alle 20 min je Schicht), Knopf „Vein“ im Minen-Screen und im Minen-Tab.
+- [ ] Eigene Sounds: `bellows-puff`, `barrel-slosh`, `grind-scrape`, `rune-tap`, `shuttle-clack` fehlen.
+- [ ] Werkstätten außer der Schmelze in der Festung direkt anklicken (heute über den Knopf im Raumfenster).
+- [ ] Nahaufnahmen als Sprites (Edelstein, Runenplatte, Kettfäden sind im Screen gezeichnet).
+
+## Balance und Fortschritt (Konzept in `docs/KONZEPT-BALANCE.md`)
+
+- [x] Entscheidungen aus Abschnitt 14 klären (Abnutzung, Bremse beim Liegenlassen, Tempo der Kurve, alte Spielstände).
+- [x] Einheitliche Warenwerte: Metall-Faktor, Qualitätsschritt je Skill-Level der Ware (1–5), schwere Waren schwerer gut.
+- [x] Gesteinshärte, Abnutzung der Spitzhacken, Notfall-Hacke, Tausch von selbst, Nickelstahl.
+- [x] Abnutzung auch für Waffen und Rüstung.
+- [x] Sternstahl (Härte 8).
+- [ ] Ein Erz der Härte 8 (braucht Grafik).
+- [x] Schritt 5: Feinmechaniker-Werkbank, Zahnräder, neun Verbundwaren, Goldeinlage.
+- [ ] Grubenlampe als zweiter Platz am Bergarbeiter (+10 % ab Schicht 3), Schild als eigener Ausrüstungsplatz,
+      Krug-Satz für die Taverne, Goldfaden-Tunika (Kleidung): bisher nur Handelsware bzw. nicht gebaut.
+- [ ] Feinmechaniker: eigene 48-px-Möbel (Vorlagen nutzen Schreibtisch, Waage, Rohre).
+- [x] Schritt 1: Preisformel (quadratische Kosten), neue Werte und Zeiten, Wertleiter-Test (`BalanceTest`).
+- [ ] Balance-Bot, der 120 Tage mit einer Strategie durchspielt (heute prüft `BalanceTest` nur die Wertleiter je Zwergenstunde).
+- [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
+- [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.
+- [x] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.
+- [x] Schritt 4: Ruf, Aufträge, Nachfrage alle 12 h mit Vorschau, Münze im Tresor. Aufnahme je Fach über Ruf
+      (Marktmacht); die Feineinstellung „eine Ware höchstens ein Viertel des Einkommens“ kommt mit dem Balance-Bot.
+- [x] Schritt 6: Ränge mit Spezialisierungen, Lehre, Üben, Wünsche der Zwerge.

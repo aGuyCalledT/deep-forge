@@ -1,12 +1,40 @@
 // Fortress overview, dwarves, war and "more" panels.
 import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue, moneyText } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp } from './ui.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp, hourglass, statusIco } from './ui.js';
+import { reportCards } from './collect.js';
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
 import { openAudioSheet } from './panels-audio.js';
 import { cheatsSection } from './popups.js';
+import { notesView, markNotesSeen } from './notes.js';
 
 // ================================================================== fortress
+
+/** "goblet" -> "goblets", "axe" -> "axes", "chain mail" stays. */
+export function plural(name) {
+  if (/mail$|armor$|ware$/i.test(name)) return name;
+  if (/(s|x|ch|sh)$/i.test(name)) return name + 'es';
+  return name + 's';
+}
+
+/** Goods as stacks of one kind and metal ("Gold goblets"); open a stack to see every piece by quality, best first. */
+function stacks(list) {
+  const by = new Map();
+  for (const [k, v] of list) {
+    const p = parseItem(k), id = p.type + ':' + p.metal;
+    if (!by.has(id)) by.set(id, { p, list: [], n: 0, value: 0 });
+    const s = by.get(id); s.list.push([k, v]); s.n += v; s.value += baseValue(k) * v;
+  }
+  const all = [...by.values()].sort((a, b) => b.value - a.value);
+  return h('div', { class: 'stacks' }, all.map((s) => {
+    s.list.sort((a, b) => baseValue(b[0]) - baseValue(a[0]));
+    const name = byId.metals[s.p.metal].name + ' ' + plural(byId.items[s.p.type].name.toLowerCase());
+    const head = h('summary', null, goodIcon(s.list[0][0]), h('span', { class: 'nm' }, name), h('span', { class: 'n' }, fmt(s.n)));
+    return h('details', { class: 'stack' }, head,
+      h('div', { class: 'pieces' }, s.list.map(([k, v]) => h('div', { class: 'piece' }, goodIcon(k, 'icon s'),
+        h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'v small' }, moneyText(baseValue(k))), h('span', { class: 'n' }, fmt(v))))));
+  }));
+}
 
 export const EFFECT = {
   warehouse: () => `Holds ${fmt(D().capacity)} goods`,
@@ -16,7 +44,7 @@ export const EFFECT = {
   barracks: (b) => `Warriors gain ${6 + 4 * b.level} combat xp per hour`,
   gate: (b) => b.level > 1 ? `+${15 * (b.level - 1)} defence against raids` : 'A plain wooden gate. Upgrade it for defence',
   entrance_hall: () => `Room for ${D().hallSeats} guards (${D().guards} posted), +${Math.round((D().hallBonus - 1) * 100)}% when they fight at home`,
-  vault: () => `Raiders can't touch ${Math.round(D().vaultProtect * 100)}% of your goods`,
+  vault: () => `Raiders can't touch ${Math.round(D().vaultProtect * 100)}% of your goods. Its mint strikes coin (see Trade)`,
   trade_depot: () => `${D().caravanSlots} caravan(s), ${D().caravanCapacity} goods per merchant, ${D().depot.maxRules} rule(s), ${D().depot.maxOrders} buy order(s)`,
   expedition_hall: () => `${D().expeditionSlots} expedition(s), up to ${D().partyMax} dwarves each`,
 };
@@ -28,6 +56,10 @@ export function renderFortress() {
     h('div', { class: 'row between' }, h('h3', null, f.name), h('span', { class: 'gold-t pix' }, 'Level ' + f.level)),
     bar(f.xp / d.xpNeed), h('p', { class: 'small muted' }, `${fmt(f.xp)} / ${fmt(d.xpNeed)} xp to the next level.`
       + (d.traditionPoints > 0 ? ` You have ${d.traditionPoints} tradition point(s) to spend (More tab).` : ''))));
+  out.push(...reportCards('shift'));
+  if (d.planUntil) out.push(h('div', { class: 'card sub' },
+    h('div', { class: 'row between' }, h('h3', { style: { marginTop: 0 } }, 'Day plan ', info(`Each time you look in, the dwarves get a new day plan. They work at full pace for ${Math.round(d.planFull / 3600)} hours, then slow down to a fifth over two days. After a week the hold rests: nobody works, eats or attacks. ${f.level >= d.foremanLevel ? 'A foreman keeps the full pace for 36 hours, a master foreman (any skill 15) for 48.' : `At hold level ${d.foremanLevel} you can name a foreman for longer plans.`}`)),
+      h('span', { class: 'small muted' }, 'full pace for ', h('span', { 'data-until': d.planUntil }, dur(d.planUntil - now()))))));
   const alerts = bus.alerts ? bus.alerts() : [];
   if (alerts.length) out.push(h('div', { class: 'card sub' }, h('h3', { style: { marginTop: 0 } }, 'Needs attention'),
     alerts.map(([k, tab, text, room]) => h('button', { class: 'alert ' + k, style: { margin: '4px 0', width: '100%' }, onclick: () => (room ? bus.showRoom(room) : bus.go(tab)) },
@@ -56,12 +88,14 @@ export function renderFortress() {
   for (const [g, list] of Object.entries(groups)) {
     if (!list.length) continue;
     list.sort((a, b) => baseValue(b[0]) * b[1] - baseValue(a[0]) * a[1]);
+    const cell = ([k, v]) => h('div', { title: goodName(k) }, goodIcon(k), h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'n' }, fmt(v)));
     out.push(h('div', { class: 'card' }, h('h3', null, g),
-      h('div', { class: 'stock-grid' }, list.map(([k, v]) =>
-        h('div', { title: goodName(k) }, goodIcon(k), h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'n' }, fmt(v)))))));
+      g === 'Goods' ? stacks(list) : h('div', { class: 'stock-grid' }, list.map(cell))));
   }
   if (f.artifacts.length) out.push(h('div', { class: 'card' }, h('h3', null, 'Artifacts'),
-    f.artifacts.map((a) => h('div', { class: 'row' }, img(S.artifact()), h('span', { class: 'grow' }, a.name), h('span', { class: 'gold-t' }, '~' + fmt(a.value))))));
+    f.artifacts.map((a) => h('div', { class: 'row' }, a.item ? goodIcon(a.item) : img(S.artifact()), h('span', { class: 'grow' }, a.name),
+      a.unnamed ? h('button', { class: 'btn small primary', onclick: () => bus.nameArtifact(a.id) }, 'Name it') : null,
+      h('span', { class: 'gold-t' }, '~' + moneyText(a.value))))));
 
   // buildings
   out.push(h('h2', null, 'Buildings'));
@@ -87,11 +121,17 @@ export function renderFortress() {
 
 export function upgradeBtn(b) {
   if (!b) return null;
-  const info = D().buildings[b.id], c = info.upgrade;
+  const info = D().buildings[b.id], c = info.upgrade, cons = D().building;
+  if (cons && cons.id === b.id) return h('div', { class: 'cost-action' }, hourglass({ from: cons.until - buildTimeOf(cons.level), to: cons.until }),
+    h('span', { class: 'small' }, `Builders at work on level ${cons.level}. Ready in `, h('span', { 'data-until': cons.until }, dur(cons.until - now())), '.'));
+  if (cons && b.level > 0) return costBtn(`Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`, c, null, `Builders are busy with the ${buildingName(building(cons.id)).toLowerCase()}.`);
   const label = b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`;
   if (info.canGrow === false) return costBtn(label, c, null, 'It gets wider when upgraded, but no floor has space for it. Dig out more of the hold.');
   return costBtn(info.canGrow ? label + ', +1 machine' : label, c, { type: 'upgrade', building: b.id });
 }
+
+/** Same as Rules.buildTime: 10 min × level^1.6, at most a day; a new room 15 min. */
+export function buildTimeOf(level) { return level <= 1 ? 900 : Math.min(86400, 600 * Math.pow(level, 1.6)); }
 
 export function costBtn(label, cost, action, blocked) {
   const miss = missingText(cost);
@@ -137,7 +177,9 @@ export function dwarfCard(x) {
     h('div', null,
       h('div', { class: 'row between' }, h('b', null, fullName(x)), h('span', { class: 'small muted' }, x.age + ' years')),
       profession(x, dd),
-      h('div', null, x.traits.map((t) => h('span', { class: 'chip', title: byId.traits[t].note }, byId.traits[t].name))),
+      h('div', null, h('span', { class: 'chip gold-t' }, D().ranks ? D().ranks[dd.rank || 0] : ''),
+        (x.specs || []).map((s) => h('span', { class: 'chip', title: D().specs[s][1] }, D().specs[s][0])),
+        x.traits.map((t) => h('span', { class: 'chip', title: byId.traits[t].note }, byId.traits[t].name))),
       h('div', { class: 'row small', style: { gap: '4px 10px' } },
         h('span', { class: 'grow' }, 'Health', bar(x.health / 100, 'hp')),
         h('span', { class: 'grow' }, 'Mood' + (dd.target > x.happiness + 3 ? ' ↑' : dd.target < x.happiness - 3 ? ' ↓' : ''), bar(x.happiness / 100, 'mood'))),
@@ -145,7 +187,29 @@ export function dwarfCard(x) {
       gear.length ? h('div', { class: 'row' }, gear.map((k) => h('span', { title: goodName(k) }, goodIcon(k, 'icon s')))) : null,
       !x.busy ? h('div', { class: 'row', style: { marginTop: '6px' } },
         h('button', { class: 'btn small', onclick: () => jobSheet(x) }, 'Job'),
-        h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear')) : null));
+        h('button', { class: 'btn small', onclick: () => gearSheet(x) }, 'Gear'),
+        (dd.rank || 0) > 0 || (dd.wishes || []).length ? h('button', { class: 'btn small', onclick: () => rankSheet(x) }, (x.specs || []).length < (dd.rank || 0) ? [statusIco('good'), 'Rank'] : 'Rank') : null) : null));
+}
+
+/** Rank, specialisations to choose and what the dwarf wishes for. */
+export function rankSheet(x) {
+  openSheet(() => {
+    const d = D(), dd = d.dwarves[x.id] || {}, rk = dd.rank || 0, free = rk - (x.specs || []).length;
+    return h('div', null,
+      h('h2', null, `${fullName(x)}: ${d.ranks[rk]}`),
+      h('p', { class: 'small muted' }, `Journeyman at skill ${d.rankAt[1]}, master at ${d.rankAt[2]}. `,
+        info('Each rank lets a dwarf choose a specialisation. Journeymen and masters teach: others in the same room learn half again as fast. They also want more than food, ale and a bed.')),
+      h('h3', null, 'Specialisations'),
+      (x.specs || []).length ? (x.specs || []).map((s) => h('div', { class: 'row small' }, statusIco('good'), h('b', null, d.specs[s][0]), h('span', { class: 'muted' }, d.specs[s][1]))) : h('p', { class: 'small muted' }, 'None yet.'),
+      free > 0 ? [h('p', { class: 'small good-t' }, 'Choose one:'),
+        Object.entries(d.specs).filter(([k]) => !(x.specs || []).includes(k)).map(([k, v]) => h('button', { class: 'pick', style: { width: '100%' },
+          onclick: async () => { await bus.act({ type: 'specialize', dwarf: x.id, spec: k }); refreshSheet(); } },
+          h('span', { class: 'grow', style: { textAlign: 'left' } }, h('b', null, v[0]), h('span', { class: 'small muted' }, ' · ' + v[1]))))] : null,
+      h('h3', null, 'Wishes'),
+      (dd.wishes || []).length ? dd.wishes.map((w) => h('div', { class: 'row small' }, statusIco(w.ok ? 'good' : 'warn'), h('span', { class: 'grow' }, w.label)))
+        : h('p', { class: 'small muted' }, 'Food, ale and a bed are enough for an apprentice.'),
+      x.trinket ? h('p', { class: 'small' }, goodIcon(x.trinket, 'icon s'), ' Keeps ', goodName(x.trinket).toLowerCase(), '.') : null);
+  }, null, 'dwarf');
 }
 
 /** The skill a dwarf's job trains and uses. */
@@ -188,10 +252,18 @@ export function jobSheet(x) {
     opt('Guard in the entrance hall', `defends the gate, chases critters · ${D().guards}/${D().hallSeats} posted`, { job: 'warrior', post: 'hall' }, x.job === 'warrior' && x.post !== 'mine'),
     opt('Warrior on mine patrol', 'fights monsters in the mine', { job: 'warrior', post: 'mine' }, x.job === 'warrior' && x.post === 'mine'),
     opt('Merchant', 'leads caravans', { job: 'merchant' }, x.job === 'merchant'),
+    f.level >= D().foremanLevel ? opt('Foreman', 'keeps the day plan going: 36 h at full pace, 48 h for a master', { job: 'foreman' }, x.job === 'foreman') : null,
     opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
 }
 
-const SLOTS = [['tool', 'Tool', 'Pickaxes make miners faster'], ['weapon', 'Weapon', 'Axes for fighting'], ['helm', 'Helm', 'Protection'], ['armor', 'Armor', 'Chain mail: strong protection']];
+const SLOTS = [['tool', 'Tool', 'Pickaxes dig faster, break harder rock and wear out'], ['weapon', 'Weapon', 'Axes for fighting; wear out in battle'], ['helm', 'Helm', 'Protection; wears out in battle'], ['armor', 'Armor', 'Chain mail; wears out in battle']];
+
+/** How much of an equipped piece is left (0..1), and whether it has been used (then taking it off scraps it). */
+function left(me, slot) {
+  const dd = D().dwarves[me.id] || {};
+  return slot === 'tool' ? (dd.toolLeft ?? 1) : ((dd.gearLeft || {})[slot] ?? 1);
+}
+function worn(me, slot) { return slot === 'tool' ? me.toolWear > 0.25 : ((me.gearWear || {})[slot] || 0) > 0; }
 
 export function gearSheet(x) {
   openSheet(() => {
@@ -204,8 +276,11 @@ export function gearSheet(x) {
         return h('div', { class: 'card sub' },
           h('div', { class: 'row between' }, h('b', null, name), h('span', { class: 'small muted' }, note)),
           me[slot] ? h('div', { class: 'row' }, goodIcon(me[slot]), h('span', { class: 'grow small' }, goodName(me[slot])),
-            h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, 'Remove'))
-            : h('p', { class: 'small muted' }, 'Nothing equipped.'),
+            h('button', { class: 'btn small', title: worn(me, slot) ? 'A used piece is worn: taking it off scraps it' : '',
+              onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, worn(me, slot) ? 'Scrap' : 'Remove'))
+            : h('p', { class: 'small muted' }, slot === 'tool' ? 'Makeshift pick: free, slow, never breaks, only soft rock.' : 'Nothing equipped.'),
+          me[slot] ? h('div', null, h('div', { class: 'row between small' }, h('span', { class: 'muted' }, 'Condition'), h('span', null, Math.round(left(me, slot) * 100) + '%')),
+            bar(left(me, slot), left(me, slot) < 0.15 ? 'bad' : '')) : null,
           items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
             h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, item: k }); refreshSheet(); } }, 'Equip'))));
       }),
@@ -294,6 +369,8 @@ function fightSheet(title, enemy, makeAction) {
 export function renderMore() {
   const f = F(), d = D();
   const out = [];
+  const notes = notesView();
+  if (notes) { out.push(...section("What's new", notes)); markNotesSeen(); }
   out.push(...section('Traditions', h('div', { class: 'card' },
     h('p', { class: 'small muted' }, `Choose how your fortress specialises. One point per fortress level. Points left: `, h('b', { class: 'gold-t' }, d.traditionPoints)),
     G.data.traditions.map((t) => {

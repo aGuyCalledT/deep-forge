@@ -1,0 +1,31 @@
+[
+  {
+    "version": "0.9",
+    "date": "2026-11-13",
+    "title": "Signs, pillars and the dark below",
+    "short": [
+      "Clear signs everywhere: red stop, yellow warning, green done.",
+      "Slim pillars between rooms that match the wall behind them.",
+      "Three new back walls, and the untouched mountain is now dark."
+    ],
+    "details": [
+      { "head": "Signs and buttons", "items": [
+        "Rooms, hints, tabs and messages use three drawn signs: a red octagon (stopped), a yellow triangle (needs you) and a green circle (done, collect the loot).",
+        "Trade depot and adventurers' guild show the green sign when a report waits; the forge shows it when hot metal is ready to quench.",
+        "All buttons are forged metal plates that press in; windows have a new close button.",
+        "Every sign is drawn as one half and mirrored, so they are all symmetrical."
+      ] },
+      { "head": "The hold", "items": [
+        "Pillars between rooms are half as wide, take the stone or wood of the room's back wall and carry a band, runes or a banner.",
+        "Doors sit inside the pillars and only show while they swing open.",
+        "New back walls for your room looks: half-timbering, slate and glazed tiles.",
+        "Rock nobody uses is dark. About one floor around every dug space stays visible and fades out. In build mode the dark is see-through.",
+        "No more light seams in the rock when you zoom."
+      ] },
+      { "head": "Fixes", "items": [
+        "Clicking in the valley no longer opens the mines.",
+        "Chronicle lines no longer get squashed."
+      ] }
+    ]
+  }
+]

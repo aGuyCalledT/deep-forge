@@ -19,7 +19,7 @@ import java.util.*;
 @Component
 public class Market {
     public static final double STEP = 60;               // seconds per market step
-    public static final double DEMAND_EPOCH = 4 * 3600; // city demand changes every 4 h
+    public static final double DEMAND_EPOCH = 12 * 3600; // city demand changes every 12 h, news comes 12 h ahead
     static final double THETA_G = 1.0 / (24 * 3600);     // the world level returns to the base price within a day or so
     static final double SIGMA_G = 0.25 * Math.sqrt(2 * THETA_G);   // spread of the world level: about x0.6 .. x1.6 (two sigma)
     static final double THETA_C = 1.0 / (6 * 3600);      // a city recovers from a big sale within hours
@@ -180,21 +180,27 @@ public class Market {
         w.demandEpoch = epoch;
         w.demand.clear();
         w.news.clear();
-        List<String> cats = Content.CATEGORIES;
+        w.nextNews.clear();
         for (Content.City c : Content.CITIES.values()) {
-            Rng r = new Rng(w.seed ^ (epoch * 0x9E3779B97F4A7C15L) ^ c.id().hashCode() * 1315423911L);
             Map<String, Double> m = new TreeMap<>();
-            for (String cat : cats) m.put(cat, c.bias().getOrDefault(cat, 1.0) * r.range(0.95, 1.05));
-            List<String> pool = new ArrayList<>(cats);
-            Collections.shuffle(pool, new Random(r.nextLong()));
-            String want1 = pool.get(0), want2 = pool.get(1), glut = pool.get(2);
-            m.put(want1, m.get(want1) * r.range(1.35, 1.7));
-            m.put(want2, m.get(want2) * r.range(1.15, 1.35));
-            m.put(glut, m.get(glut) * r.range(0.55, 0.75));
+            w.news.put(c.id(), demandOf(c, epoch, m));
             w.demand.put(c.id(), m);
-            w.news.put(c.id(), c.name() + " is desperate for " + want1 + " and wants " + want2
-                    + ". Nobody there needs " + glut + " right now.");
+            w.nextNews.put(c.id(), demandOf(c, epoch + 1, new TreeMap<>()));
         }
+    }
+
+    /** What a city wants in one 12 h epoch (the same every time it is asked), and the news about it. */
+    private String demandOf(Content.City c, long epoch, Map<String, Double> m) {
+        List<String> cats = Content.CATEGORIES;
+        Rng r = new Rng(w.seed ^ (epoch * 0x9E3779B97F4A7C15L) ^ c.id().hashCode() * 1315423911L);
+        for (String cat : cats) m.put(cat, c.bias().getOrDefault(cat, 1.0) * r.range(0.95, 1.05));
+        List<String> pool = new ArrayList<>(cats);
+        Collections.shuffle(pool, new Random(r.nextLong()));
+        String want1 = pool.get(0), want2 = pool.get(1), glut = pool.get(2);
+        m.put(want1, m.get(want1) * r.range(1.35, 1.7));
+        m.put(want2, m.get(want2) * r.range(1.15, 1.35));
+        m.put(glut, m.get(glut) * r.range(0.55, 0.75));
+        return c.name() + " is desperate for " + want1 + " and wants " + want2 + ". Nobody there needs " + glut + ".";
     }
 
     // ------------------------------------------------------------ prices
@@ -302,6 +308,7 @@ public class Market {
             cm.put("known", known.contains(c.id()));
             cm.put("demand", w.demand.get(c.id()));
             cm.put("news", w.news.get(c.id()));
+            cm.put("nextNews", w.nextNews.get(c.id()));
             Map<String, Double> mults = new TreeMap<>();
             for (String k : w.g.keySet()) mults.put(k, round(mult(c.id(), k)));
             cm.put("mult", mults);

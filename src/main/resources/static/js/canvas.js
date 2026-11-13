@@ -8,6 +8,7 @@ let canvas, ctx, wrap, screens, onPick;
 let screen = null, screenName = null;
 let last = 0;
 const cam = { x: 0, y: 0, zoom: 2, set: false };
+const saved = {};   // camera per screen name (the hold and the mines keep their own view)
 const pointers = new Map();
 let drag = null, hover = null, mouse = null;
 const light = document.createElement('canvas');
@@ -158,9 +159,12 @@ function loop(ts) {
   last = ts;
   const name = G.screen || 'hold';
   if (name !== screenName) {
+    if (screen && screen.camera && cam.set) saved[screenName] = { x: cam.x, y: cam.y, zoom: cam.zoom };
     screenName = name;
     screen = screens[name];
     hover = null;
+    cam.set = false;
+    if (saved[name]) { Object.assign(cam, saved[name]); cam.set = true; }
     if (screen.camera && !cam.set && screen.home) { const h = screen.home(wrap.getBoundingClientRect()); Object.assign(cam, h); cam.set = true; }
     wrap.scrollTop = 0;
   }
@@ -288,6 +292,12 @@ function outline(h, t) {
     }
     ctx.globalAlpha = 1;
   }
+}
+
+/** Put the current screen's camera back to its home view (the mines after picking another layer). */
+export function homeCamera() {
+  if (!screen || !screen.camera || !screen.home) return;
+  Object.assign(cam, screen.home(wrap.getBoundingClientRect())); clamp();
 }
 
 /** Scroll the hold camera so a world point sits in the middle of the first `width` css pixels. */

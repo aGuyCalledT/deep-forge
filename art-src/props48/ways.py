@@ -379,11 +379,173 @@ def walldoor_stone(frame=0): return walldoor_of('sand', 'oak', frame=frame)
 def walldoor_grand(frame=0): return walldoor_of('stone', 'oak', key='gold', frame=frame)
 
 
+# ------------------------------------------------------------------ three more room walls (96 x 144, period 96)
+R['slate'] = ['#15171e', '#262a35', '#3a404f', '#535b6c', '#78819a']     # blue-grey slate
+def wall_plaster():
+    """Half-timbering: lime plaster between oak posts (every 48 px), a rail and braces; grime splashed up from the floor."""
+    g = grid(96, RH)
+    for y in range(RH):
+        for x in range(96): g[y, x] = ('cream', 3)
+    for y in range(FLOOR - 7, FLOOR):                                   # splash-back: darker towards the floor
+        for x in range(96): g[y, x] = ('cream', 2)
+    for cx in (20, 68):                                                 # braces in the lower panels, slanting opposite ways
+        sgn = 1 if cx == 20 else -1
+        for y in range(76, FLOOR - 6):
+            u = (y - 76) / (FLOOR - 82)
+            x = int(round(cx - sgn * 15 + sgn * 30 * u))
+            for dx in range(-2, 3): g[y, (x + dx) % 96] = ('oak', 1 if dx == 2 else 3 if dx == -2 else 2)
+    for x0 in (0, 48):                                                  # posts
+        for y in range(RH):
+            for x in range(x0, x0 + 6): g[y, x] = ('oak', 3 if x == x0 else 1 if x == x0 + 5 else 2)
+    for y0, y1 in ((0, 5), (70, 75), (FLOOR - 6, FLOOR - 1)):           # top plate, rail, sill
+        for y in range(y0, y1 + 1):
+            for x in range(96): g[y, x] = ('oak', 3 if y == y0 else 1 if y == y1 else 2)
+    for x0 in (0, 48):                                                  # pegs where post meets rail
+        g[72, x0 + 2] = ('oak', 0); g[2, x0 + 3] = ('oak', 0)
+    for (x, y, dx) in ((30, 8, 1), (80, 79, -1)):                       # two hairline cracks running from a corner
+        for i in range(9):
+            g[y + i, (x + dx * (i // 2) + (i % 3 == 0)) % 96] = ('cream', 1)
+    return g
+def wall_slate():
+    """Slate laid in thin courses, slabs of different lengths; every fifth course is a thick one."""
+    ids = np.full((RH, 96), -1); y = 0; c = 0
+    while y < RH:
+        h = 11 if c % 5 == 4 else 6
+        x = hsh(c, 2) % 96; k = 0
+        while k < 96:
+            L = 14 + hsh(c, k, 4) % 22
+            for dx in range(min(L, 96 - k)):
+                for dy in range(min(h, RH - y)): ids[y + dy, (x + k + dx) % 96] = c * 100 + k
+            k += L
+        y += h; c += 1
+    return blocks(ids, 'slate', pick(1, 2, 2, 3))
+def wall_tile():
+    """Glazed green tiles, 12 px, a gold frieze of diamonds at hand height, a darker tiled dado below it."""
+    yy_, xx_ = np.mgrid[0:RH, 0:96]
+    ids = (yy_ // 12) * 100 + xx_ // 12
+    g = blocks(ids, 'teal', lambda i: 2 if i // 100 < 6 else 1, joint=0)
+    for y in range(RH):
+        for x in range(96):
+            v = g[y, x]
+            if v[1] > 0 and x % 12 == 1 and y % 12 == 1: g[y, x] = ('teal', 4)          # the glaze catches the light
+    for y in range(66, 78):                                                           # the frieze
+        for x in range(96):
+            u, v = (x % 12) - 5.5, y - 71.5
+            g[y, x] = ('gold', 3 if abs(u) + abs(v) < 4 else 1 if y in (66, 77) else 2)
+            if abs(u) + abs(v) < 2: g[y, x] = ('gold', 4)
+    return g
+
+# ------------------------------------------------------------------ slim pillar between two spaces (16 wide)
+# The wall seen end-on, half as wide as before, in the material of the room's back wall. The door in it cannot be
+# seen while it is shut: it shows only when it swings open towards you (frames 1-3), the wall's foot opens up and the
+# leaf turns out to the right. Grid 40 x 144, the pillar in x 0..15, anchor (8, 144): its middle on the cell edge.
+DW, DTOP, LEAF = 40, 62, 22
+DOPEN = [0.0, 0.4, 0.75, 1.0]
+def leaf_out(g, frac, leaf='oak'):
+    """The door leaf turned out towards the viewer, hinged on the pillar's right side."""
+    L = int(round(LEAF * frac))
+    if not L: return
+    for i in range(L):
+        u = i / max(1, L - 1)
+        top = DTOP + 3 - int(round(u * 3 * frac))                       # the free edge is nearer: a little taller
+        for y in range(top, FLOOR):
+            board = int(i / max(1.0, 5 * frac)) % 2
+            t = (3 if frac > 0.9 else 2) - board
+            if y in (DTOP + 12, FLOOR - 12): t = None
+            g[y, 16 + i] = ('iron', 3 if frac > 0.9 else 2) if t is None else (leaf, max(0, t))
+        g[top, 16 + i] = (leaf, 4 if frac > 0.9 else 3)
+        g[FLOOR - 1, 16 + i] = (leaf, 0)
+    for y in range(DTOP + 3 - int(round(3 * frac)), FLOOR): g[y, 16 + L - 1] = (leaf, 0)   # the free edge
+    if L > 6: g[(DTOP + FLOOR) // 2, 16 + L - 4] = ('iron', 4)                                  # the ring
+def doorway(g, frac):
+    """While the door is open the foot of the pillar is a gap: a lintel above it, a worn sill below."""
+    if not frac: return
+    for y in range(DTOP, FLOOR - 1):
+        for x in range(16): g[y, x] = None
+    for x in range(16): g[FLOOR - 1, x] = ('stone', 2)
+def divider_stone(ramp, course=14, split=False):
+    def make(frame=0):
+        g = grid(DW, RH)
+        ids = np.full((RH, DW), -1)
+        for y in range(RH):
+            for x in range(16):
+                if y < 4: ids[y, x] = 900                               # abacus, into the ceiling
+                elif y < 10: ids[y, x] = 901 if 1 <= x <= 14 else -1     # block capital
+                elif y >= FLOOR - 9: ids[y, x] = 902 + (y >= FLOOR)      # plinth, foundation under the floor
+                elif 2 <= x <= 13:
+                    row = (y - 10) // course
+                    ids[y, x] = row * 2 + (split and x >= (5 if row % 2 else 9))
+                    if DTOP - 6 <= y < DTOP: ids[y, x] = 904             # the lintel, a stone of its own
+        g2 = blocks(ids, ramp, lambda i: 3 if i in (900, 904) else 2 if i in (901, 902) else 1 if i == 903 else pick(2, 2, 3)(i), wrap=False)
+        for y, x in zip(*np.nonzero(ids >= 0)): g[y, x] = g2[y, x]
+        for y in range(10, FLOOR - 9):                                  # lit left face, shaded right face
+            if g[y, 2] is not None: g[y, 2] = (ramp, min(4, g[y, 2][1] + 1))
+            if g[y, 13] is not None: g[y, 13] = (ramp, max(0, g[y, 13][1] - 1))
+        for y in range(RH):                                             # a dark edge, so it stands off the same wall
+            xs = [x for x in range(16) if g[y, x] is not None]
+            if xs: g[y, xs[0]] = (ramp, 0); g[y, xs[-1]] = (ramp, 0)
+        frac = DOPEN[frame % 4]
+        doorway(g, frac); leaf_out(g, frac)
+        return {'grid': g, 'anchor': (8, RH)}
+    return make
+def divider_timber(frame=0):
+    """A squared oak post under a corbel, iron bands, on a stone footing."""
+    g = grid(DW, RH)
+    beam(g, 3, 0, 12, FLOOR - 9, horiz=False)
+    for y, (a, b) in enumerate([(0, 15), (0, 15), (0, 15), (1, 14), (2, 13), (3, 12)]):
+        for x in range(a, b + 1): g[y, x] = ('oak', 4 if y == 0 else 1 if x in (a, b) or y == 5 else 3 if y == 1 else 2)
+    for y in range(FLOOR - 9, RH):
+        for x in range(1, 15): g[y, x] = ('stone', 3 if y == FLOOR - 9 else 1 if y >= FLOOR else 2 if x < 12 else 1)
+    for yb in (DTOP - 8, 104):
+        for x in range(3, 13): g[yb, x] = ('iron', 3); g[yb + 1, x] = ('iron', 1)
+        g[yb, 5] = ('iron', 4); g[yb, 10] = ('iron', 4)
+    frac = DOPEN[frame % 4]
+    doorway(g, frac); leaf_out(g, frac)
+    return {'grid': g, 'anchor': (8, RH)}
+
+# decorations hung on a pillar (any material); the game picks one per pillar
+def pillar_band():
+    """An iron ring round the pillar with two rivets."""
+    g = grid(16, 5)
+    for x in range(16):
+        g[0, x] = ('iron', 4 if x < 12 else 3); g[1, x] = ('iron', 3); g[2, x] = ('iron', 2); g[3, x] = ('iron', 1); g[4, x] = ('iron', 0)
+    g[2, 4] = ('iron', 4); g[2, 11] = ('iron', 4)
+    return {'grid': g, 'anchor': (8, 0)}
+def pillar_runes():
+    """A brass plate with three runes cut into it."""
+    g = grid(12, 18)
+    for y in range(18):
+        for x in range(12): g[y, x] = ('gold', 0 if x in (0, 11) or y in (0, 17) else 3 if x == 1 or y == 1 else 2)
+    runes = ['..#..', '.#.#.', '..#..', '..#..', '.....', '#...#', '.#.#.', '..#..', '.#.#.', '.....', '###..', '#.#..', '###..', '#....']
+    for j, r in enumerate(runes):
+        for i, ch in enumerate(r):
+            if ch == '#': g[2 + j, 3 + i] = ('gold', 0)                     # the cut
+            elif i and r[i - 1] == '#': g[2 + j, 3 + i] = ('gold', 4)        # its lit far edge
+    return {'grid': g, 'anchor': (6, 0)}
+def pillar_banner():
+    """A small red pennant with a gold hammer, hanging from the capital."""
+    g = grid(14, 30)
+    for x in range(14): g[0, x] = ('iron', 3); g[1, x] = ('iron', 1)
+    for y in range(2, 30):
+        for x in range(1, 13):
+            cut = y > 22 and abs(x - 6.5) < (y - 22)                     # the swallow tail
+            if cut: continue
+            g[y, x] = ('quilt', 0 if x in (1, 12) else 3 if x == 2 else 2)
+    for y in range(4, 22): g[y, 2] = ('gold', 3); g[y, 11] = ('gold', 2)
+    for y in range(8, 18): g[y, 6] = ('gold', 3); g[y, 7] = ('gold', 2)                     # the hammer's haft
+    for x in range(4, 10): g[8, x] = ('gold', 4); g[9, x] = ('gold', 3); g[10, x] = ('gold', 2)
+    return {'grid': g, 'anchor': (7, 0)}
+
+
 WAYS = {'stairdoor': stairdoor, 'stairdoor_stone': stairdoor_stone, 'stairdoor_grand': stairdoor_grand,
         'runeplate': runeplate, 'statue': statue,
-        'walldoor': walldoor, 'walldoor_stone': walldoor_stone, 'walldoor_grand': walldoor_grand}
-WAY_SPRITES = {'gallery': gallery, 'arcade': arcade, 'arcade_grand': arcade_grand}
-WAY_TILES = {'wall_hewn': wall_hewn}
+        'walldoor': walldoor, 'walldoor_stone': walldoor_stone, 'walldoor_grand': walldoor_grand,
+        'divider_rock': divider_stone('rock'), 'divider_brick': divider_stone('brick', 7, split=True),
+        'divider_sand': divider_stone('sand'), 'divider_slate': divider_stone('slate', 9),
+        'divider_stone': divider_stone('stone'), 'divider_oak': divider_timber}
+WAY_SPRITES = {'gallery': gallery, 'arcade': arcade, 'arcade_grand': arcade_grand,
+               'pillar_band': pillar_band, 'pillar_runes': pillar_runes, 'pillar_banner': pillar_banner}
+WAY_TILES = {'wall_hewn': wall_hewn, 'wall_plaster': wall_plaster, 'wall_slate': wall_slate, 'wall_tile': wall_tile}
 
 
 if __name__ == '__main__':

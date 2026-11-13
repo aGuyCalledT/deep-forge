@@ -75,11 +75,28 @@ export function refGood(mk) { return (G.market && G.market.goods[mk] && G.market
 /** Does this stock key belong to the market key? */
 export function inMarket(k, mk) { return marketKey(k) === mk; }
 
+/** What one quality step multiplies an item's value by (same formula as Content.qualityStep). */
+export function qualityStep(t) { return 1.2 + 0.1 * t.skill; }
+
+/** Value factor of a quality tier: Normal 1, one step per tier; an artifact is five masterworks. */
+export function qualityMult(t, q) {
+  const s = qualityStep(t), art = G.data.qualities.length - 1;
+  return q >= art ? 5 * Math.pow(s, art - 2) : Math.pow(s, q - 1);
+}
+
+/** What goes into a piece besides its own bars: parts of assembled pieces and the gold inlay (as Content.extraValue). */
+export function extraValue(type, mods) {
+  let v = 0;
+  for (const [k, n] of Object.entries((G.data.parts || {})[type] || {})) v += baseValue(k) * n;
+  if (mods.includes('i') && G.data.inlay) v += 2 * G.data.inlay.bars * byId.metals[G.data.inlay.metal].value;
+  return v;
+}
+
 export function baseValue(k) {
   if (k.startsWith('wear:')) { const c = byId.clothes[k.split(':')[1]]; return c ? c.value : 0; }
   if (isItem(k)) {
     const p = parseItem(k), t = byId.items[p.type], m = byId.metals[p.metal];
-    let v = m.value * t.bars * t.factor * G.data.qualities[p.q].mult;
+    let v = (m.value * t.bars + extraValue(p.type, p.mods)) * t.factor * qualityMult(t, p.q);
     for (const c of p.mods) v *= byId.mods[c].mult;
     return v;
   }
@@ -112,12 +129,17 @@ export function buyPrice(city, k, bonus = 1) {
 }
 
 /** How hard your trades move this price (1 for a small trader, more with a big market share). */
+/** Reputation rank with a city (0..10). */
+export function repRank(city) { const r = D().rep && D().rep[city]; return r ? r.rank : 0; }
+
 export function marketPower(mk) { return (G.market && G.market.power && G.market.power[mk]) || 1; }
 
 /** Revenue for selling q units at once, including the price drop. */
 export function saleEstimate(city, k, q, bonus = 1) {
   if (q <= 0) return 0;
-  const mk = marketKey(k), x = q / liquidity(mk) * marketPower(mk);
+  const rk = repRank(city);
+  bonus *= 1 + (D().repPrice || 0) * rk;
+  const mk = marketKey(k), x = q / liquidity(mk) * marketPower(mk) / (1 + (D().repTake || 0) * rk);
   return q * sellPrice(city, k, bonus) * (1 - Math.exp(-x)) / x;
 }
 
@@ -188,6 +210,7 @@ export function jobLabel(d) {
     case 'worker': { const b = building(d.building); return b ? buildingName(b) : 'Worker'; }
     case 'warrior': return d.post === 'mine' ? 'Warrior · mine patrol' : 'Guard · entrance hall';
     case 'merchant': return 'Merchant';
+    case 'foreman': return 'Foreman';
     default: return 'Idle';
   }
 }
@@ -237,6 +260,7 @@ export function contextResources() {
       if (t === 'grindstone') return [{ title: 'Can be sharpened', keys: items((p) => byId.items[p.type].mods.includes('s') && !p.mods.includes('s')), empty: 'No axes or pickaxes to sharpen.' }];
       if (t === 'engraver') return [{ title: 'Can be engraved', keys: items((p) => byId.items[p.type].mods.includes('e') && !p.mods.includes('e')).slice(0, 14), empty: 'Nothing to engrave.' }];
       if (t === 'tailor') return [{ title: 'Fibre and cloth', keys: ['food', 'cloth'] }, { title: 'Sewn clothes', keys: stockKeys((k) => k.startsWith('wear:')).slice(0, 12), empty: 'Nothing sewn yet.' }];
+      if (t === 'mechanic') return [{ title: 'Bars and parts', keys: ['bar:brass', 'gears', 'bar:copper', 'bar:bronze', 'bar:gold', 'bar:nickel_silver', 'cut_gem', 'coal'] }, { title: 'Made here', keys: items((p) => !!(G.data.parts || {})[p.type]).slice(0, 12), empty: 'Nothing made yet.' }];
       if (t === 'jeweler') return [{ title: 'Gems', keys: ['rough_gem', 'cut_gem'] }, { title: 'Can take a gem', keys: items((p) => byId.items[p.type].mods.includes('g') && !p.mods.includes('g')).slice(0, 12), empty: 'No rings, crowns or goblets.' }];
       return [prov];
     }

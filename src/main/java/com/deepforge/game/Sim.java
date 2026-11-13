@@ -15,8 +15,7 @@ public final class Sim {
 
     public static final double STEP = 60;
     public static final double MAX_CATCHUP = 7 * 86400;
-    public static final double QUENCH_WAIT = 12;
-    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "tailor", "farm", "brewery");
+    public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "mechanic", "tailor", "farm", "brewery");
     static final List<String> RAIDERS = List.of("Goblin warband", "Bandit gang", "Orc raiders", "Kobold swarm", "Troll pack");
 
     public static void advance(Fortress f, double now, Market market) {
@@ -32,16 +31,29 @@ public final class Sim {
 
     static void step(Fortress f, double dt, Rng r, Market market) {
         double t = f.t;
-        needs(f, dt, t);
-        happiness(f, dt, t);
-        digging(f, dt, t);
-        mining(f, dt, r);
-        buildings(f, dt, r, t);
-        training(f, dt);
-        threats(f, dt, r, t + dt);
-        critters(f, dt, r, t + dt);
-        raids(f, r, t + dt);
+        // the day plan: away too long, the dwarves slow down and at last rest (no work, no eating, no raids)
+        double w = dt * pace(f, t + dt / 2);
+        if (w > 0) {
+            needs(f, w, t);
+            happiness(f, w, t);
+            digging(f, w, t);
+            mining(f, w, r, t + dt);
+            buildings(f, w, r, t);
+            training(f, w);
+            shiftReports(f, r, t + dt);
+            minting(f, w, t + dt);
+        }
+        builders(f, t + dt);
+        galleries(f, t + dt);
+        anvil(f, r, t + dt);
+        if (watched(f, t)) {
+            threats(f, dt, r, t + dt);
+            critters(f, dt, r, t + dt);
+            raids(f, r, t + dt);
+        }
         caravans(f, r, t + dt, market);
+        visitors(f, r, t + dt, market);
+        contracts(f, r, t + dt);
         Depot.step(f, r, t + dt, market);
         Expeditions.step(f, r, t + dt);
         migrants(f, r, t + dt);
@@ -121,12 +133,14 @@ public final class Sim {
         for (Dwarf o : f.dwarves) if (has(o, "storyteller")) tellers++;
         h += 3 * Math.min(2, tellers);
         h += 2 * trad(f, "brewmasters");
+        for (Object[] w : wishes(f, d)) h += (Boolean) w[1] ? 3 : -6;   // journeymen and masters want more
         if (d.health < 40) h -= 10;
         return Math.max(0, Math.min(100, h));
     }
 
     static void happiness(Fortress f, double dt, double t) {
         for (Dwarf d : new ArrayList<>(f.dwarves)) {
+            takeTrinket(f, d);
             double target = happinessTarget(f, d, t);
             double max = 8 * dt / H;
             d.happiness += Math.max(-max, Math.min(max, target - d.happiness));
@@ -146,18 +160,27 @@ public final class Sim {
 
     // ------------------------------------------------------------ mining
 
-    static void mining(Fortress f, double dt, Rng r) {
+    static void mining(Fortress f, double dt, Rng r, double t) {
         double cap = capacity(f);
         int used = used(f);
         double[] rate = new double[f.layers.size()];
         double[] sniff = new double[f.layers.size()];
         int[] miners = new int[f.layers.size()];
         double total = 0;
+        List<Map<String, Double>> mix = new ArrayList<>();
+        for (int i = 0; i < f.layers.size(); i++) mix.add(new LinkedHashMap<>());
         for (Dwarf d : f.dwarves) {
             if (!d.job.equals("miner") || d.busy != null || d.dig != null) continue;
             LayerState l = f.layers.get(d.layer);
             if (!l.unlocked || l.threat != null) continue;
+            if (d.tool == null && f.autoPicks) takePick(f, d, t);
             double v = minerRate(f, d, l) * dt / H;
+            // each miner brings only what their pick can break
+            Map<String, Integer> can = mineable(Content.LAYERS.get(l.index), pickHardness(d));
+            double n = 0;
+            for (int w : can.values()) n += w;
+            for (Map.Entry<String, Integer> e : can.entrySet()) mix.get(l.index).merge(e.getKey(), v * e.getValue() / n, Double::sum);
+            wearPick(f, d, dt / H, t);
             rate[l.index] += v;
             miners[l.index]++;
             if (has(d, "sniffer")) sniff[l.index]++;
@@ -170,22 +193,114 @@ public final class Sim {
         f.storageFull = used >= cap;
         if (f.storageFull) return;
         for (LayerState l : f.layers) {
+            // a ready cart (full enough, or waited long enough) goes as soon as the warehouse has room
+            if (cartReady(l, t) && used < cap) used += sendCart(f, l, t);
             if (rate[l.index] == 0) continue;
             l.pending += rate[l.index] * scale;
             Content.Layer layer = Content.LAYERS.get(l.index);
             double sniffChance = 0.15 * sniff[l.index] / Math.max(1, miners[l.index]);
-            while (l.pending >= 1 && used < cap) {
-                String ore = r.weighted(layer.weights());
-                int n = r.chance(sniffChance) ? 2 : 1;
-                add(f, ore, n);
-                used += n;
+            // the miners fill the cart; a full cart goes up the lift and only then the ore is in the warehouse
+            while (l.pending >= 1) {
+                if (cartTotal(l) >= cartTarget(l)) {
+                    if (used >= cap) { l.pending = Math.min(l.pending, 1); f.storageFull = true; break; }
+                    used += sendCart(f, l, t);
+                }
+                String ore = mix.get(l.index).isEmpty() ? r.weighted(layer.weights()) : r.weightedD(mix.get(l.index));
+                if (l.cart.isEmpty()) l.cartStart = t;
+                l.cart.merge(ore, r.chance(sniffChance) ? 2 : 1, Integer::sum);
                 l.pending -= 1;
             }
-            if (used >= cap) {
-                l.pending = Math.min(l.pending, 1);
-                f.storageFull = true;
+            if (cartReady(l, t) && used < cap) used += sendCart(f, l, t);
+            if (used >= cap) f.storageFull = true;
+        }
+    }
+
+    /** A pick wears with every working hour; when it breaks the miner takes the next one, or the makeshift pick. */
+    static void wearPick(Fortress f, Dwarf d, double hours, double t) {
+        if (d.tool == null) return;
+        d.toolWear += hours;
+        if (d.toolWear < toolLife(d.tool)) return;
+        String broke = Content.goodName(d.tool).toLowerCase();
+        d.tool = null;
+        d.toolWear = 0;
+        String next = f.autoPicks ? takePick(f, d, t) : null;
+        if (next != null) log(f, t, "info", fullName(d) + "'s " + broke + " broke. They took a " + Content.goodName(next).toLowerCase() + " from the warehouse.");
+        else log(f, t, "warn", fullName(d) + "'s " + broke + " broke. They dig on with a makeshift pick. Forge new pickaxes.");
+    }
+
+    /** Equip the best pickaxe in the warehouse. Returns its key, or null when there is none. */
+    static String takePick(Fortress f, Dwarf d, double t) {
+        String best = null;
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) {
+            if (e.getValue() <= 0 || !Content.isItem(e.getKey())) continue;
+            Content.ItemType it = Content.ITEMS.get(Content.parseItem(e.getKey())[0]);
+            if (!"tool".equals(it.slot())) continue;
+            if (best == null || pickScore(e.getKey()) > pickScore(best)) best = e.getKey();
+        }
+        if (best == null) return null;
+        add(f, best, -1);
+        d.tool = best;
+        d.toolWear = 0;
+        return best;
+    }
+
+    /** Builders finish their work. */
+    static void builders(Fortress f, double t) {
+        for (Building b : f.buildings) if (b.upUntil > 0 && t >= b.upUntil) Actions.raise(f, b, b.upUntil);
+    }
+
+    /**
+     * Every 4 h of work the dwarves leave a shift report with a find; up to 3 wait. Finds grow with the hold: ore from
+     * the deepest open layer, bars, a rough gem, old coins, now and then a blueprint.
+     */
+    static void shiftReports(Fortress f, Rng r, double t) {
+        if (f.findAt == 0) f.findAt = t + FIND_EVERY;
+        if (t < f.findAt) return;
+        f.findAt = t + FIND_EVERY;
+        if (f.reports.stream().filter(x -> x.kind.equals("shift")).count() >= FINDS_MAX) return;
+        int deep = 0;
+        for (LayerState l : f.layers) if (l.unlocked) deep = l.index;
+        Content.Layer layer = Content.LAYERS.get(deep);
+        Dwarf who = f.dwarves.isEmpty() ? null : f.dwarves.get(r.nextInt(f.dwarves.size()));
+        String name = who == null ? "A dwarf" : who.first;
+        Report rep = report(f, "shift", 0, "Shift report", t);
+        double roll = r.next();
+        if (roll < 0.4) {
+            String ore = r.weighted(layer.weights());
+            int n = 6 + 4 * deep + r.nextInt(5);
+            rep.goods.put(ore, n);
+            rep.lines.add(name + " found a pocket of " + Content.goodName(ore).toLowerCase() + " behind old timbering.");
+        } else if (roll < 0.6) {
+            rep.goods.put("rough_gem", 1 + deep / 2);
+            rep.lines.add(name + " spotted a glint in the spoil heap.");
+        } else if (roll < 0.8) {
+            rep.coins = Math.round((3 + 2 * f.level) * JOTS_PER_MARK * r.range(0.8, 1.4));
+            rep.lines.add(name + " dug up a purse of old coins. Nobody claims it.");
+        } else if (roll < 0.95) {
+            String metal = Content.ORES.get(layer.weights().keySet().stream().filter(Content.ORES::containsKey).findFirst().orElse("native_copper")).metal();
+            rep.goods.put("bar:" + metal, 2 + deep);
+            rep.lines.add(name + " found bars someone hid in a crack long ago.");
+        } else {
+            List<String> missing = new ArrayList<>(Content.BLUEPRINTS);
+            missing.removeAll(f.blueprints);
+            if (missing.isEmpty()) { rep.goods.put("cut_gem", 1); rep.lines.add(name + " found a cut gem in a dusty pouch."); }
+            else {
+                String bp = r.pick(missing);
+                f.blueprints.add(bp);
+                rep.lines.add(name + " found old plans scratched into a wall.");
+                rep.extras.add("New blueprint: " + Content.BLUEPRINT_NAMES.get(bp));
             }
         }
+    }
+
+    /** Empties a layer's cart into the warehouse. Returns how much it carried. */
+    static int sendCart(Fortress f, LayerState l, double t) {
+        int n = 0;
+        for (Map.Entry<String, Integer> e : l.cart.entrySet()) { add(f, e.getKey(), e.getValue()); n += e.getValue(); }
+        l.cart.clear();
+        l.cartSent = t;
+        l.cartLoad = n;
+        return n;
     }
 
     // ------------------------------------------------------------ digging out the hold
@@ -220,6 +335,7 @@ public final class Sim {
             String k = d.dig;
             int[] c = Layouts.cell(k);
             double work = l.digs.getOrDefault(k, 0.0) + dt * workSpeed(f, d, "mining") * toolBonus(d);
+            wearPick(f, d, dt / H, t);
             addXp(d, "mining", 10 * dt / H);
             if (work >= digSeconds(c[1])) {
                 Layouts.dugOut(f, k, t + dt);
@@ -354,7 +470,7 @@ public final class Sim {
                 continue;
             }
             if (type.kind().equals("continuous")) {
-                for (Dwarf w : ws) continuous(f, b, w, dt);
+                for (Dwarf w : ws) continuous(f, b, w, dt, t);
                 continue;
             }
             // every machine runs its own job from the shared queue; machine 1 is b.job, the others live in b.more
@@ -384,11 +500,13 @@ public final class Sim {
         }
     }
 
-    static void continuous(Fortress f, Building b, Dwarf w, double dt) {
-        double speed = workSpeed(f, w, "farming") * buildingMult(b);
-        addXp(w, "farming", 10 * dt / H);
+    static void continuous(Fortress f, Building b, Dwarf w, double dt, double t) {
+        double speed = workSpeed(f, w, "farming") * buildingMult(b) * (b.practice ? PRACTICE_RATE : 1);
+        addXp(w, "farming", 10 * dt / H * learnMult(f, b, w, "farming"));
         if (b.type.equals("farm")) {
-            b.acc += 5 * speed * dt / H;
+            // fertilizer from the minigame: more mushrooms until it is used up
+            double fert = b.fertUntil <= t ? 0 : b.fert * Math.min(1, (b.fertUntil - t) / Math.max(1e-9, dt));
+            b.acc += FARM_PER_H * speed * (1 + fert) * dt / H;
             int n = (int) Math.floor(b.acc);
             if (n > 0) {
                 add(f, "food", n);
@@ -396,8 +514,8 @@ public final class Sim {
             }
             b.status = "Growing mushrooms";
         } else {
-            // 2 ale from 1 mushroom
-            b.acc += 5 * speed * dt / H;
+            // 2 ale from 1 mushroom; shaking the barrels (minigame) makes it faster
+            b.acc += BREW_PER_H * speed * (1 + boostAt(b, t + dt / 2) / 100) * dt / H;
             int pairs = (int) Math.floor(b.acc / 2);
             int n = Math.min(pairs, stock(f, "food"));
             if (pairs > 0 && n == 0) {
@@ -423,23 +541,18 @@ public final class Sim {
                 if (!startNext(f, b)) return;
             }
             Job j = b.job;
-            if (j.quenching) {
-                double done = j.quenchStart + QUENCH_WAIT;
-                if (t + dt >= done) {
-                    finishQuench(f, b, w, 0, r, Math.max(now, done));
-                    rem = t + dt - Math.max(now, done);
-                    continue;
-                }
-                b.status = "Quenching... tap Quench at the right glow!";
-                return;
+            if (j.quenching) {          // old saves: a piece waiting in the barrel goes to the anvil
+                toAnvil(f, b, w, 0.05, r, now);
+                continue;
             }
-            double heat = b.type.equals("smelter") ? heatAt(b, now + rem / 2) : 0;
-            double rate = workSpeed(f, w, skill) * buildingMult(b) * (1 + heat / 100);
+            double heat = boostAt(b, now + rem / 2);
+            double slow = b.practice ? PRACTICE_RATE : 1;
+            double rate = workSpeed(f, w, skill) * buildingMult(b) * (1 + heat / 100) * slow;
             double need = (j.time - j.progress) / rate;
-            addXp(w, skill, 12 * Math.min(rem, need) / H);
+            addXp(w, skill, 12 * Math.min(rem, need) / H * learnMult(f, b, w, skill));
             if (need <= rem) {
                 rem -= need;
-                complete(f, b, w, r, t + dt - rem);
+                complete(f, b, w, r, t + dt - rem, workSpeed(f, w, skill) * buildingMult(b) * slow);
             } else {
                 j.progress += rem * rate;
                 rem = 0;
@@ -454,6 +567,10 @@ public final class Sim {
             case "alloy" -> "alloying " + Content.METALS.get(j.mat).name().toLowerCase();
             case "craft" -> "forging " + Content.METALS.get(j.mat).name().toLowerCase() + " "
                     + Content.ITEMS.get(j.itype).name().toLowerCase();
+            case "assemble" -> "making a " + Content.METALS.get(j.mat).name().toLowerCase() + " "
+                    + Content.ITEMS.get(j.itype).name().toLowerCase();
+            case "gears" -> "cutting gears";
+            case "inlay" -> "inlaying " + (j.inItem == null ? "" : Content.goodName(j.inItem).toLowerCase());
             case "cutgem" -> "cutting a gem";
             case "weave" -> "weaving cloth";
             case "sew" -> "sewing a " + Content.goodName(Content.wearKey(j.itype, j.mat)).toLowerCase();
@@ -462,12 +579,13 @@ public final class Sim {
     }
 
     /** Try queue entries in order; the first one with materials starts. */
-    static boolean startNext(Fortress f, Building b) {
+    public static boolean startNext(Fortress f, Building b) {
         if (b.queue.isEmpty()) {
             b.status = "Queue empty";
             return false;
         }
         for (QueueEntry e : new ArrayList<>(b.queue)) {
+            if (e.keep > 0 && Recipes.productCount(f, e) >= e.keep) continue;   // enough in stock
             Job j = Recipes.start(f, b, e);
             if (j != null) {
                 b.job = j;
@@ -479,20 +597,37 @@ public final class Sim {
         return false;
     }
 
-    static void complete(Fortress f, Building b, Dwarf w, Rng r, double at) {
+    static void complete(Fortress f, Building b, Dwarf w, Rng r, double at, double rate) {
         Job j = b.job;
         if (j.recipe.equals("craft")) {
-            j.quenching = true;
-            j.quenchStart = at;
+            toAnvil(f, b, w, j.time / Math.max(0.1, rate) / H, r, at);
+            return;
+        }
+        if (j.recipe.equals("assemble")) {   // no anvil: the mechanic's own skill decides the quality
+            Forging g = new Forging();
+            g.id = f.nextId++;
+            g.building = b.id;
+            g.itype = j.itype;
+            g.mat = j.mat;
+            g.dwarf = w == null ? 0 : w.id;
+            g.skill = w == null ? 0 : skill(w, "crafting");
+            g.nimble = w != null && has(w, "nimble");
+            g.level = b.level;
+            g.hours = j.time / Math.max(0.1, rate) / H;
+            g.at = at;
+            g.craft = "crafting";
+            b.job = null;
+            Smithed s = finishForging(f, g, 0, r, at, false);
+            if (s.key != null && s.quality >= 3) log(f, at, "good", "The fine mechanic made a " + Content.goodName(s.key).toLowerCase() + ".");
             return;
         }
         for (Map.Entry<String, Integer> e : j.out.entrySet()) add(f, e.getKey(), e.getValue());
         if (j.recipe.equals("smelt")) {
             Content.Ore ore = Content.ORES.get(j.mat);
             int bonus = 0;
-            if (ore.bonusMetal() != null) for (int i = 0; i < 2; i++) if (r.chance(ore.bonusChance())) bonus++;
+            if (ore.bonusMetal() != null) if (r.chance(ore.bonusChance())) bonus++;
             if (bonus > 0) add(f, "bar:" + ore.bonusMetal(), bonus);
-            f.stats.barsSmelted += 2 + bonus;
+            f.stats.barsSmelted += 1 + bonus;
             fortressXp(f, 1);
         } else if (j.recipe.equals("alloy")) {
             f.stats.barsSmelted += Content.ALLOYS.get(j.mat).out();
@@ -505,25 +640,95 @@ public final class Sim {
         b.job = null;
     }
 
-    /** Quench a finished forging. bonus > 0 when the player tapped at the right glow. */
-    public static void finishQuench(Fortress f, Building b, Dwarf w, double bonus, Rng r, double at) {
+    /**
+     * A forged piece comes off the fire and waits at the anvil for the player. When the anvil is full, the cheapest
+     * piece (this one or one already waiting) is finished by the dwarves at once.
+     */
+    public static void toAnvil(Fortress f, Building b, Dwarf w, double hours, Rng r, double at) {
         Job j = b.job;
-        double score = r.range(0, 45) + bonus + 3 * (b.level - 1) + 4 * trad(f, "master_smiths");
-        if (w != null) {
-            score += 1.5 * skill(w, "smithing");
-            if (has(w, "nimble")) score += 8;
-            addXp(w, "smithing", 6);
+        b.job = null;
+        Forging g = new Forging();
+        g.id = f.nextId++;
+        g.building = b.id;
+        g.itype = j.itype;
+        g.mat = j.mat;
+        g.dwarf = w == null ? 0 : w.id;
+        g.skill = w == null ? 0 : skill(w, "smithing");
+        g.nimble = w != null && has(w, "nimble");
+        g.level = b.level;
+        g.hours = hours;
+        g.at = at;
+        f.anvil.add(g);
+        if (f.anvil.size() > ANVIL_MAX) {
+            Forging low = f.anvil.get(0);
+            for (Forging x : f.anvil) if (forgingValue(x) < forgingValue(low)) low = x;
+            f.anvil.remove(low);
+            finishForging(f, low, 0, r, at, false);
         }
-        int q = score < 12 ? 0 : score < 32 ? 1 : score < 52 ? 2 : score < 70 ? 3 : score < 86 ? 4 : 5;
-        String key = Content.itemKey(j.itype, j.mat, q, "");
+    }
+
+    /** A gallery the miners drove down opens its layer. */
+    static void galleries(Fortress f, double t) {
+        for (LayerState l : f.layers) {
+            if (l.unlocked || l.openAt <= 0 || t < l.openAt) continue;
+            l.unlocked = true;
+            l.openAt = 0;
+            fortressXp(f, 100 * l.index);
+            Content.Layer layer = Content.LAYERS.get(l.index);
+            log(f, t, "good", "The " + layer.name() + " are open! " + layer.note());
+        }
+    }
+
+    /** Pieces nobody came for: after a while the dwarves hammer and quench them themselves. */
+    static void anvil(Fortress f, Rng r, double t) {
+        for (Forging g : new ArrayList<>(f.anvil)) {
+            if (t - g.at < ANVIL_WAIT) continue;
+            f.anvil.remove(g);
+            finishForging(f, g, 0, r, g.at + ANVIL_WAIT, false);
+        }
+    }
+
+    /**
+     * Finish a piece. play is 0..1: how well the player hammered and quenched (0 for the dwarves alone).
+     * Returns the item key, or null when it became an artifact (then f.artifacts got a new, unnamed one).
+     */
+    public static Smithed finishForging(Fortress f, Forging g, double play, Rng r, double at, boolean byHand) {
+        Dwarf w = g.dwarf == 0 ? null : dwarf(f, g.dwarf);
+        if (w != null) addXp(w, g.craft == null ? "smithing" : g.craft, 6 + 6 * play);
+        Smithed out = new Smithed();
+        out.forging = g.id;
+        out.score = play;
+        String who = w == null ? "The forge" : fullName(w);
+        if (r.chance(artifactChance(g, play))) {
+            Artifact a = new Artifact();
+            a.id = f.nextId++;
+            a.item = Content.itemKey(g.itype, g.mat, Content.ARTIFACT, "");
+            a.name = "Nameless " + Content.METALS.get(g.mat).name().toLowerCase() + " " + Content.ITEMS.get(g.itype).name().toLowerCase();
+            a.desc = "Forged by " + who + ".";
+            a.value = Content.baseValue(a.item);
+            a.unnamed = true;
+            f.artifacts.add(a);
+            out.quality = Content.ARTIFACT;
+            out.artifact = a.id;
+            f.stats.itemsCrafted++;
+            fortressXp(f, 40);
+            log(f, at, "good", who + " forged a legendary artifact! Give it a name.");
+            return out;
+        }
+        double m = smithMean(f, g, play);
+        int q = (int) Math.round(m + r.gauss() * 0.6);
+        q = Math.max(0, Math.min(Content.ARTIFACT - 1, q));
+        String key = Content.itemKey(g.itype, g.mat, q, "");
         add(f, key, 1);
+        out.key = key;
+        out.quality = q;
         f.stats.itemsCrafted++;
         fortressXp(f, 3 + 2 * q);
-        if (q == 5) {
+        if (q == Content.ARTIFACT - 1) {
             f.stats.masterworks++;
-            log(f, at, "good", (w == null ? "The forge" : fullName(w)) + " forged a masterwork: " + Content.goodName(key) + "!");
+            if (byHand) log(f, at, "good", who + " made a masterwork: " + Content.goodName(key) + "!");
         }
-        b.job = null;
+        return out;
     }
 
     /** Warriors train in the barracks; guards in the entrance hall also learn a little while they stand watch and spar. */
@@ -676,6 +881,104 @@ public final class Sim {
 
     // ------------------------------------------------------------ caravans
 
+    /**
+     * Now and then a caravan from a known city comes to the gate and wants goods the hold has: a fair price, paid at
+     * once, no road and no bandits. It waits a few hours.
+     */
+    static void visitors(Fortress f, Rng r, double t, Market market) {
+        if (f.visitor != null && t >= f.visitor.leaves) {
+            log(f, t, "info", "The caravan from " + Content.CITIES.get(f.visitor.city).name() + " moved on.");
+            f.visitor = null;
+        }
+        if (f.nextVisitor == 0) f.nextVisitor = t + r.range(2 * H, 6 * H);
+        if (f.visitor != null || t < f.nextVisitor || f.cities.isEmpty() || market == null) return;
+        f.nextVisitor = t + r.range(VISITOR_EVERY_MIN, VISITOR_EVERY_MAX);
+        // what could they want: market keys the hold has goods of (not food and ale), worth at least a little
+        Map<String, Integer> have = new TreeMap<>();
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) {
+            String k = e.getKey();
+            if (e.getValue() <= 0 || k.equals("food") || k.equals("ale") || k.equals("stone") || Content.baseValue(k) <= 0) continue;
+            have.merge(Content.marketKey(k), e.getValue(), Integer::sum);
+        }
+        if (have.isEmpty()) return;
+        List<String> keys = new ArrayList<>(have.keySet());
+        String mk = keys.get(r.nextInt(keys.size()));
+        String city = r.pick(new ArrayList<>(f.cities));
+        Visitor v = new Visitor();
+        v.id = f.nextId++;
+        v.city = city;
+        v.market = mk;
+        v.want = Math.max(1, (int) Math.round(have.get(mk) * r.range(0.4, 1.2)));
+        v.mult = market.mult(city, mk) * r.range(1.05, 1.3);
+        v.came = t;
+        v.leaves = t + VISITOR_STAY;
+        f.visitor = v;
+        log(f, t, "good", "A caravan from " + Content.CITIES.get(city).name() + " is at the gate. They want "
+                + v.want + " " + Content.marketName(mk).toLowerCase() + ". Open Trade to sell.");
+    }
+
+    /**
+     * Every 8 hours a known city posts a contract for plain pieces of one kind (up to three open). Any item and any
+     * metal the hold can get; the size grows with the hold. Paid with a bonus on delivery, and it counts double for
+     * reputation.
+     */
+    static void contracts(Fortress f, Rng r, double t) {
+        for (Iterator<Contract> it = f.contracts.iterator(); it.hasNext(); ) {
+            Contract c = it.next();
+            if (t >= c.until) {
+                it.remove();
+                log(f, t, "info", Content.CITIES.get(c.city).name() + " gave up waiting for " + contractName(c) + ".");
+            }
+        }
+        if (f.nextContract == 0) f.nextContract = t + r.range(1 * H, 3 * H);
+        if (t < f.nextContract || f.cities.isEmpty()) return;
+        f.nextContract = t + CONTRACT_EVERY * r.range(0.8, 1.2);
+        if (f.contracts.size() >= CONTRACTS_MAX) return;
+        Set<String> metals = knownMetals(f);
+        List<String[]> pairs = new ArrayList<>();
+        for (Content.ItemType it : Content.ITEMS.values()) {
+            if (it.blueprint() != null && !f.blueprints.contains(it.blueprint())) continue;
+            for (String m : metals) {
+                Content.Metal mt = Content.METALS.get(m);
+                if (mt != null && Content.metalFits(it, mt)) pairs.add(new String[]{it.id(), m});
+            }
+        }
+        if (pairs.isEmpty()) return;
+        String[] p = pairs.get(r.nextInt(pairs.size()));
+        double unit = Content.baseValue(Content.itemKey(p[0], p[1], 1, ""));
+        double target = (30 + 20 * f.level) * JOTS_PER_MARK * r.range(0.7, 1.3);   // grows with the hold
+        Contract c = new Contract();
+        c.id = f.nextId++;
+        c.city = r.pick(new ArrayList<>(f.cities));
+        c.type = p[0];
+        c.metal = p[1];
+        c.qty = Math.max(2, Math.min(40, (int) Math.round(target / Math.max(1, unit))));
+        c.reward = Math.round(c.qty * unit * CONTRACT_BONUS);
+        c.until = t + CONTRACT_TIME;
+        f.contracts.add(c);
+        log(f, t, "good", Content.CITIES.get(c.city).name() + " posted a contract: " + contractName(c)
+                + " within a day, for " + money(c.reward) + ". See Trade.");
+    }
+
+    /** The vault's mint turns billon, electrum and gold into coin at the base value: safe, but slow. */
+    static void minting(Fortress f, double dt, double t) {
+        int lv = level(f, "vault");
+        if (lv <= 0 || f.mint.isEmpty()) return;
+        f.minted += dt / (MINT_HOURS * H) * lv;
+        while (f.minted >= 1 && !f.mint.isEmpty()) {
+            f.minted -= 1;
+            String m = f.mint.keySet().iterator().next();
+            double v = Content.baseValue("bar:" + m);
+            f.coins += v;
+            f.stats.coinsEarned += v;
+            if (f.mint.merge(m, -1, Integer::sum) <= 0) {
+                f.mint.remove(m);
+                log(f, t, "info", "The mint has struck the last " + Content.METALS.get(m).name().toLowerCase() + " into coin.");
+            }
+        }
+        if (f.mint.isEmpty()) f.minted = 0;
+    }
+
     static void caravans(Fortress f, Rng r, double t, Market market) {
         for (Caravan c : new ArrayList<>(f.caravans)) {
             Content.City city = Content.CITIES.get(c.city);
@@ -739,18 +1042,20 @@ public final class Sim {
     static void sellAndBuy(Fortress f, Caravan c, Content.City city, Market market, double t) {
         List<Dwarf> ms = new ArrayList<>();
         for (int id : c.merchants) if (dwarf(f, id) != null) ms.add(dwarf(f, id));
-        double bonus = sellBonus(f, ms);
+        double bonus = sellBonus(f, ms) * (1 + REP_PRICE * repRank(f, c.city));
         double buyBonus = 1 + 0.03 * trad(f, "silver_tongues") + (bonus - 1 - 0.03 * trad(f, "silver_tongues")) / 2;
         double revenue = 0;
         int units = 0;
         for (Map.Entry<String, Integer> e : c.cargo.entrySet()) {
-            double got = market.sell(c.city, e.getKey(), e.getValue(), bonus, marketPower(f, e.getKey()));
+            double got = market.sell(c.city, e.getKey(), e.getValue(), bonus, cityPower(f, c.city, e.getKey()));
             recordTrade(f, t, e.getKey(), got);
             revenue += got;
             units += e.getValue();
         }
         for (Artifact a : c.artifacts) revenue += a.value * market.demand(c.city, "jewelry") * bonus;
         c.revenue = revenue;
+        String rose = addRep(f, c.city, revenue, t);
+        if (rose != null) c.report.add(rose);
         c.report.add("Sold " + units + " goods" + (c.artifacts.isEmpty() ? "" : " and " + c.artifacts.size() + " artifacts")
                 + " in " + city.name() + " for " + money(revenue) + ".");
         c.cargo.clear();

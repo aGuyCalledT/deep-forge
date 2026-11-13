@@ -29,7 +29,7 @@ public final class Factory {
         f.rng = seed;
         f.t = now;
         f.created = now;
-        f.version = 2;
+        f.version = 3;
         f.coins = 30_000;   // 30 Marks
         f.stock.put("food", 80);
         f.stock.put("ale", 80);
@@ -135,6 +135,14 @@ public final class Factory {
         if (r.chance(0.35)) d.wear.put("hat", Content.wearKey(r.pick(HATS), r.pick(SHIRT_DYES)));
         if (r.chance(0.12)) d.wear.put("face", Content.wearKey("glasses", r.chance(0.5) ? "black" : "ochre"));
         if (r.chance(female ? 0.45 : 0.1)) d.wear.put("ears", Content.wearKey("earrings", "ochre"));
+    }
+
+    private static final java.util.regex.Pattern OLD_ITEM = java.util.regex.Pattern.compile("(item:[a-z_]+:[a-z_]+:)([0-5])(?=:)");
+    private static final int[] OLD_Q = {0, 1, 2, 3, 3, 4};
+
+    /** Saves before version 3: item keys carry the old six qualities (Crude .. Masterwork); map them to the new ones. */
+    public static String toVersion3(String json) {
+        return OLD_ITEM.matcher(json).replaceAll(m -> m.group(1) + OLD_Q[m.group(2).charAt(0) - '0']);
     }
 
     /** Old saves: give every dwarf a face, beard in the hair colour and clothes as items. Safe to call on every load. */

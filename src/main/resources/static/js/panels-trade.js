@@ -1,6 +1,6 @@
 // Trade (caravans, cities, prices) and expeditions.
-import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstimate, marketKey, stock, baseValue, isItem } from './data.js';
-import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico, hourglass, money, info } from './ui.js';
+import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstimate, marketKey, marketName, stock, baseValue, isItem, repRank } from './data.js';
+import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico, hourglass, money, info, bar, statusIco } from './ui.js';
 import { marketList } from './panels-market.js';
 import { openDepotSheet } from './panels-depot.js';
 import { paper, todo } from './paper.js';
@@ -24,6 +24,8 @@ export function renderTrade() {
   const merchants = f.dwarves.filter((x) => x.job === 'merchant' && !x.busy);
   const slots = d.caravanSlots - f.caravans.length;
   out.push(...reportCards('caravan'));
+  if (f.visitor && f.visitor.leaves > t) out.push(visitorCard(f.visitor));
+  if (f.contracts.length) out.push(contractsCard());
   out.push(h('div', { class: 'card' },
     h('div', { class: 'row between' }, h('h3', null, 'Caravans ', info('Merchants carry goods to a city, sell at the price on arrival, buy what you ordered and come back. Roads can be dangerous.')), h('span', { class: 'muted' }, `${f.caravans.length} / ${d.caravanSlots} on the road`)),
     h('button', { class: 'btn primary', disabled: !merchants.length || slots <= 0, onclick: () => caravanSheet() },
@@ -46,6 +48,13 @@ export function renderTrade() {
     h('p', { class: 'small muted' }, `${f.rules.filter((x) => x.on).length} rule(s) running, ${f.orders.filter((o) => o.left > 0).length} buy order(s) posted, ${f.deliveries.length} delivery(s) on the way.`),
     h('button', { class: 'btn', disabled: !depotB || depotB.level <= 0, onclick: (e) => openDepotSheet(e.currentTarget) }, 'Open the depot')));
 
+  out.push(h('div', { class: 'card' },
+    h('div', { class: 'row between' }, h('h3', null, 'Quick sale ', info('The trader at the gate buys anything at once, but pays only a tenth of the base value. Handy to clear the warehouse.')),
+      h('span', { class: 'muted small' }, '10% of base value')),
+    h('button', { class: 'btn', onclick: () => quickSaleSheet() }, 'Sell at the gate')));
+
+  out.push(mintCard());
+
   out.push(h('h2', null, 'Market', info('Every city has its own price for each good. They drift on their own, and every sale pushes a price down, every purchase pushes it up. Prices stay between 10% and 1000% of the base price. Tap a good to see which city pays what.')));
   out.push(marketList());
 
@@ -53,13 +62,82 @@ export function renderTrade() {
   if (G.market) {
     out.push(h('p', { class: 'small muted' }, 'What they want changes in ', h('span', { 'data-until': G.market.nextDemandChange }, dur(G.market.nextDemandChange - t)), '.'));
     for (const cid of f.cities) {
-      const c = byId.cities[cid], m = G.market.cities[cid] || {};
+      const c = byId.cities[cid], m = G.market.cities[cid] || {}, r = (d.rep || {})[cid] || { rank: 0, points: 0, from: 0, next: 100 };
       out.push(h('div', { class: 'card sub' },
         h('div', { class: 'row between' }, h('b', null, c.name), h('span', { class: 'small muted' }, `${c.hours}h each way · ${Math.round(c.danger * 100)}% bandits · ${Math.round(c.share * 100)}% of the market`)),
-        h('p', { class: 'small' }, m.news || c.note)));
+        h('p', { class: 'small' }, m.news || c.note),
+        m.nextNews ? h('p', { class: 'small muted' }, 'Next: ', m.nextNews) : null,
+        h('div', { class: 'row' }, h('span', { class: 'small' }, 'Reputation ', h('b', { class: 'gold-t' }, String(r.rank)),
+          info(`Every Mark of goods you deliver to a city counts, contracts count double. Each rank pays ${Math.round(d.repPrice * 100)}% more there and lets you sell ${Math.round(d.repTake * 100)}% more before the price falls. At rank ${d.repBlueprint} the city gives you a blueprint.`)),
+          h('span', { class: 'grow' }, r.next ? bar((r.points - r.from) / (r.next - r.from)) : null),
+          h('span', { class: 'small muted nowrap' }, r.next ? `${fmt(r.points)} / ${fmt(r.next)}` : 'highest rank'))));
     }
   }
   return out;
+}
+
+/** A caravan from a city at the gate: what they want, what you have of it, sell with one tap. */
+function visitorCard(v) {
+  const f = F(), c = byId.cities[v.city];
+  const have = Object.entries(f.stock).filter(([k, n]) => n > 0 && marketKey(k) === v.market).sort((a, b) => baseValue(b[0]) - baseValue(a[0]));
+  return h('div', { class: 'card good' },
+    h('div', { class: 'row between' }, h('h3', null, `Caravan from ${c.name}`), h('span', { class: 'small muted' }, 'leaves in ', h('span', { 'data-until': v.leaves }, dur(v.leaves - now())))),
+    h('p', { class: 'small' }, `They want ${fmt(v.want)} ${marketName(v.market).toLowerCase()} and pay on the spot. No road, no bandits.`),
+    have.length ? have.slice(0, 6).map(([k, n]) => {
+      const q = Math.min(n, v.want), unit = baseValue(k) * v.mult;
+      return h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${fmt(n)})`, h('br'), h('span', { class: 'muted' }, money(unit), ' each')),
+        h('button', { class: 'btn small good', onclick: () => bus.act({ type: 'sellVisitor', key: k, amount: q }) }, `Sell ${fmt(q)}`));
+    }) : h('p', { class: 'small muted' }, 'You have none left. Make some before they leave.'),
+    h('button', { class: 'btn small', onclick: () => bus.act({ type: 'sendVisitor' }) }, 'Send them away'));
+}
+
+/** Contracts the cities posted: what they want, how much you have, deliver with one tap. */
+function contractsCard() {
+  const f = F(), d = D(), t = now();
+  return h('div', { class: 'card' },
+    h('div', { class: 'row between' }, h('h3', null, 'Contracts ', info('Cities post orders for plain pieces (Normal or better, any finish). Couriers fetch them from the gate: paid with a bonus at once, and it counts double for reputation.')),
+      h('span', { class: 'muted small' }, `${f.contracts.length} open`)),
+    f.contracts.map((c) => {
+      const have = (d.contractHave || {})[c.id] || 0, ok = have >= c.qty;
+      const it = byId.items[c.type], key = `item:${c.type}:${c.metal}:1:`;
+      return h('div', { class: 'row' }, goodIcon(key),
+        h('span', { class: 'grow small' }, `${fmt(c.qty)} × ${byId.metals[c.metal].name.toLowerCase()} ${it ? it.name.toLowerCase() : c.type}`,
+          h('br'), h('span', { class: 'muted' }, byId.cities[c.city].name, ' · ', money(c.reward), ' · ', h('span', { 'data-until': c.until }, dur(c.until - t)))),
+        ok ? null : statusIco('warn'),
+        h('button', { class: 'btn small' + (ok ? ' good' : ''), disabled: !ok, onclick: () => bus.act({ type: 'fillContract', id: c.id }) }, ok ? 'Deliver' : `${fmt(have)} / ${fmt(c.qty)}`));
+    }));
+}
+
+/** The vault's mint: billon, electrum and gold become coin at the base value, slowly and without the market. */
+function mintCard() {
+  const f = F(), d = D(), vault = f.buildings.find((b) => b.type === 'vault');
+  const lv = vault ? vault.level : 0;
+  const waiting = Object.values(f.mint || {}).reduce((s, n) => s + n, 0);
+  return h('div', { class: 'card' },
+    h('div', { class: 'row between' }, h('h3', null, 'Mint ', info('The vault strikes billon, electrum and gold bars into coin at their base value. No road, no market, but only one bar an hour per vault level.')),
+      h('span', { class: 'muted small' }, lv ? `${fmt(d.mintPerHour)} bar(s) an hour` : 'needs the vault')),
+    lv ? d.mintMetals.map((m) => {
+      const k = 'bar:' + m, have = stock(k), w = (f.mint || {})[m] || 0;
+      return h('div', { class: 'row' }, goodIcon(k),
+        h('span', { class: 'grow small' }, byId.metals[m].name, h('br'), h('span', { class: 'muted' }, `have ${fmt(have)} · in the mint ${fmt(w)} · `, money(baseValue(k)), ' each')),
+        w ? h('button', { class: 'btn small', onclick: () => bus.act({ type: 'mint', metal: m, amount: -w }) }, 'Take back') : null,
+        h('button', { class: 'btn small primary', disabled: !have, onclick: () => bus.act({ type: 'mint', metal: m, amount: have }) }, 'Mint all'));
+    }) : h('p', { class: 'small muted' }, 'Build the vault to strike coin.'),
+    waiting ? h('p', { class: 'small muted' }, `${fmt(waiting)} bar(s) wait, done in about ${dur(waiting / Math.max(1e-9, d.mintPerHour) * 3600)}.`) : null);
+}
+
+/** Sell anything at once to the trader at the gate for 10 % of its base value. */
+function quickSaleSheet() {
+  openSheet(() => {
+    const f = F();
+    const goods = Object.entries(f.stock).filter(([k, n]) => n > 0 && baseValue(k) > 0).sort((a, b) => baseValue(b[0]) * b[1] - baseValue(a[0]) * a[1]);
+    return h('div', null, h('h2', null, 'Sell at the gate'),
+      h('p', { class: 'small muted' }, 'Paid at once: a tenth of the base value. Caravans and visitors pay far more.'),
+      goods.length ? goods.map(([k, n]) => h('div', { class: 'row' }, goodIcon(k),
+        h('span', { class: 'grow small' }, `${goodName(k)} (${fmt(n)})`, h('br'), h('span', { class: 'muted' }, money(baseValue(k) * 0.1), ' each')),
+        h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'quickSell', key: k, amount: 1 }); refreshSheet(); } }, '1'),
+        h('button', { class: 'btn small primary', onclick: async () => { await bus.act({ type: 'quickSell', key: k, amount: n }); refreshSheet(); } }, 'All'))) : h('p', { class: 'muted' }, 'The warehouse is empty.'));
+  }, null, 'trade');
 }
 
 /** Send a caravan; city and a market key to load can be preset (from the market window). */

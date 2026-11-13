@@ -22,8 +22,18 @@ public final class State {
         public List<Dwarf> dwarves = new ArrayList<>();
         public int nextId = 1;
         public List<Building> buildings = new ArrayList<>();
+        public boolean autoPicks = true;   // miners without a pick take the best one from the warehouse
         public List<LayerState> layers = new ArrayList<>();
         public List<Caravan> caravans = new ArrayList<>();
+        public double lastVisit;         // when the player last looked (0: always counts as present, old saves and tests)
+        public double findAt;            // the next shift report with a find (every 4 h, up to 3 wait)
+        public Visitor visitor;          // a caravan from a city at the gate that wants to buy (no risk, no road)
+        public double nextVisitor;       // when the next one may come (0: soon)
+        public Map<String, Double> rep = new TreeMap<>();   // reputation points per city (Marks delivered, contracts count double)
+        public List<Contract> contracts = new ArrayList<>(); // orders the cities posted (up to 3 open)
+        public double nextContract;      // when the next city posts one (0: soon)
+        public Map<String, Integer> mint = new TreeMap<>();  // bars waiting in the vault's mint: metal -> count
+        public double minted;            // progress on the next coin bar (0..1)
         public List<Expedition> expeditions = new ArrayList<>();
         public List<Report> reports = new ArrayList<>();   // returned caravans and expeditions whose loot waits to be collected
         public List<Offer> offers = new ArrayList<>();
@@ -46,6 +56,8 @@ public final class State {
         public Set<String> cities = new TreeSet<>();
         public Set<String> doneOnce = new TreeSet<>();     // one-time expeditions finished
         public List<Artifact> artifacts = new ArrayList<>();
+        public List<Forging> anvil = new ArrayList<>();     // forged pieces waiting for the player at the anvil (max 10)
+        public Smithed smithed;                             // the last piece the player finished by hand
         public List<Memorial> memorials = new ArrayList<>();
         public double xp;
         public int level = 1;
@@ -169,6 +181,10 @@ public final class State {
         public String helm;
         public String armor;
         public String tool;
+        public double toolWear;       // working hours the tool has done (it breaks at Rules.toolLife)
+        public List<String> specs = new ArrayList<>();   // specialisations chosen at journeyman and master rank
+        public String trinket;        // a piece of jewelry a master keeps for themself (taken from the warehouse)
+        public Map<String, Double> gearWear = new TreeMap<>();   // weapon, helm, armor: share of their life used up (breaks at 1)
         public double arrived;
     }
 
@@ -176,13 +192,17 @@ public final class State {
         public String id;
         public String type;
         public int level = 1;
+        public double upUntil;        // builders at work: the next level is ready at this time (0: nobody builds here)
         public List<QueueEntry> queue = new ArrayList<>();
         public Job job;
         public double heat;       // bellows heat 0..100 at heatT
         public double heatT;
+        public double fert;       // mushroom farm: extra yield (0..0.6) from fertilizer until fertUntil
+        public double fertUntil;
         public double acc;        // continuous production accumulator
         public String status;     // human readable why idle
         public int machines = 1;  // workstations in the room; each one needs its own worker
+        public boolean practice;  // practice mode: half the output, three times the learning
         public boolean machinesByHand;   // the player took a machine out: the hold no longer adds them back on its own
         public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
         public String look = "";  // room template (art/props48/rooms), "" = the first; bays use the same name if there is one
@@ -194,6 +214,7 @@ public final class State {
         public String mat;        // ore id, alloy metal or metal for items (null = any)
         public String itype;      // item type
         public int remaining;     // -1 = forever
+        public int keep;          // > 0: only work while fewer than this many of the product are in the warehouse
     }
 
     public static class Job {
@@ -210,11 +231,41 @@ public final class State {
     }
 
     public static class LayerState {
+        public double openAt;        // the gallery down here is being driven and opens at this time (0: not started)
         public int index;
         public boolean unlocked;
         public int level = 1;
         public double pending;
         public String threat;     // threat id while blocked
+        public Map<String, Integer> cart = new TreeMap<>();   // ore in the mine cart; it goes up the lift when full
+        public double cartSent;   // when the last full cart left (0: never)
+        public int cartLoad;      // how much it carried
+        public double cartStart;  // when the first ore went into the empty cart
+        public int cartFill = 100;   // the cart goes up when it is this full (percent of its size)
+        public int cartMinutes;      // ... or this many minutes after the first ore went in (0: no time limit)
+        public double veinAt;        // the player may break the next vein out by hand from this time on
+    }
+
+    /** Traders from a city at the gate. They buy up to `want` goods of one market key at a fixed price per unit. */
+    public static class Visitor {
+        public int id;
+        public String city;
+        public String market;      // market key: "type:axe", "cat:clothing", "bar:iron", "coal"...
+        public int want;
+        public double mult;        // price per unit = base value × mult
+        public double came;
+        public double leaves;
+    }
+
+    /** A city wants qty pieces of one item (any metal of the kind asked, Normal or better) within a day. */
+    public static class Contract {
+        public int id;
+        public String city;
+        public String type;        // item type
+        public String metal;
+        public int qty;
+        public double reward;      // Jots, paid on delivery
+        public double until;
     }
 
     public static class Caravan {
@@ -334,6 +385,31 @@ public final class State {
         public String name;
         public String desc;
         public double value;
+        public String item;       // forged artifacts: the item key it was made as (quality 5)
+        public boolean unnamed;   // waits for the player to name it
+    }
+
+    /** A piece of hot metal at the anvil, waiting to be hammered and quenched by the player. */
+    public static class Forging {
+        public int id;
+        public String building;
+        public String itype;
+        public String mat;
+        public int dwarf;         // who forged it (0: nobody any more)
+        public int skill;         // their smithing skill then
+        public boolean nimble;
+        public int level;         // forge level then
+        public double hours;      // working hours the piece took (artifact chance grows with it)
+        public double at;         // when it came off the fire
+        public String craft;      // the skill that learns from it (null: smithing)
+    }
+
+    public static class Smithed {
+        public int forging;
+        public String key;        // the item made (null for an artifact)
+        public int quality;
+        public int artifact;      // artifact id, 0 for none
+        public double score;      // 0..1, how well the player did
     }
 
     public static class Memorial {
@@ -371,6 +447,7 @@ public final class State {
         public double chistAt;
         public long demandEpoch = -1;
         public Map<String, Map<String, Double>> demand = new TreeMap<>(); // city -> category -> multiplier
+        public Map<String, String> nextNews = new TreeMap<>();   // what each city will want in the next 12 h
         public Map<String, String> news = new TreeMap<>();
     }
 }

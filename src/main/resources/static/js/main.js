@@ -1,16 +1,20 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
-import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money } from './ui.js';
-import { hidePlate } from './plate.js';
+import { loadNotes, unseenNotes } from './notes.js';
+import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money, statusIco } from './ui.js';
 import * as S from './sprites.js';
-import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
+import { initCanvas, zoomBy, lookAt, camera, toScreen, homeCamera } from './canvas.js';
 import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt as loadArt48 } from './hold.js';
-import { minesScreen, drawLoginArt } from './views.js';
+import { drawLoginArt } from './views.js';
+import { mineScreen, mineLayer } from './mine48.js';
+import { openSmithy, smithyUpdate, nameArtifact, askForNames, smithyState } from './smithy.js';
+import { gameUpdate, gameState } from './minigame.js';
+import { openRoomGame, openVein } from './games.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
-import { renderWork, animateWork, pump, currentHeat } from './panels-work.js';
+import { renderWork, animateWork, currentHeat } from './panels-work.js';
 import { renderMines } from './panels-mines.js';
 import { renderTrade, renderExplore, loadMarket } from './panels-trade.js';
 import * as A from './audio.js';
@@ -40,6 +44,9 @@ function setState(s) {
   renderTop();
   renderAlerts();
   render();
+  smithyUpdate();
+  gameUpdate();
+  askForNames();
 }
 
 bus.act = async (action, quiet = false, rethrow = false) => {
@@ -66,7 +73,6 @@ function soundForAction(a) {
     case 'build': case 'upgrade': case 'upgradeLayer': case 'unlockLayer': return A.sfx('build');
     case 'queueAdd': return A.sfx('open');
     case 'queueRemove': return A.sfx('close');
-    case 'quench': return A.sfx('quench');
     case 'equip': return A.sfx(String(a.item).startsWith('item:axe') ? 'unsheathe2' : 'open');
     case 'unequip': return A.sfx('close');
     case 'caravan': return A.sfx('caravan');
@@ -82,7 +88,7 @@ function soundForAction(a) {
 const LOG_SOUNDS = [
   [/Fortress level/, () => A.sfx('levelup')],
   [/masterwork/i, () => A.sfx('fanfare')],
-  [/Perfect quench/, () => A.sfx('chime')],
+  [/legendary artifact/, () => A.sfx('fanfare')],
   [/Scouts report/, () => A.sfx('horn')],
   [/driven off|siege is broken/, () => A.battle(true)],
   [/broke through/, () => A.battle(false)],
@@ -120,7 +126,7 @@ function ambience() {
   if (G.screen === 'hold') {
     // the workshop nearest the middle of the view sets the sound, if it is busy
     const b = roomAt(viewCenter());
-    const working = b && (b.job && !b.job.quenching || (byId.buildings[b.type].kind === 'continuous' && D().buildings[b.id] && D().buildings[b.id].worker)) && !f.siege;
+    const working = b && (b.job || (byId.buildings[b.type].kind === 'continuous' && D().buildings[b.id] && D().buildings[b.id].worker)) && !f.siege;
     if (b && working && camera().zoom >= 1) {
       if (b.type === 'forge') wanted.add('forge');
       if (b.type === 'smelter') wanted.add('furnace');
@@ -162,6 +168,10 @@ function renderAudioBtn() {
 }
 
 bus.render = () => render();
+bus.smithy = () => openSmithy();
+bus.minigame = (id) => openRoomGame(id);
+bus.vein = (layer) => openVein(layer);
+bus.nameArtifact = (id) => nameArtifact(id);
 bus.go = (tab) => go(tab);
 
 async function poll() {
@@ -203,17 +213,24 @@ function alerts() {
   if (f.noFood) a.push(['bad', 'work', 'No food! Dwarves are starving. Staff the mushroom farm or buy food.']);
   if (f.noAle) a.push(['warn', 'work', 'Out of ale. Dwarves are unhappy.']);
   if (f.storageFull) a.push(['stop', 'fortress', 'Warehouse full - mining stopped. Smelt, sell or upgrade it.', (f.buildings.find((b) => b.type === 'warehouse') || {}).id]);
-  const quench = f.buildings.filter((b) => b.job && b.job.quenching);
-  if (quench.length) a.push(['good', 'work', 'Hot metal ready to quench at the forge!', quench[0].id]);
-  for (const r of f.reports || []) a.push(['good', r.kind === 'caravan' ? 'trade' : 'explore', `${r.title}: collect the loot.`]);
+  if ((f.anvil || []).length) a.push(['good', 'work', `${f.anvil.length} hot piece(s) at the anvil. Forge them for better quality!`, '@anvil']);
+  if ((f.artifacts || []).some((x) => x.unnamed)) a.push(['warn', 'fortress', 'A new artifact waits for its name.', '@name']);
+  if (f.visitor && f.visitor.leaves > t) a.push(['good', 'trade', `A caravan from ${byId.cities[f.visitor.city].name} wants to buy. Sell at the gate!`]);
+  const ready = (f.contracts || []).filter((c) => c.until > t && ((D().contractHave || {})[c.id] || 0) >= c.qty).length;
+  if (ready) a.push(['good', 'trade', `${ready} contract${ready > 1 ? 's' : ''} ready to deliver. Open Trade.`]);
+  const shifts = (f.reports || []).filter((r) => r.kind === 'shift').length;
+  if (shifts) a.push(['good', 'fortress', `${shifts} shift report(s) with a find. Collect them in the Hold tab.`]);
+  for (const r of (f.reports || []).filter((x) => x.kind !== 'shift')) a.push(['good', r.kind === 'caravan' ? 'trade' : 'explore', `${r.title}: collect the loot.`]);
   const choices = f.expeditions.filter((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen);
-  if (choices.length) a.push(['good', 'explore', `An expedition needs your decision.`]);
+  if (choices.length) a.push(['warn', 'explore', `An expedition needs your decision.`]);
   const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
   const stuck = f.buildings.filter((b) => byId.buildings[b.type].kind === 'queue' && b.queue.length && roomStatus(b, idle) === 'stop' && d.buildings[b.id].active !== false);
   if (stuck.length) a.push(['stop', 'work', `${byId.buildings[stuck[0].type].name} stopped: its orders need materials or a worker.`, stuck[0].id]);
   if (idle) a.push(['idle', 'dwarves', `${idle} idle dwarf(s). Give them a job.`]);
   const empty = f.buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive' && !d.buildings[b.id].worker);
   if (empty.length && !idle) a.push(['idle', 'work', `${empty.length} workshop(s) without a worker.`, empty[0].id]);
+  const news = unseenNotes();
+  if (news) a.push(['good', 'more', `New in ${news.version}: ${news.title}. Open More to read.`]);
   if (d.traditionPoints > 0) a.push(['good', 'more', `${d.traditionPoints} tradition point(s) to spend.`]);
   return a;
 }
@@ -222,13 +239,17 @@ function renderAlerts() {
   const list = alerts();
   const n = wide() ? 4 : 2;
   $('alerts').replaceChildren(...list.slice(0, n).map(([k, tab, text, room]) =>
-    h('button', { class: 'alert ' + k, title: text, onclick: () => (room ? showRoom(room) : go(tab, true)) }, img(S.icon({ bad: 'skull', stop: 'stop', idle: 'idle' }[k] || 'warn'), 'icon s'), h('span', null, text))),
+    h('button', { class: 'alert ' + k, title: text, onclick: () => (room === '@anvil' ? openSmithy() : room === '@name' ? nameArtifact(F().artifacts.find((x) => x.unnamed).id) : room ? showRoom(room) : go(tab, true)) }, k === 'bad' ? img(S.icon('skull'), 'icon s') : statusIco(k, 'icon s'), h('span', null, text))),
     list.length > n ? h('button', { class: 'alert', onclick: () => go('fortress', true) }, h('span', null, `+${list.length - n} more`)) : '');
-  const hot = new Set(list.filter(([k]) => k !== 'warn' && k !== 'idle').map(([, tab]) => tab));
+  // each tab wears the most pressing sign of its hints: stopped, then needs you, then done (idle shows nothing)
+  const rank = { bad: 3, stop: 3, warn: 2, good: 1 };
+  const best = new Map();
+  for (const [k, tab] of list) if (rank[k] && rank[k] > (rank[best.get(tab)] || 0)) best.set(tab, k);
   document.querySelectorAll('.tab').forEach((el) => {
-    const dot = el.querySelector('.dot');
-    if (hot.has(el.dataset.tab) && !dot) el.append(h('span', { class: 'dot' }));
-    if (!hot.has(el.dataset.tab) && dot) dot.remove();
+    const k = best.get(el.dataset.tab), old = el.querySelector('.badge');
+    if (old && old.dataset.k === k) return;
+    if (old) old.remove();
+    if (k) { const b = statusIco(k, 'badge'); b.dataset.k = k; el.append(b); }
   });
 }
 
@@ -272,9 +293,8 @@ function closeDrawer() {
 
 function setScreen(name) {
   G.screen = name;
-  hidePlate();
   if (name !== 'hold') G.build = null;
-  $('scene-wrap').classList.toggle('scroll', name !== 'hold');
+  $('scene-wrap').classList.remove('scroll');
   renderToolbar();
 }
 
@@ -297,6 +317,12 @@ function render() {
   }
   if (drawerOut) { drawerOut.cancel(); drawerOut = null; }
   const fresh = p.hidden;
+  // an open drop-down in the drawer would close if it were drawn anew: wait until it is done
+  const fe = document.activeElement;
+  if (!fresh && fe && fe.tagName === 'SELECT' && p.contains(fe)) {
+    if (!fe.dataset.later) { fe.dataset.later = '1'; fe.addEventListener('blur', () => render(), { once: true }); }
+    return;
+  }
   const py = fresh ? 0 : scroller().scrollTop;
   setMaterial(p, MATERIAL[tab[0]]);
   const stores = storesView(false);
@@ -306,7 +332,7 @@ function render() {
     h('div', { class: 'panel-scroll' },
       h('div', { class: 'panel-head' },
         h('div', { class: 'plate' }, img(S.icon(ICON[tab[0]]), 'icon s'), h('h2', null, tab[1] === 'Hold' ? 'Your hold' : tab[1])),
-        h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer }, ico('close'))),
+        h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer })),
       ...(box ? [box] : []), ...body));
   p.hidden = false;
   scroller().scrollTop = py;
@@ -326,14 +352,37 @@ function showRoom(id) {
   requestAnimationFrame(() => { const r = roomRect(id); if (b && r) openRoomSheet(b, toScreen(r.x, r.y, r.w, r.h)); });
 }
 bus.showRoom = showRoom;
+/** Show one mine layer in the mines screen (from the toolbar arrows or a layer card). */
+function showLayer(i) {
+  const n = G.data.layers.length;
+  G.mineLayer = ((i % n) + n) % n;
+  if (G.screen !== 'mines') { if (G.tab === 'mines') setScreen('mines'); else go('mines'); }
+  homeCamera();
+  renderToolbar();
+  if (G.tab === 'mines') render();
+}
+bus.showLayer = showLayer;
+
+/** Room windows dock at the right edge: if the room would sit under it, slide the camera so it stays in view. */
+const DOCK_W = 440;
+function keepClear(id) {
+  if (!window.matchMedia('(min-width: 700px)').matches) return;
+  const r = roomRect(id), wrap = $('scene-wrap').getBoundingClientRect();
+  if (!r) return;
+  const s = toScreen(r.x, r.y, r.w, r.h).rect, free = window.innerWidth - DOCK_W;
+  if (s.x + s.w <= free || s.w > free - 40) return;
+  const c = roomCenter(id);
+  const z = camera().zoom;
+  lookAt(c.x, camera().y + wrap.height / 2 / z, (free - wrap.left));
+}
 
 function onPick(q, at) {
   if (!q) { if (popOpen()) closeSheet(); return; }
-  if (q.kind === 'bellows') return pump(q.id);
-  if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id, machine: q.machine || 0 });
+  if (q.kind === 'bellows' || q.kind === 'machine') return openRoomGame(q.id);
+  if (q.kind === 'anvil') return openSmithy();
   if (q.kind === 'room') {
     const b = F().buildings.find((x) => x.id === q.id);
-    if (b) { A.sfx('open'); openRoomSheet(b, at); }
+    if (b) { A.sfx('open'); keepClear(q.id); openRoomSheet(b, at); }
     return;
   }
   if (q.kind === 'dwarf') {
@@ -343,6 +392,7 @@ function onPick(q, at) {
   }
   if (q.kind === 'layer') {
     G.focus = 'layer:' + q.id;
+    G.mineLayer = q.id;
     if (G.tab !== 'mines') go('mines'); else render();
     const el = document.getElementById('layer-' + q.id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -366,8 +416,15 @@ function renderToolbar() {
   bar.hidden = !G.state;
   const time = h('span', { class: 'clock', title: 'Time of day in Essen. Day and night follow it.' }, berlinTime() + ' · Essen');
   if (!onHold) {
+    const i = mineLayer(), name = G.data.layers[i].name;
     bar.replaceChildren(h('div', { class: 'tool-row' },
-      h('button', { class: 'tool', onclick: () => { if (G.tab === 'mines') go('mines'); else setScreen('hold'); } }, img(S.icon('fortress'), 'icon s'), 'Back to the hold'), time));
+      h('button', { class: 'tool', onclick: () => { if (G.tab === 'mines') go('mines'); else setScreen('hold'); } }, img(S.icon('fortress'), 'icon s'), 'Hold'),
+      h('button', { class: 'tool', 'aria-label': 'Layer above', disabled: i === 0, onclick: () => showLayer(i - 1) }, img(S.icon('up'), 'icon s')),
+      h('span', { class: 'tool-label' }, name),
+      h('button', { class: 'tool', 'aria-label': 'Layer below', disabled: i === G.data.layers.length - 1, onclick: () => showLayer(i + 1) }, img(S.icon('down'), 'icon s')),
+      F().layers[i] && F().layers[i].unlocked ? h('button', { class: 'tool', title: 'Break a vein out of the rock yourself', onclick: () => openVein(i) }, img(S.icon('mines'), 'icon s'), 'Vein') : null,
+      wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom in', onclick: () => zoomBy(1) }, img(S.icon('zoom_in'), 'icon s')) : null,
+      wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom out', onclick: () => zoomBy(-1) }, img(S.icon('zoom_out'), 'icon s')) : null));
     return;
   }
   const b = G.build;
@@ -428,7 +485,7 @@ async function start() {
   setState(await api.get('/state'));
   $('app').hidden = false;
   document.documentElement.style.setProperty('--top-h', document.querySelector('.top').offsetHeight + 'px');
-  initCanvas($('scene'), $('scene-wrap'), { hold: holdScreen, mines: minesScreen }, onPick);
+  initCanvas($('scene'), $('scene-wrap'), { hold: holdScreen, mines: mineScreen }, onPick);
   renderToolbar();
   setInterval(() => { if (G.screen !== 'hold' || !G.build) renderToolbar(); }, 30000);
   document.addEventListener('keydown', (e) => {
@@ -448,10 +505,22 @@ async function start() {
   requestAnimationFrame(tick);
 }
 
+/** Hand the pixel-art button plates and the window X to the CSS as image variables. */
+function artToCss() {
+  const root = document.documentElement.style;
+  const url = (name) => `url(${S.sprite(name).toDataURL()})`;
+  for (const m of ['iron', 'gold', 'green', 'red']) {
+    root.setProperty(`--plate-${m}`, url('btn_' + m));
+    root.setProperty(`--plate-${m}-down`, url('btn_' + m + '_down'));
+  }
+  root.setProperty('--xbtn', url('ui_xbtn'));
+  root.setProperty('--xbtn-down', url('ui_xbtn_down'));
+}
+
 async function boot() {
-  try { await Promise.all(['16px "Germania One"', '500 16px "Alegreya Sans"', '800 16px "Alegreya Sans SC"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
-  await Promise.all([S.loadArt(), loadArt48()]);
-  document.querySelector('.sheet-x').replaceChildren(ico('close'));
+  try { await Promise.all(['16px "Alagard"', '16px "DotGothic16"', '16px "Cavalhatriz"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
+  await Promise.all([S.loadArt(), loadArt48(), loadNotes()]);
+  artToCss();
   const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
   A.initAudio(audio);
   G.data = data;
@@ -470,5 +539,5 @@ G.tab = null;
 G.heat = currentHeat;
 G.act = (a) => bus.act(a).then(() => renderToolbar());
 G.onBuildChange = () => renderToolbar();
-window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom, agents };
+window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom, agents, smithy: () => smithyState(), minigame: () => gameState(), openGame: (id) => openRoomGame(id), openVein: (i) => openVein(i) };
 boot();

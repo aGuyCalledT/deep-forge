@@ -14,8 +14,8 @@ public final class Cheats {
     private Cheats() {}
 
     static final Set<String> TIME_FIELDS = Set.of("t", "created", "offersAt", "nextRaidAt", "nextMigrantsAt", "griefUntil",
-            "heatT", "quenchStart", "departAt", "arriveAt", "returnAt", "expires", "at", "since", "nextHarm", "arrivesAt",
-            "announcedAt", "until", "arrived", "fightAt", "retryAt", "tradedAt", "shareAt", "firedAt", "histAt");
+            "heatT", "fertUntil", "veinAt", "quenchStart", "departAt", "arriveAt", "returnAt", "expires", "at", "since", "nextHarm", "arrivesAt",
+            "announcedAt", "until", "arrived", "lastVisit", "findAt", "upUntil", "openAt", "nextVisitor", "came", "leaves", "nextContract", "fightAt", "retryAt", "tradedAt", "shareAt", "firedAt", "histAt");
 
     public static Fortress apply(Fortress f, Map<String, Object> a, double now, Market market, ObjectMapper om, Rng r) {
         switch (str(a, "type")) {
@@ -85,6 +85,7 @@ public final class Cheats {
                 Sim.advance(f, now, market);
                 Rules.log(f, now, "info", "[cheat] Skipped " + (h == Math.floor(h) ? String.valueOf((int) h) : String.valueOf(h)) + " hours.");
             }
+            case "cheatShowcase" -> Showcase.fill(f, now, r);
             default -> throw new GameException("Unknown cheat.");
         }
         return f;

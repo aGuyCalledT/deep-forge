@@ -31,12 +31,23 @@ const ITEM = {
   goblet: (c) => { c.rect(3, 1, 8, 2, "X"); c.ellipse(7, 4, 4, 3, "M"); c.rect(3, 1, 8, 1, "x"); c.vline(7, 7, 4, "M"); c.rect(4, 11, 7, 2, "M"); c.hline(4, 12, 7, "m"); c.px(5, 3, "X"); },
   ring: (c) => { c.ring(7, 8, 4, "M"); c.ring(7, 8, 3, "x"); c.rect(5, 2, 4, 3, "N"); c.px(6, 2, "C"); c.box(5, 2, 4, 3, "M"); },
   crown: (c) => { c.poly([1, 12, 1, 4, 4, 8, 7, 2, 10, 8, 13, 4, 13, 12], "M"); c.hline(1, 11, 13, "m"); c.hline(1, 9, 13, "X"); c.px(4, 10, "P"); c.px(7, 10, "N"); c.px(10, 10, "H"); c.px(7, 2, "X"); },
+  // pieces from the fine mechanic's bench: the own metal in M/m/X/x, the parts in fixed colours (copper F/f, gold j/O, gem N/H)
+  lamp: (c) => { c.hline(5, 1, 4, "M"); c.ring(7, 2, 1, "m"); c.rect(4, 4, 6, 7, "M"); c.rect(5, 5, 4, 5, "y"); c.vline(6, 5, 5, "Y"); c.rect(3, 3, 8, 2, "F"); c.rect(3, 11, 8, 2, "f"); c.vline(4, 4, 7, "X"); c.hline(3, 12, 8, "m"); },
+  lock: (c) => { c.ring(7, 4, 3, "x"); c.rect(3, 4, 2, 3, "x"); c.rect(10, 4, 2, 3, "x"); c.rect(2, 6, 11, 7, "M"); c.hline(2, 6, 11, "X"); c.hline(2, 12, 11, "m"); c.rect(6, 8, 2, 2, "k"); c.vline(7, 10, 2, "k"); c.px(10, 9, "O"); c.px(11, 10, "j"); },
+  shield: (c) => { c.circ(7, 7, 6, "o"); c.circ(7, 7, 5, "M"); c.circ(7, 7, 2, "X"); c.px(7, 7, "m"); c.line(4, 3, 3, 5, "X"); c.px(10, 11, "m"); c.px(11, 10, "m"); },
+  tankards: (c) => { for (const x of [1, 7]) { c.rect(x, 4, 5, 8, "M"); c.hline(x, 4, 5, "X"); c.hline(x, 11, 5, "m"); c.rect(x, 2, 5, 2, "O"); c.box(x + 5, 6, 2, 4, "M"); c.vline(x + 1, 5, 6, "X"); } },
+  chalice: (c) => { c.rect(2, 1, 10, 1, "j"); c.ellipse(7, 4, 5, 3, "M"); c.rect(2, 1, 10, 2, "M"); c.hline(2, 1, 10, "j"); c.vline(7, 7, 4, "M"); c.px(7, 9, "N"); c.px(6, 9, "H"); c.rect(3, 11, 9, 2, "M"); c.hline(3, 12, 9, "j"); c.px(4, 3, "X"); },
+  parade_axe: (c) => { c.line(3, 13, 9, 2, "v"); c.ellipse(10, 5, 3, 5, "M"); c.vline(13, 1, 9, "j"); c.vline(12, 2, 7, "X"); c.px(10, 5, "N"); c.px(8, 2, "m"); c.px(8, 8, "m"); c.px(5, 10, "O"); },
+  compass: (c) => { c.circ(7, 7, 6, "M"); c.circ(7, 7, 5, "x"); c.circ(7, 7, 4, "C"); c.line(7, 4, 7, 7, "&"); c.line(7, 8, 7, 10, "4"); c.px(7, 7, "k"); c.px(7, 0, "X"); c.hline(3, 13, 9, "m"); },
+  music_box: (c) => { c.rect(1, 5, 12, 8, "M"); c.rect(1, 2, 12, 3, "X"); c.hline(1, 4, 12, "m"); c.hline(1, 12, 12, "m"); c.ring(5, 9, 2, "O"); c.px(5, 9, "j"); c.ring(9, 9, 1, "O"); c.line(13, 7, 13, 10, "x"); c.px(13, 6, "x"); },
+  regalia: (c) => { c.poly([1, 8, 1, 3, 3, 6, 5, 1, 7, 6, 9, 3, 9, 8], "M"); c.hline(1, 8, 9, "m"); c.px(3, 7, "N"); c.px(5, 7, "H"); c.px(7, 7, "P"); c.line(8, 13, 12, 5, "4"); c.line(9, 13, 13, 5, "5"); c.circ(12, 4, 1, "M"); c.px(12, 3, "X"); c.rect(1, 10, 6, 3, "&"); c.hline(1, 10, 6, "C"); },
 };
 for (const [k, fn] of Object.entries(ITEM)) sprite("item_" + k, { w: 14, h: 14, outline: "k" }, fn);
 // little marks for finished goods
 sprite("mod_s", { w: 5, h: 5 }, "..C..\n.CXC.\nCX0XC\n.CXC.\n..C..");
 sprite("mod_e", { w: 5, h: 3 }, "j.j.j\n.j.j.\nj.j.j");
 sprite("mod_g", { w: 4, h: 4, outline: "k" }, ".N.\nNCN\n.N.");
+sprite("mod_i", { w: 5, h: 2 }, "jOjOj\nOjOjO");
 sprite("mod_star", { w: 5, h: 5, outline: "k" }, "..j..\n.jjj.\njjjjj\n.j.j.\nj...j");
 
 const RAW = {
@@ -46,6 +57,7 @@ const RAW = {
   rough_gem: (c) => { lumpShape(c, "}", "]", "6"); c.poly([5, 9, 7, 3, 10, 9], "h"); c.px(7, 5, "J"); c.px(7, 4, "C"); },
   cut_gem: (c) => { c.poly([2, 5, 5, 2, 9, 2, 12, 5, 7, 12], "H"); c.hline(4, 5, 7, "J"); c.poly([5, 2, 9, 2, 7, 5], "J"); c.px(6, 3, "C"); c.line(2, 5, 7, 12, "h"); },
   food: (c) => { c.ellipse(7, 5, 6, 4, "Z"); c.rect(1, 6, 13, 1, "z"); c.px(4, 3, "C"); c.px(9, 4, "C"); c.px(6, 2, "9"); c.rect(5, 7, 4, 6, "c"); c.vline(5, 8, 5, "C"); },
+  gears: (c) => { c.circ(5, 6, 4, "O"); c.circ(5, 6, 2, "_"); for (const [x, y] of [[5, 1], [5, 11], [0, 6], [10, 6], [2, 3], [8, 9]]) c.px(x, y, "O"); c.circ(10, 10, 3, "j"); c.px(10, 10, "_"); for (const [x, y] of [[10, 6], [13, 10], [10, 13], [7, 10]]) c.px(x, y, "j"); },
   cloth: (c) => { c.rect(1, 4, 10, 8, "c"); c.hline(1, 4, 10, "C"); c.hline(1, 7, 10, "U"); c.hline(1, 10, 10, "U"); c.ellipse(11, 8, 2, 4, "u"); c.px(11, 8, "V"); c.line(3, 12, 1, 13, "c"); },
   ale: (c) => { c.rect(2, 3, 8, 10, "u"); c.rect(2, 2, 8, 2, "C"); c.px(3, 1, "C"); c.px(7, 1, "C"); c.rect(3, 5, 6, 7, "y"); c.vline(4, 5, 7, "Y"); c.box(10, 5, 3, 5, "V"); c.hline(2, 12, 8, "V"); },
 };

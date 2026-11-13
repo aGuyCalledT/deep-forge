@@ -70,10 +70,16 @@ damit Möbel sie verdecken.
 | Eingangshalle | `entrance_hall_0..2` 144 × 96 | der Tor-Tunnel: Holz, Stein mit Schilden, prächtig mit Bannern und Läufer; Mitte (x 48–100) frei für die Übungskämpfe der Wachen (Werkzeug `stick` in `figure.js`) |
 | Oberfläche | Bäume `tree_a`/`tree_b` 160 × 240 (4 Bilder Wind, die Krone neigt sich oben mehr), Marktstand `market_stall` 128 × 84 mit Vordach `stall_awning` 136 × 30 (4 Bilder, flattert) | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE`. Die kleinen `tree_0/1`, `stall`, `tent` gibt es nur noch für das Login-Bild |
 | Status | `ui_stop` (rotes Achteck, steht still), `ui_warn` (gelbes Dreieck, braucht dich), `ui_idle` (graue Punkte, nichts zu tun) 16 × 16 | über Räumen (`roomStatus` in `hold.js`), über untätigen Zwergen und in den Hinweis-Chips |
+| Abzeichen | `ui_good` (Smaragd mit !, 14 × 14, im Spiel 28 px) | auf Tabs mit etwas Gutem zu tun (`.tab .dot`) |
+| Fenster-X | `ui_xbtn`, `ui_xbtn_down` (runde Eisenplatte, 20 × 20, im Spiel 40 px) | `.sheet-x` und `.icon-btn` |
+| Knopfplatten | `btn_iron`, `btn_gold`, `btn_green`, `btn_red` und je `_down` (24 × 21, Slice 7 4 7 4) | `.btn`/`.tool` als `border-image`, 2-fach; die Mitte ist einfarbig, damit sie sauber dehnt |
 | Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
 | Monster | je nach Art, Figuren wie Zwerge | `Figure.monster(id, frame)` |
 
 ## Stil
+
+- Symbole und Knöpfe exakt symmetrisch: nur die linke Hälfte als Raster zeichnen und mit `mx` spiegeln
+  (`mx: "c"` bei ungerader Breite). `poly`/`line` geben schräge Kanten oft ungleich.
 
 Warm und freundlich: abgerundete Höhlenräume statt Kästen, Licht von oben links, weiche Laternen- und
 Feuerschein-Effekte über das Licht im Spiel, kleine liebevolle Details (Katze am Kamin, Pflanzen, Spinnweben).
@@ -127,6 +133,8 @@ Porträts in den Panels und das Cheat-Fenster nutzen noch das alte Kit (`dwarfki
 - **Lader:** `static/js/dwarf48.js` (`load`, `frame(look, pose, f)`, `draw(ctx, look, pose, f, x, y, {flip})`, Umfärben
   über `look.ramps`, `quilt: false` lässt die Decke weg). Der Raum-Editor zeigt seine Punkte damit. Im Spiel übersetzt
   `look48(d)` in `hold.js` einen Zwerg (Frisur, Bart, Haut, Haar, Kleidung, Helm, Stimmung) in einen `look`.
+- **Mine:** vierter Hut `miner` (Lederhelm mit Messinglampe), Pose `mine` (Seitenansicht, Spitzhacke oben/Mitte/unten,
+  `side_prop` / `side_prop_back` in `kit.json`; oben liegt die Hacke hinter dem Kopf). `look48(d, {hat: 'miner'})`.
 
 ## Grafik 48 px (im Spiel)
 
@@ -153,14 +161,23 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   Wiese, Bäume, Stand, Brunnen, Fels (`rock_0..4` nach Tiefe, nahtlos in beide Richtungen: `voronoi(..., wrap_y=True)`,
   `blocks(..., wrap_y=True)` in `rock.py`), Gänge (`hallway`), Schacht (auf jeder Etage die Treppenhaus-Vorlage mit
   Tür, keine Leitern), Treppenhäuser, Tunnel, Tor,
-  Säulen mit Tür (`walldoor`, `walldoor_stone`, `walldoor_grand` je Wege-Stil, 4 Bilder) im Vordergrund überall, wo eine
-  Wand einen Raum von einem anderen Raum oder einem Gang trennt (`wallsOf`, `drawWalls`); die Tür geht auf, solange ein
-  Zwerg auf seinem Weg daneben ist. Jeder Raum und jeder Abschnitt aus Gängen/Treppenhäusern hat an allen vier
+  schlanke Trennsäulen (16 px, `divider_rock|brick|sand|slate|stone|oak` in `ways.py`, 4 Bilder: zu, Tür halb, fast,
+  ganz offen) im Vordergrund überall, wo eine Wand einen Raum von einem anderen Raum oder einem Gang trennt (`wallsOf`,
+  `drawWalls`). Die Säule nimmt das Material der Rückwand des Raums (`PILLAR` in `hold.js`), oben trifft sie die
+  Gewölbe-Ecken der Räume, Kapitell und Sockel sind Blöcke. Schmuck je Säule (`pillar_band`, `pillar_runes`,
+  `pillar_banner`, zufällig aus der Lage). Die Tür steckt in der Säule und ist nur zu sehen, solange ein Zwerg auf seinem
+  Weg daneben ist (dann schwingt sie heraus). Die alten `walldoor*`-Bilder sind noch im Sheet, aber unbenutzt.
+  Rückwände: `wall_rock`, `wall_hewn`, `wall_brick`, `wall_ashlar`, `wall_panel`, dazu `wall_plaster` (Fachwerk),
+  `wall_slate` (Schiefer) und `wall_tile` (glasierte Fliesen mit Goldfries). Jeder Raum und jeder Abschnitt aus Gängen/Treppenhäusern hat an allen vier
   Innenkanten gestuften Schatten (`drawEdges`),
   Höhlen mit Bewuchs (`moss_*`, `glowshrooms`, `roots`, `stalactites`), Risse beim Graben und Monster. Räume: Hülle
   und hintere Möbel, die Zwerge im Raum, vordere Möbel; die leuchtenden Pixel (`glow`) kommen nach der Lichtschicht.
   Lichter, Rauch, Funken, Dampf und Klickflächen kommen aus den Punkten der Vorlage. Alte Symbole (Status, Pfeile,
   Pixelschrift) werden doppelt groß gezeichnet.
+- **Mine** (`art-src/props48/mine.py`, Gruppe `mine`): gehauene Stützpfeiler `mine_pillar` und dunkler `mine_pillar_fg`
+  (40 × 230), Vordergrund-Felsen `mine_fg_rock_0..2`, große Tropfsteine `mine_fg_stal_0..1`, Felsnadeln `mine_spire_0..1`,
+  Erzadern `ore_seam_0..2` (Platzhalter `ingot` = Erzfarbe), Tunnelloch `mine_hole`, Erzwagen `minecart` (5 Bilder:
+  leer bis voll, Haufen in `ingot`), Schiene `rail` (Kachel). Fels überall in `rockd`, gezeichnet in `mine48.js`.
 
 ### Raumvorlagen (Editor)
 

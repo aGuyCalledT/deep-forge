@@ -1,17 +1,15 @@
-// Workshops: queues, the bellows and the quench.
-import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand } from './ui.js';
+// Workshops: queues, the bellows and the anvil.
+import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem, qualityStep, qualityMult } from './data.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand, statusIco } from './ui.js';
 import * as A from './audio.js';
-const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'tailor', 'farm', 'brewery', 'barracks'];
+const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'mechanic', 'tailor', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
 import { upgradeBtn, costBtn } from './panels-base.js';
 import { jobOf } from './hold.js';
 import { api } from './api.js';
 
-const QUENCH_WAIT = 12;
-
 export function orderLabel(e) {
-  const n = e.remaining === -1 ? '∞' : '×' + e.remaining;
+  const n = e.keep > 0 ? 'keep ' + e.keep : e.remaining === -1 ? '∞' : '×' + e.remaining;
   switch (e.recipe) {
     case 'smelt': return [goodIcon(e.mat, 'icon s'), ` Smelt ${byId.ores[e.mat].name.toLowerCase()} ${n}`];
     case 'alloy': return [goodIcon('bar:' + e.mat, 'icon s'), ` ${byId.metals[e.mat].name} ${n}`];
@@ -33,7 +31,7 @@ function wsState(b) {
   const bi = D().buildings[b.id] || {};
   if (F().siege) return ['bad', 'Besieged'];
   if (!bi.worker) return ['bad', 'No worker'];
-  if (b.job && b.job.quenching) return ['hot', 'Quench now!'];
+  if (b.type === 'forge' && (F().anvil || []).length) return ['hot', 'Pieces wait at the anvil'];
   if (byId.buildings[b.type].kind === 'continuous' || b.job) return ['ok', 'Working'];
   if (!b.queue.length) return ['warn', 'Queue empty'];
   const miss = bi.missing || {};
@@ -53,7 +51,7 @@ export function renderWork() {
         img(S.room(x), 'thumb'),
         h('span', { class: 'grow' }, h('b', null, buildingName(x)), h('span', { class: 'small muted' }, ` · level ${x.level} · ${(info_.workers || []).length}/${info_.machines || 1} at work`), h('br'),
           h('span', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, label)),
-        h('i', { class: 'dot ' + st }));
+        statusIco({ bad: 'stop', hot: 'good', warn: label === 'Queue empty' ? 'idle' : 'stop' }[st]) || h('i', { class: 'icon st' }));
     })),
     list.length ? null : h('p', { class: 'muted' }, 'No workshops yet. Build one in the Hold tab.'),
   ];
@@ -74,12 +72,15 @@ export function workCard(b) {
     w && !multi && !b.job ? h('p', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, label) : '');
 
   if (t.kind === 'continuous') {
-    out.append(h('p', { class: 'small' }, b.type === 'farm' ? `About ${fmt(5 * (info_.speed || 0))} mushrooms per hour.` : `About ${fmt(5 * (info_.speed || 0))} ale per hour from half as many mushrooms.`),
+    const more = b.type === 'farm' ? (b.fertUntil > now() ? info_.fert || 0 : 0) : (info_.heat || 0) / 100;
+    out.append(h('p', { class: 'small' }, b.type === 'farm' ? `About ${fmt(5 * (info_.speed || 0) * (1 + more))} mushrooms per hour.` : `About ${fmt(5 * (info_.speed || 0) * (1 + more))} ale per hour from half as many mushrooms.`),
+      b.type === 'farm' ? fertBlock(b) : boostBlock(b),
       h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(b)));
     return out;
   }
-  for (let i = 0; i < (info_.machines || 1); i++) { const j = jobOf(b, i); if (j && (j.quenching || !multi)) out.append(jobBlock(b, i)); }
-  if (b.type === 'smelter') out.append(bellows(b));
+  if (b.type === 'forge') out.append(anvilBlock());
+  for (let i = 0; i < (info_.machines || 1); i++) { const j = jobOf(b, i); if (j && !multi) out.append(jobBlock(b, i)); }
+  if (info_.boost) out.append(boostBlock(b));
   out.append(h('h3', null, 'Orders', info('The worker takes the first order that has its materials. Orders without materials wait.')));
   if (!b.queue.length) out.append(h('p', { class: 'small muted' }, 'No orders yet.'));
   out.append(h('div', { class: 'list' }, b.queue.map((e, i) => {
@@ -93,6 +94,9 @@ export function workCard(b) {
   })));
   out.append(h('div', { class: 'row', style: { marginTop: '8px' } },
     h('button', { class: 'btn primary', disabled: b.queue.length >= 10, onclick: () => orderSheet(b) }, ico('plus'), 'Add order'), upgradeBtn(b)));
+  out.append(h('div', { class: 'row', style: { marginTop: '8px' } },
+    h('label', { class: 'row grow small' }, h('input', { type: 'checkbox', checked: !!b.practice, onchange: (e) => bus.act({ type: 'practice', building: b.id, on: e.target.checked }) }), 'Practice'),
+    info('Practice mode: the workshop makes half as much, but its workers learn three times as fast. A journeyman or master working here teaches the others too.')));
   return out;
 }
 
@@ -105,7 +109,7 @@ function machinesBlock(b) {
     const w = seats[i] != null ? f.dwarves.find((x) => x.id === seats[i]) : null;
     const j = jobOf(b, i);
     const what = !w ? h('span', { class: 'small bad-t' }, 'Nobody here')
-      : j ? (j.quenching ? h('span', { class: 'small gold-t' }, 'Quench now!') : h('span', { class: 'small muted' }, (bi.jobNames || [])[i] || 'Working'))
+      : j ? h('span', { class: 'small muted' }, (bi.jobNames || [])[i] || 'Working')
         : h('span', { class: 'small muted' }, t.kind === 'continuous' ? 'Working' : 'Waiting for an order');
     const busyJob = j && t.kind !== 'continuous';
     rows.push(h('div', { class: 'machine' + (w ? '' : ' empty') },
@@ -113,7 +117,7 @@ function machinesBlock(b) {
       w ? img(S.portrait(w), 'icon') : h('span', { class: 'machine-seat' }, ico('dwarf')),
       h('div', { class: 'grow' },
         h('div', null, w ? w.first + ' ' + w.clan : 'Free machine', w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
-        j && !j.quenching ? h('div', { class: 'busy' }, hourglass({ job: b.id, machine: i }, 's'), what, h('span', { class: 'small gold-t', 'data-eta': b.id, 'data-machine': i })) : what),
+        j ? h('div', { class: 'busy' }, hourglass({ job: b.id, machine: i }, 's'), what, h('span', { class: 'small gold-t', 'data-eta': b.id, 'data-machine': i })) : what),
       h('div', { class: 'machine-btns' },
         h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
         w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
@@ -131,7 +135,6 @@ function machinesBlock(b) {
 
 function jobBlock(b, i = 0) {
   const j = jobOf(b, i);
-  if (j.quenching) return quenchBlock(b, i);
   const m = j.recipe === 'smelt' ? byId.metals[byId.ores[j.mat].metal] : byId.metals[j.mat];
   return h('div', { class: 'job' }, hourglass({ job: b.id, machine: i }),
     h('div', null, h('b', null, D().buildings[b.id].jobName || 'Working', m && b.type === 'smelter' ? info(m.meltNote) : null),
@@ -140,29 +143,34 @@ function jobBlock(b, i = 0) {
 
 // ------------------------------------------------------------------ bellows
 
-let pending = 0, timer = null, localHeat = {};
+let localHeat = {};
 
-/** One pump of the bellows: heat shows at once, taps go to the server in small batches. */
-export function pump(id) {
-  if (currentHeat(id) < 5) A.sfx('ignite');
-  A.sfx('bellows');
-  localHeat[id] = { v: Math.min(100, currentHeat(id) + 7), t: Date.now() / 1000 };
-  pending++;
-  if (navigator.vibrate) navigator.vibrate(8);
-  if (!timer) timer = setTimeout(async () => {
-    const taps = pending; pending = 0; timer = null;
-    try { await bus.act({ type: 'bellows', building: id, taps }, true); } catch { /* shown by act */ }
-  }, 700);
+/** A minigame tap (0..1 of a full one) heats a workshop up at once; the minigame sends the taps to the server. */
+export function heatUp(id, v) {
+  localHeat[id] = { v: Math.min(100, currentHeat(id) + 7 * v), t: Date.now() / 1000 };
 }
 
-function bellows(b) {
-  const heat = D().buildings[b.id].heat || 0;
+const GAME_BTN = { smelter: 'Pump the bellows', brewery: 'Shake the barrels', grindstone: 'Grind by hand', engraver: 'Cut runes by hand',
+  jeweler: 'Facet by hand', tailor: 'Weave by hand' };
+/** Heat of a workshop and the way to its minigame, which heats it up. */
+function boostBlock(b) {
+  const heat = (D().buildings[b.id] || {}).heat || 0;
   const hb = bar(heat / 100, 'heat');
   hb.querySelector('i').dataset.heat = b.id;
-  return h('div', { style: { marginTop: '8px' } },
-    h('div', { class: 'row between small' }, h('span', null, 'Heat', info('More heat smelts faster, up to twice as fast. Click the furnace in the hold to pump the bellows.')),
-      h('span', { class: 'muted' }, 'Click the furnace to pump')),
-    hb);
+  return h('div', { class: 'boost-block' },
+    h('div', { class: 'row between small' }, h('span', null, 'Heat', info('Lend a hand in a small game: the room heats up and works up to twice as fast while the heat lasts.')),
+      h('span', { class: 'muted' }, 'up to ×2')),
+    hb,
+    h('button', { class: 'btn primary', onclick: () => bus.minigame(b.id) }, ico('work'), GAME_BTN[b.type] || 'Lend a hand'));
+}
+
+/** Fertilizer for a mushroom farm: once per two hours, a small game decides how much more it grows. */
+function fertBlock(b) {
+  const until = b.fertUntil || 0, on = until > now(), fert = (D().buildings[b.id] || {}).fert || 0;
+  return h('div', { class: 'boost-block' },
+    h('div', { class: 'row between small' }, h('span', null, 'Fertilizer', info('Spread fertilizer over the beds in a small game. The more mushrooms get some, the more the farm grows for two hours (up to +60 %).')),
+      on ? h('span', { class: 'good-t' }, `+${Math.round(100 * fert)} % for `, h('span', { 'data-until': until }, dur(until - now()))) : h('span', { class: 'muted' }, 'none')),
+    h('button', { class: 'btn ' + (on ? '' : 'primary'), disabled: on, onclick: () => bus.minigame(b.id) }, ico('work'), on ? 'Beds fertilized' : 'Spread fertilizer'));
 }
 
 export function currentHeat(id) {
@@ -173,23 +181,20 @@ export function currentHeat(id) {
   return Math.max(v, server);
 }
 
-// ------------------------------------------------------------------ quench
+// ------------------------------------------------------------------ anvil
 
-function quenchBlock(b, i = 0) {
-  const j = jobOf(b, i), m = byId.metals[j.mat];
-  const box = h('div', { class: 'quench' });
-  const glow = h('div', { class: 'glow' }), mark = h('div', { class: 'mark' }), nowEl = h('div', { class: 'now' });
-  const W = QUENCH_WAIT;
-  mark.style.left = (m.qStart / W * 100) + '%';
-  mark.style.width = (m.qWidth / W * 100) + '%';
-  box.append(glow, mark, nowEl);
-  box.dataset.quench = b.id; box.dataset.machine = i;
-  return h('div', null,
-    h('div', { class: 'row between' }, h('b', null, (b.machines || 1) > 1 ? `Machine ${i + 1}: ready to quench ` : 'Ready to quench: ', byId.metals[j.mat].name.toLowerCase(), ' ', byId.items[j.itype].name.toLowerCase()),
-      h('span', { class: 'small muted' }, 'click the barrel')),
-    box,
-    info(m.quenchNote),
-    h('button', { class: 'btn big primary', onclick: () => bus.act({ type: 'quench', building: b.id, machine: i }) }, 'Quench!'));
+/** Pieces off the fire wait at the anvil: hammer and quench them yourself for better quality. */
+export function anvilBlock() {
+  const f = F(), list = f.anvil || [], max = D().anvilMax || 10;
+  const best = [...list].sort((a, b) => b.at - a.at)[0];
+  return h('div', { class: 'anvil-card card' + (list.length ? ' hot' : '') },
+    h('div', { class: 'row between' },
+      h('b', null, 'At the anvil ', h('span', { class: 'gold-t' }, `${list.length}/${max}`)),
+      info('Every forged piece waits here for eight hours. Hammer it in time and quench it at the golden mark for better quality. Pieces you leave are finished by the dwarves, but never as well. When the anvil is full, a better piece pushes out the cheapest.')),
+    list.length ? h('div', { class: 'anvil-row' }, list.slice(0, 10).map((g) => img(S.item(g.itype, g.mat), 'icon s')))
+      : h('p', { class: 'small muted' }, 'Nothing hot right now. Forged pieces come here.'),
+    h('button', { class: 'btn big primary', disabled: !list.length, onclick: () => bus.smithy() }, ico('work'), list.length ? 'To the anvil' : 'Nothing to forge'),
+    best ? h('p', { class: 'small dim' }, 'The dwarves finish the oldest one in ', h('span', { 'data-until': Math.min(...list.map((g) => (D().anvil || []).find((x) => x.id === g.id)?.until || 0)) }), '.') : null);
 }
 
 /** Called every frame by main.js: moves progress bars, heat and quench glow smoothly. */
@@ -201,7 +206,7 @@ export function animateWork() {
     const i = +(el.dataset.machine || 0), j = b && jobOf(b, i);
     if (!j) return;
     const info = D().buildings[b.id] || {};
-    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
+    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (info.boost ? currentHeat(b.id) / 100 : 0));
     const since = Math.max(0, t - G.state.now);
     const done = (j.progress + speed * since) / j.time;
     if (el.classList.contains('hg')) setSand(el, done); else el.style.width = Math.min(100, done * 100) + '%';
@@ -210,23 +215,13 @@ export function animateWork() {
   document.querySelectorAll('[data-eta]').forEach((el) => {
     const b = F().buildings.find((x) => x.id === el.dataset.eta);
     const i = +(el.dataset.machine || 0), j = b && jobOf(b, i);
-    if (!j || j.quenching) { el.textContent = ''; return; }
+    if (!j) { el.textContent = ''; return; }
     const info = D().buildings[b.id] || {};
-    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
+    const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (info.boost ? currentHeat(b.id) / 100 : 0));
     el.textContent = speed > 0 ? dur((j.time - j.progress) / speed - Math.max(0, t - G.state.now)) + ' left' : 'Stopped';
   });
   document.querySelectorAll('[data-heat]').forEach((el) => { el.style.width = currentHeat(el.dataset.heat) + '%'; });
-  document.querySelectorAll('[data-quench]').forEach((el) => {
-    const b = F().buildings.find((x) => x.id === el.dataset.quench);
-    const j = b && jobOf(b, +(el.dataset.machine || 0));
-    if (!j || !j.quenching) return;
-    const since = Math.max(0, Math.min(QUENCH_WAIT, t - j.quenchStart));
-    const k = since / QUENCH_WAIT;
-    // glowing metal cools from white-yellow over orange and red to dark
-    const col = k < 0.25 ? S.mix('#fff6c0', '#ffb040', k / 0.25) : k < 0.6 ? S.mix('#ffb040', '#d0401a', (k - 0.25) / 0.35) : S.mix('#d0401a', '#3a1a14', (k - 0.6) / 0.4);
-    el.querySelector('.glow').style.background = col;
-    el.querySelector('.now').style.left = (k * 100) + '%';
-  });
+  document.querySelectorAll('[data-until]').forEach((el) => { el.textContent = dur(Math.max(0, +el.dataset.until - t)); });
 }
 
 // ------------------------------------------------------------------ sheets
@@ -247,12 +242,13 @@ function assignSheet(b, machine = -1) {
 }
 
 const COUNTS = [1, 5, 10, 25, -1];
+const KEEPS = [2, 5, 10, 25];
 
 function orderSheet(b) {
-  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : 'cutgem', mat: null, itype: null, count: -1 };
+  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : b.type === 'mechanic' ? 'gears' : 'cutgem', mat: null, itype: null, count: -1, keep: 0 };
   const send = async () => {
     try {
-      await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count }, false, true);
+      await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count, keep: st.keep }, false, true);
       closeSheet();
     } catch (e) { toast(e.message, 'bad'); }
   };
@@ -264,7 +260,7 @@ function orderSheet(b) {
     if (b.type === 'smelter') {
       parts.push(h('div', { class: 'row' }, ['smelt', 'alloy'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.mat = null; refreshSheet(); } }, r === 'smelt' ? 'Smelt ore' : 'Make alloy'))));
       if (st.recipe === 'smelt') {
-        parts.push(h('p', { class: 'small muted' }, '2 ore + 1 coal → 2 bars.'));
+        parts.push(h('p', { class: 'small muted' }, '2 ore + 1 coal → 1 bar.'));
         for (const o of G.data.ores) {
           const have = stock(o.id);
           parts.push(choice(st.mat === o.id, [goodIcon(o.id), ' ', o.name, ' → ', goodIcon('bar:' + o.metal, 'icon s'), ' ', byId.metals[o.metal].name + (o.bonusMetal ? ` (+${Math.round(o.bonusChance * 100)}% ${o.bonusMetal})` : '')],
@@ -282,17 +278,36 @@ function orderSheet(b) {
       }
     } else if (b.type === 'forge') {
       parts.push(h('p', { class: 'small muted' }, 'Choose what to make, then the metal. Each piece burns 1 coal.'));
-      parts.push(h('div', { class: 'row' }, G.data.items.map((t) => {
+      parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => !(G.data.parts || {})[t.id]).map((t) => {
         const locked = t.blueprint && !f.blueprints.includes(t.blueprint);
         return h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), disabled: locked, title: locked ? 'Needs a blueprint from an expedition' : t.note,
           onclick: () => { st.itype = t.id; st.mat = null; refreshSheet(); } }, img(S.item(t.id, 'iron'), 'icon s'), t.name);
       })));
       if (st.itype) {
         const t = byId.items[st.itype];
-        parts.push(h('p', { class: 'small' }, `${t.bars} bars each. ${t.note}`));
+        parts.push(h('p', { class: 'small' }, `${t.bars} bars each. ${t.note} `,
+          info(`Skill ${t.skill} of 5. Harder pieces come out crude more often, but every quality step is worth ×${qualityStep(t).toFixed(1)}: a masterwork is worth ×${qualityMult(t, 4).toFixed(1)}. Let your best smiths make them.`)));
+        if (t.slot === 'tool') parts.push(h('p', { class: 'small muted' }, 'A pick breaks rock up to its metal\'s hardness. Harder metal digs faster and lasts longer.'));
         const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
         for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
         if (!metals.length) parts.push(h('p', { class: 'muted' }, 'No metal fits.'));
+      }
+    } else if (b.type === 'mechanic') {
+      parts.push(h('div', { class: 'row' }, ['gears', 'assemble'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'gears' ? 'Cut gears' : 'Make a piece'))));
+      if (st.recipe === 'gears') parts.push(h('p', null, goodIcon('bar:brass'), ' 2 brass → ', goodIcon('gears'), ` 1 gears. You have ${stock('gears')} gears.`));
+      else {
+        parts.push(h('p', { class: 'small muted' }, 'Pieces from several materials. The mechanic\'s skill decides the quality, no anvil needed.'));
+        parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => (G.data.parts || {})[t.id]).map((t) => {
+          const locked = t.blueprint && !f.blueprints.includes(t.blueprint);
+          return h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), disabled: locked, title: locked ? 'Needs a blueprint' : t.note,
+            onclick: () => { st.itype = t.id; st.mat = null; refreshSheet(); } }, img(S.item(t.id, G.data.metals.find((m) => fits(t, m)).id), 'icon s'), t.name);
+        })));
+        if (st.itype) {
+          const t = byId.items[st.itype];
+          parts.push(h('p', { class: 'small' }, t.note + ' ', info(`Skill ${t.skill} of 5. Every quality step is worth ×${qualityStep(t).toFixed(1)}.`)));
+          const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
+          for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
+        }
       }
     } else if (b.type === 'tailor') {
       parts.push(h('div', { class: 'row' }, ['weave', 'sew'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'weave' ? 'Weave cloth' : 'Sew clothes'))));
@@ -308,11 +323,12 @@ function orderSheet(b) {
         }
       }
     } else {
+      if (b.type === 'engraver') parts.push(h('div', { class: 'row' }, ['engrave', 'inlay'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'engrave' ? 'Engrave' : 'Gold inlay'))));
       if (b.type === 'jeweler') parts.push(h('div', { class: 'row' }, ['cutgem', 'setgem'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; refreshSheet(); } }, r === 'cutgem' ? 'Cut gems' : 'Set gems'))));
       if (st.recipe === 'cutgem') parts.push(h('p', null, goodIcon('rough_gem'), ' 1 rough gem → ', goodIcon('cut_gem'), ` 1 cut gem. You have ${stock('rough_gem')} rough gems.`));
       else {
-        const mod = { sharpen: 's', engrave: 'e', setgem: 'g' }[st.recipe];
-        parts.push(h('p', { class: 'small muted' }, byId.mods[mod].name + ': ' + byId.mods[mod].note + `. Worth ×${byId.mods[mod].mult}. The best matching piece is picked first.`));
+        const mod = { sharpen: 's', engrave: 'e', setgem: 'g', inlay: 'i' }[st.recipe];
+        parts.push(h('p', { class: 'small muted' }, byId.mods[mod].name + ': ' + byId.mods[mod].note + (mod === 'i' ? '' : `. Worth ×${byId.mods[mod].mult}`) + '. The best matching piece is picked first.'));
         parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => t.mods.includes(mod)).map((t) => h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), onclick: () => { st.itype = t.id; refreshSheet(); } }, t.name))));
         if (st.itype) {
           const have = Object.entries(f.stock).filter(([k, v]) => v > 0 && isItem(k) && parseItem(k).type === st.itype && !parseItem(k).mods.includes(mod));
@@ -329,7 +345,10 @@ function orderSheet(b) {
         h('div', { class: 'small muted' }, 'Each one needs'), inputChips(ins),
         h('div', { class: 'small ' + (can > 0 ? 'good-t' : 'bad-t') }, can > 0 ? `You have enough for ${fmt(can)}.` : 'You have not got enough yet - the order waits until you do.')));
     }
-    parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c ? ' primary' : ''), onclick: () => { st.count = c; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
+    parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c && !st.keep ? ' primary' : ''), onclick: () => { st.count = c; st.keep = 0; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
+    parts.push(h('h3', null, 'Or keep in stock ', info('The workshop only works on this order while the warehouse has fewer than this many. Good for pickaxes, bars and chains that other workshops need.')),
+      b.level >= 2 ? h('div', { class: 'row' }, KEEPS.map((c) => h('button', { class: 'btn small' + (st.keep === c ? ' primary' : ''), onclick: () => { st.keep = c; st.count = -1; refreshSheet(); } }, 'Keep ' + c)))
+        : h('p', { class: 'small muted' }, 'Upgrade the workshop to level 2 to keep goods in stock.'));
     const ready = st.recipe === 'cutgem' || st.recipe === 'weave' || (st.recipe === 'sew' && st.itype && st.mat) || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
     parts.push(h('button', { class: 'btn big primary', style: { marginTop: '12px' }, disabled: !ready, onclick: send }, 'Add to queue'));
     return h('div', null, parts);
@@ -346,6 +365,14 @@ function orderInputs(st) {
     return o;
   }
   if (st.recipe === 'craft' && st.itype && st.mat) return { ['bar:' + st.mat]: byId.items[st.itype].bars, coal: 1 };
+  if (st.recipe === 'assemble' && st.itype && st.mat) {
+    const o = { ['bar:' + st.mat]: byId.items[st.itype].bars };
+    for (const [k, v] of Object.entries(G.data.parts[st.itype])) o[k] = (o[k] || 0) + v;
+    o.coal = (o.coal || 0) + 1;
+    return o;
+  }
+  if (st.recipe === 'gears') return { 'bar:brass': 2 };
+  if (st.recipe === 'inlay' && st.itype) return { ['bar:' + G.data.inlay.metal]: G.data.inlay.bars };
   if (st.recipe === 'cutgem') return { rough_gem: 1 };
   if (st.recipe === 'weave') return { food: 3 };
   if (st.recipe === 'sew' && st.itype) return { cloth: byId.clothes[st.itype].cloth };
@@ -355,7 +382,10 @@ function orderInputs(st) {
 
 function fits(t, m) {
   if (t.rule === 'hard') return m.hardness >= 3 && m.id !== 'pig_iron';
+  if (t.rule === 'tool') return m.hardness >= 2 && !m.precious && m.id !== 'pig_iron';
   if (t.rule === 'precious') return m.precious;
+  if (t.rule === 'pewter') return m.id.endsWith('_pewter');
+  if (t.rule.startsWith('only:')) return m.id === t.rule.slice(5);
   return true;
 }
 

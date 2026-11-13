@@ -42,7 +42,12 @@ public class GameService {
         if (json == null) return Factory.newFortress(uid, owner, now, seeds.nextLong());
         try {
             Fortress f = om.readValue(json, Fortress.class);
+            boolean v3 = f.version < 3;
             Factory.upgrade(f);
+            if (v3) {   // six qualities became Crude, Normal, Fine, Exceptional, Masterwork (and Artifact)
+                f = om.readValue(Factory.toVersion3(om.writeValueAsString(f)), Fortress.class);
+                f.version = 3;
+            }
             return f;
         } catch (Exception e) {
             throw new IllegalStateException("Broken save for user " + uid, e);
@@ -57,11 +62,24 @@ public class GameService {
         }
     }
 
+    /** A new hold for this player, finished at once (demo account). */
+    public void showcase(long uid, String owner) {
+        double now = now();
+        synchronized (lock(uid)) {
+            Fortress f = load(uid, owner, now);
+            Rng r = new Rng(f.rng);
+            Showcase.fill(f, now, r);
+            f.rng = r.s;
+            save(f);
+        }
+    }
+
     public Map<String, Object> state(long uid, String owner, boolean cheats) {
         double now = now();
         synchronized (lock(uid)) {
             Fortress f = load(uid, owner, now);
             Sim.advance(f, now, market);
+            f.lastVisit = now;   // the player looked in: the day plan starts again
             save(f);
             return View.of(f, now, cheats);
         }
@@ -80,6 +98,7 @@ public class GameService {
                 Actions.apply(f, action, now, r);
             }
             f.rng = r.s;
+            f.lastVisit = now;
             save(f);
             return View.of(f, now, cheats);
         }

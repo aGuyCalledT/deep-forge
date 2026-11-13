@@ -14,6 +14,9 @@ var PAL = {
   o: "#7d5a30", O: "#b98a44", j: "#e3c06e", 8: "#f6e3a4",                                         // gold
   p: "#955a71", P: "#d390a2", 9: "#f2c4cc",                                                       // pink
   s: "#1f1c28",                                                                                   // soot
+  "*": "#ff8a96", "&": "#c0283c", "?": "#9a2230", ";": "#6a1520", "!": "#3a0c10",                  // ruby (status signs, red buttons)
+  ":": "#8ff0c4", "|": "#3fbf88", "$": "#1f9a6a", "-": "#1f6b4c", ",": "#0d3b2a",                  // emerald (green badge and buttons)
+  "/": "#5a3a12",                                                                                 // dark gold (button base)
   "(": "#2e2527", ")": "#3d3132", "[": "#4f3f3d", "]": "#65514c", "{": "#7e6860", "}": "#9a8478",  // warm rock
   "<": "#3c5a3a", ">": "#5b8350", "=": "#86b06a", "+": "#b5d48c",                                 // grass and leaves
   "~": "#8a5a3c", "^": "#b07a4e", "@": "#d8a874",                                                 // bark, path, sand
@@ -52,6 +55,7 @@ var ROOMS = {
   forge:      { w: 7, door: 156, worker: [60, 90], face: 1, fire: [14, 68, 26, 8], chimney: [24, 0], anvil: [82, 76], quench: [112, 90], lights: [[27, 68, 58, "#ff9450"], [129, 20, 30, "#ffd98e"]] },
   grindstone: { w: 5, door: 108, worker: [62, 90], face: -1, wheel: [32, 66], lights: [[48, 18, 34, "#ffd98e"]] },
   engraver:   { w: 5, door: 108, worker: [64, 90], face: -1, work: [30, 66], lights: [[34, 54, 28, "#ffd98e"], [76, 20, 26, "#ffd98e"]] },
+  mechanic:   { w: 5, door: 108, worker: [64, 90], face: -1, work: [30, 66], lights: [[34, 54, 28, "#ffd98e"], [76, 20, 26, "#ffd98e"]] },
   jeweler:    { w: 6, door: 132, worker: [64, 90], face: -1, work: [34, 66], lights: [[36, 52, 32, "#fff0c0"], [92, 52, 28, "#aacde4"]] },
   tailor:     { w: 6, door: 132, worker: [64, 90], face: -1, work: [30, 62], lights: [[60, 20, 34, "#ffd98e"], [28, 56, 22, "#ffe6b0"]] },
   farm:       { w: 7, door: 156, worker: [118, 90], face: -1, lights: [[22, 74, 36, "#90e0c8"], [58, 74, 32, "#90e0c8"], [94, 74, 32, "#90e0c8"], [72, 18, 32, "#ffd98e"]] },
@@ -68,6 +72,7 @@ var BAYS = {
   forge:      { w: 3, worker: [44, 90], face: 1, fire: [8, 68, 26, 8], chimney: [16, 0], anvil: [62, 76], lights: [[21, 68, 46, "#ff9450"]] },
   grindstone: { w: 2, worker: [38, 90], face: -1, wheel: [18, 66], lights: [[24, 20, 26, "#ffd98e"]] },
   engraver:   { w: 2, worker: [40, 90], face: -1, work: [20, 66], lights: [[20, 54, 24, "#ffd98e"]] },
+  mechanic:   { w: 2, worker: [40, 90], face: -1, work: [20, 66], lights: [[20, 54, 24, "#ffd98e"]] },
   jeweler:    { w: 2, worker: [40, 90], face: -1, work: [20, 66], lights: [[20, 52, 26, "#fff0c0"]] },
   tailor:     { w: 2, worker: [40, 90], face: -1, work: [16, 62], lights: [[18, 30, 22, "#ffd98e"]] },
   farm:       { w: 2, worker: [26, 90], face: 1, lights: [[24, 74, 30, "#90e0c8"]] },

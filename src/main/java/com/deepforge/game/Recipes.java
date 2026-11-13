@@ -14,14 +14,19 @@ public final class Recipes {
             "smelter", List.of("smelt", "alloy"),
             "forge", List.of("craft"),
             "grindstone", List.of("sharpen"),
-            "engraver", List.of("engrave"),
+            "engraver", List.of("engrave", "inlay"),
             "jeweler", List.of("cutgem", "setgem"),
+            "mechanic", List.of("gears", "assemble"),
             "tailor", List.of("weave", "sew"));
 
     /** Mushrooms for one weave and the cloth it gives. */
     public static final int WEAVE_FOOD = 3, WEAVE_CLOTH = 2;
 
-    static final Map<String, String> MOD_OF = Map.of("sharpen", "s", "engrave", "e", "setgem", "g");
+    static final Map<String, String> MOD_OF = Map.of("sharpen", "s", "engrave", "e", "setgem", "g", "inlay", "i");
+    public static final int GEAR_BRASS = 2;
+    /** Work seconds (at speed 1): smelting 6 min a bar, forging 10 min a bar, sharpening 8, engraving, setting and inlay 20, a gem 30. */
+    public static final double SMELT_SECONDS = 360, FORGE_SECONDS = 300, SHARPEN_SECONDS = 480, FINISH_SECONDS = 600,
+            CUT_SECONDS = 1800, ASSEMBLE_SECONDS = 600;
 
     /** Check a queue entry is valid. Returns an error message or null. */
     public static String validate(Fortress f, Building b, QueueEntry e) {
@@ -41,11 +46,22 @@ public final class Recipes {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
                 Content.Metal m = Content.METALS.get(e.mat);
                 if (t == null || m == null) return "Unknown item or metal.";
+                if (Content.PARTS.containsKey(t.id())) return "Make the " + t.name().toLowerCase() + " at the fine mechanic's bench.";
                 if (!Content.metalFits(t, m)) return m.name() + " is not suited for a " + t.name().toLowerCase() + ".";
                 if (t.blueprint() != null && !f.blueprints.contains(t.blueprint()))
                     return "You need the blueprint: " + Content.BLUEPRINT_NAMES.get(t.blueprint());
             }
-            case "sharpen", "engrave", "setgem" -> {
+            case "assemble" -> {
+                Content.ItemType t = Content.ITEMS.get(e.itype);
+                Content.Metal m = Content.METALS.get(e.mat);
+                if (t == null || m == null || !Content.PARTS.containsKey(t.id())) return "Choose a piece and its metal.";
+                if (!Content.metalFits(t, m)) return m.name() + " is not suited for a " + t.name().toLowerCase() + ".";
+                if (t.blueprint() != null && !f.blueprints.contains(t.blueprint()))
+                    return "You need the blueprint: " + Content.BLUEPRINT_NAMES.get(t.blueprint());
+            }
+            case "gears" -> {
+            }
+            case "sharpen", "engrave", "setgem", "inlay" -> {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
                 if (t == null) return "Choose an item type.";
                 if (!t.mods().contains(MOD_OF.get(e.recipe))) return t.name() + " cannot be " + e.recipe + "ed.";
@@ -84,6 +100,13 @@ public final class Recipes {
                 in.put("bar:" + e.mat, Content.ITEMS.get(e.itype).bars());
                 in.put("coal", 1);
             }
+            case "assemble" -> {
+                in.put("bar:" + e.mat, Content.ITEMS.get(e.itype).bars());
+                for (Map.Entry<String, Integer> x : Content.PARTS.get(e.itype).entrySet()) in.merge(x.getKey(), x.getValue(), Integer::sum);
+                in.merge("coal", 1, Integer::sum);
+            }
+            case "gears" -> in.put("bar:brass", GEAR_BRASS);
+            case "inlay" -> in.put("bar:" + Content.INLAY_METAL, Content.INLAY_BARS);
             case "cutgem" -> in.put("rough_gem", 1);
             case "setgem" -> in.put("cut_gem", 1);
             case "weave" -> in.put("food", WEAVE_FOOD);
@@ -130,6 +153,35 @@ public final class Recipes {
     }
 
     /** Start a job if materials are there. Takes the inputs. */
+    /** How many of an order's product the hold has (for "keep in stock"). Pieces at the anvil count too. */
+    public static int productCount(Fortress f, QueueEntry e) {
+        String prefix;
+        String mod = null;
+        switch (e.recipe) {
+            case "smelt" -> prefix = "bar:" + Content.ORES.get(e.mat).metal();
+            case "alloy" -> prefix = "bar:" + e.mat;
+            case "cutgem" -> prefix = "cut_gem";
+            case "weave" -> prefix = "cloth";
+            case "sew" -> prefix = Content.wearKey(e.itype, e.mat);
+            case "gears" -> prefix = "gears";
+            case "craft", "assemble" -> prefix = "item:" + e.itype + ":" + (e.mat == null ? "" : e.mat + ":");
+            default -> {
+                prefix = "item:" + e.itype + ":";
+                mod = MOD_OF.get(e.recipe);
+            }
+        }
+        int n = 0;
+        for (Map.Entry<String, Integer> s : f.stock.entrySet()) {
+            String k = s.getKey();
+            if (prefix.endsWith(":") ? !k.startsWith(prefix) : !k.equals(prefix)) continue;
+            if (mod != null && !Content.parseItem(k)[3].contains(mod)) continue;
+            n += s.getValue();
+        }
+        if (e.recipe.equals("craft"))
+            for (Forging g : f.anvil) if (g.itype.equals(e.itype) && (e.mat == null || g.mat.equals(e.mat))) n++;
+        return n;
+    }
+
     public static Job start(Fortress f, Building b, QueueEntry e) {
         if (validate(f, b, e) != null) return null;
         Map<String, Integer> in = inputs(f, e);
@@ -141,8 +193,8 @@ public final class Recipes {
         switch (e.recipe) {
             case "smelt" -> {
                 Content.Ore ore = Content.ORES.get(e.mat);
-                j.time = 180 * Content.METALS.get(ore.metal()).heat();
-                j.out.put("bar:" + ore.metal(), 2);
+                j.time = SMELT_SECONDS * Content.METALS.get(ore.metal()).heat();
+                j.out.put("bar:" + ore.metal(), 1);
             }
             case "alloy" -> {
                 Content.Alloy a = Content.ALLOYS.get(e.mat);
@@ -151,11 +203,20 @@ public final class Recipes {
             }
             case "craft" -> {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
-                j.time = 100 * t.bars() * Math.sqrt(Content.METALS.get(e.mat).heat());
+                j.time = FORGE_SECONDS * t.bars() * Math.sqrt(Content.METALS.get(e.mat).heat());
             }
             case "cutgem" -> {
-                j.time = 180;
+                j.time = CUT_SECONDS;
                 j.out.put("cut_gem", 1);
+            }
+            case "gears" -> {
+                j.time = 120;
+                j.out.put("gears", 1);
+            }
+            case "assemble" -> {
+                Content.ItemType t = Content.ITEMS.get(e.itype);
+                int parts = Content.PARTS.get(t.id()).values().stream().mapToInt(Integer::intValue).sum();
+                j.time = ASSEMBLE_SECONDS * (t.bars() + parts) * (t.skill() >= 5 ? 2 : 1);   // the regalia take long
             }
             case "weave" -> {
                 j.time = 120;
@@ -165,13 +226,13 @@ public final class Recipes {
                 j.time = 80 * Content.CLOTHES.get(e.itype).cloth();
                 j.out.put(Content.wearKey(e.itype, e.mat), 1);
             }
-            case "sharpen", "engrave", "setgem" -> {
+            case "sharpen", "engrave", "setgem", "inlay" -> {
                 String item = findItem(f, e);
                 if (item == null) return null;
                 String[] p = Content.parseItem(item);
                 j.inItem = item;
                 j.mat = p[1];
-                j.time = e.recipe.equals("sharpen") ? 90 : 150;
+                j.time = e.recipe.equals("sharpen") ? SHARPEN_SECONDS : FINISH_SECONDS;
                 add(f, item, -1);
                 j.out.put(Content.itemKey(p[0], p[1], Integer.parseInt(p[2]), p[3] + MOD_OF.get(e.recipe)), 1);
             }

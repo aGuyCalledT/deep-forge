@@ -157,5 +157,15 @@
    "furnished",
    "starter"
   ]
+ },
+ "mechanic": {
+  "bay": [
+   "furnished",
+   "starter"
+  ],
+  "room": [
+   "furnished",
+   "starter"
+  ]
  }
 }

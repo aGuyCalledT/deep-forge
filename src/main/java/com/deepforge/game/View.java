@@ -57,7 +57,35 @@ public final class View {
         dep.put("shares", shares);
         dep.put("stock", counts);
         d.put("depot", dep);
+        d.put("pace", round(pace(f, now)));
+        d.put("planFull", planFull(f));
+        d.put("planUntil", f.lastVisit <= 0 ? 0 : f.lastVisit + planFull(f));
+        d.put("foremanLevel", FOREMAN_LEVEL);
+        Building cons = underConstruction(f, now);
+        if (cons != null) d.put("building", Map.of("id", cons.id, "until", cons.upUntil, "level", cons.level + 1));
         d.put("minePower", power(f, warriors(f, "mine")));
+        Map<String, Object> rep = new LinkedHashMap<>();
+        for (String c : f.cities) {
+            int rk = repRank(f, c);
+            rep.put(c, Map.of("rank", rk, "points", Math.floor(f.rep.getOrDefault(c, 0.0)),
+                    "from", repNeed(rk), "next", rk >= REP_MAX ? 0 : repNeed(rk + 1)));
+        }
+        d.put("rep", rep);
+        d.put("repPrice", REP_PRICE);
+        d.put("repTake", REP_TAKE);
+        d.put("repBlueprint", REP_BLUEPRINT);
+        Map<Integer, Integer> have = new LinkedHashMap<>();
+        for (Contract c : f.contracts) {
+            int n = 0;
+            for (String k : contractGoods(f, c)) n += stock(f, k);
+            have.put(c.id, n);
+        }
+        d.put("contractHave", have);
+        d.put("mintMetals", MINT_METALS);
+        d.put("ranks", RANK_NAMES);
+        d.put("rankAt", List.of(0, JOURNEYMAN, MASTER));
+        d.put("specs", SPECS);
+        d.put("mintPerHour", level(f, "vault") / MINT_HOURS);
 
         // per dwarf numbers
         Map<Integer, Object> dw = new LinkedHashMap<>();
@@ -69,16 +97,40 @@ public final class View {
             for (String s : Content.SKILLS) lv.put(s, skill(x, s));
             m.put("skills", lv);
             if (x.job.equals("miner")) m.put("rate", round(minerRate(f, x, f.layers.get(x.layer))));
+            m.put("pickHardness", pickHardness(x));
+            m.put("rank", rank(x));
+            List<Map<String, Object>> ws = new ArrayList<>();
+            for (Object[] w : wishes(f, x)) ws.add(Map.of("label", w[0], "ok", w[1]));
+            m.put("wishes", ws);
+            if (x.tool != null) m.put("toolLeft", round(Math.max(0, 1 - x.toolWear / toolLife(x.tool))));
+            Map<String, Double> left = new LinkedHashMap<>();
+            for (Map.Entry<String, Double> e : x.gearWear.entrySet()) left.put(e.getKey(), round(Math.max(0, 1 - e.getValue())));
+            m.put("gearLeft", left);
             dw.put(x.id, m);
         }
         d.put("dwarves", dw);
 
+        // pieces at the anvil: what each is worth at normal quality and when the dwarves finish it themselves
+        List<Object> anvil = new ArrayList<>();
+        for (Forging g : f.anvil) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", g.id);
+            m.put("value", round(forgingValue(g)));
+            m.put("until", g.at + ANVIL_WAIT);
+            m.put("mean", round(smithMean(f, g, 0)));
+            anvil.add(m);
+        }
+        d.put("anvil", anvil);
+        d.put("anvilMax", ANVIL_MAX);
+
         // mining per layer (ore per hour before the lift limit)
         double[] rate = new double[f.layers.size()];
         int[] miners = new int[f.layers.size()];
+        int[] best = new int[f.layers.size()];
         for (Dwarf x : f.dwarves) {
             if (!x.job.equals("miner") || x.busy != null) continue;
             miners[x.layer]++;
+            best[x.layer] = Math.max(best[x.layer], pickHardness(x));
             if (f.layers.get(x.layer).threat == null) rate[x.layer] += minerRate(f, x, f.layers.get(x.layer));
         }
         List<Object> layers = new ArrayList<>();
@@ -86,6 +138,16 @@ public final class View {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("rate", round(rate[l.index]));
             m.put("miners", miners[l.index]);
+            m.put("cartSize", cartSize(l));
+            m.put("cartTarget", cartTarget(l));
+            m.put("veinOre", veinOre(l));
+            m.put("veins", veins(l, now));
+            // rock no miner on this layer can break with the picks they have
+            int pick = Math.max(best[l.index], Content.MAKESHIFT_HARDNESS);
+            m.put("bestPick", pick);
+            List<String> hard = new ArrayList<>();
+            for (String k : Content.LAYERS.get(l.index).weights().keySet()) if (Content.rockHardness(k) > pick) hard.add(k);
+            m.put("tooHard", hard);
             m.put("upgrade", l.unlocked ? layerUpgradeCost(l) : null);
             m.put("unlock", l.unlocked ? null : layerUnlockCost(l.index));
             m.put("discovered", !Content.LAYERS.get(l.index).needsDiscovery() || f.discovered.contains(String.valueOf(l.index)));
@@ -125,7 +187,9 @@ public final class View {
             List<Double> speeds = new ArrayList<>();
             if (skill != null) for (Dwarf x : workers(f, b)) speeds.add(round(workSpeed(f, x, skill) * buildingMult(b)));
             m.put("speeds", speeds);
-            m.put("heat", round(heatAt(b, now)));
+            m.put("heat", round(boostAt(b, now)));
+            if (BOOSTED.contains(b.type)) m.put("boost", true);
+            if (b.type.equals("farm")) m.put("fert", b.fertUntil > now ? round(b.fert) : 0);
             if (b.job != null) m.put("jobName", Sim.jobName(b.job));
             Map<Integer, Object> q = new LinkedHashMap<>();
             for (QueueEntry e : b.queue) q.put(e.id, Recipes.missing(f, e));
@@ -156,8 +220,8 @@ public final class View {
         for (Building b : f.buildings) {
             if (f.siege != null) continue;
             for (Dwarf w : workers(f, b)) {
-                if (b.type.equals("farm")) grow += 5 * workSpeed(f, w, "farming") * buildingMult(b);
-                if (b.type.equals("brewery")) brew += 5 * workSpeed(f, w, "farming") * buildingMult(b);
+                if (b.type.equals("farm")) grow += FARM_PER_H * workSpeed(f, w, "farming") * buildingMult(b);
+                if (b.type.equals("brewery")) brew += BREW_PER_H * workSpeed(f, w, "farming") * buildingMult(b);
             }
         }
         d.put("foodPerHour", round(grow - eat - brew / 2));
