@@ -65,15 +65,14 @@ def cut(cv, ax, ay):
 for time in ('day', 'dusk', 'night'):
     cv, em = canvas(96, 220); V.sky(cv, em, 96, 220, time, 210)
     ITEMS[f'sky_{time}'] = ('tile', 'valley', [as_sprite(cv)])
-    cv, em = canvas(576, 256)
-    V.mountains(cv, em, 576, time, [(212, 96, 3, 0.5, True, None), (232, 52, 8, 0.3, False, None), (248, 26, 13, 0.16, False, '#4a6a3a')])
-    ITEMS[f'mountains_{time}'] = ('tile', 'valley', [cut(cv, 0, 250)])  # anchor: left end of the ground line
 cv, em = canvas(576, 40); V.meadow(cv, em, 576, 2, 38)
 ITEMS['meadow'] = ('tile', 'valley', [cut(cv, 0, 2)])                    # anchor: left end of the grass line
 cv, em = canvas(96, 288); V.rockface(cv, em, 0, 96, 288, 250)
 ITEMS['rockface'] = ('tile', 'valley', [as_sprite(cv)])
-cv, em = canvas(120, 140); V.gate(cv, em, 60, 130)
-ITEMS['gate'] = ('prop', 'valley', [cut(cv, 60, 131)])
+import facade as FA                                                       # the gate: a wall with statues
+_fg = FA.facade()
+ITEMS['gate'] = ('prop', 'valley', [as_sprite(_fg, FA.ANCHOR)])
+ITEMS['gate_front'] = ('prop', 'valley', [as_sprite(FA.split(_fg), FA.ANCHOR)])
 cv, em = canvas(40, 40); V.disc(cv, em, 20, 20, 11, R['sun'][4:1:-1])
 ITEMS['sun'] = ('prop', 'valley', [cut(cv, 20, 20)])
 cv, em = canvas(24, 24); V.moon(cv, em, 12, 12, 9)

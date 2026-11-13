@@ -4,6 +4,7 @@
 import { G, F, D, byId, now, stock, fullName, moneyText } from './data.js';
 import * as S from './sprites.js';
 import * as Art from './art48.js';
+import * as BD from './backdrop.js';
 import * as R from './rooms48.js';
 import * as DW from './dwarf48.js';
 import { sun, daylight, skyColors, berlinHour } from './sun.js';
@@ -24,9 +25,12 @@ const VC = VW / CELL;
 const FACE = 288;                                // the gate tunnel: from x = -FACE to the shaft
 // the valley: where things stand (the middle of their foot, on the grass). Clicks, lights and dwarves use the same
 // numbers. wall: where the village begins (raiders gather beyond it); the stall is the market.
-const SURFACE = { wall: -1250, stall: -1010, well: -870, sign: -640, gate: -FACE };
+// The gate is a wall with statues cut into the mountain's face, left of the tunnel: from FACADE to -FACE, the arch in
+// its middle. Its right part is drawn over the dwarves, so they walk into the arch and come out in the entrance hall.
+const FACADE_W = 320, FACADE = -FACE - FACADE_W;
+const SURFACE = { wall: -1250, stall: -1010, well: -870, sign: -680, gate: -FACE - FACADE_W / 2 };
 const STALL_W = 70, CARAVAN_HOME = -720;
-const TREES = [['oak', -1390], ['fir', -1330], ['fir', -1150], ['oak', -780], ['fir', -470], ['oak', -400]];
+const TREES = [['oak', -1390], ['fir', -1330], ['fir', -1150], ['oak', -780], ['fir', -715]];
 
 let plan = null;   // { cols, floors, shaft, rooms: {type: cells} }
 const particles = [];
@@ -43,7 +47,7 @@ const asked = new Set();
 
 /** Load the 48-px art, the dwarf kit and the built-in room templates. Called once before the first frame. */
 export async function loadArt() {
-  await Promise.all([Art.load(), DW.load(), R.load()]);
+  await Promise.all([Art.load(), DW.load(), R.load(), BD.load()]);
   await preload();
 }
 function preload() {
@@ -305,7 +309,7 @@ function want(g, d, ctx) {
       const cells = [...g.cells.entries()].filter(([, v]) => (v.kind === 'hall' || v.kind === 'well' || v.kind === 'room') && !(v.kind === 'room' && !roomActive(v.id)));
       if (cells.length) { const [k] = cells[S.hash('wander' + d.id + sch.k) % cells.length]; const [c, fl] = k.split(',').map(Number); return { f: fl, x: c * CELL + CELL / 2, pose: chat }; }
     }
-    return { f: -1, x: SURFACE.wall + 160 + (S.hash('stroll' + d.id) % (-FACE - 80 - SURFACE.wall - 160)), pose: chat };
+    return { f: -1, x: SURFACE.wall + 160 + (S.hash('stroll' + d.id) % (FACADE - 40 - SURFACE.wall - 160)), pose: chat };
   };
   if (d.job === 'worker') {
     const r = g.rooms.find((x) => x.b.id === d.building);
@@ -549,30 +553,21 @@ function drawSky(ctx, t) {
     ctx.beginPath(); ctx.ellipse(x, y, 32, 8, 0, 0, Math.PI * 2); ctx.ellipse(x + 16, y - 6, 18, 8, 0, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  // the far mountains: day, dusk and night versions blend into each other; they slide slower than the world
-  const dusk = Math.max(0, 1 - Math.abs(s.elev - 2) / 9), k = 0.55;
-  const far = (name, a) => {
-    if (a <= 0.01) return;
-    ctx.save(); ctx.globalAlpha = a; ctx.translate(view.x * k, 0);
-    Art.tile(ctx, name, view.x * (1 - k) - 4, GRASS - 18, view.w + 8);
-    ctx.restore();
-  };
-  far('mountains_night', 1);
-  far('mountains_day', Math.min(1, day * 1.4));
-  far('mountains_dusk', dusk * 0.9);
+  // the backdrop: peaks, range, hills, forest and the massif behind the hold, each sliding slower than the world
+  const dusk = Math.max(0, 1 - Math.abs(s.elev - 2) / 9);
+  BD.draw(ctx, view, { day, dusk, ground: GRASS, ref: { x: SURFACE.gate, y: GROUND - 220 }, place: { massif: -40 } });
 }
 
 // ------------------------------------------------------------------ the mountain and the rock inside it
 
-const FACE_TOP = GROUND - 288;   // the cliff over the gate
 
 /** Height of the mountain's surface at x (y of its top edge); Infinity where there is no mountain (the valley). */
 export function mtop(x) {
-  if (x < -FACE) return Infinity;
+  if (x < FACADE) return Infinity;
   if (x < 0) {
-    // a cliff with the gate, then a rough slope up to the shoulder over the first floor
-    const k = Math.max(0, (x + FACE) / FACE);
-    return Math.round(FACE_TOP - (FACE_TOP - (SURF - 80)) * Math.pow(k, 0.75) + Math.sin(x / 12) * 4 + (x < -FACE + 8 ? 0 : Math.sin(x / 34) * 8));
+    // the rock over the gate wall, then a rough slope up to the shoulder over the first floor
+    const k = Math.max(0, (x - FACADE) / -FACADE), top = GROUND - 304;
+    return Math.round(top - (top - (SURF - 80)) * Math.pow(k, 0.75) + Math.sin(x / 12) * 4 + (x < FACADE + 8 ? 0 : Math.sin(x / 34) * 8));
   }
   const h = 80 + 200 * (1 - Math.exp(-x / 360)) + 84 * Math.max(0, Math.sin(x / 340 - 0.6)) + 12 * Math.sin(x / 46) + 6 * Math.sin(x / 18);
   return Math.round(SURF - h);
@@ -584,8 +579,8 @@ function rockShape() {
   const key = W() + 'x' + H();
   if (shape.key === key) return shape.path;
   const p = new Path2D();
-  p.moveTo(-VW - 40, GROUND + 1); p.lineTo(-FACE, GROUND + 1);
-  for (let x = -FACE; x <= W() + 4; x += 4) p.lineTo(x, mtop(x));
+  p.moveTo(-VW - 40, GROUND + 1); p.lineTo(FACADE, GROUND + 1);
+  for (let x = FACADE; x <= W() + 4; x += 4) p.lineTo(x, mtop(x));
   p.lineTo(W() + 40, mtop(W())); p.lineTo(W() + 40, H() + 80); p.lineTo(-VW - 40, H() + 80); p.closePath();
   shape = { key, path: p };
   return p;
@@ -620,7 +615,7 @@ function drawRock(ctx) {
   ctx.fillStyle = fade; ctx.fillRect(view.x, GROUND, view.w, H() + 80 - GROUND);
   ctx.restore();
   // the mountain's skin: a lit rim, grass on the gentle parts, snow on the peaks, a few firs
-  const xa = Math.max(-FACE, Math.floor(view.x / 2) * 2), xb = Math.min(W(), view.x + view.w);
+  const xa = Math.max(FACADE, Math.floor(view.x / 2) * 2), xb = Math.min(W(), view.x + view.w);
   for (let x = xa; x < xb; x += 2) {
     const y = mtop(x);
     if (!isFinite(y) || y > view.y + view.h || y < view.y - 40) continue;
@@ -636,9 +631,11 @@ function drawRock(ctx) {
     if (Math.abs(mtop(x + 8) - mtop(x - 8)) / 16 > 0.7 || S.hash('fir' + x) % 4) continue;
     Art.draw(ctx, 'fir', Math.floor(t0() * 2 + x) % 4, x, y + 6);
   }
-  // the cliff over the gate: lit on its face, a shadow just inside
-  ctx.fillStyle = '#a6abbe'; ctx.fillRect(-FACE, FACE_TOP, 2, ftop(ENTRY) - FACE_TOP);
-  ctx.fillStyle = 'rgba(29,20,32,0.3)'; ctx.fillRect(-FACE + 2, FACE_TOP, 5, ftop(ENTRY) - FACE_TOP);
+  // the edge of the cut over the tunnel (the mountain's face left of it is seen from the front), and the cliff over
+  // the gate wall's left tower
+  const ct = mtop(-FACE);
+  ctx.fillStyle = 'rgba(29,20,32,0.45)'; ctx.fillRect(-FACE, ct, 4, ftop(ENTRY) - ct);
+  ctx.fillStyle = '#a6abbe'; ctx.fillRect(FACADE, mtop(FACADE), 2, GROUND - mtop(FACADE));
 }
 const t0 = () => performance.now() / 1000;
 
@@ -650,8 +647,8 @@ function drawSurface(ctx, t) {
   Art.tile(ctx, 'meadow', x0, GRASS, x1 - x0 + 16);
   Art.draw(ctx, 'fence', 0, SURFACE.wall - 52, GRASS); Art.draw(ctx, 'fence', 0, SURFACE.wall, GRASS);
   for (const [name, x] of TREES) Art.draw(ctx, name, Math.floor(t * 2 + x) % 4, x, GRASS);
-  for (const x of [-1200, -560, -330]) Art.draw(ctx, 'bush', 0, x, GRASS);
-  for (const x of [-1210, -760, -620, -500, -420]) Art.draw(ctx, 'flowers', 0, x, GRASS);
+  for (const x of [-1200, -740]) Art.draw(ctx, 'bush', 0, x, GRASS);
+  for (const x of [-1210, -760, -650]) Art.draw(ctx, 'flowers', 0, x, GRASS);
   Art.draw(ctx, 'well', 0, SURFACE.well, GRASS);
   Art.draw(ctx, 'stall', Math.floor(t * 3) % 4, SURFACE.stall, GRASS);
   drawStrangers(ctx, t, 'stall');
@@ -764,7 +761,12 @@ function drawUnderground(ctx, t, g, inRoom) {
   drawMarks(ctx, t, g);
   drawCritters(ctx, t, g);
   Art.draw(ctx, 'gate', 0, SURFACE.gate, GROUND);
-  if (gateLevel() >= 3) Art.draw(ctx, 'brazier', Math.floor(t * 6) % 4, SURFACE.gate - 70, GROUND);
+}
+
+/** The right part of the gate wall, over the dwarves walking between the arch and the tunnel; braziers by the steps. */
+function drawGateFront(ctx, t) {
+  Art.draw(ctx, 'gate_front', 0, SURFACE.gate, GROUND);
+  if (gateLevel() >= 3) for (const d of [-78, 78]) Art.draw(ctx, 'brazier', Math.floor(t * 6 + d) % 4, SURFACE.gate + d, GROUND);
 }
 
 /** Which space a cell belongs to: a room, or the open ways (hallways, stairwells, the shaft, the gate tunnel). */
@@ -1025,7 +1027,7 @@ export const holdScreen = {
     // start at the gate: the valley on the left, the mountain with the first floors on the right
     const zoom = 1, vw = r.width / zoom, vh = r.height / zoom;
     if (vw < 720) return { zoom, x: -32, y: ftop(0) - 80 };   // narrow screens: the rooms first, the valley is a drag away
-    return { zoom, x: Math.max(-VW, -FACE - Math.min(320, vw * 0.3)), y: Math.max(ftop(0) - 80, GROUND + 60 - vh) };
+    return { zoom, x: Math.max(-VW, FACADE - Math.min(160, vw * 0.12)), y: Math.max(ftop(0) - 80, GROUND + 60 - vh) };
   },
   draw(ctx, t, v) {
     view = v;
@@ -1061,6 +1063,7 @@ export const holdScreen = {
     drawUnderground(ctx, t, G_, inRoom);
     drawStrangers(ctx, t, 'road');
     for (const p of outside) p();
+    drawGateFront(ctx, t);
     drawWalls(ctx, dt);
     drawParticles(ctx, dt);
   },
@@ -1094,12 +1097,12 @@ export const holdScreen = {
       if ((wellLit.get(wellKey(w)) || 0) > performance.now()) out.push({ x: w.x, y: ftop(w.f) + 100, r: 50, color: '#ffb070', power: 0.8 });
     }
     if (G_.hall) out.push(...tplLights(G_.hall, -FACE, ftop(ENTRY)));
-    if (gateLevel() >= 3) out.push({ x: SURFACE.gate - 70, y: GROUND - 30, r: 90, color: '#ffb070', flicker: 2 });
+    if (gateLevel() >= 3) for (const d of [-78, 78]) out.push({ x: SURFACE.gate + d, y: GROUND - 30, r: 90, color: '#ffb070', flicker: 2 });
     const day = daylight(sun().elev);
     if (day < 0.8) {
       out.push({ x: SURFACE.stall, y: GRASS - 40, r: 80, color: '#ffd98e', flicker: 1, power: 0.8 });
       if (f.siege) out.push({ x: SURFACE.wall - 70, y: GRASS - 24, r: 110, color: '#ff8a4a', flicker: 3, power: 1.4 });
-      out.push({ x: SURFACE.gate, y: GROUND - 80, r: 60, color: '#ffd98e', flicker: 1, power: 0.8 });
+      out.push({ x: SURFACE.gate, y: GROUND - 50, r: 70, color: '#ffd98e', flicker: 1, power: 0.8 });
     }
     // little lamps on miner helmets
     for (const dw of drawn) { const d = f.dwarves.find((x) => x.id === dw.id); if (d && d.job === 'miner' && d.helm) out.push({ x: dw.a.x + (dw.a.face > 0 ? 4 : -4), y: dw.sy + 14, r: 22, color: '#fff0c0' }); }
