@@ -262,12 +262,17 @@ public final class Actions {
         slotSet(d, slot, item);
     }
 
-    /** Take a piece off a dwarf. A pick that has done real work is worn and goes to the scrap heap, not back to the warehouse. */
+    /** Take a piece off a dwarf. A piece that has done real work is worn and goes to the scrap heap, not back to the warehouse. */
     static void takeOff(Fortress f, Dwarf d, String slot) {
         String old = slotGet(d, slot);
-        if (old != null && !(slot.equals("tool") && d.toolWear > USED_PICK_HOURS)) add(f, old, 1);
+        if (old != null && !worn(d, slot)) add(f, old, 1);
         slotSet(d, slot, null);
         if (slot.equals("tool")) d.toolWear = 0;
+        else d.gearWear.remove(slot);
+    }
+
+    static boolean worn(Dwarf d, String slot) {
+        return slot.equals("tool") ? d.toolWear > USED_PICK_HOURS : d.gearWear.getOrDefault(slot, 0.0) > 0;
     }
 
     /** Sell goods at once to the trader at the gate, for a tenth of their base value. */

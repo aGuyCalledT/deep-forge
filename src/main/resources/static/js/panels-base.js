@@ -232,7 +232,14 @@ export function jobSheet(x) {
     opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
 }
 
-const SLOTS = [['tool', 'Tool', 'Pickaxes dig faster, break harder rock and wear out'], ['weapon', 'Weapon', 'Axes for fighting'], ['helm', 'Helm', 'Protection'], ['armor', 'Armor', 'Chain mail: strong protection']];
+const SLOTS = [['tool', 'Tool', 'Pickaxes dig faster, break harder rock and wear out'], ['weapon', 'Weapon', 'Axes for fighting; wear out in battle'], ['helm', 'Helm', 'Protection; wears out in battle'], ['armor', 'Armor', 'Chain mail; wears out in battle']];
+
+/** How much of an equipped piece is left (0..1), and whether it has been used (then taking it off scraps it). */
+function left(me, slot) {
+  const dd = D().dwarves[me.id] || {};
+  return slot === 'tool' ? (dd.toolLeft ?? 1) : ((dd.gearLeft || {})[slot] ?? 1);
+}
+function worn(me, slot) { return slot === 'tool' ? me.toolWear > 0.25 : ((me.gearWear || {})[slot] || 0) > 0; }
 
 export function gearSheet(x) {
   openSheet(() => {
@@ -245,11 +252,11 @@ export function gearSheet(x) {
         return h('div', { class: 'card sub' },
           h('div', { class: 'row between' }, h('b', null, name), h('span', { class: 'small muted' }, note)),
           me[slot] ? h('div', { class: 'row' }, goodIcon(me[slot]), h('span', { class: 'grow small' }, goodName(me[slot])),
-            h('button', { class: 'btn small', title: slot === 'tool' && me.toolWear > 0.25 ? 'A used pick is worn: taking it off scraps it' : '',
-              onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, slot === 'tool' && me.toolWear > 0.25 ? 'Scrap' : 'Remove'))
+            h('button', { class: 'btn small', title: worn(me, slot) ? 'A used piece is worn: taking it off scraps it' : '',
+              onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, worn(me, slot) ? 'Scrap' : 'Remove'))
             : h('p', { class: 'small muted' }, slot === 'tool' ? 'Makeshift pick: free, slow, never breaks, only soft rock.' : 'Nothing equipped.'),
-          slot === 'tool' && me.tool ? h('div', null, h('div', { class: 'row between small' }, h('span', { class: 'muted' }, 'Condition'), h('span', null, Math.round((D().dwarves[me.id].toolLeft ?? 1) * 100) + '%')),
-            bar(D().dwarves[me.id].toolLeft ?? 1, (D().dwarves[me.id].toolLeft ?? 1) < 0.15 ? 'bad' : '')) : null,
+          me[slot] ? h('div', null, h('div', { class: 'row between small' }, h('span', { class: 'muted' }, 'Condition'), h('span', null, Math.round(left(me, slot) * 100) + '%')),
+            bar(left(me, slot), left(me, slot) < 0.15 ? 'bad' : '')) : null,
           items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
             h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, item: k }); refreshSheet(); } }, 'Equip'))));
       }),

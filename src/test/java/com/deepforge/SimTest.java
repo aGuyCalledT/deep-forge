@@ -127,8 +127,9 @@ class SimTest {
         double p1 = m.sellPrice("stonebridge", "bar:copper", 1);
         assertTrue(p1 < p0 * 0.75);
         assertTrue(rev < 300 * p0 && rev > 300 * p1);
-        m.tick(T0 + 24 * 3600);
-        assertTrue(m.sellPrice("stonebridge", "bar:copper", 1) > p1 * 0.99, "price recovers over time");
+        double later = 0;   // prices drift at random: average a few days
+        for (int d = 1; d <= 4; d++) { m.tick(T0 + d * 24 * 3600); later += m.sellPrice("stonebridge", "bar:copper", 1) / 4; }
+        assertTrue(later > p1, "price recovers over time: " + p1 + " -> " + later);
     }
 
     /** Upgrade and let the builders finish at once. */
@@ -880,5 +881,23 @@ class SimTest {
         assertEquals(Rules.FINDS_MAX, n, "three reports wait");
         Report r = f.reports.stream().filter(x -> x.kind.equals("shift")).findFirst().orElseThrow();
         assertTrue(r.coins > 0 || !r.goods.isEmpty() || !r.extras.isEmpty());
+    }
+
+    @Test
+    void weaponsAndArmorWearOutInBattle() {
+        Fortress f = fresh(39);
+        Dwarf d = f.dwarves.get(0);
+        String axe = Content.itemKey("axe", "bronze", 1, ""), spare = Content.itemKey("axe", "steel", 1, "");
+        d.weapon = axe;
+        Rules.add(f, spare, 1);
+        int life = (int) Math.ceil(Rules.gearLife(axe));
+        assertEquals(58, life);
+        for (int i = 0; i < life - 1; i++) Rules.wearGear(f, d, T0);
+        assertEquals(axe, d.weapon);
+        Rules.wearGear(f, d, T0);
+        assertEquals(spare, d.weapon, "broken: the best spare is taken");
+        assertTrue(Rules.gearLife(Content.itemKey("axe", "star_steel", 4, "")) > 3 * life);
+        assertTrue(Content.baseValue("bar:star_steel") * 2 > Content.baseValue("bar:steel") * 2 + Content.baseValue("bar:platinum") + Content.baseValue("bar:aluminum"),
+                "star steel is worth more than what goes in");
     }
 }

@@ -177,6 +177,7 @@ public final class State {
         public String armor;
         public String tool;
         public double toolWear;       // working hours the tool has done (it breaks at Rules.toolLife)
+        public Map<String, Double> gearWear = new TreeMap<>();   // weapon, helm, armor: share of their life used up (breaks at 1)
         public double arrived;
     }
 

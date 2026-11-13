@@ -264,12 +264,13 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Entscheidungen aus Abschnitt 14 klären (Abnutzung, Bremse beim Liegenlassen, Tempo der Kurve, alte Spielstände).
 - [x] Einheitliche Warenwerte: Metall-Faktor, Qualitätsschritt je Skill-Level der Ware (1–5), schwere Waren schwerer gut.
 - [x] Gesteinshärte, Abnutzung der Spitzhacken, Notfall-Hacke, Tausch von selbst, Nickelstahl.
-- [ ] Abnutzung auch für Waffen und Rüstung (nach „Bestand halten“).
-- [ ] Sternstahl (Härte 8) und ein Erz dafür.
+- [x] Abnutzung auch für Waffen und Rüstung.
+- [x] Sternstahl (Härte 8).
+- [ ] Ein Erz der Härte 8 (braucht Grafik).
 - [ ] Schritt 1: Balance-Bot, Preisformel (quadratische Kosten), neue Werte und Zeiten.
 - [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
 - [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.
-- [ ] Schritt 3: Rest (siehe oben: Waffen und Rüstung, Sternstahl).
+- [x] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.
 - [ ] Schritt 4: Ruf, Aufträge, Aufnahme je Stadt und Warengruppe, Münze.
 - [ ] Schritt 5: Verbundwaren, Einlage, Feinmechaniker-Werkbank.
 - [ ] Schritt 6: Ränge, Lehre, Wünsche der Zwerge.

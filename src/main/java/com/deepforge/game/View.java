@@ -77,6 +77,9 @@ public final class View {
             if (x.job.equals("miner")) m.put("rate", round(minerRate(f, x, f.layers.get(x.layer))));
             m.put("pickHardness", pickHardness(x));
             if (x.tool != null) m.put("toolLeft", round(Math.max(0, 1 - x.toolWear / toolLife(x.tool))));
+            Map<String, Double> left = new LinkedHashMap<>();
+            for (Map.Entry<String, Double> e : x.gearWear.entrySet()) left.put(e.getKey(), round(Math.max(0, 1 - e.getValue())));
+            m.put("gearLeft", left);
             dw.put(x.id, m);
         }
         d.put("dwarves", dw);

@@ -76,11 +76,12 @@ public final class Content {
     public static final List<String> SKILLS = List.of("mining", "smelting", "smithing", "crafting", "farming", "combat", "trading");
     public static final List<String> CATEGORIES = List.of("ore", "materials", "gems", "provisions", "bars",
             "tools", "weapons", "armor", "hardware", "tableware", "jewelry", "clothing");
-    public static final List<String> BLUEPRINTS = List.of("steelmaking", "mail", "crown");
+    public static final List<String> BLUEPRINTS = List.of("steelmaking", "mail", "crown", "starsteel");
     public static final Map<String, String> BLUEPRINT_NAMES = Map.of(
             "steelmaking", "Steelmaking (pig iron and steel)",
             "mail", "Chain mail",
-            "crown", "Crowns");
+            "crown", "Crowns",
+            "starsteel", "Star steel (steel, platinum and aluminum)");
 
     // ---------------------------------------------------------------- helpers
 
@@ -173,6 +174,8 @@ public final class Content {
                 "Steel: iron that listened to a master.", "Steel wants a straw-yellow glow, then the water.", 6, 3.5);
         metal("nickel_steel", "Nickel steel", "#8fa6b8", 5000, 7, false, 1.8, true,
                 "Steel takes the nickel slowly. Stir, and keep the fire white.", "Nickel steel forgives a late quench.", 6.5, 3);
+        metal("star_steel", "Star steel", "#b8c8e8", 16000, 8, false, 2.2, true,
+                "Star steel sings in the crucible. Only the hottest fire will do.", "Star steel waits for you: quench it at the very end.", 7, 2.5);
         metal("rose_gold", "Rose gold", "#c97473", 6000, 2, true, 1.1, true,
                 "Rose gold blushes in the crucible.", "Rose gold is patient with you.", 3, 7);
         metal("sterling_silver", "Sterling silver", "#d2d3d6", 3600, 2, true, 1.0, true,
@@ -192,6 +195,7 @@ public final class Content {
         alloy("pig_iron", true, 1, "steelmaking", "iron", 1);
         alloy("steel", true, 2, "steelmaking", "iron", 1, "pig_iron", 1);
         alloy("nickel_steel", true, 2, "steelmaking", "steel", 2, "nickel", 1);
+        alloy("star_steel", true, 2, "starsteel", "steel", 2, "platinum", 1, "aluminum", 1);
         alloy("rose_gold", false, 4, null, "gold", 3, "copper", 1);
         alloy("sterling_silver", false, 4, null, "silver", 3, "copper", 1);
 

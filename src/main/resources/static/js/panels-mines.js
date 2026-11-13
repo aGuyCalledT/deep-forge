@@ -30,7 +30,7 @@ export function renderMines() {
       h('span', { class: 'muted small' }, `${fmt(spare)} spare`)),
     makeshift ? h('p', { class: 'warn-t small' }, statusIco('warn', 'icon s'), ` ${makeshift} miner${makeshift === 1 ? ' digs' : 's dig'} with a makeshift pick. Forge pickaxes at the forge.`) : null,
     worn ? h('p', { class: 'small muted' }, `${worn} pick${worn === 1 ? ' is' : 's are'} almost worn out.`) : null,
-    h('div', { class: 'row between' }, h('span', { class: 'small' }, 'Miners take a new pick from the warehouse by themselves'),
+    h('div', { class: 'row between' }, h('span', { class: 'small' }, 'Dwarves take a new pick or weapon from the warehouse by themselves'),
       h('button', { class: 'btn small' + (f.autoPicks ? ' good' : ''), 'aria-pressed': String(!!f.autoPicks), onclick: () => bus.act({ type: 'autoPicks', on: !f.autoPicks }) }, f.autoPicks ? 'On' : 'Off'))));
 
   G.data.layers.forEach((layer, i) => {

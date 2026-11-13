@@ -309,6 +309,41 @@ public final class Rules {
         return (24 + 6 * h * h) * qualityPower(key);
     }
 
+    /** Battles a weapon or armor piece lasts: (10 + 3 × hardness²) × quality: bronze 58, steel 118, star steel 202. */
+    public static double gearLife(String key) {
+        int h = Content.METALS.get(Content.parseItem(key)[1]).hardness();
+        return (10 + 3 * h * h) * qualityPower(key);
+    }
+
+    /** Every battle wears weapon and armor; broken pieces are gone, the dwarf takes the next best one from the warehouse. */
+    public static void wearGear(Fortress f, Dwarf d, double t) {
+        for (String slot : List.of("weapon", "helm", "armor")) {
+            String key = slot.equals("weapon") ? d.weapon : slot.equals("helm") ? d.helm : d.armor;
+            if (key == null) continue;
+            double w = d.gearWear.getOrDefault(slot, 0.0) + 1 / gearLife(key);
+            if (w < 1) { d.gearWear.put(slot, w); continue; }
+            d.gearWear.remove(slot);
+            String next = null;
+            if (f.autoPicks) {
+                for (Map.Entry<String, Integer> e : f.stock.entrySet())
+                    if (e.getValue() > 0 && Content.isItem(e.getKey()) && slot.equals(Content.ITEMS.get(Content.parseItem(e.getKey())[0]).slot())
+                            && (next == null || gearScore(e.getKey()) > gearScore(next))) next = e.getKey();
+                if (next != null) add(f, next, -1);
+            }
+            switch (slot) {
+                case "weapon" -> d.weapon = next;
+                case "helm" -> d.helm = next;
+                default -> d.armor = next;
+            }
+            log(f, t, next == null ? "warn" : "info", fullName(d) + "'s " + Content.goodName(key).toLowerCase() + " broke in the fight."
+                    + (next == null ? " Forge a new one." : " They took a " + Content.goodName(next).toLowerCase() + " from the warehouse."));
+        }
+    }
+
+    static double gearScore(String key) {
+        return Content.METALS.get(Content.parseItem(key)[1]).hardness() * qualityPower(key);
+    }
+
     /** How a pick ranks when the dwarves choose one from the warehouse: hardness first, then speed. */
     public static double pickScore(String key) {
         String[] p = Content.parseItem(key);
@@ -735,6 +770,7 @@ public final class Rules {
                 d.health -= dmg;
             }
             addXp(d, "combat", b.win ? 30 : 15);
+            wearGear(f, d, t);
             if (r.chance(death) || d.health <= 0) {
                 b.dead.add(d);
                 kill(f, d, cause + " (" + enemyName + ")", t);

@@ -112,7 +112,12 @@ Masterwork 2, Artifact 3.
   Gezählt wird beim Schürfen und beim Graben in der Festung. Bricht die Hacke, nimmt der Zwerg die beste aus dem Lager
   (Härte vor Tempo, `Rules.pickScore`), wenn „Miners take a new pick“ an ist (`Fortress.autoPicks`, Standard an),
   sonst gräbt er mit der Notfall-Hacke weiter.
-- Wer eine benutzte Hacke (mehr als 15 min Arbeit) abnimmt, verschrottet sie. So setzt Tauschen die Abnutzung nicht zurück.
+- **Waffen und Rüstung** nutzen sich je Kampf ab: Lebensdauer `(10 + 3 × Härte²) Kämpfe × Kraft der Qualität`
+  (`Rules.gearLife`: Bronze 58, Stahl 118, Nickelstahl 157, Sternstahl 202). Kaputt heißt weg; mit „take new gear“ nimmt der
+  Zwerg das beste Stück für den Platz aus dem Lager.
+- **Sternstahl** (Härte 8, 16 Marks je Barren): 2 Stahl + 1 Platin + 1 Aluminium → 2, Bauplan `starsteel` (Expeditionen,
+  Schichtbericht). Bestes Metall für Hacken, Waffen und Rüstung.
+- Wer ein benutztes Stück (Hacke mit mehr als 15 min Arbeit, Waffe oder Rüstung nach einem Kampf) abnimmt, verschrottet es. So setzt Tauschen die Abnutzung nicht zurück.
 
 ## Werte
 
