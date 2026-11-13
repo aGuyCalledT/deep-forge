@@ -18,7 +18,7 @@ class BalanceBotTest {
     static final int DAYS = 120;
     static boolean DEBUG = false;
 
-    /** The guide curve: about 100 Marks more income per day for every day played (min. 100). */
+    /** The old guide curve from the concept (100 Marks more a day per day played), printed for comparison only. */
     static double guide(int day) {
         return Math.max(100, 100.0 * day);
     }
@@ -94,18 +94,9 @@ class BalanceBotTest {
         System.out.printf("Marks earned: days 1-10 %.0f, 21-30 %.0f, 111-120 %.0f (guide %.0f, %.0f, %.0f)%n",
                 sum(e, 0, 10), sum(e, 20, 30), sum(e, 110, 120), 5500.0, 25500.0, 115500.0);
         assertTrue(sum(e, 0, 3) > 0, "the hold earns money in the first days");
-        assertTrue(sum(e, 0, DAYS) > 0, "the bot keeps the hold alive and earning");
-    }
-
-    /** The guide curve itself (section 12 of the concept): income in the band ±25 % around 100 Marks × day. */
-    @Test
-    @org.junit.jupiter.api.Disabled("Not reached yet: the bot earns 20-100 Marks a day and flattens out after day 10. See docs/TODO.md.")
-    void incomeFollowsTheGuideCurve() {
-        double[] e = play(1, new double[]{8, 13, 20}, DAYS, null);
-        for (int d : new int[]{10, 30, 60, 120}) {
-            double avg = sum(e, d - 5, d) / 5;
-            assertTrue(avg > 0.75 * guide(d - 2) && avg < 1.25 * guide(d - 2), "day " + d + ": " + avg + " vs " + guide(d - 2));
-        }
+        // no fixed curve (the player wants fun, not a target): every month earns more than the one before
+        for (int m = 1; m < DAYS / 30; m++)
+            assertTrue(sum(e, 30 * m, 30 * m + 30) > sum(e, 30 * m - 30, 30 * m), "month " + (m + 1) + " earns more than month " + m);
     }
 
     /** For diagnosis: the log, the jobs, the store and every refused action of the first 30 days. */
@@ -212,6 +203,9 @@ class BalanceBotTest {
             needs(t);
             boolean merchant = f.dwarves.stream().anyMatch(x -> x.job.equals("merchant"));
             int deep = deepest(f);
+            int[] onLayer = new int[f.layers.size()];
+            for (Dwarf x : f.dwarves) if (x.job.equals("miner")) onLayer[x.layer]++;
+            if (deep > 0 && onLayer[0] < onLayer[deep]) deep = 0;   // copper, tin and coal stay needed
             // guards: two from the start, the whole hall when raiders are coming
             long guards = Rules.guards(f).size();
             int wantGuards = f.raid != null ? Rules.hallSeats(f) : f.dwarves.size() >= 9 ? 2 : 0;
@@ -392,6 +386,15 @@ class BalanceBotTest {
             Map<String, Integer> buy = new LinkedHashMap<>();
             if (Rules.stock(f, "coal") < 60) buy.put("coal", 100);
             if (Rules.stock(f, "stone") < 300) buy.put("stone", 300 - Rules.stock(f, "stone"));
+            // bars the next upgrades and the next layer need
+            for (Building b : f.buildings) if (b.level > 0)
+                for (Map.Entry<String, Integer> e : Rules.upgradeCost(b).goods().entrySet())
+                    if (e.getKey().startsWith("bar:") && Rules.stock(f, e.getKey()) < e.getValue()) buy.merge(e.getKey(), e.getValue() - Rules.stock(f, e.getKey()), Math::max);
+            for (LayerState l : f.layers) if (!l.unlocked) {
+                for (Map.Entry<String, Integer> e : Rules.layerUnlockCost(l.index).goods().entrySet())
+                    if (e.getKey().startsWith("bar:") && Rules.stock(f, e.getKey()) < e.getValue()) buy.merge(e.getKey(), e.getValue() - Rules.stock(f, e.getKey()), Math::max);
+                break;
+            }
             double budget = Math.min(f.coins * 0.4, 200 * Rules.JOTS_PER_MARK);
             if (!buy.isEmpty() && budget > 2000)
                 act(t, "type", "caravan", "city", city, "merchants", ms, "cargo", cargo, "buy", buy, "budget", Math.floor(budget));

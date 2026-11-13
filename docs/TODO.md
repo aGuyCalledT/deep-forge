@@ -275,12 +275,10 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Balance-Bot (`BalanceBotTest`): spielt 120 Tage mit drei Besuchen am Tag (sammeln, verkaufen, Werkstätten füllen,
       Farmen bauen, Wachen bewaffnen, graben, Gänge legen, Kohle und Stein zukaufen, günstigsten Ausbau kaufen) und
       druckt die Tabelle. Dazu ein, drei und sechs Besuche im Vergleich und ein Monat ohne Besuch.
-- [ ] **Leitkurve nicht erreicht** (Test `incomeFollowsTheGuideCurve` ist abgeschaltet): der Bot verdient 20–100 Marks
-      am Tag statt 100 × Tag und kommt nach Tag 10 nicht weiter (Tage 1–10 zusammen 434 statt 5 500 Marks). Gründe:
-      Versorgung bindet die Hälfte der Zwerge (Pilze 1,6/h, die Brauerei frisst auch Pilze, zwei Wachen), Überfälle ab
-      Tag 2 wachsen mit der Festungsstufe schneller als die Wachen und nehmen 30 % des Lagers, Stein für Ausbauten
-      (Stufe 3 braucht 135) kommt kaum aus der Mine, ein Bergarbeiter bringt nur etwa 20–45 Marks am Tag. Entscheiden:
-      Leitkurve senken oder Werte und Raten anheben.
+- [x] Leichter gemacht (Pilze 3/h, erster Überfall nach 5 Tagen und mit den Tagen statt der Festungsstufe stärker,
+      halber Diebstahl, mehr Stein, halber Stein beim Ausbau, Rohedelstein ab Schicht 1). Feste Leitkurve gestrichen;
+      der Bot prüft stetiges Wachstum.
+- [ ] Magie, Edelsteine, Fassungen, Werkzeuge je Beruf, legendäre Wirkungen (`docs/KONZEPT-MAGIE.md`).
 - [ ] Bot: Expeditionen, Aufträge gezielt bedienen, Feinmechaniker, Graveur, Schichten 3–5 und Monokultur-Strategie.
 - [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
 - [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.

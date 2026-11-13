@@ -73,7 +73,7 @@ public final class Factory {
         q.mat = "native_copper";
         q.remaining = -1;
         Rules.building(f, "smelter-1").queue.add(q);
-        f.nextRaidAt = now + 48 * Rules.H;
+        f.nextRaidAt = now + Rules.FIRST_RAID_DAYS * 24 * Rules.H;
         f.nextMigrantsAt = now + 8 * Rules.H;
         Expeditions.refreshOffers(f, r, now);
         Layouts.ensure(f);

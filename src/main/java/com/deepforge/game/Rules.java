@@ -827,11 +827,16 @@ public final class Rules {
 
     public record Cost(double coins, Map<String, Integer> goods) {}
 
-    public static final double FARM_PER_H = 1.6, BREW_PER_H = 2;   // a farmer feeds about 8 dwarves, a brewer about 10
+    public static final double FARM_PER_H = 3, BREW_PER_H = 2;   // a farmer feeds about 10 dwarves and their brewer, a brewer about 10
     /** Hours to drive the gallery down to a layer (index 1..4). */
     public static final double[] LAYER_OPEN_HOURS = {0, 2, 6, 12, 24};
 
     /** Upgrades cost the square of the level: base × (level / 2)², so income can grow in a straight line. */
+    /** Upgrades need only half the stone of the base price (stone was the bottleneck in the balance bot). */
+    public static final double STONE_SHARE = 0.5;
+    /** Raids: the first after FIRST_RAID_DAYS, then stronger by RAID_GROWTH a day; a broken gate loses RAID_TAKE. */
+    public static final double FIRST_RAID_DAYS = 5, RAID_GROWTH = 0.08, RAID_TAKE = 0.15;
+
     public static double levelSquare(int target) {
         return target * target / 4.0;
     }
@@ -842,7 +847,7 @@ public final class Rules {
         if (b.level == 0) return new Cost(t.multi() ? t.buildCoins() : t.upCoins(), t.multi() ? t.buildGoods() : Map.of("stone", t.upStone()));
         double g = levelSquare(target);
         Map<String, Integer> goods = new LinkedHashMap<>();
-        goods.put("stone", (int) Math.round(t.upStone() * g));
+        goods.put("stone", (int) Math.round(t.upStone() * g * STONE_SHARE));
         goods.put(Content.upgradeBar(target), 4 + 3 * b.level);
         return new Cost(Math.round(t.upCoins() * g), goods);
     }
@@ -856,7 +861,7 @@ public final class Rules {
     /** Seconds of work to dig one cell out: 5 minutes near the top, harder rock every two floors down. */
     public static final double DIG_SECONDS = 300;
     public static final double[] DIG_DEPTH = {1, 1.5, 2.25, 3.25};
-    public static final int DIG_STONE = 2;   // stone each dug cell gives
+    public static final int DIG_STONE = 4;   // stone each dug cell gives
 
     public static int rockBand(int floor) {
         return Math.max(0, Math.min(DIG_DEPTH.length - 1, floor / 2));

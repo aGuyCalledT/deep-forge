@@ -14,7 +14,7 @@ und hier.
 | Karawane | 2–8 h hin und zurück | Stonebridge 1 h pro Weg … Emberton 4 h |
 | Expedition | 2–12 h | lange Touren über Nacht |
 | Überfall-Warnung | 3 h | passt zu 3–5 Besuchen am Tag |
-| Erster Überfall | nach 48 h, dann alle 20–40 h | |
+| Erster Überfall | nach 5 Tagen, dann alle 20–40 h (`Rules.FIRST_RAID_DAYS`) | |
 | Belagerung | 8 h oder bis gebrochen | |
 | Monster | 0,25–1 pro Tag und Schicht | erst ab 6 h Spielzeit |
 | Zuwanderung | alle 8 h | nur mit freien Betten und Stimmung ≥ 45 |
@@ -40,7 +40,7 @@ und hier.
 | Zusammensetzen (Feinmechaniker) | 600 s × (Barren + Teile), Krone mit Regalien doppelt |
 | Schleifen / Gravieren, Edelstein fassen, Einlage | 480 / 600 s, Edelstein schleifen 1 800 s |
 | Schneiderei | Weben 120 s: 3 Pilze → 2 Stoff. Nähen 80 s je Stoff: Hüte 1, Hemden, Hosen, Stiefel 2, bestickte Tunika 3 Stoff |
-| Pilzfarm | 1,6 Pilze/h × Tempo × Stufe (`Rules.FARM_PER_H`) |
+| Pilzfarm | 3 Pilze/h × Tempo × Stufe (`Rules.FARM_PER_H`): ein Bauer versorgt etwa 10 Zwerge samt Brauer |
 | Brauerei | 2 Bier/h × Tempo × Stufe aus halb so vielen Pilzen (`Rules.BREW_PER_H`) |
 | Verbrauch | 0,2 Pilze und 0,2 Bier pro Zwerg und Stunde (Ale Lover doppelt, Teetotaler kein Bier) |
 
@@ -127,6 +127,7 @@ Masterwork 2, Artifact 3.
   anderen Metalls (Stahl ist 3,2-mal so viel wert wie Kupfer, auch als Axt, Kette oder Spitzhacke).
 - Kleidung: Stoff 4 Marks, Kleidung 6–26 Marks (Flickenhemd 6, Strickpullover 16, bestickte Tunika 26); also etwa das
   Doppelte bis Dreifache des Stoffs. Eigene Markt-Sorte `cat:clothing` mit einem gemeinsamen Kurs. Brille, Ohrringe und Grubenhelm lassen sich nicht nähen.
+- Schicht 1 bringt jetzt 27 % Stein und 2 % Rohedelstein, Schicht 2 17 % Stein und 2 % Rohedelstein.
 - Erz ist 30 % eines Barrens wert (`Content.ORE_SHARE`), Kohle 50, Kalk 60, Stein 30 Jots. Legierungen sind immer mehr wert als ihre Zutaten.
 - Barrenwerte in sechs Stufen (Jots): Blei 400, Kupfer 450, Zinn 500, Zink 550 · Kalt-Zinn 850, Eisen 900, Flitter-Zinn 900,
   Messing 1 000, Fein-Zinn 1 000, Bismut 1 100, Bronze 1 100, Roheisen 1 200, Nickel 1 300 · Billon 2 000, Neusilber 2 000,
@@ -140,9 +141,9 @@ Masterwork 2, Artifact 3.
   sie sich in mittleren Metallen: Lampe und Kompass in Messing, Schloss, Schild und Prunkaxt in Eisen, Krugset in
   Kalt-Zinn, Kelch und Spieluhr in Silber, Regalien in Gold). Beispiel Kupfer: Erz 0,81, Barren 0,91, Ware 1,20,
   graviert 1,46 Marks je Zwergenstunde; Gold: 8,4 / 10,4 / 21,3 / 25,8.
-- **Balance-Bot** (`BalanceBotTest`): spielt eine neue Festung 120 Tage mit drei Besuchen am Tag und druckt das
-  Einkommen neben der Leitkurve (100 Marks × Tag). Stand heute: 20–100 Marks am Tag, flach ab Tag 10; die Leitkurve ist
-  noch nicht erreicht (offene Aufgabe in `TODO.md`).
+- **Balance-Bot** (`BalanceBotTest`): spielt eine neue Festung 120 Tage mit drei Besuchen am Tag. Keine feste
+  Einkommenskurve mehr (Wunsch: Spaß statt Ziel), geprüft wird: jeder Monat bringt mehr als der davor. Stand: Tage 1–10
+  zusammen 360 Marks, 21–30 645, 111–120 2 680; Tag 120 rund 500 Marks am Tag und 30 Zwerge.
 
 ## Geld
 
@@ -225,10 +226,10 @@ Masterwork 2, Artifact 3.
 
 | Ware | Metall | Barren | Teile | Faktor | Skill | Gruppe |
 |---|---|---|---|---|---|---|
-| Miner's lamp | Messing | 1 | 1 Kupfer | 2,4 | 2 | tools |
+| Miner's lamp | Messing | 1 | 1 Kupfer | 2,5 | 2 | tools |
 | Lock | hart | 1 | 1 Zahnräder | 1,8 | 3 | hardware |
 | Shield | hart | 2 | 1 Bronze | 1,9 | 2 | armor |
-| Tankard set | Zinnlegierung | 2 | 1 Messing | 1,8 | 2 | tableware |
+| Tankard set | Zinnlegierung | 2 | 1 Messing | 1,9 | 2 | tableware |
 | Chalice | edel | 2 | 1 Gold, 1 geschliffener Stein | 2,2 | 3 | tableware |
 | Parade axe | hart | 2 | 1 Gold, 1 geschliffener Stein | 2,0 | 4 | weapons (Waffe) |
 | Sea compass (Bauplan clockwork) | Messing | 1 | 1 Neusilber, 1 Zahnräder | 2,0 | 3 | tools |
@@ -264,7 +265,7 @@ Masterwork 2, Artifact 3.
   Axt: `Härte × 1,6 × Kraft der Qualität` (+25 % geschärft). Helm `Härte × 0,8 × Q`, Kettenhemd `Härte × 1,8 × Q`.
 - Siegchance = `r² / (r² + 1)` mit `r = eigene Kraft / Gegner`, begrenzt auf 3–98 %.
 - Verletzungen und Tod hängen von `r` ab; auch Sieger können sterben.
-- Überfall: `15 × 1,3^(Festungsstufe−1)`. Verteidigt von den Wachen der Eingangshalle × Hallenbonus + Tor.
+- Überfall: `15 × (1 + 0,08 × Tage seit Tag 5) × 0,8–1,25` (`Rules.RAID_GROWTH`), gebrochen nimmt er 15 % von Geld und Lager (`RAID_TAKE`, weniger mit Tresor). Verteidigt von den Wachen der Eingangshalle × Hallenbonus + Tor.
   Tor: `15 × (Stufe − 1)` (Stufe 1 ist das Holztor; alte Mauern Stufe n werden Tor Stufe n + 1). Tresor schützt 10 % (ohne) bis 80 %.
 - Eingangshalle: `2 + 2 × Stufe` Wachen, Bonus `+8 % × Stufe` beim Kampf daheim. Wachen lernen beim Wachestehen und
   Üben mit Holzstöcken `1,5 xp/h` Kampf (`Rules.GUARD_XP_PER_H`), zusätzlich zur Kaserne.
@@ -276,16 +277,16 @@ Masterwork 2, Artifact 3.
 ## Kosten
 
 - Aufwerten auf Stufe n: `Grundpreis × n² / 4` Jots und `Grundstein × n² / 4` Stein (`Rules.levelSquare`, Stufe 2 ×1,
-  Stufe 5 ×6,25, Stufe 10 ×25), dazu `4 + 3 × Stufe` Barren (bis Stufe 3 Kupfer, 4–5 Bronze, 6–8 Eisen, ab 9 Stahl).
+  Stufe 5 ×6,25, Stufe 10 ×25; Stein nur zur Hälfte, `Rules.STONE_SHARE`), dazu `4 + 3 × Stufe` Barren (bis Stufe 3 Kupfer, 4–5 Bronze, 6–8 Eisen, ab 9 Stahl).
 - Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener Werkstatt dieser Art.
-- Schichten: Freischalten in Marks: Grey Veins 80, Silver Halls 400, Golden Deep 1 500 + Erkundung, Crystal Abyss 5 000 + Erkundung.
+- Schichten: Freischalten in Marks: Grey Veins 80 (+75 Stein), Silver Halls 400 (+150 Stein), Golden Deep 1 500 + Erkundung, Crystal Abyss 5 000 + Erkundung.
   Schicht ausbauen: `25 Marks × (Schicht + 1) × 1,6^(Stufe−1)`.
   Eine neue Schicht braucht nach dem Bezahlen Zeit, bis die Stollen offen sind (`Rules.LAYER_OPEN_HOURS`): Grey Veins 2 h,
   Silver Halls 6 h, Golden Deep 12 h, Crystal Abyss 24 h (`LayerState.openAt`, Sanduhr im Minen-Tab).
 - Graben (`Rules.DIG_SECONDS`, `DIG_DEPTH`, `DIG_STONE`): Fels markieren ist frei. Ein Bergarbeiter gräbt eine Zelle
   in `300 s × Tiefenfaktor / (Arbeitstempo × Werkzeug)`; Faktor je zwei Etagen ×1 · ×1,5 · ×2,25 · ×3,25. Eine Zelle
   gräbt nur ein Zwerg, und nur, wenn links oder rechts schon offen ist (Schacht, Höhle, Gang, Raum). Jede Zelle gibt
-  2 Stein. Wer gräbt, schürft in der Zeit kein Erz.
+  4 Stein. Wer gräbt, schürft in der Zeit kein Erz.
 - Bauen in der Festung (`Rules.HALL_COST` usw.): Gang 1 Mark je Zelle, Treppenhaus (2 Zellen) 4 Marks + 20 Stein,
   Raum versetzen 3 Marks + 10 Stein, Gang und Treppenhaus versetzen frei. Alles nur auf ausgegrabenem Boden.
   Zuschütten ist frei (Gang → leere Höhle → Fels). Zieht ein Raum beim Ausbau um, weil er wächst, kostet das nichts extra.

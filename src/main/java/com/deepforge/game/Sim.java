@@ -822,7 +822,7 @@ public final class Sim {
         if (f.raid == null && f.siege == null && t >= f.nextRaidAt) {
             Raid raid = new Raid();
             raid.name = r.pick(RAIDERS);
-            raid.power = Math.round(15 * Math.pow(1.3, f.level - 1) * r.range(0.8, 1.25));
+            raid.power = Math.round(15 * (1 + RAID_GROWTH * Math.max(0, (t - f.created) / (24 * H) - FIRST_RAID_DAYS)) * r.range(0.8, 1.25));
             raid.announcedAt = t;
             raid.arrivesAt = t + 3 * H;
             f.raid = raid;
@@ -843,7 +843,7 @@ public final class Sim {
                 fortressXp(f, raid.power);
                 log(f, t, "good", "The " + raid.name.toLowerCase() + " was driven off! (+" + money(loot) + " of plunder)");
             } else {
-                double frac = 0.3 * (1 - vaultProtect(f));
+                double frac = RAID_TAKE * (1 - vaultProtect(f));
                 int stolenCoins = (int) Math.floor(f.coins * frac);
                 f.coins -= stolenCoins;
                 int stolenGoods = 0;

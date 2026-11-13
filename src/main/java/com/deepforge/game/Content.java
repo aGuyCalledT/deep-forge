@@ -279,13 +279,13 @@ public final class Content {
                 "Fit for a mountain king."));
 
         // made at the fine mechanic's bench from bars and parts (PARTS); the bars of the type are its own metal
-        assembled("lamp", "Miner's lamp", 1, 2.4, 2, "tools", "only:brass", null, List.of("e"), null,
+        assembled("lamp", "Miner's lamp", 1, 2.5, 2, "tools", "only:brass", null, List.of("e"), null,
                 "A brass lamp with a copper hood. Harbors and deep mines buy them.", "bar:copper", 1);
         assembled("lock", "Lock", 1, 1.8, 3, "hardware", "hard", null, List.of("e"), null,
                 "Steel and clockwork. Stonebridge and the harbor pay well.", "gears", 1);
         assembled("shield", "Shield", 2, 1.9, 2, "armor", "hard", null, List.of("e", "i"), null,
                 "A round shield with a bronze rim.", "bar:bronze", 1);
-        assembled("tankards", "Tankard set", 2, 1.8, 2, "tableware", "pewter", null, List.of("e"), null,
+        assembled("tankards", "Tankard set", 2, 1.9, 2, "tableware", "pewter", null, List.of("e"), null,
                 "Pewter tankards with brass lids. Taverns love them.", "bar:brass", 1);
         assembled("chalice", "Chalice", 2, 2.2, 3, "tableware", "precious", null, List.of("e", "i"), null,
                 "Gold rim, a cut gem in the foot. The monks of Highcrag pay best.", "bar:gold", 1, "cut_gem", 1);
@@ -316,27 +316,27 @@ public final class Content {
 
         // --- mine layers
         LAYERS.add(new Layer(0, "Shallow Caves", "#6b5a48", 6, 0.25,
-                goods("native_copper", 22, "malachite", 14, "cassiterite", 18, "coal", 24, "limestone", 12, "stone", 14),
+                goods("native_copper", 22, "malachite", 14, "cassiterite", 18, "coal", 24, "limestone", 12, "stone", 28, "rough_gem", 2),
                 List.of("giant_rat", "cave_crawler"), 0, goods(), false, "Copper, tin, coal. Where every fortress starts."));
         LAYERS.add(new Layer(1, "Grey Veins", "#5a5a5e", 5, 0.4,
                 goods("hematite", 18, "limonite", 14, "galena", 12, "sphalerite", 12, "tetrahedrite", 10, "coal", 18,
-                        "limestone", 8, "stone", 10),
-                List.of("cave_spider", "goblin_scouts"), 80000, goods("stone", 150, "bar:copper", 20), false,
+                        "limestone", 8, "stone", 18, "rough_gem", 2),
+                List.of("cave_spider", "goblin_scouts"), 80000, goods("stone", 75, "bar:copper", 20), false,
                 "Iron, lead, zinc - and silver hidden in galena."));
         LAYERS.add(new Layer(2, "Silver Halls", "#4a4d5c", 4.5, 0.55,
                 goods("native_silver", 12, "horn_silver", 10, "magnetite", 16, "garnierite", 14, "bismuthinite", 10,
                         "coal", 14, "rough_gem", 4, "stone", 10),
-                List.of("cave_spider", "rock_troll"), 400000, goods("stone", 300, "bar:bronze", 30), false,
+                List.of("cave_spider", "rock_troll"), 400000, goods("stone", 150, "bar:bronze", 30), false,
                 "Silver, nickel, bismuth and the first gems."));
         LAYERS.add(new Layer(3, "Golden Deep", "#5a4a32", 4, 0.75,
                 goods("native_gold", 14, "tetrahedrite", 8, "magnetite", 14, "galena", 10, "coal", 12, "rough_gem", 8,
                         "stone", 10),
-                List.of("magma_crab", "blind_ogre"), 1500000, goods("stone", 500, "bar:iron", 40, "bar:steel", 20), true,
+                List.of("magma_crab", "blind_ogre"), 1500000, goods("stone", 250, "bar:iron", 40, "bar:steel", 20), true,
                 "Gold. Must be found by an expedition first."));
         LAYERS.add(new Layer(4, "Crystal Abyss", "#3c3556", 3.5, 1.0,
                 goods("native_platinum", 10, "native_aluminum", 6, "native_gold", 8, "rough_gem", 14, "garnierite", 10,
                         "bismuthinite", 10, "stone", 8),
-                List.of("crystal_golem", "deep_wyrm"), 5000000, goods("stone", 800, "bar:steel", 60), true,
+                List.of("crystal_golem", "deep_wyrm"), 5000000, goods("stone", 400, "bar:steel", 60), true,
                 "Platinum, aluminum, gems. Must be found by an expedition first."));
 
         // --- buildings. kind: queue (recipes), continuous (constant output), passive (effect only)

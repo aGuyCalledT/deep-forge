@@ -25,12 +25,15 @@ class BalanceTest {
             h = 1 / rate;
         } else if (List.of("coal", "limestone", "stone", "rough_gem").contains(key)) {
             // side finds: they come along with the ore, so they cost what a miner earns in that time
+            // in the layer where a miner earns most per hour
+            double best = Double.MAX_VALUE;
             for (Content.Layer l : Content.LAYERS) if (l.weights().containsKey(key)) {
                 String ore = l.weights().keySet().stream().filter(Content.ORES::containsKey).findFirst().orElseThrow();
-                HOURS.put(key, Content.baseValue(key) / (Content.baseValue(ore) * l.rate()));
-                return HOURS.get(key);
+                best = Math.min(best, Content.baseValue(key) / (Content.baseValue(ore) * l.rate()));
             }
-            throw new IllegalArgumentException(key);
+            if (best == Double.MAX_VALUE) throw new IllegalArgumentException(key);
+            HOURS.put(key, best);
+            return best;
         } else if (key.startsWith("bar:")) {
             String m = key.substring(4);
             Content.Alloy a = Content.ALLOYS.get(m);
