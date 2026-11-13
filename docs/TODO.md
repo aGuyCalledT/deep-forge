@@ -221,3 +221,6 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Neue Rückwände in eingebauten Vorlagen nutzen (z. B. Fliesen im Badehaus, Fachwerk in der Taverne).
 - [ ] Alte `walldoor*`-Bilder aus `ways.py` entfernen, wenn niemand sie mehr braucht.
 - [ ] Säulen-Schmuck im Editor wählbar machen (heute zufällig je Lage).
+- [x] Ungenutzter Fels ist schwarz (Nebel): eine Raumhöhe um jeden gegrabenen Raum sichtbar, weich auslaufend; Tal und
+      Bergaußenseite bleiben hell, beim Bauen schimmert der Fels durch.
+- [ ] Nebel: Höhlen mit Monstern weiter weg später erst zeigen, wenn ein Späher sie gefunden hat?

@@ -991,6 +991,62 @@ const drawn = [];   // dwarves drawn this frame, for hit tests: {id, sx, sy, spr
 /** Which room a point on a floor lies in. */
 function roomOf(g, f, x) { return g.rooms.find((r) => r.f === f && x >= r.x && x < r.x + r.pw); }
 
+// ------------------------------------------------------------------ the dark of the untouched mountain
+// Rock nobody uses is black. From every dug space (rooms, hallways, stairwells, the shaft, the gate tunnel, caves)
+// and from the open air one floor height (RH) can be seen, getting darker outwards. The valley is never dark.
+// A coarse grid (FOG px) holds how far each spot is from the nearest seen space; one pixel per spot, scaled up smoothly.
+const FOG = 24, FOG_REACH = RH;
+let fog = { key: '', canvas: null, x0: 0, y0: 0 };
+function fogMap(g) {
+  const key = W() + 'x' + H() + '|' + [...g.cells.keys()].join(';');
+  if (fog.key === key) return fog;
+  const x0 = -VW - 2 * FOG, y0 = Math.floor((SURF - 420) / FOG) * FOG, x1 = W() + 2 * FOG, y1 = H() + 80;
+  const nx = Math.ceil((x1 - x0) / FOG), ny = Math.ceil((y1 - y0) / FOG);
+  const d = new Float32Array(nx * ny).fill(1e9);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const x = x0 + (i + 0.5) * FOG, y = y0 + (j + 0.5) * FOG;
+    let open = x < -FACE ? y < GROUND : y < mtop(x);   // the sky and the valley; under the valley's soil it gets dark too
+    if (!open && y >= SURF && y < H()) {
+      const c = Math.floor(x / CELL), fl = Math.floor((y - SURF) / RH);
+      open = g.cells.has(c + ',' + fl) || (fl === ENTRY && x >= -FACE && x < 0);
+    }
+    if (open) d[j * nx + i] = 0;
+  }
+  // two passes of a chamfer distance (1 and the diagonal), in grid steps
+  const D2 = Math.SQRT2;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    let v = d[j * nx + i];
+    if (i > 0) v = Math.min(v, d[j * nx + i - 1] + 1);
+    if (j > 0) { v = Math.min(v, d[(j - 1) * nx + i] + 1); if (i > 0) v = Math.min(v, d[(j - 1) * nx + i - 1] + D2); if (i < nx - 1) v = Math.min(v, d[(j - 1) * nx + i + 1] + D2); }
+    d[j * nx + i] = v;
+  }
+  for (let j = ny - 1; j >= 0; j--) for (let i = nx - 1; i >= 0; i--) {
+    let v = d[j * nx + i];
+    if (i < nx - 1) v = Math.min(v, d[j * nx + i + 1] + 1);
+    if (j < ny - 1) { v = Math.min(v, d[(j + 1) * nx + i] + 1); if (i < nx - 1) v = Math.min(v, d[(j + 1) * nx + i + 1] + D2); if (i > 0) v = Math.min(v, d[(j + 1) * nx + i - 1] + D2); }
+    d[j * nx + i] = v;
+  }
+  const c = document.createElement('canvas'); c.width = nx; c.height = ny;
+  const cx = c.getContext('2d'), im = cx.createImageData(nx, ny);
+  for (let k = 0; k < nx * ny; k++) {
+    // the spot's centre is half a step inside the rock already: measure from the edge of the space
+    const t = Math.max(0, Math.min(1, (d[k] * FOG - FOG / 2) / FOG_REACH));
+    im.data[k * 4 + 3] = Math.round(255 * t * t * (3 - 2 * t));
+  }
+  cx.putImageData(im, 0, 0);
+  fog = { key, canvas: c, x0, y0, w: nx * FOG, h: ny * FOG };
+  return fog;
+}
+function drawFog(ctx, g) {
+  const m = fogMap(g);
+  ctx.save();
+  ctx.clip(rockShape());
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalAlpha = G.build ? 0.55 : 1;   // while building, the rock to dig into shows through
+  ctx.drawImage(m.canvas, m.x0, m.y0, m.w, m.h);
+  ctx.restore();
+}
+
 export const holdScreen = {
   camera: true,
   size: () => ({ w: W(), h: H() }),
@@ -1101,6 +1157,7 @@ export const holdScreen = {
     if (!G_) return;
     const f = F();
     const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
+    drawFog(ctx, G_);
     roomPlate(hover);
     if (G_.hall) R.drawProps(ctx, G_.hall, -FACE, ftop(ENTRY), t, { glow: true });
     for (const [k, v] of G_.cells) {
