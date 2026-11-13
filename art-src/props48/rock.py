@@ -29,8 +29,10 @@ for i, r in enumerate(DEPTHS): R[f'd{i}'] = r
 
 # ------------------------------------------------------------------ rock tiles (96 x 144 like the walls, period 96)
 def rock_tile(d):
-    ids = voronoi(96, RH, 13 + d, 11 + d // 2, 50 + d)
-    g = blocks(ids, f'd{d}', pick(2, 2, 2, 3, 1))
+    ids = voronoi(96, RH, 13 + d, 11 + d // 2, 50 + d, wrap_y=True)   # rock tiles stack: seamless both ways
+    tones = (2, 2, 2, 3, 1)
+    mix = lambda i: (hsh(i, 7, d) * 2654435761 >> 13) % len(tones)  # well mixed: no lighter top, darker bottom
+    g = blocks(ids, f'd{d}', lambda i: tones[mix(i)], wrap_y=True)
     if d == 4:                                                       # the abyss: a few joints glow violet-blue
         for y, x in zip(*np.nonzero((np.roll(ids, -1, 1) != ids))):
             if hsh(ids[y, x], 9) % 16 == 0: g[y, x] = ('crystal', 1)
