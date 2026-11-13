@@ -26,6 +26,14 @@
    "starter"
   ]
  },
+ "entrance_hall": {
+  "bay": [],
+  "room": [
+   "grand",
+   "stone",
+   "timber"
+  ]
+ },
  "expedition_hall": {
   "bay": [],
   "room": [
@@ -63,6 +71,20 @@
    "starter"
   ]
  },
+ "hallway": {
+  "bay": [],
+  "room": [
+   "grand",
+   "grand_deco",
+   "grand_lit",
+   "stone",
+   "stone_deco",
+   "stone_lit",
+   "timber",
+   "timber_deco",
+   "timber_lit"
+  ]
+ },
  "jeweler": {
   "bay": [
    "furnished",
@@ -88,6 +110,14 @@
   "room": [
    "furnished",
    "starter"
+  ]
+ },
+ "stairwell": {
+  "bay": [],
+  "room": [
+   "grand",
+   "stone",
+   "timber"
   ]
  },
  "tailor": {

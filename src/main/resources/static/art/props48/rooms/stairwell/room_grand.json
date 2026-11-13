@@ -1,0 +1,71 @@
+{
+ "version": 1,
+ "type": "stairwell",
+ "part": "room",
+ "name": "grand",
+ "cells": 2,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "stairdoor_grand",
+   "x": 48,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": 0,
+   "layer": "back"
+  },
+  {
+   "s": "runeplate",
+   "x": 48,
+   "y": 52,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "brazier",
+   "x": 11,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "brazier",
+   "x": 85,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "door",
+   "x": 48,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 90,
+   "c": "#ff9450",
+   "p": 0.8,
+   "x": 11,
+   "y": 111
+  },
+  {
+   "kind": "light",
+   "r": 90,
+   "c": "#ff9450",
+   "p": 0.8,
+   "x": 85,
+   "y": 111
+  }
+ ]
+}

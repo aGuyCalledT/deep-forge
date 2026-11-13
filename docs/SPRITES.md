@@ -183,6 +183,11 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
   vordere Ebene durchsichtig. „auto spots“ setzt die Punkte, die die Möbel mitbringen (Fackel gibt Licht, Bank zwei Sitze, Amboss Funken
   und Arbeitsplatz …). Rechts steht, welche Punkte der Raumtyp mindestens braucht. Schalter für Licht, Zwerge an den
   Punkten, Animation, Raster und Zoom.
+- **Wege:** Eingangshalle (`entrance_hall`, 6 Zellen), Treppenhaus (`stairwell`, 2) und Gang (`hallway`, 1) sind im
+  Editor zusätzliche Typen (`WAYS` in `serve.py`). Vorlagen je Stil `timber`, `stone`, `grand`; Gänge dazu `<stil>_lit`
+  (jede vierte Zelle, Fackel) und `<stil>_deco` (Banner, Fass, Waffen). Ein Treppenhaus braucht einen Punkt `door` (am Fuß
+  der Tür `stairdoor*`, dort gehen Zwerge hinein); das Spiel setzt das Bild der Tür selbst (0 zu bis 3 offen). Teile in
+  `art-src/props48/ways.py`.
 - **Ablage:** `static/art/props48/rooms/<typ>/<room|bay>_<name>.json`, Liste in `rooms/index.json` (schreibt der
   Editor). `bay` ist eine Maschinen-Erweiterung. Format und Pflichtpunkte stehen in `static/js/rooms48.js`
   (`SPOTS`, `NEEDS`, `PROP_SPOTS`), zeichnen mit `drawRoom(ctx, tpl, x, y, t, {between})`: Hülle und hintere Ebene, dann `between` (die Zwerge),

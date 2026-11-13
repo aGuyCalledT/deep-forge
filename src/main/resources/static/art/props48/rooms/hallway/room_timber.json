@@ -1,0 +1,22 @@
+{
+ "version": 1,
+ "type": "hallway",
+ "part": "room",
+ "name": "timber",
+ "cells": 1,
+ "wall": "wall_hewn",
+ "floor": "floor_earth",
+ "vault": false,
+ "props": [
+  {
+   "s": "gallery",
+   "x": 3,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": []
+}

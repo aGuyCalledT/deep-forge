@@ -14,6 +14,8 @@ ROOMS = os.path.join(STATIC, 'art/props48/rooms')
 EDITOR = os.path.dirname(os.path.abspath(__file__))
 DWARVES = os.path.join(ROOT, 'art-src/props48/dwarves')
 LAYOUTS = os.path.join(ROOT, 'src/main/java/com/deepforge/game/Layouts.java')
+# ways: not rooms on the server's list, but drawn from templates too (the gate tunnel is the entrance hall)
+WAYS = [('entrance_hall', 6), ('stairwell', 2), ('hallway', 1)]
 NAME = re.compile(r'^[a-z0-9][a-z0-9_-]{0,31}$')
 
 def room_types():
@@ -23,7 +25,8 @@ def room_types():
     m = re.search(r'ORDER\s*=\s*List\.of\(([^;]*)\);', src)
     order = re.findall(r'"(\w+)"', m.group(1)) if m else list(cells)
     order += [k for k in cells if k not in order]
-    return [{'type': t, 'cells': cells[t], 'bay': bays.get(t, 0)} for t in order if t in cells]
+    out = [{'type': t, 'cells': cells[t], 'bay': bays.get(t, 0)} for t in order if t in cells]
+    return out + [{'type': t, 'cells': n, 'bay': 0, 'way': True} for t, n in WAYS]
 
 def index():
     idx = {}

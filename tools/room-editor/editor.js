@@ -8,7 +8,7 @@ const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
 const GROUPS = ['furniture', 'living', 'workshop', 'storage', 'shell', 'rock', 'ambient', 'valley', 'monster'];
 const LOOKS = [{ sex: 'm', hair: 'short', beard: 'full' }, { sex: 'f', hair: 'bun' }, { sex: 'm', hair: 'bald', beard: 'fork', hat: 'cap' }];
-const STANDERS = ['worker', 'seat', 'bar', 'stand'];   // spots that stand on the floor
+const STANDERS = ['worker', 'seat', 'bar', 'stand', 'door'];   // spots that stand on the floor
 
 let types = [], idx = {}, tpl = null, cur = { type: '', part: 'room', name: '' }, dirty = false;
 let sels = [];              // selection: [{k: 'prop'|'spot', i}], the last one is the main one

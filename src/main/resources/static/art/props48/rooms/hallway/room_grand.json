@@ -1,0 +1,22 @@
+{
+ "version": 1,
+ "type": "hallway",
+ "part": "room",
+ "name": "grand",
+ "cells": 1,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "arcade_grand",
+   "x": 24,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": []
+}

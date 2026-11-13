@@ -181,7 +181,12 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Maßstab umgestellt (`hold.js`: `CELL 48`, `RH 144`, Boden 135), Tal, Fels, Gänge, Schacht, Treppenhäuser, Tor,
       Monster aus `props48`; Zoomstufen 0,5 (nur bei 2 Gerätepixeln) bis 4, Start bei 1.
 - [ ] Feuer, Räder und Kessel laufen in der Vorlage immer; besser nur, wenn die Maschine arbeitet (Bild 0 = kalt).
-- [ ] Stufen der Eingangshalle und des Tors zeigen sich nur an Fackeln/Kohlebecken; eigene Bilder je Stufe fehlen.
+- [x] Wege aus Vorlagen: Eingangshalle, Gänge und Treppenhäuser je in drei Stilen (`timber`, `stone`, `grand`), neue
+      Teile in `art-src/props48/ways.py` (Treppenhaus-Türen mit 4 Bildern, Stützrahmen, Bögen, Statue, Runenschild,
+      gehauene Wand). Der Stil folgt der Eingangshalle (Stufe 1 Holz, 2 Stein, ab 3 prächtig, oder die gewählte Vorlage).
+      Treppenhaus-Türen gehen auf, wenn jemand hinein- oder herauskommt.
+- [ ] Tor-Stufen haben noch kein eigenes Bild (nur Kohlebecken ab Stufe 3).
+- [ ] Stil der Gänge und Treppenhäuser einzeln wählbar machen (heute folgt er der Eingangshalle).
 - [ ] Login-Bild (`views.js`) und Minen-Screen noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.

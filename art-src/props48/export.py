@@ -14,6 +14,7 @@ sys.path.insert(0, HERE); os.chdir(HERE)
 from ambient import *
 import valley as V
 import shells as SH
+from ways import WAYS, WAY_SPRITES, WAY_TILES
 from PIL import Image
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '../../src/main/resources/static/art/props48')
@@ -39,6 +40,9 @@ add('storage', 'prop', STORE)
 add('shell', 'prop', SPRITES)                                           # post, column
 add('valley', 'prop', {'oak': V.oak, 'fir': V.fir, 'bush': V.bush, 'flowers': V.flowers, 'stall': V.stall,
                        'signpost': V.signpost, 'well': V.well, 'fence': V.fence, 'wagon': V.wagon, 'brazier': V.brazier})
+add('ways', 'prop', WAYS)
+add('ways', 'prop', WAY_SPRITES)
+for k, f in WAY_TILES.items(): ITEMS[k] = ('tile', 'shell', [as_sprite(f())])
 add('rock', 'prop', ROCK)
 ITEMS['drip'] = ('prop', 'rock', frames_of(drip))
 add('monster', 'prop', MONSTERS)

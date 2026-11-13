@@ -1,0 +1,128 @@
+{
+ "version": 1,
+ "type": "entrance_hall",
+ "part": "room",
+ "name": "grand",
+ "cells": 6,
+ "wall": "wall_ashlar",
+ "floor": "floor_flags",
+ "vault": true,
+ "props": [
+  {
+   "s": "rug",
+   "x": 168,
+   "y": 131,
+   "flip": false,
+   "z": -1,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "column",
+   "x": 62,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "column",
+   "x": 274,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "statue",
+   "x": 104,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "statue",
+   "x": 232,
+   "y": 135,
+   "flip": true,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "banner",
+   "x": 104,
+   "y": 19,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "banner",
+   "x": 232,
+   "y": 19,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "chandelier",
+   "x": 168,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "brazier",
+   "x": 140,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "brazier",
+   "x": 196,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "light",
+   "r": 130,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 168,
+   "y": 26
+  },
+  {
+   "kind": "light",
+   "r": 90,
+   "c": "#ff9450",
+   "p": 0.8,
+   "x": 140,
+   "y": 111
+  },
+  {
+   "kind": "light",
+   "r": 90,
+   "c": "#ff9450",
+   "p": 0.8,
+   "x": 196,
+   "y": 111
+  }
+ ]
+}

@@ -9,7 +9,7 @@
 import * as Art from './art48.js';
 
 export const FLOOR = 135, RH = 144, CELL = 48;
-export const WALLS = ['wall_rock', 'wall_brick', 'wall_ashlar', 'wall_panel'];
+export const WALLS = ['wall_rock', 'wall_hewn', 'wall_brick', 'wall_ashlar', 'wall_panel'];
 export const FLOORS = ['floor_planks', 'floor_flags', 'floor_earth'];
 
 /** Spot kinds: what the game reads from a template. Colour and letter are for the editor's markers; help is the short
@@ -43,6 +43,8 @@ export const SPOTS = {
     about: 'The brew kettle: it bubbles while a brew is on.' },
   steam:   { c: '#f0f0f0', t: 's', help: 'where steam rises',
     about: 'Where steam rises while brewing.' },
+  door:    { c: '#e0b0ff', t: 'D', help: 'stairwell door: where dwarves go in and come out',
+    about: 'The door of a stairwell. Dwarves walk up to it, the door opens, they step into the dark and come out of the door of another stairwell on their floor. Put it at the foot of the stairdoor prop.' },
   stand:   { c: '#b0b0b0', t: 'I', face: 'front', sit: true, help: 'an idle spot to stand (or sit) around',
     about: 'A place to hang around when there is nothing to do: waiting, chatting, watching. Can be standing or sitting.' },
 };
@@ -88,6 +90,8 @@ export const NEEDS = {
   barracks: { worker: 1, seat: 3, light: 1 },
   trade_depot: { light: 1 },
   expedition_hall: { seat: 2, light: 1 },
+  stairwell: { door: 1, light: 1 },
+  entrance_hall: { light: 2 },
 };
 export const BAY_NEEDS = { worker: 1 };
 
@@ -123,6 +127,9 @@ export const PROP_SPOTS = {
   desk: [{ kind: 'worker', dx: 0, dy: 0, face: 'back', sit: true }],
   maptable: [{ kind: 'seat', dx: -18, dy: 0 }, { kind: 'seat', dx: 18, dy: 0 }],
   dummy: [{ kind: 'worker', dx: -22, dy: 0, face: 'right' }],
+  stairdoor: [{ kind: 'door', dx: 0, dy: 0 }],
+  stairdoor_stone: [{ kind: 'door', dx: 0, dy: 0 }],
+  stairdoor_grand: [{ kind: 'door', dx: 0, dy: 0 }],
 };
 
 /** Suggested spots for the props of a template (kinds the template already has are left out). */
@@ -183,7 +190,8 @@ export function drawShell(ctx, tpl, x0, y0, w, worldX = x0) {
   ctx.fillStyle = 'rgba(20,10,16,0.35)'; ctx.fillRect(x0, y0 + FLOOR - 1, w, 1);     // shadow where wall meets floor
   if (tpl.vault) { Art.draw(ctx, 'vault', 0, x0, y0); Art.draw(ctx, 'vault', 0, x0 + w - 1, y0, { flip: true }); }
 }
-/** Props of one layer ('back', 'front', or null for both) in z order; t = seconds, animated ones run ~6 frames/s. */
+/** Props of one layer ('back', 'front', or null for both) in z order; t = seconds, animated ones run ~6 frames/s.
+ * opts.frameOf(prop) may return a frame to show instead (e.g. how far a stairwell door is open). */
 export function drawProps(ctx, tpl, x0, y0, t = 0, opts = {}) {
   const list = tpl.props.map((p, i) => ({ p, i }))
     .filter(({ p }) => !opts.layer || layerOf(p) === opts.layer)
@@ -191,7 +199,8 @@ export function drawProps(ctx, tpl, x0, y0, t = 0, opts = {}) {
   for (const { p, i } of list) {
     const n = Art.frames(p.s);
     if (!n) continue;
-    const f = p.frame != null ? p.frame : Math.floor(t * 6 + i * 1.7) % n;
+    const fo = opts.frameOf ? opts.frameOf(p) : null;            // the game sets some frames itself (doors)
+    const f = fo != null ? Math.min(n - 1, fo) : p.frame != null ? p.frame : Math.floor(t * 6 + i * 1.7) % n;
     Art.draw(ctx, p.s, f, x0 + p.x, y0 + p.y, { flip: !!p.flip, glow: !!opts.glow });
   }
 }

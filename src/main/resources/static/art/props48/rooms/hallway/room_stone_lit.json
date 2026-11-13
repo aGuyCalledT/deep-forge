@@ -1,0 +1,40 @@
+{
+ "version": 1,
+ "type": "hallway",
+ "part": "room",
+ "name": "stone_lit",
+ "cells": 1,
+ "wall": "wall_brick",
+ "floor": "floor_flags",
+ "vault": false,
+ "props": [
+  {
+   "s": "arcade",
+   "x": 24,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  },
+  {
+   "s": "torch",
+   "x": 24,
+   "y": 79,
+   "flip": false,
+   "z": 0,
+   "frame": null,
+   "layer": "back"
+  }
+ ],
+ "spots": [
+  {
+   "kind": "light",
+   "r": 110,
+   "c": "#ffb060",
+   "p": 0.9,
+   "x": 24,
+   "y": 61
+  }
+ ]
+}

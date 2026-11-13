@@ -52,7 +52,10 @@ export async function loadArt() {
 export const artReady = () => Art.ready() && DW.ready();
 
 /** The looks a room type can pick (template names), the first is the default. */
-export function roomLooks(type) { return R.looks(type, 'room'); }
+export function roomLooks(type) {
+  const list = R.looks(type, 'room');
+  return type === 'entrance_hall' ? [...list].sort((a, b) => WAY_STYLES.indexOf(a) - WAY_STYLES.indexOf(b)) : list;
+}
 
 /** The template of a room (part 'room') or of its machine bays ('bay'), in its chosen look; a bare shell if none. */
 function tplOf(type, part, look, cells) {
@@ -88,6 +91,7 @@ function grid() {
   plan = G.data.plan;
   const f = F(), L = f.layout || { rooms: {}, halls: [], wells: [], caves: {}, marks: [], digs: {} };
   const cells = new Map();    // "c,f" -> {kind, id?}
+  const style = wayStyle();   // entrance hall, hallways and stairwells share one look
   const rooms = [];
   for (const [id, [c, fl]] of Object.entries(L.rooms)) {
     const b = f.buildings.find((x) => x.id === id);
@@ -98,12 +102,14 @@ function grid() {
     rooms.push(r);
     for (let x = c; x < c + w; x++) cells.set(x + ',' + fl, { kind: 'room', id });
   }
-  for (const k of L.halls) cells.set(k, { kind: 'hall' });
+  for (const k of L.halls) cells.set(k, { kind: 'hall', tpl: hallTpl(style, hallVariant(k)) });
   for (const [k, since] of Object.entries(L.caves || {})) cells.set(k, { kind: 'cave', since });
   const marks = new Map((L.marks || []).map((k) => [k, (L.digs || {})[k] || 0]));   // rock to dig: cell -> work done
   const critters = (f.threats || []).filter((th) => th.cell).map((th) => { const [c, fl] = th.cell.split(',').map(Number); return { th, c, f: fl }; });
   // stairwells: two cells wide, the way in is an arch in the middle of the back wall
-  const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + CELL }; });
+  const wellTpl = tplOf('stairwell', 'room', style, 2);
+  const doorX = ((wellTpl.spots || []).find((s) => s.kind === 'door') || { x: CELL }).x;
+  const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + doorX, tpl: wellTpl }; });
   for (const w of wells) for (let dx = 0; dx < 2; dx++) cells.set((w.c + dx) + ',' + w.f, { kind: 'well', well: w });
   // the mine shaft: a stairwell on every floor, and the way down to the mines
   const shafts = [];
@@ -112,7 +118,35 @@ function grid() {
     shafts.push(s);
     for (let c = 0; c < plan.shaft; c++) cells.set(c + ',' + fl, { kind: 'shaft', well: s });
   }
-  return { cells, rooms, wells, shafts, marks, critters };
+  const hall = levelOf('entrance_hall') ? tplOf('entrance_hall', 'room', style, FACE / CELL) : null;
+  return { cells, rooms, wells, shafts, marks, critters, hall };
+}
+
+/**
+ * The style of the ways (entrance hall, hallways, stairwells): the look the player picked for the entrance hall, else
+ * one by its level (timber, stone, grand). Hallways and stairwells take the same style, so the hold looks of a piece.
+ */
+const WAY_STYLES = ['timber', 'stone', 'grand'];
+function wayStyle() {
+  const b = F().buildings.find((x) => x.type === 'entrance_hall');
+  if (b && b.look && R.looks('entrance_hall').includes(b.look)) return b.look;
+  return WAY_STYLES[b && b.level ? hallTier(b.level) : 0];
+}
+/** A hallway template: the style's variant if there is one, else the plain style. */
+function hallTpl(style, variant) {
+  const looks = R.looks('hallway');
+  return tplOf('hallway', 'room', looks.includes(style + variant) ? style + variant : style, 1);
+}
+/** Lights of a way's template at x0, y0. */
+function tplLights(tpl, x0, y0) {
+  return (tpl.spots || []).filter((s) => s.kind === 'light')
+    .map((s) => ({ x: x0 + s.x, y: y0 + s.y, r: s.r || 90, color: s.c || '#ffb060', flicker: 1, power: 0.6 * (0.5 + (s.p ?? 0.8) / 2) }));
+}
+/** How far a stairwell door is open (frame 0 shut .. 3 open): it swings open when someone steps in or out. */
+function doorFrame(w) {
+  const until = wellLit.get(wellKey(w)) || 0, dt = performance.now() - (until - 900);
+  if (dt < 0 || dt > 1000) return 0;
+  return dt < 70 ? 1 : dt < 140 ? 2 : dt < 760 ? 3 : dt < 880 ? 2 : 1;
 }
 
 
@@ -683,34 +717,30 @@ export function roomActive(id) { const i = D().buildings[id]; return !i || i.act
 
 /** The entrance hall's look: 0 timber, 1 with torches, 2 grand (banners, braziers). */
 const hallTier = (lvl) => Math.max(0, Math.min(2, lvl - 1));
-const HALL_LIGHTS = [96, 192];         // tunnel pixels of the hall's torches or braziers
 /** The gate's level (1..4); from level 3 on braziers burn beside it. */
 const gateLevel = () => Math.max(1, Math.min(4, levelOf('gate') || 1));
-/** Hallway cells with a torch on the wall. */
-const hallTorch = (k) => S.hash('torch' + k) % 3 === 0;
+/** Which hallway template a cell uses: every fourth cell has a torch ('_lit'), the one two further on a banner or the
+ * like ('_deco', where the style has one), the rest are plain. */
+const hallVariant = (k) => { const c = +k.split(',')[0]; return c % 4 === 1 ? '_lit' : c % 4 === 3 ? '_deco' : ''; };
 
 function drawUnderground(ctx, t, g, inRoom) {
-  // the gate tunnel from the valley to the shaft
-  Art.tile(ctx, 'tunnel', -FACE, ftop(ENTRY), FACE);
-  const hallLvl = levelOf('entrance_hall'), tier = hallLvl ? hallTier(hallLvl) : -1;
-  for (const x of HALL_LIGHTS) {
-    if (tier === 2) Art.draw(ctx, 'brazier', Math.floor(t * 6 + x) % 4, -FACE + x, fy(ENTRY));
-    else if (tier >= 0) Art.draw(ctx, 'torch', Math.floor(t * 6 + x) % Art.frames('torch'), -FACE + x, ftop(ENTRY) + 80);
-  }
-  if (tier === 2) Art.draw(ctx, 'banner', 0, -FACE + 144, ftop(ENTRY) + 40);
+  // the gate tunnel from the valley to the shaft; once built, the entrance hall in its look
+  if (g.hall) { R.drawShell(ctx, g.hall, -FACE, ftop(ENTRY), FACE); R.drawProps(ctx, g.hall, -FACE, ftop(ENTRY), t); }
+  else Art.tile(ctx, 'tunnel', -FACE, ftop(ENTRY), FACE);
   // hallways and caves
   for (const [k, v] of g.cells) {
     if (v.kind !== 'hall' && v.kind !== 'cave') continue;
     const [c, fl] = k.split(',').map(Number);
     if (!seen(c * CELL, ftop(fl), CELL, RH, 40)) continue;
     if (v.kind === 'cave') drawCave(ctx, k, c, fl, v.since);
-    else {
-      Art.tile(ctx, 'hallway', c * CELL, ftop(fl), CELL);
-      if (hallTorch(k)) Art.draw(ctx, 'torch', Math.floor(t * 6 + c) % Art.frames('torch'), c * CELL + 24, ftop(fl) + 80);
-    }
+    else { R.drawShell(ctx, v.tpl, c * CELL, ftop(fl), CELL, c * CELL); R.drawProps(ctx, v.tpl, c * CELL, ftop(fl), t + c * 0.37); }
   }
   for (const s of g.shafts) Art.tile(ctx, 'shaft', 0, ftop(s.f), plan.shaft * CELL);
-  for (const s of g.wells) Art.tile(ctx, 'stairwell', s.c * CELL, ftop(s.f), 2 * CELL);
+  for (const s of g.wells) {
+    const x0 = s.c * CELL, y0 = ftop(s.f), door = doorFrame(s);
+    R.drawShell(ctx, s.tpl, x0, y0, 2 * CELL, x0);
+    R.drawProps(ctx, s.tpl, x0, y0, t, { frameOf: (p) => (p.s.startsWith('stairdoor') ? door : null) });
+  }
   for (const r of g.rooms) if (seen(r.x, r.y, r.pw, RH, 40)) drawRoom(ctx, t, r, inRoom.get(r.b.id) || []);
   drawEdges(ctx, g);
   drawMarks(ctx, t, g);
@@ -916,16 +946,16 @@ export const holdScreen = {
     const f = F();
     for (const r of G_.rooms) out.push(...roomLights(r));
     for (const [k, v] of G_.cells) {
-      if (v.kind !== 'hall' || !hallTorch(k)) continue;
+      if (v.kind !== 'hall') continue;
       const [c, fl] = k.split(',').map(Number);
-      out.push({ x: c * CELL + 24, y: ftop(fl) + 62, r: 90, color: '#ffb060', flicker: 1, power: 0.7 });
+      out.push(...tplLights(v.tpl, c * CELL, ftop(fl)));
     }
+    for (const w of G_.wells) out.push(...tplLights(w.tpl, w.c * CELL, ftop(w.f)));
+    for (const w of G_.shafts) out.push({ x: w.x, y: ftop(w.f) + 50, r: 70, color: '#ffd98e', flicker: 1, power: 0.5 });
     for (const w of [...G_.wells, ...G_.shafts]) {
-      out.push({ x: w.x, y: ftop(w.f) + 50, r: 70, color: '#ffd98e', flicker: 1, power: 0.5 });
       if ((wellLit.get(wellKey(w)) || 0) > performance.now()) out.push({ x: w.x, y: ftop(w.f) + 100, r: 50, color: '#ffb070', power: 0.8 });
     }
-    const hl = levelOf('entrance_hall');
-    if (hl) for (const x of HALL_LIGHTS) out.push({ x: -FACE + x, y: hallTier(hl) === 2 ? fy(ENTRY) - 30 : ftop(ENTRY) + 62, r: 90, color: '#ffb070', flicker: 2 });
+    if (G_.hall) out.push(...tplLights(G_.hall, -FACE, ftop(ENTRY)));
     if (gateLevel() >= 3) out.push({ x: SURFACE.gate - 70, y: GROUND - 30, r: 90, color: '#ffb070', flicker: 2 });
     const day = daylight(sun().elev);
     if (day < 0.8) {
@@ -960,6 +990,13 @@ export const holdScreen = {
     const f = F();
     const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
     roomPlate(hover);
+    if (G_.hall) R.drawProps(ctx, G_.hall, -FACE, ftop(ENTRY), t, { glow: true });
+    for (const [k, v] of G_.cells) {
+      if (v.kind !== 'hall') continue;
+      const [c, fl] = k.split(',').map(Number);
+      if (seen(c * CELL, ftop(fl), CELL, RH, 40)) R.drawProps(ctx, v.tpl, c * CELL, ftop(fl), t + c * 0.37, { glow: true });
+    }
+    for (const w of G_.wells) R.drawProps(ctx, w.tpl, w.c * CELL, ftop(w.f), t, { glow: true, frameOf: (p) => (p.s.startsWith('stairdoor') ? doorFrame(w) : null) });
     for (const r of G_.rooms) {
       if (!seen(r.x, r.y, r.pw, RH, 40)) continue;
       // what glows in the dark (fire, embers, mushrooms) is not dimmed by the lighting
