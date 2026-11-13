@@ -55,7 +55,6 @@ const RAW = {
   limestone: (c) => { c.rect(1, 4, 12, 9, "c"); c.rect(2, 3, 10, 2, "C"); c.hline(1, 12, 12, "u"); c.vline(12, 4, 8, "u"); c.px(5, 8, "U"); c.px(9, 10, "U"); },
   stone: (c) => { c.rect(1, 5, 11, 8, "4"); c.poly([1, 5, 4, 2, 13, 2, 12, 5], "5"); c.rect(12, 3, 2, 10, "3"); c.px(4, 8, "3"); c.px(8, 10, "3"); },
   rough_gem: (c) => { lumpShape(c, "}", "]", "6"); c.poly([5, 9, 7, 3, 10, 9], "h"); c.px(7, 5, "J"); c.px(7, 4, "C"); },
-  cut_gem: (c) => { c.poly([2, 5, 5, 2, 9, 2, 12, 5, 7, 12], "H"); c.hline(4, 5, 7, "J"); c.poly([5, 2, 9, 2, 7, 5], "J"); c.px(6, 3, "C"); c.line(2, 5, 7, 12, "h"); },
   food: (c) => { c.ellipse(7, 5, 6, 4, "Z"); c.rect(1, 6, 13, 1, "z"); c.px(4, 3, "C"); c.px(9, 4, "C"); c.px(6, 2, "9"); c.rect(5, 7, 4, 6, "c"); c.vline(5, 8, 5, "C"); },
   gears: (c) => { c.circ(5, 6, 4, "O"); c.circ(5, 6, 2, "_"); for (const [x, y] of [[5, 1], [5, 11], [0, 6], [10, 6], [2, 3], [8, 9]]) c.px(x, y, "O"); c.circ(10, 10, 3, "j"); c.px(10, 10, "_"); for (const [x, y] of [[10, 6], [13, 10], [10, 13], [7, 10]]) c.px(x, y, "j"); },
   cloth: (c) => { c.rect(1, 4, 10, 8, "c"); c.hline(1, 4, 10, "C"); c.hline(1, 7, 10, "U"); c.hline(1, 10, 10, "U"); c.ellipse(11, 8, 2, 4, "u"); c.px(11, 8, "V"); c.line(3, 12, 1, 13, "c"); },
@@ -83,9 +82,5 @@ sprite("artifact", { w: 14, h: 14, outline: "k" }, (c) => {
   c.rect(3, 10, 8, 3, "O"); c.hline(3, 10, 8, "j"); c.hline(3, 12, 8, "o");
 });
 
-// gems by school of magic (each in its own colours) and an empty socket for the item window
-const SCHOOL_GEM = { earth: ["~", "^", "@", "C"], fire: [";", "?", "&", "*"], steel: ["b", "B", "n", "N"], hearth: ["-", "$", "|", ":"], gold: ["o", "O", "j", "8"] };
-for (const [school, [d, m, l, w]] of Object.entries(SCHOOL_GEM)) sprite("gem_" + school, { w: 14, h: 14, outline: "k" }, (c) => {
-  c.poly([2, 5, 5, 2, 9, 2, 12, 5, 7, 12], m); c.hline(4, 5, 7, l); c.poly([5, 2, 9, 2, 7, 5], l); c.px(6, 3, w); c.line(2, 5, 7, 12, d); c.line(12, 5, 7, 12, d); c.px(10, 6, d);
-});
+// gems by school of magic and the plain cut gem: tools.px.js (drawn symmetric)
 sprite("socket", { w: 8, h: 8, outline: "k" }, (c) => { c.ring(4, 4, 3, "4"); c.circ(4, 4, 2, "s"); c.px(3, 3, "2"); c.px(2, 2, "6"); });
