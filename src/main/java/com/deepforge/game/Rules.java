@@ -210,7 +210,7 @@ public final class Rules {
     /** Ore per hour for one miner on a layer. */
     public static double minerRate(Fortress f, Dwarf d, LayerState l) {
         Content.Layer layer = Content.LAYERS.get(l.index);
-        return layer.rate() * workSpeed(f, d, "mining") * shaftMult(l) * toolBonus(d);
+        return layer.rate() * workSpeed(f, d, "mining") * shaftMult(l) * pickSpeed(d, meanHardness(mineable(layer, pickHardness(d))));
     }
 
     // ------------------------------------------------------------ smithing at the anvil
@@ -240,9 +240,12 @@ public final class Rules {
     public static final double ANVIL_WAIT = 2 * 3600;     // then the dwarves finish the piece themselves
     public static final double ARTIFACT_PER_HOUR = 0.009; // best smith (skill 20), forge level 1, no help: ~1.5 a week
 
+    public static final double ITEM_SKILL_PENALTY = 0.35;   // mean quality tiers lost per skill level of the piece above 1
+
     /** Mean quality tier of a piece; play is 0..1 (0 = dwarves alone). */
     public static double smithMean(Fortress f, Forging g, double play) {
-        return -0.3 + 0.18 * g.skill + 0.2 * (g.level - 1) + 1.2 * play + (g.nimble ? 0.3 : 0) + 0.2 * trad(f, "master_smiths");
+        return -0.3 + 0.18 * g.skill + 0.2 * (g.level - 1) + 1.2 * play + (g.nimble ? 0.3 : 0) + 0.2 * trad(f, "master_smiths")
+                - ITEM_SKILL_PENALTY * (Content.ITEMS.get(g.itype).skill() - 1);
     }
 
     /** Chance that the piece becomes an artifact. Perfect play makes it five times as likely. */
@@ -260,12 +263,50 @@ public final class Rules {
         return Content.QUALITIES.get(Integer.parseInt(Content.parseItem(key)[2])).power();
     }
 
-    public static double toolBonus(Dwarf d) {
-        if (d.tool == null) return 1;
+    // ------------------------------------------------------------ pickaxes: hardness, speed, wear
+
+    public static final double MAKESHIFT_SPEED = 0.75;   // the free makeshift pick: slow, never breaks, only soft rock
+
+    /** Hardness of the rock a miner's pick can break: its metal's hardness, or the makeshift pick's. */
+    public static int pickHardness(Dwarf d) {
+        return d.tool == null ? Content.MAKESHIFT_HARDNESS : Content.METALS.get(Content.parseItem(d.tool)[1]).hardness();
+    }
+
+    /** Speed of a pick against rock of the given (mean) hardness: harder metal +12 % per step (at most +60 %), times quality, sharpened +15 %. */
+    public static double pickSpeed(Dwarf d, double rock) {
+        if (d.tool == null) return MAKESHIFT_SPEED;
         String[] p = Content.parseItem(d.tool);
-        Content.Metal m = Content.METALS.get(p[1]);
-        double q = qualityPower(d.tool);
-        return 1 + m.hardness() * 0.05 * q + (p[3].contains("s") ? 0.15 : 0);
+        double h = Content.METALS.get(p[1]).hardness();
+        return (1 + Math.min(0.6, 0.12 * Math.max(0, h - rock))) * qualityPower(d.tool) * (p[3].contains("s") ? 1.15 : 1);
+    }
+
+    /** Digging out the hold: soft rock. */
+    public static double toolBonus(Dwarf d) { return pickSpeed(d, 1); }
+
+    /** What a pick of this hardness can break out of a layer: the layer's weights without the rock that is too hard. */
+    public static Map<String, Integer> mineable(Content.Layer layer, int hard) {
+        Map<String, Integer> w = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> e : layer.weights().entrySet())
+            if (Content.rockHardness(e.getKey()) <= hard) w.put(e.getKey(), e.getValue());
+        return w;
+    }
+
+    public static double meanHardness(Map<String, Integer> w) {
+        double n = 0, h = 0;
+        for (Map.Entry<String, Integer> e : w.entrySet()) { n += e.getValue(); h += e.getValue() * Content.rockHardness(e.getKey()); }
+        return n == 0 ? 1 : h / n;
+    }
+
+    /** Working hours a pickaxe lasts: copper 2 days, bronze and iron 5, steel 10; better quality lasts longer. */
+    public static double toolLife(String key) {
+        int h = Content.METALS.get(Content.parseItem(key)[1]).hardness();
+        return (24 + 6 * h * h) * qualityPower(key);
+    }
+
+    /** How a pick ranks when the dwarves choose one from the warehouse: hardness first, then speed. */
+    public static double pickScore(String key) {
+        String[] p = Content.parseItem(key);
+        return Content.METALS.get(p[1]).hardness() * 10 + qualityPower(key) * (p[3].contains("s") ? 1.15 : 1);
     }
 
     public static int stock(Fortress f, String key) {

@@ -23,7 +23,7 @@ public final class Showcase {
         for (Content.Metal m : Content.METALS.values()) Rules.add(f, "bar:" + m.id(), 150);
         for (Content.ItemType it : Content.ITEMS.values())
             for (Content.Metal m : Content.METALS.values())
-                if (Content.metalFits(it, m) && (m.id().equals("iron") || m.id().equals("steel") || m.id().equals("gold") || m.id().equals("silver")))
+                if (Content.metalFits(it, m) && List.of("copper", "bronze", "iron", "steel", "nickel_steel", "gold", "silver").contains(m.id()))
                     Rules.add(f, Content.itemKey(it.id(), m.id(), 2 + Math.floorMod((it.id() + m.id()).hashCode(), 3), ""), 2);
         for (String c : Content.CLOTHES.keySet())
             for (String dye : Content.DYES.keySet()) Rules.add(f, Content.wearKey(c, dye), 1);

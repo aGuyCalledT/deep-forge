@@ -330,11 +330,15 @@ Erst wenn der Bot grün ist, wandern die Zahlen nach `BALANCING.md`.
 
 Jeder Schritt ist für sich spielbar und wird einzeln mit dem Bot geprüft.
 
-## 14. Offene Entscheidungen
+## 14. Entscheidungen (geklärt)
 
-1. **Abnutzung von Werkzeug:** gibt der Schmiede Dauerarbeit, kann sich aber nach Pflicht anfühlen. Empfehlung:
-   ja, aber erst zusammen mit „Bestand halten“ und „von selbst tauschen“.
-2. **Wie hart die Bremse beim Liegenlassen ist:** vorgeschlagen sind 24 h voll, danach bis 20 %. Milder wäre 48 h.
-3. **Tempo der Leitkurve:** +100 Marks Tageseinkommen je Tag heißt etwa vier Monate bis zum letzten Zeitalter.
-4. **Alte Spielstände:** umrechnen (empfohlen) oder mit dem neuen Balancing neu anfangen.
-5. **Neue Räume:** Feinmechaniker und Münze brauchen Grafik und Raumvorlagen.
+1. **Abnutzung:** ja. Werkzeug nutzt sich ab und geht kaputt. Jeder Bergarbeiter hat immer eine kostenlose
+   **Notfall-Hacke** (makeshift pick), die nichts kostet und nie kaputtgeht: langsam, nur weiches Gestein.
+2. **Bremse beim Liegenlassen:** 24 h voll, wie vorgeschlagen.
+3. **Tempo der Leitkurve:** wie vorgeschlagen, etwa vier Monate bis zum letzten Zeitalter.
+4. **Alte Spielstände:** werden nicht umgerechnet.
+5. **Neue Räume:** dürfen angelegt werden, Schritt für Schritt.
+6. **Warenwerte einheitlich:** Ein Metall verändert den Wert jeder Ware um denselben Faktor (seinen Barrenwert), jede
+   Qualitätsstufe um denselben Schritt. Jede Ware (nicht Barren) hat ein **Skill-Level** 1–5: Je höher, desto
+   schwerer gute Qualität, aber desto größer der Schritt (×1,3 bis ×1,7). Umgesetzt, Zahlen in `BALANCING.md`
+   („Qualität“, „Spitzhacken“).

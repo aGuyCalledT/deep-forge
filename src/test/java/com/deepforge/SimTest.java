@@ -185,8 +185,8 @@ class SimTest {
     @Test
     void skillAndPlayRaiseQuality() {
         Fortress f = fresh(13);
-        Forging novice = new Forging(); novice.skill = 1; novice.level = 1; novice.hours = 0.05;
-        Forging master = new Forging(); master.skill = 20; master.level = 1; master.hours = 0.05;
+        Forging novice = new Forging(); novice.itype = "pickaxe"; novice.skill = 1; novice.level = 1; novice.hours = 0.05;
+        Forging master = new Forging(); master.itype = "pickaxe"; master.skill = 20; master.level = 1; master.hours = 0.05;
         assertTrue(Rules.smithMean(f, novice, 0) < 0.5, "a beginner alone makes crude pieces");
         assertTrue(Rules.smithMean(f, master, 0) > 3, "a master alone makes exceptional pieces");
         assertTrue(Rules.smithMean(f, master, 1) > 4.2, "with perfect play mostly masterworks");
@@ -208,7 +208,7 @@ class SimTest {
         assertEquals(Content.ARTIFACT, f.smithed.quality);
         Artifact a = f.artifacts.get(f.artifacts.size() - 1);
         assertTrue(a.unnamed);
-        assertEquals(20 * Content.baseValue("item:goblet:gold:1:"), a.value, 1e-6);
+        assertEquals(Content.qualityMult(Content.ITEMS.get("goblet"), Content.ARTIFACT) * Content.baseValue("item:goblet:gold:1:"), a.value, 1e-6);
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "nameArtifact", "id", a.id, "name", "x"));
         act(f, m, T0, "type", "nameArtifact", "id", a.id, "name", "  The   Golden Thirst ");
         assertEquals("The Golden Thirst", a.name);
@@ -686,5 +686,96 @@ class SimTest {
         assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 3, "type", "roomLook", "building", "x", "look", look));
         act(f, m, T0 + 4, "type", "roomLook", "building", b.id, "look", "");
         assertEquals("", b.look);
+    }
+
+    // ------------------------------------------------------------ item values, pickaxes
+
+    /** Mean value factor of a piece's quality (no artifacts), for a smith of the given mean tier. */
+    static double meanQualityMult(Content.ItemType t, double mean) {
+        Rng r = new Rng(5);
+        double sum = 0;
+        for (int i = 0; i < 20000; i++) {
+            int q = Math.max(0, Math.min(Content.ARTIFACT - 1, (int) Math.round(mean + r.gauss() * 0.6)));
+            sum += Content.qualityMult(t, q);
+        }
+        return sum / 20000;
+    }
+
+    @Test
+    void metalsAndQualitiesChangeEveryItemsValueAlike() {
+        for (Content.ItemType t : Content.ITEMS.values()) {
+            String ref = null;
+            for (Content.Metal m : Content.METALS.values()) {
+                if (!Content.metalFits(t, m)) continue;
+                if (ref == null) { ref = m.id(); continue; }
+                double ratio = Content.baseValue(Content.itemKey(t.id(), m.id(), 1, "")) / Content.baseValue(Content.itemKey(t.id(), ref, 1, ""));
+                assertEquals(m.value() / Content.METALS.get(ref).value(), ratio, 1e-9, "a metal changes every item by its bar value");
+            }
+            for (int q = 1; q < Content.ARTIFACT; q++) {
+                double step = Content.baseValue(Content.itemKey(t.id(), ref, q, "")) / Content.baseValue(Content.itemKey(t.id(), ref, q - 1, ""));
+                assertEquals(Content.qualityStep(t), step, 1e-9, "every quality step is the same for " + t.id());
+            }
+        }
+        Content.ItemType pick = Content.ITEMS.get("pickaxe"), crown = Content.ITEMS.get("crown");
+        assertTrue(Content.qualityStep(crown) > Content.qualityStep(pick));
+        // a hard piece is a bad idea for a beginner and the best one for a master who plays well
+        Forging a = new Forging(); a.skill = 3; a.level = 1;
+        Forging b = new Forging(); b.skill = 20; b.level = 5;
+        Fortress f = fresh(31);
+        a.itype = "pickaxe"; double novicePick = meanQualityMult(pick, Rules.smithMean(f, a, 0));
+        a.itype = "crown"; double noviceCrown = meanQualityMult(crown, Rules.smithMean(f, a, 0));
+        b.itype = "pickaxe"; double masterPick = meanQualityMult(pick, Rules.smithMean(f, b, 1));
+        b.itype = "crown"; double masterCrown = meanQualityMult(crown, Rules.smithMean(f, b, 1));
+        assertTrue(noviceCrown < novicePick, noviceCrown + " < " + novicePick);
+        assertTrue(masterCrown > 1.5 * masterPick, masterCrown + " > 1.5 × " + masterPick);
+    }
+
+    static Dwarf miner(Fortress f, int layer) {
+        Dwarf d = f.dwarves.get(0);
+        f.created = T0 + 1e9;   // no monsters in the way
+        for (Dwarf x : f.dwarves) if (x != d && x.job.equals("miner")) x.job = "idle";
+        d.job = "miner"; d.layer = layer; d.tool = null; d.dig = null;
+        return d;
+    }
+
+    @Test
+    void theMakeshiftPickOnlyBreaksSoftRock() {
+        Fortress f = fresh(32);
+        Market m = Market.inMemory(32, T0);
+        f.autoPicks = false;
+        Dwarf d = miner(f, 0);
+        f.stock.keySet().removeIf(k -> !k.equals("food") && !k.equals("ale"));
+        Sim.advance(f, T0 + 8 * 3600, m);
+        int soft = count(f, "native_copper") + count(f, "coal") + count(f, "stone");
+        assertTrue(soft > 0, "the makeshift pick digs soft rock");
+        assertEquals(0, count(f, "malachite") + count(f, "sphalerite"), "but no malachite");
+        assertNull(d.tool, "and never breaks");
+        d.tool = Content.itemKey("pickaxe", "copper", 1, "");
+        Sim.advance(f, T0 + 24 * 3600, m);
+        assertTrue(count(f, "malachite") > 0, "a copper pick breaks malachite");
+        assertTrue(Rules.minerRate(f, d, f.layers.get(0)) > Rules.MAKESHIFT_SPEED * Content.LAYERS.get(0).rate() * 0.9);
+    }
+
+    @Test
+    void picksWearOutAndTheMinersTakeTheNextOne() {
+        Fortress f = fresh(33);
+        Market m = Market.inMemory(33, T0);
+        Dwarf d = miner(f, 0);
+        String copper = Content.itemKey("pickaxe", "copper", 1, "");
+        Rules.add(f, copper, 1);
+        Sim.advance(f, T0 + 60, m);
+        assertEquals(copper, d.tool, "a miner without a pick takes one from the warehouse");
+        assertEquals(0, count(f, "item:pickaxe"));
+        double life = Rules.toolLife(copper);
+        assertEquals(48, life, 1e-9, "a copper pick lasts two days of work");
+        Rules.add(f, Content.itemKey("pickaxe", "bronze", 1, ""), 1);
+        Sim.advance(f, T0 + (life + 1) * 3600, m);
+        assertEquals(Content.itemKey("pickaxe", "bronze", 1, ""), d.tool, "the broken pick is replaced");
+        assertTrue(f.log.stream().anyMatch(e -> e.text.contains("broke")));
+        assertTrue(Rules.toolLife(Content.itemKey("pickaxe", "steel", 4, "")) > 4 * life, "steel masterworks last much longer");
+        // taking off a worn pick scraps it, so swapping never resets the wear
+        act(f, m, T0 + (life + 2) * 3600, "type", "unequip", "dwarf", d.id, "slot", "tool");
+        assertEquals(0, count(f, "item:pickaxe"));
+        assertNull(d.tool);
     }
 }

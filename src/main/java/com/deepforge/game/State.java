@@ -22,6 +22,7 @@ public final class State {
         public List<Dwarf> dwarves = new ArrayList<>();
         public int nextId = 1;
         public List<Building> buildings = new ArrayList<>();
+        public boolean autoPicks = true;   // miners without a pick take the best one from the warehouse
         public List<LayerState> layers = new ArrayList<>();
         public List<Caravan> caravans = new ArrayList<>();
         public List<Expedition> expeditions = new ArrayList<>();
@@ -171,6 +172,7 @@ public final class State {
         public String helm;
         public String armor;
         public String tool;
+        public double toolWear;       // working hours the tool has done (it breaks at Rules.toolLife)
         public double arrived;
     }
 

@@ -259,12 +259,16 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Werkstätten außer der Schmelze in der Festung direkt anklicken (heute über den Knopf im Raumfenster).
 - [ ] Nahaufnahmen als Sprites (Edelstein, Runenplatte, Kettfäden sind im Screen gezeichnet).
 
-## Balance und Fortschritt (Konzept in `docs/KONZEPT-BALANCE.md`, noch nicht umgesetzt)
+## Balance und Fortschritt (Konzept in `docs/KONZEPT-BALANCE.md`)
 
-- [ ] Entscheidungen aus Abschnitt 14 klären (Abnutzung, Bremse beim Liegenlassen, Tempo der Kurve, alte Spielstände).
+- [x] Entscheidungen aus Abschnitt 14 klären (Abnutzung, Bremse beim Liegenlassen, Tempo der Kurve, alte Spielstände).
+- [x] Einheitliche Warenwerte: Metall-Faktor, Qualitätsschritt je Skill-Level der Ware (1–5), schwere Waren schwerer gut.
+- [x] Gesteinshärte, Abnutzung der Spitzhacken, Notfall-Hacke, Tausch von selbst, Nickelstahl.
+- [ ] Abnutzung auch für Waffen und Rüstung (nach „Bestand halten“).
+- [ ] Sternstahl (Härte 8) und ein Erz dafür.
 - [ ] Schritt 1: Balance-Bot, Preisformel (quadratische Kosten), neue Werte und Zeiten.
 - [ ] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“.
-- [ ] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.
+- [ ] Schritt 3: Rest (siehe oben: Waffen und Rüstung, Sternstahl).
 - [ ] Schritt 4: Ruf, Aufträge, Aufnahme je Stadt und Warengruppe, Münze.
 - [ ] Schritt 5: Verbundwaren, Einlage, Feinmechaniker-Werkbank.
 - [ ] Schritt 6: Ränge, Lehre, Wünsche der Zwerge.

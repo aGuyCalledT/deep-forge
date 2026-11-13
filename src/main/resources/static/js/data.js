@@ -75,11 +75,20 @@ export function refGood(mk) { return (G.market && G.market.goods[mk] && G.market
 /** Does this stock key belong to the market key? */
 export function inMarket(k, mk) { return marketKey(k) === mk; }
 
+/** What one quality step multiplies an item's value by (same formula as Content.qualityStep). */
+export function qualityStep(t) { return 1.2 + 0.1 * t.skill; }
+
+/** Value factor of a quality tier: Normal 1, one step per tier; an artifact is five masterworks. */
+export function qualityMult(t, q) {
+  const s = qualityStep(t), art = G.data.qualities.length - 1;
+  return q >= art ? 5 * Math.pow(s, art - 2) : Math.pow(s, q - 1);
+}
+
 export function baseValue(k) {
   if (k.startsWith('wear:')) { const c = byId.clothes[k.split(':')[1]]; return c ? c.value : 0; }
   if (isItem(k)) {
     const p = parseItem(k), t = byId.items[p.type], m = byId.metals[p.metal];
-    let v = m.value * t.bars * t.factor * G.data.qualities[p.q].mult;
+    let v = m.value * t.bars * t.factor * qualityMult(t, p.q);
     for (const c of p.mods) v *= byId.mods[c].mult;
     return v;
   }

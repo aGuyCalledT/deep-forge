@@ -220,7 +220,7 @@ export function jobSheet(x) {
     opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
 }
 
-const SLOTS = [['tool', 'Tool', 'Pickaxes make miners faster'], ['weapon', 'Weapon', 'Axes for fighting'], ['helm', 'Helm', 'Protection'], ['armor', 'Armor', 'Chain mail: strong protection']];
+const SLOTS = [['tool', 'Tool', 'Pickaxes dig faster, break harder rock and wear out'], ['weapon', 'Weapon', 'Axes for fighting'], ['helm', 'Helm', 'Protection'], ['armor', 'Armor', 'Chain mail: strong protection']];
 
 export function gearSheet(x) {
   openSheet(() => {
@@ -233,8 +233,11 @@ export function gearSheet(x) {
         return h('div', { class: 'card sub' },
           h('div', { class: 'row between' }, h('b', null, name), h('span', { class: 'small muted' }, note)),
           me[slot] ? h('div', { class: 'row' }, goodIcon(me[slot]), h('span', { class: 'grow small' }, goodName(me[slot])),
-            h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, 'Remove'))
-            : h('p', { class: 'small muted' }, 'Nothing equipped.'),
+            h('button', { class: 'btn small', title: slot === 'tool' && me.toolWear > 0.25 ? 'A used pick is worn: taking it off scraps it' : '',
+              onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, slot === 'tool' && me.toolWear > 0.25 ? 'Scrap' : 'Remove'))
+            : h('p', { class: 'small muted' }, slot === 'tool' ? 'Makeshift pick: free, slow, never breaks, only soft rock.' : 'Nothing equipped.'),
+          slot === 'tool' && me.tool ? h('div', null, h('div', { class: 'row between small' }, h('span', { class: 'muted' }, 'Condition'), h('span', null, Math.round((D().dwarves[me.id].toolLeft ?? 1) * 100) + '%')),
+            bar(D().dwarves[me.id].toolLeft ?? 1, (D().dwarves[me.id].toolLeft ?? 1) < 0.15 ? 'bad' : '')) : null,
           items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
             h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, item: k }); refreshSheet(); } }, 'Equip'))));
       }),

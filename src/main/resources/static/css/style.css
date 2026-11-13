@@ -620,6 +620,8 @@ td.num, th.num { text-align: right; }
 .ore { display: flex; align-items: center; gap: 6px; font-size: 12px; min-width: 0; }
 .ore .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ore b { color: var(--gold); font-variant-numeric: tabular-nums; }
+.ore.locked { opacity: 0.55; }
+.ore.locked .nm .icon { width: 12px; height: 12px; margin-right: 2px; vertical-align: -2px; }
 .miners { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; }
 .miner { display: inline-flex; align-items: center; gap: 4px; }
 

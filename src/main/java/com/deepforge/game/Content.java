@@ -22,7 +22,11 @@ public final class Content {
 
     public record Alloy(String metal, Map<String, Integer> inputs, boolean flux, int out, String blueprint) {}
 
-    public record ItemType(String id, String name, int bars, double factor, String category, String rule,
+    /**
+     * skill 1..5: how hard the piece is to make well. A harder piece more often comes out crude, but every quality
+     * step is worth more (see qualityStep).
+     */
+    public record ItemType(String id, String name, int bars, double factor, int skill, String category, String rule,
                            String slot, List<String> mods, String blueprint, String note) {}
 
     public record Mod(String code, String name, double mult, String building, String note) {}
@@ -51,6 +55,10 @@ public final class Content {
 
     public static final Map<String, Metal> METALS = new LinkedHashMap<>();
     public static final Map<String, Ore> ORES = new LinkedHashMap<>();
+    /** Hardness of what a miner breaks out (1..8). A pickaxe breaks what is at most as hard as its metal. */
+    public static final Map<String, Integer> ROCK_HARDNESS = new LinkedHashMap<>();
+    public static final int MAKESHIFT_HARDNESS = 1;   // the free makeshift pick every miner carries
+
     public static final Map<String, Raw> RAWS = new LinkedHashMap<>();
     public static final Map<String, Alloy> ALLOYS = new LinkedHashMap<>();
     public static final Map<String, ItemType> ITEMS = new LinkedHashMap<>();
@@ -163,6 +171,8 @@ public final class Content {
                 "Pig iron comes out heavy and brittle.", "Pig iron cracks if you rush it.", 5, 4.5);
         metal("steel", "Steel", "#a5a9b6", 3200, 6, false, 1.6, true,
                 "Steel: iron that listened to a master.", "Steel wants a straw-yellow glow, then the water.", 6, 3.5);
+        metal("nickel_steel", "Nickel steel", "#8fa6b8", 5000, 7, false, 1.8, true,
+                "Steel takes the nickel slowly. Stir, and keep the fire white.", "Nickel steel forgives a late quench.", 6.5, 3);
         metal("rose_gold", "Rose gold", "#c97473", 6000, 2, true, 1.1, true,
                 "Rose gold blushes in the crucible.", "Rose gold is patient with you.", 3, 7);
         metal("sterling_silver", "Sterling silver", "#d2d3d6", 3600, 2, true, 1.0, true,
@@ -181,6 +191,7 @@ public final class Content {
         alloy("nickel_silver", false, 4, null, "nickel", 2, "copper", 1, "zinc", 1);
         alloy("pig_iron", true, 1, "steelmaking", "iron", 1);
         alloy("steel", true, 2, "steelmaking", "iron", 1, "pig_iron", 1);
+        alloy("nickel_steel", true, 2, "steelmaking", "steel", 2, "nickel", 1);
         alloy("rose_gold", false, 4, null, "gold", 3, "copper", 1);
         alloy("sterling_silver", false, 4, null, "silver", 3, "copper", 1);
 
@@ -212,22 +223,31 @@ public final class Content {
         raw("food", "Cave mushrooms", "#b48a5a", 200, "provisions", "Every dwarf eats.");
         raw("ale", "Ale", "#d9a94a", 300, "provisions", "Every dwarf drinks. Happy dwarves drink more.");
 
+        // --- rock hardness: what a pickaxe must at least be made of (see MAKESHIFT_HARDNESS, Metal.hardness)
+        for (String k : List.of("coal", "stone", "limestone", "native_copper", "cassiterite")) ROCK_HARDNESS.put(k, 1);
+        for (String k : List.of("malachite", "sphalerite", "galena")) ROCK_HARDNESS.put(k, 2);
+        for (String k : List.of("hematite", "limonite", "tetrahedrite", "native_silver", "horn_silver")) ROCK_HARDNESS.put(k, 3);
+        for (String k : List.of("magnetite", "garnierite", "bismuthinite", "native_gold")) ROCK_HARDNESS.put(k, 4);
+        ROCK_HARDNESS.put("rough_gem", 5);
+        ROCK_HARDNESS.put("native_platinum", 6);
+        ROCK_HARDNESS.put("native_aluminum", 7);
+
         // --- item types. rule: hard = hardness >= 3 (not pig iron), precious = precious metals only, any = all
-        ITEMS.put("pickaxe", new ItemType("pickaxe", "Pickaxe", 2, 1.5, "tools", "hard", "tool", List.of("s", "e"), null,
-                "Equip a miner: digs faster."));
-        ITEMS.put("axe", new ItemType("axe", "Battle axe", 2, 1.8, "weapons", "hard", "weapon", List.of("s", "e"), null,
+        ITEMS.put("pickaxe", new ItemType("pickaxe", "Pickaxe", 2, 1.5, 1, "tools", "tool", "tool", List.of("s", "e"), null,
+                "Equip a miner: digs faster, and harder metal breaks harder rock. Wears out."));
+        ITEMS.put("axe", new ItemType("axe", "Battle axe", 2, 1.8, 2, "weapons", "hard", "weapon", List.of("s", "e"), null,
                 "Equip a warrior: hits harder."));
-        ITEMS.put("helm", new ItemType("helm", "Helm", 2, 1.6, "armor", "hard", "helm", List.of("e"), null,
+        ITEMS.put("helm", new ItemType("helm", "Helm", 2, 1.6, 2, "armor", "hard", "helm", List.of("e"), null,
                 "Equip anyone: protects the head."));
-        ITEMS.put("mail", new ItemType("mail", "Chain mail", 4, 1.7, "armor", "hard", "armor", List.of("e"), "mail",
+        ITEMS.put("mail", new ItemType("mail", "Chain mail", 4, 1.7, 3, "armor", "hard", "armor", List.of("e"), "mail",
                 "Equip anyone: strong protection."));
-        ITEMS.put("chain", new ItemType("chain", "Chain", 1, 1.3, "hardware", "any", null, List.of(), null,
+        ITEMS.put("chain", new ItemType("chain", "Chain", 1, 1.3, 1, "hardware", "any", null, List.of(), null,
                 "Every city needs chains."));
-        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.6, "tableware", "any", null, List.of("e", "g"), null,
+        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.6, 2, "tableware", "any", null, List.of("e", "g"), null,
                 "Kept in stock, fine goblets make the tavern nicer."));
-        ITEMS.put("ring", new ItemType("ring", "Ring", 1, 2.5, "jewelry", "precious", null, List.of("e", "g"), null,
+        ITEMS.put("ring", new ItemType("ring", "Ring", 1, 2.5, 4, "jewelry", "precious", null, List.of("e", "g"), null,
                 "Small and valuable."));
-        ITEMS.put("crown", new ItemType("crown", "Crown", 3, 2.2, "jewelry", "precious", null, List.of("e", "g"), "crown",
+        ITEMS.put("crown", new ItemType("crown", "Crown", 3, 2.2, 5, "jewelry", "precious", null, List.of("e", "g"), "crown",
                 "Fit for a mountain king."));
 
         MODS.put("s", new Mod("s", "Sharpened", 1.3, "grindstone", "+25% attack or digging"));
@@ -377,10 +397,23 @@ public final class Content {
     public static boolean metalFits(ItemType t, Metal m) {
         return switch (t.rule()) {
             case "hard" -> m.hardness() >= 3 && !m.id().equals("pig_iron");
+            case "tool" -> m.hardness() >= 2 && !m.precious() && !m.id().equals("pig_iron");
             case "precious" -> m.precious();
             default -> true;
         };
     }
+
+    /** What one quality step multiplies the value by: 1.3 for the easiest pieces up to 1.7 for the hardest. */
+    public static double qualityStep(ItemType t) { return 1.2 + 0.1 * t.skill(); }
+
+    /** Value factor of a quality tier: Normal is 1, each tier up or down one step; an artifact is five masterworks. */
+    public static double qualityMult(ItemType t, int q) {
+        double s = qualityStep(t);
+        return q >= ARTIFACT ? 5 * Math.pow(s, ARTIFACT - 2) : Math.pow(s, q - 1);
+    }
+
+
+    public static int rockHardness(String key) { return ROCK_HARDNESS.getOrDefault(key, 1); }
 
     public static String category(String key) {
         if (isWear(key)) return "clothing";
@@ -401,7 +434,7 @@ public final class Content {
     /** The metal a market price for an item type is quoted in: bronze for hard goods, silver for precious, else copper. */
     public static String refMetal(ItemType t) {
         return switch (t.rule()) {
-            case "hard" -> "bronze";
+            case "hard", "tool" -> "bronze";
             case "precious" -> "silver";
             default -> "copper";
         };
@@ -438,7 +471,7 @@ public final class Content {
             String[] p = parseItem(key);
             ItemType t = ITEMS.get(p[0]);
             Metal m = METALS.get(p[1]);
-            double v = m.value() * t.bars() * t.factor() * QUALITIES.get(Integer.parseInt(p[2])).mult();
+            double v = m.value() * t.bars() * t.factor() * qualityMult(t, Integer.parseInt(p[2]));
             for (char c : p[3].toCharArray()) v *= MODS.get(String.valueOf(c)).mult();
             return v;
         }
@@ -571,6 +604,8 @@ public final class Content {
         d.put("cities", CITIES.values());
         d.put("traditions", TRADITIONS.values());
         d.put("qualities", QUALITIES);
+        d.put("rockHardness", ROCK_HARDNESS);
+        d.put("makeshiftHardness", MAKESHIFT_HARDNESS);
         d.put("skills", SKILLS);
         d.put("blueprints", BLUEPRINT_NAMES);
         Map<String, Object> plan = new LinkedHashMap<>();

@@ -1,6 +1,6 @@
 // The mines: lift, layers, miners.
-import { G, F, D, byId, fmt, goodName, building, stock, now, dur } from './data.js';
-import { h, img, goodIcon, bar, bus, ico, info } from './ui.js';
+import { G, F, D, byId, fmt, goodName, building, stock, now, dur, isItem, parseItem } from './data.js';
+import { h, img, goodIcon, bar, bus, ico, info, statusIco } from './ui.js';
 import { mineLayer } from './mine48.js';
 import * as S from './sprites.js';
 import { costBtn, upgradeBtn } from './panels-base.js';
@@ -20,6 +20,19 @@ export function renderMines() {
     f.storageFull ? h('p', { class: 'bad-t small' }, 'Warehouse full - mining has stopped. Smelt or sell, or upgrade the warehouse.') : null,
     h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('lift')), upgradeBtn(building('warehouse')))));
 
+  // pickaxes: spares in the warehouse, miners on the makeshift pick, swapping by themselves
+  const miners = f.dwarves.filter((x) => x.job === 'miner' && !x.busy);
+  const spare = Object.entries(f.stock).filter(([k, v]) => v > 0 && isItem(k) && parseItem(k).type === 'pickaxe').reduce((s, [, v]) => s + v, 0);
+  const makeshift = miners.filter((x) => !x.tool).length;
+  const worn = miners.filter((x) => x.tool && (d.dwarves[x.id].toolLeft ?? 1) < 0.15).length;
+  out.push(h('div', { class: 'card' + (makeshift && miners.length ? ' warn' : '') },
+    h('div', { class: 'row between' }, h('h3', null, 'Pickaxes ', info(`Every miner carries a free makeshift pick: slow, it never breaks, but it only breaks soft rock. Forged picks dig faster and break rock up to their metal's hardness, but they wear out with work.`)),
+      h('span', { class: 'muted small' }, `${fmt(spare)} spare`)),
+    makeshift ? h('p', { class: 'warn-t small' }, statusIco('warn', 'icon s'), ` ${makeshift} miner${makeshift === 1 ? ' digs' : 's dig'} with a makeshift pick. Forge pickaxes at the forge.`) : null,
+    worn ? h('p', { class: 'small muted' }, `${worn} pick${worn === 1 ? ' is' : 's are'} almost worn out.`) : null,
+    h('div', { class: 'row between' }, h('span', { class: 'small' }, 'Miners take a new pick from the warehouse by themselves'),
+      h('button', { class: 'btn small' + (f.autoPicks ? ' good' : ''), 'aria-pressed': String(!!f.autoPicks), onclick: () => bus.act({ type: 'autoPicks', on: !f.autoPicks }) }, f.autoPicks ? 'On' : 'Off'))));
+
   G.data.layers.forEach((layer, i) => {
     const ls = f.layers[i], dl = d.layers[i];
     const th = ls.threat ? f.threats.find((x) => String(x.id) === ls.threat) : null;
@@ -31,9 +44,12 @@ export function renderMines() {
     card.append(h('div', { class: 'row between' }, h('h3', null, layer.name,
       h('button', { class: 'btn small', style: { marginLeft: '8px' }, 'aria-label': 'Show this layer', disabled: G.screen === 'mines' && mineLayer() === i, onclick: () => bus.showLayer(i) }, ico('mines'))),
       ls.unlocked ? h('span', { class: 'muted small' }, 'Shaft level ' + ls.level) : h('span', { class: 'muted small' }, ico('lock'), ' Locked')));
-    card.append(h('div', { class: 'ore-list' }, ores.map(([k, w]) => h('div', { class: 'ore', title: goodName(k) },
-      goodIcon(k), h('span', { class: 'nm' }, goodName(k)), h('span', { class: 'dim small' }, Math.round(w / total * 100) + '%'), h('b', null, fmt(stock(k)))))));
+    const hard = new Set(dl.tooHard || []);
+    card.append(h('div', { class: 'ore-list' }, ores.map(([k, w]) => h('div', { class: 'ore' + (ls.unlocked && hard.has(k) ? ' locked' : ''), title: goodName(k) + ' · hardness ' + rockHard(k) },
+      goodIcon(k), h('span', { class: 'nm' }, ls.unlocked && hard.has(k) ? ico('lock') : null, goodName(k)), h('span', { class: 'dim small' }, Math.round(w / total * 100) + '%'), h('b', null, fmt(stock(k)))))));
     if (ls.unlocked) {
+      if (hard.size && dl.miners) card.append(h('p', { class: 'warn-t small' }, statusIco('warn', 'icon s'),
+        ` ${[...hard].map(goodName).join(', ')}: too hard for your picks. Forge ${pickFor(Math.min(...[...hard].map(rockHard)))} pickaxes.`));
       if (th) card.append(h('p', { class: 'bad-t' }, img(S.monster(th.monster, 0), 'icon'), ` ${th.name} blocks this layer! `,
         h('button', { class: 'btn small danger', onclick: () => bus.go('war') }, 'Send warriors')));
       const inCart = Object.values(ls.cart || {}).reduce((s, v) => s + v, 0), size = dl.cartSize || 10, target = dl.cartTarget || size;
@@ -82,4 +98,13 @@ function cartRule(i, ls, inCart) {
   return h('div', { class: 'row wrap cart-rule' }, h('span', { class: 'small muted' }, 'Goes up when'),
     pick(FILLS, fill, 'fill'), pick(MINUTES, min, 'minutes'),
     left != null ? h('span', { class: 'small dim' }, left ? `leaves in ${left} min` : 'leaves now') : null);
+}
+
+/** Hardness of a rock (what a pick must at least be made of). */
+function rockHard(k) { return (G.data.rockHardness || {})[k] || 1; }
+
+/** The cheapest metal for a pick that breaks rock of this hardness. */
+function pickFor(hard) {
+  const m = G.data.metals.filter((x) => x.hardness >= Math.max(2, hard) && !x.precious && x.id !== 'pig_iron').sort((a, b) => a.value - b.value)[0];
+  return m ? m.name.toLowerCase() : 'harder';
 }

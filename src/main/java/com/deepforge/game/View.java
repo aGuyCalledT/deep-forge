@@ -69,6 +69,8 @@ public final class View {
             for (String s : Content.SKILLS) lv.put(s, skill(x, s));
             m.put("skills", lv);
             if (x.job.equals("miner")) m.put("rate", round(minerRate(f, x, f.layers.get(x.layer))));
+            m.put("pickHardness", pickHardness(x));
+            if (x.tool != null) m.put("toolLeft", round(Math.max(0, 1 - x.toolWear / toolLife(x.tool))));
             dw.put(x.id, m);
         }
         d.put("dwarves", dw);
@@ -89,9 +91,11 @@ public final class View {
         // mining per layer (ore per hour before the lift limit)
         double[] rate = new double[f.layers.size()];
         int[] miners = new int[f.layers.size()];
+        int[] best = new int[f.layers.size()];
         for (Dwarf x : f.dwarves) {
             if (!x.job.equals("miner") || x.busy != null) continue;
             miners[x.layer]++;
+            best[x.layer] = Math.max(best[x.layer], pickHardness(x));
             if (f.layers.get(x.layer).threat == null) rate[x.layer] += minerRate(f, x, f.layers.get(x.layer));
         }
         List<Object> layers = new ArrayList<>();
@@ -102,6 +106,12 @@ public final class View {
             m.put("cartSize", cartSize(l));
             m.put("cartTarget", cartTarget(l));
             m.put("veinOre", veinOre(l));
+            // rock no miner on this layer can break with the picks they have
+            int pick = Math.max(best[l.index], Content.MAKESHIFT_HARDNESS);
+            m.put("bestPick", pick);
+            List<String> hard = new ArrayList<>();
+            for (String k : Content.LAYERS.get(l.index).weights().keySet()) if (Content.rockHardness(k) > pick) hard.add(k);
+            m.put("tooHard", hard);
             m.put("upgrade", l.unlocked ? layerUpgradeCost(l) : null);
             m.put("unlock", l.unlocked ? null : layerUnlockCost(l.index));
             m.put("discovered", !Content.LAYERS.get(l.index).needsDiscovery() || f.discovered.contains(String.valueOf(l.index)));

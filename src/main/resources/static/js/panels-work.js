@@ -1,5 +1,5 @@
 // Workshops: queues, the bellows and the anvil.
-import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
+import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem, qualityStep, qualityMult } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand, statusIco } from './ui.js';
 import * as A from './audio.js';
 const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'tailor', 'farm', 'brewery', 'barracks'];
@@ -281,7 +281,9 @@ function orderSheet(b) {
       })));
       if (st.itype) {
         const t = byId.items[st.itype];
-        parts.push(h('p', { class: 'small' }, `${t.bars} bars each. ${t.note}`));
+        parts.push(h('p', { class: 'small' }, `${t.bars} bars each. ${t.note} `,
+          info(`Skill ${t.skill} of 5. Harder pieces come out crude more often, but every quality step is worth ×${qualityStep(t).toFixed(1)}: a masterwork is worth ×${qualityMult(t, 4).toFixed(1)}. Let your best smiths make them.`)));
+        if (t.slot === 'tool') parts.push(h('p', { class: 'small muted' }, 'A pick breaks rock up to its metal\'s hardness. Harder metal digs faster and lasts longer.'));
         const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
         for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
         if (!metals.length) parts.push(h('p', { class: 'muted' }, 'No metal fits.'));
@@ -347,6 +349,7 @@ function orderInputs(st) {
 
 function fits(t, m) {
   if (t.rule === 'hard') return m.hardness >= 3 && m.id !== 'pig_iron';
+  if (t.rule === 'tool') return m.hardness >= 2 && !m.precious && m.id !== 'pig_iron';
   if (t.rule === 'precious') return m.precious;
   return true;
 }

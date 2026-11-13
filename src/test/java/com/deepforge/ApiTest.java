@@ -55,7 +55,7 @@ class ApiTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cities.ironmarch").isArray());
         mvc.perform(get("/api/players").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].owner").value("Tester"));
-        mvc.perform(get("/api/data")).andExpect(status().isOk()).andExpect(jsonPath("$.metals.length()").value(25));
+        mvc.perform(get("/api/data")).andExpect(status().isOk()).andExpect(jsonPath("$.metals.length()").value(26));
         mvc.perform(get("/api/audio")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.sounds[?(@ == 'click.mp3')]").exists())
                 .andExpect(jsonPath("$.music[?(@ == 'chill-track1.mp3')]").exists());

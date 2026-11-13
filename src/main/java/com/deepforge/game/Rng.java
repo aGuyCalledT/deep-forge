@@ -53,4 +53,15 @@ public final class Rng {
         }
         return w.keySet().iterator().next();
     }
+
+    public String weightedD(Map<String, Double> w) {
+        double total = 0;
+        for (double v : w.values()) total += v;
+        double r = next() * total;
+        for (Map.Entry<String, Double> e : w.entrySet()) {
+            r -= e.getValue();
+            if (r < 0) return e.getKey();
+        }
+        return w.keySet().iterator().next();
+    }
 }

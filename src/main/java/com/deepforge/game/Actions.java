@@ -20,6 +20,8 @@ public final class Actions {
         if (!ok) throw new GameException(msg);
     }
 
+    static final double USED_PICK_HOURS = 0.25;   // a pick that worked longer than this is worn: taking it off scraps it
+
     static String str(Map<String, Object> a, String k) {
         Object v = a.get(k);
         return v == null ? null : String.valueOf(v);
@@ -75,6 +77,7 @@ public final class Actions {
             case "upgrade" -> upgrade(f, a);
             case "upgradeLayer" -> upgradeLayer(f, a);
             case "cartRule" -> cartRule(f, a);
+            case "autoPicks" -> autoPicks(f, a);
             case "unlockLayer" -> unlockLayer(f, a, t);
             case "queueAdd" -> queueAdd(f, a);
             case "queueRemove" -> queueRemove(f, a);
@@ -245,10 +248,21 @@ public final class Actions {
         check(item != null && Content.isItem(item) && stock(f, item) > 0, "You don't have that item.");
         String slot = Content.ITEMS.get(Content.parseItem(item)[0]).slot();
         check(slot != null, "That can't be equipped.");
-        String old = slotGet(d, slot);
-        if (old != null) add(f, old, 1);
+        takeOff(f, d, slot);
         add(f, item, -1);
         slotSet(d, slot, item);
+    }
+
+    /** Take a piece off a dwarf. A pick that has done real work is worn and goes to the scrap heap, not back to the warehouse. */
+    static void takeOff(Fortress f, Dwarf d, String slot) {
+        String old = slotGet(d, slot);
+        if (old != null && !(slot.equals("tool") && d.toolWear > USED_PICK_HOURS)) add(f, old, 1);
+        slotSet(d, slot, null);
+        if (slot.equals("tool")) d.toolWear = 0;
+    }
+
+    static void autoPicks(Fortress f, Map<String, Object> a) {
+        f.autoPicks = Boolean.TRUE.equals(a.get("on")) || "true".equals(str(a, "on"));
     }
 
     static void wear(Fortress f, Map<String, Object> a) {
@@ -275,9 +289,7 @@ public final class Actions {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
         String slot = str(a, "slot");
         check(List.of("weapon", "helm", "armor", "tool").contains(slot), "Unknown slot.");
-        String old = slotGet(d, slot);
-        if (old != null) add(f, old, 1);
-        slotSet(d, slot, null);
+        takeOff(f, d, slot);
     }
 
     static String slotGet(Dwarf d, String slot) {

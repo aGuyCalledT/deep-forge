@@ -153,11 +153,20 @@ public final class Sim {
         double[] sniff = new double[f.layers.size()];
         int[] miners = new int[f.layers.size()];
         double total = 0;
+        List<Map<String, Double>> mix = new ArrayList<>();
+        for (int i = 0; i < f.layers.size(); i++) mix.add(new LinkedHashMap<>());
         for (Dwarf d : f.dwarves) {
             if (!d.job.equals("miner") || d.busy != null || d.dig != null) continue;
             LayerState l = f.layers.get(d.layer);
             if (!l.unlocked || l.threat != null) continue;
+            if (d.tool == null && f.autoPicks) takePick(f, d, t);
             double v = minerRate(f, d, l) * dt / H;
+            // each miner brings only what their pick can break
+            Map<String, Integer> can = mineable(Content.LAYERS.get(l.index), pickHardness(d));
+            double n = 0;
+            for (int w : can.values()) n += w;
+            for (Map.Entry<String, Integer> e : can.entrySet()) mix.get(l.index).merge(e.getKey(), v * e.getValue() / n, Double::sum);
+            wearPick(f, d, dt / H, t);
             rate[l.index] += v;
             miners[l.index]++;
             if (has(d, "sniffer")) sniff[l.index]++;
@@ -182,7 +191,7 @@ public final class Sim {
                     if (used >= cap) { l.pending = Math.min(l.pending, 1); f.storageFull = true; break; }
                     used += sendCart(f, l, t);
                 }
-                String ore = r.weighted(layer.weights());
+                String ore = mix.get(l.index).isEmpty() ? r.weighted(layer.weights()) : r.weightedD(mix.get(l.index));
                 if (l.cart.isEmpty()) l.cartStart = t;
                 l.cart.merge(ore, r.chance(sniffChance) ? 2 : 1, Integer::sum);
                 l.pending -= 1;
@@ -190,6 +199,35 @@ public final class Sim {
             if (cartReady(l, t) && used < cap) used += sendCart(f, l, t);
             if (used >= cap) f.storageFull = true;
         }
+    }
+
+    /** A pick wears with every working hour; when it breaks the miner takes the next one, or the makeshift pick. */
+    static void wearPick(Fortress f, Dwarf d, double hours, double t) {
+        if (d.tool == null) return;
+        d.toolWear += hours;
+        if (d.toolWear < toolLife(d.tool)) return;
+        String broke = Content.goodName(d.tool).toLowerCase();
+        d.tool = null;
+        d.toolWear = 0;
+        String next = f.autoPicks ? takePick(f, d, t) : null;
+        if (next != null) log(f, t, "info", fullName(d) + "'s " + broke + " broke. They took a " + Content.goodName(next).toLowerCase() + " from the warehouse.");
+        else log(f, t, "warn", fullName(d) + "'s " + broke + " broke. They dig on with a makeshift pick. Forge new pickaxes.");
+    }
+
+    /** Equip the best pickaxe in the warehouse. Returns its key, or null when there is none. */
+    static String takePick(Fortress f, Dwarf d, double t) {
+        String best = null;
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) {
+            if (e.getValue() <= 0 || !Content.isItem(e.getKey())) continue;
+            Content.ItemType it = Content.ITEMS.get(Content.parseItem(e.getKey())[0]);
+            if (!"tool".equals(it.slot())) continue;
+            if (best == null || pickScore(e.getKey()) > pickScore(best)) best = e.getKey();
+        }
+        if (best == null) return null;
+        add(f, best, -1);
+        d.tool = best;
+        d.toolWear = 0;
+        return best;
     }
 
     /** Empties a layer's cart into the warehouse. Returns how much it carried. */
@@ -234,6 +272,7 @@ public final class Sim {
             String k = d.dig;
             int[] c = Layouts.cell(k);
             double work = l.digs.getOrDefault(k, 0.0) + dt * workSpeed(f, d, "mining") * toolBonus(d);
+            wearPick(f, d, dt / H, t);
             addXp(d, "mining", 10 * dt / H);
             if (work >= digSeconds(c[1])) {
                 Layouts.dugOut(f, k, t + dt);

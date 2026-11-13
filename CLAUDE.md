@@ -29,7 +29,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 |---|---|
 | `game/Content.java` | alle Inhalte: Metalle, Legierungen, Erze, Waren, Schichten, Monster, Gebäude, Eigenschaften, Städte, Traditionen |
 | `game/State.java` | Spielstand (eine JSON-Zeile pro Spieler) und die gemeinsame Welt (Markt) |
-| `game/Rules.java` | Formeln: Tempo, Kraft, Kapazitäten, Kosten, Kampf, Tod |
+| `game/Rules.java` | Formeln: Tempo, Kraft, Kapazitäten, Kosten, Kampf, Tod, Spitzhacken (Härte, Tempo, Abnutzung) |
 | `game/Sim.java` | Zeitschritt: Bedürfnisse, Stimmung, Mine, Werkstätten, Monster, Überfälle, Karawanen, Zuwanderung |
 | `game/Recipes.java` | was jede Werkstatt kann und braucht |
 | `game/Expeditions.java` | Gerüchte, Etappen, Entscheidungen, Beute |
@@ -80,7 +80,9 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   Schmelz- und Abschreck-Text, Abschreck-Fenster). Legierung zusätzlich `alloy(...)`. Wert so wählen, dass die
   Legierung mehr wert ist als ihre Zutaten. Balancing-Doku ergänzen.
 - **Neue Ware:** `ITEMS` in `Content.java` (Barren, Faktor, Kategorie, Metall-Regel, Slot, erlaubte Veredelungen,
-  optional Bauplan). Pixel-Art in `sprites.js` → `item()`. Wenn ausrüstbar: Wirkung in `Rules.power`/`toolBonus`.
+  optional Bauplan) und **Skill-Level 1–5** (wie schwer gute Qualität ist; ein Qualitätsschritt ist ×`1,2 + 0,1 × Skill`,
+  `Content.qualityStep`, gleich im Client in `data.js`). Pixel-Art in `sprites.js` → `item()`. Wenn ausrüstbar: Wirkung in `Rules.power`/`pickSpeed`.
+- **Neues Erz:** `ore(...)` und Härte in `ROCK_HARDNESS` (`Content.java`); eine Spitzhacke bricht nur, was höchstens so hart ist wie ihr Metall.
 - **Neues Gebäude:** `building(...)` in `Content.java`. Werkstatt (`queue`): Rezepte in `Recipes.java`
   (`BY_BUILDING`, `validate`, `inputs`, `start`) und Bestell-Sheet in `panels-work.js`. Passiv: Wirkung in
   `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raum in `art-src/rooms.px.js` (`room(...)`, drei Stufen), Anker in `art-src/shared.js` (`ROOMS`),

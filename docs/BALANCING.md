@@ -27,7 +27,7 @@ und hier.
 |---|---|
 | Arbeitstempo | `(1 + 0,06 × Fertigkeit) × Stimmung (0,6–1,4) × Eigenschaften × Traditionen`, verletzt (< 40 HP) halbiert |
 | Fertigkeitsstufe | `floor(sqrt(xp / 40))`, max. 20. Arbeit gibt 10–12 xp pro Stunde |
-| Miner | Schicht-Grundwert (12 / 10 / 8 / 6,5 / 5 Erz/h) × Tempo × Schacht (+20 %/Stufe) × Spitzhacke (`1 + Härte × 0,05 × Kraft der Qualität`, +15 % geschärft) |
+| Miner | Schicht-Grundwert (12 / 10 / 8 / 6,5 / 5 Erz/h) × Tempo × Schacht (+20 %/Stufe) × Spitzhacke (siehe „Spitzhacken“) |
 | Lift | `80 × 1,35^(Stufe−1)` Erz/h |
 | Erzwagen | fasst `10 + 5 × (Schachtstufe−1)` Erz je Schicht; Erz kommt erst ins Lager, wenn der Wagen voll ist und losfährt. Ist das Lager voll, wartet der volle Wagen. Der Spieler kann ihn früher schicken (`cartRule`): schon bei 25/50/75 % Füllung (`cartFill`, `Rules.cartTarget`) oder nach 5–60 Minuten ab dem ersten Erz (`cartMinutes`) |
 | Lager | `500 × 1,4^(Stufe−1)` (Pilze und Bier zählen nicht) |
@@ -50,26 +50,75 @@ zwei Minispiele (Takt am Amboss, 8 Schläge; Abschrecken an der goldenen Mitte).
 fertig (Spielwert 0). Ist der Amboss voll, verdrängt ein wertvolleres Stück das billigste; das billigste machen die
 Zwerge sofort fertig.
 
-| Stufe | Crude | Normal | Fine | Exceptional | Masterwork | Artifact |
-|---|---|---|---|---|---|---|
-| Wert ×| 0,7 | 1 | 1,2 | 1,5 | 2 | 20 |
-| Kraft ×| 0,8 | 1 | 1,4 | 1,8 | 2 | 3 |
+Jede Ware hat ein **Skill-Level** 1–5 (`ItemType.skill`): Spitzhacke und Kette 1, Axt, Helm und Kelch 2,
+Kettenhemd 3, Ring 4, Krone 5. Barren haben keins. Eine Qualitätsstufe multipliziert den Wert immer um denselben
+**Schritt** `s = 1,2 + 0,1 × Skill` (`Content.qualityStep`), Normal ist ×1, Stufe q ist `s^(q − 1)`, ein Artefakt
+fünf Meisterwerke (`5 × s³`):
+
+| Skill | Schritt | Crude | Normal | Fine | Exceptional | Masterwork | Artifact |
+|---|---|---|---|---|---|---|---|
+| 1 | ×1,3 | 0,77 | 1 | 1,3 | 1,69 | 2,2 | 11 |
+| 2 | ×1,4 | 0,71 | 1 | 1,4 | 1,96 | 2,74 | 13,7 |
+| 3 | ×1,5 | 0,67 | 1 | 1,5 | 2,25 | 3,38 | 16,9 |
+| 4 | ×1,6 | 0,62 | 1 | 1,6 | 2,56 | 4,1 | 20,5 |
+| 5 | ×1,7 | 0,59 | 1 | 1,7 | 2,89 | 4,91 | 24,6 |
+
+Die Kraft (Werkzeug, Waffe, Rüstung) hängt nur an der Stufe: Crude ×0,8, Normal 1, Fine 1,4, Exceptional 1,8,
+Masterwork 2, Artifact 3.
 
 - Spielwert `p = 0,55 × Takt + 0,45 × Abschrecken` (je 0–1). Ein Schlag zählt voll bis 30 ms neben dem Takt und
   nichts mehr ab 250 ms; Schläge ohne Takt kosten 0,04. Abschrecken zählt voll in der goldenen Mitte und fällt bis zum
   Rand der Leiste auf 0; nach 9 s ist das Stück kalt (0).
 - Mittlere Stufe `m = −0,3 + 0,18 × Schmieden + 0,2 × (Schmiedestufe − 1) + 1,2 × p + 0,3 (Nimble Fingers) + 0,2 × Master Smiths`,
-  Stufe = `runden(m + Normalverteilung × 0,6)`, begrenzt auf Crude bis Masterwork.
+  `− 0,35 × (Skill der Ware − 1)` (`Rules.ITEM_SKILL_PENALTY`), Stufe = `runden(m + Normalverteilung × 0,6)`, begrenzt
+  auf Crude bis Masterwork. Mittlerer Wertfaktor (Test `metalsAndQualitiesChangeEveryItemsValueAlike`):
+
+  | Schmied | Skill 1 | 2 | 3 | 4 | 5 |
+  |---|---|---|---|---|---|
+  | Anfänger (Schmieden 3, Stufe 1, ohne Spiel) | ×0,85 | ×0,76 | ×0,68 | ×0,63 | ×0,59 |
+  | Geselle (10, Stufe 3, ohne Spiel) | ×1,29 | ×1,23 | ×1,13 | ×0,98 | ×0,83 |
+  | Geselle mit gutem Spiel (p = 0,8) | ×1,65 | ×1,71 | ×1,66 | ×1,54 | ×1,36 |
+  | Meister (20, Stufe 5, ohne Spiel) | ×2,11 | ×2,47 | ×2,68 | ×2,73 | ×2,60 |
+  | Meister, perfektes Spiel | ×2,20 | ×2,74 | ×3,34 | ×3,93 | ×4,39 |
+
+  Anfänger machen am besten einfache Stücke, Meister mit gutem Spiel die schweren.
   Anfänger allein: fast nur Crude; Meister (Schmieden 20) allein: meist Exceptional; Meister mit gutem Spiel: meist Masterwork.
 - Artefakt-Chance je Stück = `0,009 × Arbeitsstunden × (Schmieden/20)⁴ × (1 + 0,15 × (Stufe − 1)) × (1 + 4 × p⁴)`.
   Ein Meister im Dauerbetrieb schafft etwa 1,5 Artefakte pro Woche; perfektes Spiel macht sie fünfmal so häufig.
-  Artefakte landen in `f.artifacts` (unbenannt, der Spieler gibt den Namen), Wert = Normalwert × 20.
+  Artefakte landen in `f.artifacts` (unbenannt, der Spieler gibt den Namen), Wert = Normalwert × 5 × s³.
 - Alte Spielstände (vor Version 3) werden umgestellt: Crude, Common, Fine bleiben; Superior und Exceptional werden
   Exceptional, Masterwork bleibt Masterwork (`Factory.toVersion3`).
 
+## Spitzhacken (Gesteinshärte, Tempo, Abnutzung)
+
+- Jedes Erz hat eine **Härte** 1–8 (`Content.ROCK_HARDNESS`). Eine Spitzhacke bricht, was höchstens so hart ist wie ihr
+  Metall (`Metal.hardness`). Ein Bergarbeiter bringt nur, was seine Hacke bricht, sein Tempo bleibt.
+
+  | Härte | Gestein | Mindestens |
+  |---|---|---|
+  | 1 | Kohle, Stein, Kalk, gediegenes Kupfer, Zinnstein | Notfall-Hacke |
+  | 2 | Malachit, Zinkblende, Bleiglanz | Kupfer |
+  | 3 | Roteisenstein, Brauneisenstein, Fahlerz, gediegenes Silber, Hornsilber | Messing, Nickel, Neusilber |
+  | 4 | Magnetit, Garnierit, Wismutglanz, gediegenes Gold | Bronze, Eisen |
+  | 5 | Rohedelstein | Wismutbronze |
+  | 6 | gediegenes Platin | Stahl |
+  | 7 | gediegenes Aluminium | Nickelstahl (neu: 2 Stahl + 1 Nickel → 2, Bauplan Steelmaking) |
+
+- **Notfall-Hacke** (`tool == null`): kostenlos, bricht nie, Härte 1, Tempo ×0,75 (`Rules.MAKESHIFT_SPEED`).
+- Spitzhacken aus Metall mit Härte ≥ 2, nicht edel, kein Roheisen (Regel `tool`).
+- Tempo = `(1 + min(0,6; 0,12 × (Härte der Hacke − mittlere Härte des Gebrochenen))) × Kraft der Qualität`, geschärft ×1,15.
+- **Abnutzung:** Lebensdauer = `(24 + 6 × Härte²) Arbeitsstunden × Kraft der Qualität` (`Rules.toolLife`):
+  Kupfer 48 h, Messing 78 h, Bronze und Eisen 120 h, Wismutbronze 174 h, Stahl 240 h, Nickelstahl 318 h.
+  Gezählt wird beim Schürfen und beim Graben in der Festung. Bricht die Hacke, nimmt der Zwerg die beste aus dem Lager
+  (Härte vor Tempo, `Rules.pickScore`), wenn „Miners take a new pick“ an ist (`Fortress.autoPicks`, Standard an),
+  sonst gräbt er mit der Notfall-Hacke weiter.
+- Wer eine benutzte Hacke (mehr als 15 min Arbeit) abnimmt, verschrottet sie. So setzt Tauschen die Abnutzung nicht zurück.
+
 ## Werte
 
-- Warenwert = `Metallwert × Barren × Typfaktor × Qualität × Veredelung` (geschärft ×1,3, graviert ×1,4, Edelstein ×1,8).
+- Warenwert = `Barrenwert des Metalls × Barren × Typfaktor × Qualität × Veredelung` (geschärft ×1,3, graviert ×1,4,
+  Edelstein ×1,8). Ein Metall verändert also jede Ware um denselben Faktor, sein Barrenwert geteilt durch den eines
+  anderen Metalls (Stahl ist 3,2-mal so viel wert wie Kupfer, auch als Axt, Kette oder Spitzhacke).
 - Kleidung: Stoff 4 Marks, Kleidung 6–26 Marks (Flickenhemd 6, Strickpullover 16, bestickte Tunika 26); also etwa das
   Doppelte bis Dreifache des Stoffs. Eigene Markt-Sorte `cat:clothing` mit einem gemeinsamen Kurs. Brille, Ohrringe und Grubenhelm lassen sich nicht nähen.
 - Erz ist 45 % eines Barrens wert. Legierungen sind immer mehr wert als ihre Zutaten.
