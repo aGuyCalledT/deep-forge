@@ -131,8 +131,14 @@ class SimTest {
         assertTrue(m.sellPrice("stonebridge", "bar:copper", 1) > p1 * 0.99, "price recovers over time");
     }
 
+    static int count(Fortress f, String prefix) {
+        int n = 0;
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) if (e.getKey().startsWith(prefix)) n += e.getValue();
+        return n;
+    }
+
     @Test
-    void forgeAndQuenchMakeItems() {
+    void forgedPiecesWaitAtTheAnvilThenTheDwarvesFinishThem() {
         Fortress f = fresh(11);
         Market m = Market.inMemory(11, T0);
         f.stock.put("bar:copper", 10);
@@ -140,11 +146,82 @@ class SimTest {
         Dwarf smith = f.dwarves.get(0);
         act(f, m, T0, "type", "assign", "dwarf", smith.id, "job", "worker", "building", "forge-1");
         act(f, m, T0, "type", "queueAdd", "building", "forge-1", "recipe", "craft", "itype", "goblet", "mat", "copper", "count", 3);
-        Sim.advance(f, T0 + 2 * 3600, m);
-        int goblets = 0;
-        for (Map.Entry<String, Integer> e : f.stock.entrySet())
-            if (e.getKey().startsWith("item:goblet:copper")) goblets += e.getValue();
-        assertEquals(3, goblets);
+        Sim.advance(f, T0 + 3600, m);
+        assertEquals(3, f.anvil.size(), "all three wait for the player");
+        assertEquals(0, count(f, "item:goblet:copper"));
+        int id = f.anvil.get(0).id;
+        act(f, m, T0 + 3600, "type", "smith", "id", id, "forge", 1.0, "quench", 0.9);
+        assertEquals(2, f.anvil.size());
+        assertNotNull(f.smithed);
+        assertEquals(id, f.smithed.forging);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 3600, "type", "smith", "id", id, "forge", 1, "quench", 1));
+        Sim.advance(f, T0 + 4 * 3600, m);
+        assertTrue(f.anvil.isEmpty(), "after two hours the dwarves finish them");
+        assertEquals(3, count(f, "item:goblet:copper") + f.artifacts.size());
+    }
+
+    @Test
+    void aFullAnvilKeepsTheMostValuablePieces() {
+        Fortress f = fresh(12);
+        Rng r = new Rng(5);
+        Building b = Rules.building(f, "forge-1");
+        for (int i = 0; i < Rules.ANVIL_MAX; i++) {
+            Job j = new Job(); j.recipe = "craft"; j.itype = "goblet"; j.mat = "copper";
+            b.job = j;
+            Sim.toAnvil(f, b, null, 0.1, r, T0);
+        }
+        Job gold = new Job(); gold.recipe = "craft"; gold.itype = "goblet"; gold.mat = "gold";
+        b.job = gold;
+        Sim.toAnvil(f, b, null, 0.1, r, T0);
+        assertEquals(Rules.ANVIL_MAX, f.anvil.size());
+        assertTrue(f.anvil.stream().anyMatch(g -> g.mat.equals("gold")), "the gold goblet takes a place");
+        assertEquals(1, count(f, "item:goblet:copper"), "the cheapest copper one was finished by the dwarves");
+        Job cheap = new Job(); cheap.recipe = "craft"; cheap.itype = "goblet"; cheap.mat = "copper";
+        b.job = cheap;
+        Sim.toAnvil(f, b, null, 0.1, r, T0);
+        assertEquals(2, count(f, "item:goblet:copper"), "a cheap piece on a full anvil is finished at once");
+    }
+
+    @Test
+    void skillAndPlayRaiseQuality() {
+        Fortress f = fresh(13);
+        Forging novice = new Forging(); novice.skill = 1; novice.level = 1; novice.hours = 0.05;
+        Forging master = new Forging(); master.skill = 20; master.level = 1; master.hours = 0.05;
+        assertTrue(Rules.smithMean(f, novice, 0) < 0.5, "a beginner alone makes crude pieces");
+        assertTrue(Rules.smithMean(f, master, 0) > 3, "a master alone makes exceptional pieces");
+        assertTrue(Rules.smithMean(f, master, 1) > 4.2, "with perfect play mostly masterworks");
+        // artifacts: about 1-2 a week for a master working all the time, five times as many with perfect play
+        double perWeek = Rules.artifactChance(master, 0) / master.hours * 168;
+        assertTrue(perWeek > 1 && perWeek < 2, "per week " + perWeek);
+        assertEquals(5, Rules.artifactChance(master, 1) / Rules.artifactChance(master, 0), 1e-9);
+        assertEquals(0, Rules.artifactChance(novice, 1), 1e-3);
+    }
+
+    @Test
+    void artifactsGetANameFromThePlayer() {
+        Fortress f = fresh(14);
+        Market m = Market.inMemory(14, T0);
+        Forging g = new Forging(); g.id = 99; g.itype = "goblet"; g.mat = "gold"; g.skill = 20; g.level = 1;
+        g.hours = 10_000; g.at = T0;   // so long in the making that it must become an artifact
+        f.anvil.add(g);
+        act(f, m, T0, "type", "smith", "id", 99, "forge", 1, "quench", 1);
+        assertEquals(Content.ARTIFACT, f.smithed.quality);
+        Artifact a = f.artifacts.get(f.artifacts.size() - 1);
+        assertTrue(a.unnamed);
+        assertEquals(20 * Content.baseValue("item:goblet:gold:1:"), a.value, 1e-6);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "nameArtifact", "id", a.id, "name", "x"));
+        act(f, m, T0, "type", "nameArtifact", "id", a.id, "name", "  The   Golden Thirst ");
+        assertEquals("The Golden Thirst", a.name);
+        assertFalse(a.unnamed);
+    }
+
+    @Test
+    void oldQualitiesAreMappedToTheNewOnes() {
+        String json = "{\"stock\":{\"item:axe:iron:5:s\":2,\"item:goblet:gold:4:\":1,\"item:goblet:gold:3:\":1,\"item:ring:silver:1:\":3}}";
+        String out = Factory.toVersion3(json);
+        assertTrue(out.contains("item:axe:iron:4:s"));
+        assertTrue(out.contains("item:goblet:gold:3:\":1,\"item:goblet:gold:3:"));
+        assertTrue(out.contains("item:ring:silver:1:"));
     }
 
     @Test

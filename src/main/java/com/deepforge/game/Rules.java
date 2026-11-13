@@ -213,11 +213,37 @@ public final class Rules {
         return layer.rate() * workSpeed(f, d, "mining") * shaftMult(l) * toolBonus(d);
     }
 
+    // ------------------------------------------------------------ smithing at the anvil
+
+    public static final int ANVIL_MAX = 10;
+    public static final double ANVIL_WAIT = 2 * 3600;     // then the dwarves finish the piece themselves
+    public static final double ARTIFACT_PER_HOUR = 0.009; // best smith (skill 20), forge level 1, no help: ~1.5 a week
+
+    /** Mean quality tier of a piece; play is 0..1 (0 = dwarves alone). */
+    public static double smithMean(Fortress f, Forging g, double play) {
+        return -0.3 + 0.18 * g.skill + 0.2 * (g.level - 1) + 1.2 * play + (g.nimble ? 0.3 : 0) + 0.2 * trad(f, "master_smiths");
+    }
+
+    /** Chance that the piece becomes an artifact. Perfect play makes it five times as likely. */
+    public static double artifactChance(Forging g, double play) {
+        double s = g.skill / 20.0;
+        return ARTIFACT_PER_HOUR * g.hours * s * s * s * s * (1 + 0.15 * (g.level - 1)) * (1 + 4 * Math.pow(play, 4));
+    }
+
+    /** Value of a forging at normal quality, used to decide which piece keeps its place at the anvil. */
+    public static double forgingValue(Forging g) {
+        return Content.baseValue(Content.itemKey(g.itype, g.mat, 1, ""));
+    }
+
+    public static double qualityPower(String key) {
+        return Content.QUALITIES.get(Integer.parseInt(Content.parseItem(key)[2])).power();
+    }
+
     public static double toolBonus(Dwarf d) {
         if (d.tool == null) return 1;
         String[] p = Content.parseItem(d.tool);
         Content.Metal m = Content.METALS.get(p[1]);
-        double q = Content.QUALITIES.get(Integer.parseInt(p[2])).mult();
+        double q = qualityPower(d.tool);
         return 1 + m.hardness() * 0.05 * q + (p[3].contains("s") ? 0.15 : 0);
     }
 
@@ -256,14 +282,14 @@ public final class Rules {
     public static double weaponAtk(String key) {
         if (key == null) return 0;
         String[] p = Content.parseItem(key);
-        double q = Content.QUALITIES.get(Integer.parseInt(p[2])).mult();
+        double q = qualityPower(key);
         return Content.METALS.get(p[1]).hardness() * 1.6 * q * (p[3].contains("s") ? 1.25 : 1);
     }
 
     public static double armorDef(String key, double perHardness) {
         if (key == null) return 0;
         String[] p = Content.parseItem(key);
-        double q = Content.QUALITIES.get(Integer.parseInt(p[2])).mult();
+        double q = qualityPower(key);
         return Content.METALS.get(p[1]).hardness() * perHardness * q;
     }
 

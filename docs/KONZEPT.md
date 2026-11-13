@@ -19,7 +19,7 @@ Die Zwerge arbeiten von selbst, die wichtigen Entscheidungen trifft der Spieler.
 ## Kernkreislauf
 
 ```
-Mine → Lift → Lager → Schmelze → Barren → Legierung → Schmiede → Abschrecken → Ware
+Mine → Lift → Lager → Schmelze → Barren → Legierung → Schmiede → Amboss (Takt und Abschrecken) → Ware
   → Werkstatt (schleifen, gravieren, Edelsteine) → Karawane → Stadt → Münzen → Ausbau → tiefer graben
 ```
 
@@ -32,8 +32,8 @@ Mine → Lift → Lager → Schmelze → Barren → Legierung → Schmiede → A
    Stahl …). Roheisen und Stahl brauchen Kalkstein als Flussmittel und den Bauplan „Steelmaking“.
 4. **Schmiede.** Man wählt, was entsteht: Spitzhacke, Axt, Helm, Kettenhemd, Kette, Kelch, Ring, Krone.
    Nicht jedes Metall passt (Waffen brauchen harte Metalle, Schmuck Edelmetalle).
-   Danach wird **abgeschreckt**: Tippt man im richtigen Glühmoment, steigt die Qualität. Sonst erledigt es der Schmied.
-   Jedes Metall hat dabei eine kleine Eigenheit (Zinn früh, Stahl spät) – nur Flair, keine Hürde.
+   Das fertige Stück wartet bis zu 2 h am **Amboss**: Im Taktspiel schmieden und im richtigen Moment abschrecken
+   hebt die Qualität (Crude bis Masterwork, selten ein benanntes Artefakt). Sonst erledigen es die Zwerge, schlechter.
 5. **Werkstätten.** Schleifstein (schärfen), Graveur, Juwelier (Edelsteine schleifen und einsetzen). Jede Stufe
    macht die Ware wertvoller oder besser.
 6. **Handel.** Händler-Zwerge ziehen mit Karawanen in Städte. Man sieht beim Losschicken, was dort gesucht ist,

@@ -9,6 +9,32 @@ import { notesView, markNotesSeen } from './notes.js';
 
 // ================================================================== fortress
 
+/** "goblet" -> "goblets", "axe" -> "axes", "chain mail" stays. */
+export function plural(name) {
+  if (/mail$|armor$|ware$/i.test(name)) return name;
+  if (/(s|x|ch|sh)$/i.test(name)) return name + 'es';
+  return name + 's';
+}
+
+/** Goods as stacks of one kind and metal ("Gold goblets"); open a stack to see every piece by quality, best first. */
+function stacks(list) {
+  const by = new Map();
+  for (const [k, v] of list) {
+    const p = parseItem(k), id = p.type + ':' + p.metal;
+    if (!by.has(id)) by.set(id, { p, list: [], n: 0, value: 0 });
+    const s = by.get(id); s.list.push([k, v]); s.n += v; s.value += baseValue(k) * v;
+  }
+  const all = [...by.values()].sort((a, b) => b.value - a.value);
+  return h('div', { class: 'stacks' }, all.map((s) => {
+    s.list.sort((a, b) => baseValue(b[0]) - baseValue(a[0]));
+    const name = byId.metals[s.p.metal].name + ' ' + plural(byId.items[s.p.type].name.toLowerCase());
+    const head = h('summary', null, goodIcon(s.list[0][0]), h('span', { class: 'nm' }, name), h('span', { class: 'n' }, fmt(s.n)));
+    return h('details', { class: 'stack' }, head,
+      h('div', { class: 'pieces' }, s.list.map(([k, v]) => h('div', { class: 'piece' }, goodIcon(k, 'icon s'),
+        h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'v small' }, moneyText(baseValue(k))), h('span', { class: 'n' }, fmt(v))))));
+  }));
+}
+
 export const EFFECT = {
   warehouse: () => `Holds ${fmt(D().capacity)} goods`,
   lift: () => `Carries ${fmt(D().liftCap)} ore per hour`,
@@ -57,12 +83,14 @@ export function renderFortress() {
   for (const [g, list] of Object.entries(groups)) {
     if (!list.length) continue;
     list.sort((a, b) => baseValue(b[0]) * b[1] - baseValue(a[0]) * a[1]);
+    const cell = ([k, v]) => h('div', { title: goodName(k) }, goodIcon(k), h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'n' }, fmt(v)));
     out.push(h('div', { class: 'card' }, h('h3', null, g),
-      h('div', { class: 'stock-grid' }, list.map(([k, v]) =>
-        h('div', { title: goodName(k) }, goodIcon(k), h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'n' }, fmt(v)))))));
+      g === 'Goods' ? stacks(list) : h('div', { class: 'stock-grid' }, list.map(cell))));
   }
   if (f.artifacts.length) out.push(h('div', { class: 'card' }, h('h3', null, 'Artifacts'),
-    f.artifacts.map((a) => h('div', { class: 'row' }, img(S.artifact()), h('span', { class: 'grow' }, a.name), h('span', { class: 'gold-t' }, '~' + fmt(a.value))))));
+    f.artifacts.map((a) => h('div', { class: 'row' }, a.item ? goodIcon(a.item) : img(S.artifact()), h('span', { class: 'grow' }, a.name),
+      a.unnamed ? h('button', { class: 'btn small primary', onclick: () => bus.nameArtifact(a.id) }, 'Name it') : null,
+      h('span', { class: 'gold-t' }, '~' + moneyText(a.value))))));
 
   // buildings
   out.push(h('h2', null, 'Buildings'));

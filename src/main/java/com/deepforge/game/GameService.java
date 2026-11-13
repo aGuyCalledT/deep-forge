@@ -42,7 +42,12 @@ public class GameService {
         if (json == null) return Factory.newFortress(uid, owner, now, seeds.nextLong());
         try {
             Fortress f = om.readValue(json, Fortress.class);
+            boolean v3 = f.version < 3;
             Factory.upgrade(f);
+            if (v3) {   // six qualities became Crude, Normal, Fine, Exceptional, Masterwork (and Artifact)
+                f = om.readValue(Factory.toVersion3(om.writeValueAsString(f)), Fortress.class);
+                f.version = 3;
+            }
             return f;
         } catch (Exception e) {
             throw new IllegalStateException("Broken save for user " + uid, e);

@@ -15,7 +15,6 @@ public final class Sim {
 
     public static final double STEP = 60;
     public static final double MAX_CATCHUP = 7 * 86400;
-    public static final double QUENCH_WAIT = 12;
     public static final Set<String> SURFACE = Set.of("smelter", "forge", "grindstone", "engraver", "jeweler", "tailor", "farm", "brewery");
     static final List<String> RAIDERS = List.of("Goblin warband", "Bandit gang", "Orc raiders", "Kobold swarm", "Troll pack");
 
@@ -37,6 +36,7 @@ public final class Sim {
         digging(f, dt, t);
         mining(f, dt, r, t + dt);
         buildings(f, dt, r, t);
+        anvil(f, r, t + dt);
         training(f, dt);
         threats(f, dt, r, t + dt);
         critters(f, dt, r, t + dt);
@@ -437,15 +437,9 @@ public final class Sim {
                 if (!startNext(f, b)) return;
             }
             Job j = b.job;
-            if (j.quenching) {
-                double done = j.quenchStart + QUENCH_WAIT;
-                if (t + dt >= done) {
-                    finishQuench(f, b, w, 0, r, Math.max(now, done));
-                    rem = t + dt - Math.max(now, done);
-                    continue;
-                }
-                b.status = "Quenching... tap Quench at the right glow!";
-                return;
+            if (j.quenching) {          // old saves: a piece waiting in the barrel goes to the anvil
+                toAnvil(f, b, w, 0.05, r, now);
+                continue;
             }
             double heat = b.type.equals("smelter") ? heatAt(b, now + rem / 2) : 0;
             double rate = workSpeed(f, w, skill) * buildingMult(b) * (1 + heat / 100);
@@ -453,7 +447,7 @@ public final class Sim {
             addXp(w, skill, 12 * Math.min(rem, need) / H);
             if (need <= rem) {
                 rem -= need;
-                complete(f, b, w, r, t + dt - rem);
+                complete(f, b, w, r, t + dt - rem, workSpeed(f, w, skill) * buildingMult(b));
             } else {
                 j.progress += rem * rate;
                 rem = 0;
@@ -493,11 +487,10 @@ public final class Sim {
         return false;
     }
 
-    static void complete(Fortress f, Building b, Dwarf w, Rng r, double at) {
+    static void complete(Fortress f, Building b, Dwarf w, Rng r, double at, double rate) {
         Job j = b.job;
         if (j.recipe.equals("craft")) {
-            j.quenching = true;
-            j.quenchStart = at;
+            toAnvil(f, b, w, j.time / Math.max(0.1, rate) / H, r, at);
             return;
         }
         for (Map.Entry<String, Integer> e : j.out.entrySet()) add(f, e.getKey(), e.getValue());
@@ -519,25 +512,83 @@ public final class Sim {
         b.job = null;
     }
 
-    /** Quench a finished forging. bonus > 0 when the player tapped at the right glow. */
-    public static void finishQuench(Fortress f, Building b, Dwarf w, double bonus, Rng r, double at) {
+    /**
+     * A forged piece comes off the fire and waits at the anvil for the player. When the anvil is full, the cheapest
+     * piece (this one or one already waiting) is finished by the dwarves at once.
+     */
+    public static void toAnvil(Fortress f, Building b, Dwarf w, double hours, Rng r, double at) {
         Job j = b.job;
-        double score = r.range(0, 45) + bonus + 3 * (b.level - 1) + 4 * trad(f, "master_smiths");
-        if (w != null) {
-            score += 1.5 * skill(w, "smithing");
-            if (has(w, "nimble")) score += 8;
-            addXp(w, "smithing", 6);
+        b.job = null;
+        Forging g = new Forging();
+        g.id = f.nextId++;
+        g.building = b.id;
+        g.itype = j.itype;
+        g.mat = j.mat;
+        g.dwarf = w == null ? 0 : w.id;
+        g.skill = w == null ? 0 : skill(w, "smithing");
+        g.nimble = w != null && has(w, "nimble");
+        g.level = b.level;
+        g.hours = hours;
+        g.at = at;
+        f.anvil.add(g);
+        if (f.anvil.size() > ANVIL_MAX) {
+            Forging low = f.anvil.get(0);
+            for (Forging x : f.anvil) if (forgingValue(x) < forgingValue(low)) low = x;
+            f.anvil.remove(low);
+            finishForging(f, low, 0, r, at, false);
         }
-        int q = score < 12 ? 0 : score < 32 ? 1 : score < 52 ? 2 : score < 70 ? 3 : score < 86 ? 4 : 5;
-        String key = Content.itemKey(j.itype, j.mat, q, "");
+    }
+
+    /** Pieces nobody came for: after a while the dwarves hammer and quench them themselves. */
+    static void anvil(Fortress f, Rng r, double t) {
+        for (Forging g : new ArrayList<>(f.anvil)) {
+            if (t - g.at < ANVIL_WAIT) continue;
+            f.anvil.remove(g);
+            finishForging(f, g, 0, r, g.at + ANVIL_WAIT, false);
+        }
+    }
+
+    /**
+     * Finish a piece. play is 0..1: how well the player hammered and quenched (0 for the dwarves alone).
+     * Returns the item key, or null when it became an artifact (then f.artifacts got a new, unnamed one).
+     */
+    public static Smithed finishForging(Fortress f, Forging g, double play, Rng r, double at, boolean byHand) {
+        Dwarf w = g.dwarf == 0 ? null : dwarf(f, g.dwarf);
+        if (w != null) addXp(w, "smithing", 6 + 6 * play);
+        Smithed out = new Smithed();
+        out.forging = g.id;
+        out.score = play;
+        String who = w == null ? "The forge" : fullName(w);
+        if (r.chance(artifactChance(g, play))) {
+            Artifact a = new Artifact();
+            a.id = f.nextId++;
+            a.item = Content.itemKey(g.itype, g.mat, Content.ARTIFACT, "");
+            a.name = "Nameless " + Content.METALS.get(g.mat).name().toLowerCase() + " " + Content.ITEMS.get(g.itype).name().toLowerCase();
+            a.desc = "Forged by " + who + ".";
+            a.value = Content.baseValue(a.item);
+            a.unnamed = true;
+            f.artifacts.add(a);
+            out.quality = Content.ARTIFACT;
+            out.artifact = a.id;
+            f.stats.itemsCrafted++;
+            fortressXp(f, 40);
+            log(f, at, "good", who + " forged a legendary artifact! Give it a name.");
+            return out;
+        }
+        double m = smithMean(f, g, play);
+        int q = (int) Math.round(m + r.gauss() * 0.6);
+        q = Math.max(0, Math.min(Content.ARTIFACT - 1, q));
+        String key = Content.itemKey(g.itype, g.mat, q, "");
         add(f, key, 1);
+        out.key = key;
+        out.quality = q;
         f.stats.itemsCrafted++;
         fortressXp(f, 3 + 2 * q);
-        if (q == 5) {
+        if (q == Content.ARTIFACT - 1) {
             f.stats.masterworks++;
-            log(f, at, "good", (w == null ? "The forge" : fullName(w)) + " forged a masterwork: " + Content.goodName(key) + "!");
+            if (byHand) log(f, at, "good", who + " made a masterwork: " + Content.goodName(key) + "!");
         }
-        b.job = null;
+        return out;
     }
 
     /** Warriors train in the barracks; guards in the entrance hall also learn a little while they stand watch and spar. */

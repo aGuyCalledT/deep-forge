@@ -235,3 +235,14 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Bergaußenseite bleiben hell, beim Bauen schimmert der Fels durch.
 - [ ] Nebel: Höhlen mit Monstern weiter weg später erst zeigen, wenn ein Späher sie gefunden hat?
 - [x] Patchnotes im Spiel (More → „What's new“, Details aufklappbar, Hinweis-Chip nach neuem Release).
+
+## Amboss (Schmiede-Minispiele)
+
+- [x] Geschmiedete Stücke warten am Amboss (max. 10, 2 h), sonst machen die Zwerge sie schlechter fertig.
+- [x] Eigener Screen (`smithy.js`): Taktspiel (Marken laufen zum roten Pfeil) und Abschrecken (Zeiger mit wechselndem
+      Tempo, goldene Mitte); Ergebnis mit Qualitätsleiste.
+- [x] Qualitäten Crude, Normal, Fine, Exceptional, Masterwork, Artifact; Artefakte bekommen vom Spieler einen Namen.
+- [x] Waren im Lager als Stapel („Gold goblets“), aufgeklappt nach Wert sortiert mit Qualität.
+- [ ] Eigene Sounds: Takt-Klick, Hammerschlag je Wertung, `quench-hiss` fehlt noch.
+- [ ] Eigener Hammer im Zwergen-Satz statt des im Screen gezeichneten.
+- [ ] Artefakte ausrüsten (heute nur Wert, Stimmung und Verkauf).

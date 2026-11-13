@@ -1,4 +1,4 @@
-// Workshops: queues, the bellows and the quench.
+// Workshops: queues, the bellows and the anvil.
 import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand, statusIco } from './ui.js';
 import * as A from './audio.js';
@@ -7,8 +7,6 @@ import * as S from './sprites.js';
 import { upgradeBtn, costBtn } from './panels-base.js';
 import { jobOf } from './hold.js';
 import { api } from './api.js';
-
-const QUENCH_WAIT = 12;
 
 export function orderLabel(e) {
   const n = e.remaining === -1 ? '∞' : '×' + e.remaining;
@@ -33,7 +31,7 @@ function wsState(b) {
   const bi = D().buildings[b.id] || {};
   if (F().siege) return ['bad', 'Besieged'];
   if (!bi.worker) return ['bad', 'No worker'];
-  if (b.job && b.job.quenching) return ['hot', 'Quench now!'];
+  if (b.type === 'forge' && (F().anvil || []).length) return ['hot', 'Pieces wait at the anvil'];
   if (byId.buildings[b.type].kind === 'continuous' || b.job) return ['ok', 'Working'];
   if (!b.queue.length) return ['warn', 'Queue empty'];
   const miss = bi.missing || {};
@@ -78,7 +76,8 @@ export function workCard(b) {
       h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(b)));
     return out;
   }
-  for (let i = 0; i < (info_.machines || 1); i++) { const j = jobOf(b, i); if (j && (j.quenching || !multi)) out.append(jobBlock(b, i)); }
+  if (b.type === 'forge') out.append(anvilBlock());
+  for (let i = 0; i < (info_.machines || 1); i++) { const j = jobOf(b, i); if (j && !multi) out.append(jobBlock(b, i)); }
   if (b.type === 'smelter') out.append(bellows(b));
   out.append(h('h3', null, 'Orders', info('The worker takes the first order that has its materials. Orders without materials wait.')));
   if (!b.queue.length) out.append(h('p', { class: 'small muted' }, 'No orders yet.'));
@@ -105,7 +104,7 @@ function machinesBlock(b) {
     const w = seats[i] != null ? f.dwarves.find((x) => x.id === seats[i]) : null;
     const j = jobOf(b, i);
     const what = !w ? h('span', { class: 'small bad-t' }, 'Nobody here')
-      : j ? (j.quenching ? h('span', { class: 'small gold-t' }, 'Quench now!') : h('span', { class: 'small muted' }, (bi.jobNames || [])[i] || 'Working'))
+      : j ? h('span', { class: 'small muted' }, (bi.jobNames || [])[i] || 'Working')
         : h('span', { class: 'small muted' }, t.kind === 'continuous' ? 'Working' : 'Waiting for an order');
     const busyJob = j && t.kind !== 'continuous';
     rows.push(h('div', { class: 'machine' + (w ? '' : ' empty') },
@@ -113,7 +112,7 @@ function machinesBlock(b) {
       w ? img(S.portrait(w), 'icon') : h('span', { class: 'machine-seat' }, ico('dwarf')),
       h('div', { class: 'grow' },
         h('div', null, w ? w.first + ' ' + w.clan : 'Free machine', w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
-        j && !j.quenching ? h('div', { class: 'busy' }, hourglass({ job: b.id, machine: i }, 's'), what, h('span', { class: 'small gold-t', 'data-eta': b.id, 'data-machine': i })) : what),
+        j ? h('div', { class: 'busy' }, hourglass({ job: b.id, machine: i }, 's'), what, h('span', { class: 'small gold-t', 'data-eta': b.id, 'data-machine': i })) : what),
       h('div', { class: 'machine-btns' },
         h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
         w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
@@ -131,7 +130,6 @@ function machinesBlock(b) {
 
 function jobBlock(b, i = 0) {
   const j = jobOf(b, i);
-  if (j.quenching) return quenchBlock(b, i);
   const m = j.recipe === 'smelt' ? byId.metals[byId.ores[j.mat].metal] : byId.metals[j.mat];
   return h('div', { class: 'job' }, hourglass({ job: b.id, machine: i }),
     h('div', null, h('b', null, D().buildings[b.id].jobName || 'Working', m && b.type === 'smelter' ? info(m.meltNote) : null),
@@ -173,23 +171,20 @@ export function currentHeat(id) {
   return Math.max(v, server);
 }
 
-// ------------------------------------------------------------------ quench
+// ------------------------------------------------------------------ anvil
 
-function quenchBlock(b, i = 0) {
-  const j = jobOf(b, i), m = byId.metals[j.mat];
-  const box = h('div', { class: 'quench' });
-  const glow = h('div', { class: 'glow' }), mark = h('div', { class: 'mark' }), nowEl = h('div', { class: 'now' });
-  const W = QUENCH_WAIT;
-  mark.style.left = (m.qStart / W * 100) + '%';
-  mark.style.width = (m.qWidth / W * 100) + '%';
-  box.append(glow, mark, nowEl);
-  box.dataset.quench = b.id; box.dataset.machine = i;
-  return h('div', null,
-    h('div', { class: 'row between' }, h('b', null, (b.machines || 1) > 1 ? `Machine ${i + 1}: ready to quench ` : 'Ready to quench: ', byId.metals[j.mat].name.toLowerCase(), ' ', byId.items[j.itype].name.toLowerCase()),
-      h('span', { class: 'small muted' }, 'click the barrel')),
-    box,
-    info(m.quenchNote),
-    h('button', { class: 'btn big primary', onclick: () => bus.act({ type: 'quench', building: b.id, machine: i }) }, 'Quench!'));
+/** Pieces off the fire wait at the anvil: hammer and quench them yourself for better quality. */
+export function anvilBlock() {
+  const f = F(), list = f.anvil || [], max = D().anvilMax || 10;
+  const best = [...list].sort((a, b) => b.at - a.at)[0];
+  return h('div', { class: 'anvil-card card' + (list.length ? ' hot' : '') },
+    h('div', { class: 'row between' },
+      h('b', null, 'At the anvil ', h('span', { class: 'gold-t' }, `${list.length}/${max}`)),
+      info('Every forged piece waits here for two hours. Hammer it in time and quench it at the golden mark for better quality. Pieces you leave are finished by the dwarves, but never as well. When the anvil is full, a better piece pushes out the cheapest.')),
+    list.length ? h('div', { class: 'anvil-row' }, list.slice(0, 10).map((g) => img(S.item(g.itype, g.mat), 'icon s')))
+      : h('p', { class: 'small muted' }, 'Nothing hot right now. Forged pieces come here.'),
+    h('button', { class: 'btn big primary', disabled: !list.length, onclick: () => bus.smithy() }, ico('work'), list.length ? 'To the anvil' : 'Nothing to forge'),
+    best ? h('p', { class: 'small dim' }, 'The dwarves finish the oldest one in ', h('span', { 'data-until': Math.min(...list.map((g) => (D().anvil || []).find((x) => x.id === g.id)?.until || 0)) }), '.') : null);
 }
 
 /** Called every frame by main.js: moves progress bars, heat and quench glow smoothly. */
@@ -210,23 +205,13 @@ export function animateWork() {
   document.querySelectorAll('[data-eta]').forEach((el) => {
     const b = F().buildings.find((x) => x.id === el.dataset.eta);
     const i = +(el.dataset.machine || 0), j = b && jobOf(b, i);
-    if (!j || j.quenching) { el.textContent = ''; return; }
+    if (!j) { el.textContent = ''; return; }
     const info = D().buildings[b.id] || {};
     const speed = ((info.speeds || [])[i] ?? info.speed ?? 0) * (1 + (b.type === 'smelter' ? currentHeat(b.id) / 100 : 0));
     el.textContent = speed > 0 ? dur((j.time - j.progress) / speed - Math.max(0, t - G.state.now)) + ' left' : 'Stopped';
   });
   document.querySelectorAll('[data-heat]').forEach((el) => { el.style.width = currentHeat(el.dataset.heat) + '%'; });
-  document.querySelectorAll('[data-quench]').forEach((el) => {
-    const b = F().buildings.find((x) => x.id === el.dataset.quench);
-    const j = b && jobOf(b, +(el.dataset.machine || 0));
-    if (!j || !j.quenching) return;
-    const since = Math.max(0, Math.min(QUENCH_WAIT, t - j.quenchStart));
-    const k = since / QUENCH_WAIT;
-    // glowing metal cools from white-yellow over orange and red to dark
-    const col = k < 0.25 ? S.mix('#fff6c0', '#ffb040', k / 0.25) : k < 0.6 ? S.mix('#ffb040', '#d0401a', (k - 0.25) / 0.35) : S.mix('#d0401a', '#3a1a14', (k - 0.6) / 0.4);
-    el.querySelector('.glow').style.background = col;
-    el.querySelector('.now').style.left = (k * 100) + '%';
-  });
+  document.querySelectorAll('[data-until]').forEach((el) => { el.textContent = dur(Math.max(0, +el.dataset.until - t)); });
 }
 
 // ------------------------------------------------------------------ sheets

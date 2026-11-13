@@ -27,7 +27,7 @@ und hier.
 |---|---|
 | Arbeitstempo | `(1 + 0,06 × Fertigkeit) × Stimmung (0,6–1,4) × Eigenschaften × Traditionen`, verletzt (< 40 HP) halbiert |
 | Fertigkeitsstufe | `floor(sqrt(xp / 40))`, max. 20. Arbeit gibt 10–12 xp pro Stunde |
-| Miner | Schicht-Grundwert (12 / 10 / 8 / 6,5 / 5 Erz/h) × Tempo × Schacht (+20 %/Stufe) × Spitzhacke (`1 + Härte × 0,05 × Qualität`, +15 % geschärft) |
+| Miner | Schicht-Grundwert (12 / 10 / 8 / 6,5 / 5 Erz/h) × Tempo × Schacht (+20 %/Stufe) × Spitzhacke (`1 + Härte × 0,05 × Kraft der Qualität`, +15 % geschärft) |
 | Lift | `80 × 1,35^(Stufe−1)` Erz/h |
 | Erzwagen | fasst `10 + 5 × (Schachtstufe−1)` Erz je Schicht; Erz kommt erst ins Lager, wenn der Wagen voll ist und losfährt. Ist das Lager voll, wartet der volle Wagen. Der Spieler kann ihn früher schicken (`cartRule`): schon bei 25/50/75 % Füllung (`cartFill`, `Rules.cartTarget`) oder nach 5–60 Minuten ab dem ersten Erz (`cartMinutes`) |
 | Lager | `500 × 1,4^(Stufe−1)` (Pilze und Bier zählen nicht) |
@@ -43,16 +43,29 @@ und hier.
 | Brauerei | 5 Bier/h aus 2,5 Pilzen |
 | Verbrauch | 0,2 Pilze und 0,2 Bier pro Zwerg und Stunde (Ale Lover doppelt, Teetotaler kein Bier) |
 
-## Qualität (Abschrecken)
+## Qualität (Amboss: Schmieden und Abschrecken)
 
-`Wert = Zufall 0–45 + 1,5 × Schmieden + 3 × (Schmiedestufe − 1) + 4 × Master Smiths + 8 (Nimble Fingers) + 18 (perfekt abgeschreckt)`
+Jedes geschmiedete Stück wartet am Amboss (`Rules.ANVIL_MAX` = 10 Stück, `ANVIL_WAIT` = 2 h). Der Spieler spielt
+zwei Minispiele (Takt am Amboss, 8 Schläge; Abschrecken an der goldenen Mitte). Nach 2 h machen die Zwerge es allein
+fertig (Spielwert 0). Ist der Amboss voll, verdrängt ein wertvolleres Stück das billigste; das billigste machen die
+Zwerge sofort fertig.
 
-| Wert | < 12 | < 32 | < 52 | < 70 | < 86 | sonst |
+| Stufe | Crude | Normal | Fine | Exceptional | Masterwork | Artifact |
 |---|---|---|---|---|---|---|
-| Qualität | Crude ×0,6 | Common ×1 | Fine ×1,4 | Superior ×1,9 | Exceptional ×2,6 | Masterwork ×4 |
+| Wert ×| 0,7 | 1 | 1,2 | 1,5 | 2 | 20 |
+| Kraft ×| 0,8 | 1 | 1,4 | 1,8 | 2 | 3 |
 
-Das Abschreck-Fenster dauert 12 s. Jedes Metall hat Start und Breite des perfekten Moments (z. B. Zinn 1,5 s / 6 s,
-Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
+- Spielwert `p = 0,55 × Takt + 0,45 × Abschrecken` (je 0–1). Ein Schlag zählt voll bis 30 ms neben dem Takt und
+  nichts mehr ab 250 ms; Schläge ohne Takt kosten 0,04. Abschrecken zählt voll in der goldenen Mitte und fällt bis zum
+  Rand der Leiste auf 0; nach 9 s ist das Stück kalt (0).
+- Mittlere Stufe `m = −0,3 + 0,18 × Schmieden + 0,2 × (Schmiedestufe − 1) + 1,2 × p + 0,3 (Nimble Fingers) + 0,2 × Master Smiths`,
+  Stufe = `runden(m + Normalverteilung × 0,6)`, begrenzt auf Crude bis Masterwork.
+  Anfänger allein: fast nur Crude; Meister (Schmieden 20) allein: meist Exceptional; Meister mit gutem Spiel: meist Masterwork.
+- Artefakt-Chance je Stück = `0,009 × Arbeitsstunden × (Schmieden/20)⁴ × (1 + 0,15 × (Stufe − 1)) × (1 + 4 × p⁴)`.
+  Ein Meister im Dauerbetrieb schafft etwa 1,5 Artefakte pro Woche; perfektes Spiel macht sie fünfmal so häufig.
+  Artefakte landen in `f.artifacts` (unbenannt, der Spieler gibt den Namen), Wert = Normalwert × 20.
+- Alte Spielstände (vor Version 3) werden umgestellt: Crude, Common, Fine bleiben; Superior und Exceptional werden
+  Exceptional, Masterwork bleibt Masterwork (`Factory.toVersion3`).
 
 ## Werte
 
@@ -96,7 +109,7 @@ Stahl 6 s / 3,5 s), mit 0,5 s Spielraum für Netzwerk-Verzögerung.
 ## Kampf
 
 - Kraft eines Zwergs = `(4 + 1,5 × Kampf) × (1 + Angriff/8) × (1 + Rüstung/10) × Gesundheit × Stimmung × Eigenschaften`.
-  Axt: `Härte × 1,6 × Qualität` (+25 % geschärft). Helm `Härte × 0,8 × Q`, Kettenhemd `Härte × 1,8 × Q`.
+  Axt: `Härte × 1,6 × Kraft der Qualität` (+25 % geschärft). Helm `Härte × 0,8 × Q`, Kettenhemd `Härte × 1,8 × Q`.
 - Siegchance = `r² / (r² + 1)` mit `r = eigene Kraft / Gegner`, begrenzt auf 3–98 %.
 - Verletzungen und Tod hängen von `r` ab; auch Sieger können sterben.
 - Überfall: `15 × 1,3^(Festungsstufe−1)`. Verteidigt von den Wachen der Eingangshalle × Hallenbonus + Tor.

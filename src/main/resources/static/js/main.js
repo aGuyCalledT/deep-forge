@@ -8,6 +8,7 @@ import { initCanvas, zoomBy, lookAt, camera, toScreen, homeCamera } from './canv
 import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt as loadArt48 } from './hold.js';
 import { drawLoginArt } from './views.js';
 import { mineScreen, mineLayer } from './mine48.js';
+import { openSmithy, smithyUpdate, nameArtifact, askForNames, smithyState } from './smithy.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
@@ -41,6 +42,8 @@ function setState(s) {
   renderTop();
   renderAlerts();
   render();
+  smithyUpdate();
+  askForNames();
 }
 
 bus.act = async (action, quiet = false, rethrow = false) => {
@@ -67,7 +70,6 @@ function soundForAction(a) {
     case 'build': case 'upgrade': case 'upgradeLayer': case 'unlockLayer': return A.sfx('build');
     case 'queueAdd': return A.sfx('open');
     case 'queueRemove': return A.sfx('close');
-    case 'quench': return A.sfx('quench');
     case 'equip': return A.sfx(String(a.item).startsWith('item:axe') ? 'unsheathe2' : 'open');
     case 'unequip': return A.sfx('close');
     case 'caravan': return A.sfx('caravan');
@@ -83,7 +85,7 @@ function soundForAction(a) {
 const LOG_SOUNDS = [
   [/Fortress level/, () => A.sfx('levelup')],
   [/masterwork/i, () => A.sfx('fanfare')],
-  [/Perfect quench/, () => A.sfx('chime')],
+  [/legendary artifact/, () => A.sfx('fanfare')],
   [/Scouts report/, () => A.sfx('horn')],
   [/driven off|siege is broken/, () => A.battle(true)],
   [/broke through/, () => A.battle(false)],
@@ -121,7 +123,7 @@ function ambience() {
   if (G.screen === 'hold') {
     // the workshop nearest the middle of the view sets the sound, if it is busy
     const b = roomAt(viewCenter());
-    const working = b && (b.job && !b.job.quenching || (byId.buildings[b.type].kind === 'continuous' && D().buildings[b.id] && D().buildings[b.id].worker)) && !f.siege;
+    const working = b && (b.job || (byId.buildings[b.type].kind === 'continuous' && D().buildings[b.id] && D().buildings[b.id].worker)) && !f.siege;
     if (b && working && camera().zoom >= 1) {
       if (b.type === 'forge') wanted.add('forge');
       if (b.type === 'smelter') wanted.add('furnace');
@@ -163,6 +165,8 @@ function renderAudioBtn() {
 }
 
 bus.render = () => render();
+bus.smithy = () => openSmithy();
+bus.nameArtifact = (id) => nameArtifact(id);
 bus.go = (tab) => go(tab);
 
 async function poll() {
@@ -204,8 +208,8 @@ function alerts() {
   if (f.noFood) a.push(['bad', 'work', 'No food! Dwarves are starving. Staff the mushroom farm or buy food.']);
   if (f.noAle) a.push(['warn', 'work', 'Out of ale. Dwarves are unhappy.']);
   if (f.storageFull) a.push(['stop', 'fortress', 'Warehouse full - mining stopped. Smelt, sell or upgrade it.', (f.buildings.find((b) => b.type === 'warehouse') || {}).id]);
-  const quench = f.buildings.filter((b) => b.job && b.job.quenching);
-  if (quench.length) a.push(['good', 'work', 'Hot metal ready to quench at the forge!', quench[0].id]);
+  if ((f.anvil || []).length) a.push(['good', 'work', `${f.anvil.length} hot piece(s) at the anvil. Forge them for better quality!`, '@anvil']);
+  if ((f.artifacts || []).some((x) => x.unnamed)) a.push(['warn', 'fortress', 'A new artifact waits for its name.', '@name']);
   for (const r of f.reports || []) a.push(['good', r.kind === 'caravan' ? 'trade' : 'explore', `${r.title}: collect the loot.`]);
   const choices = f.expeditions.filter((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen);
   if (choices.length) a.push(['warn', 'explore', `An expedition needs your decision.`]);
@@ -225,7 +229,7 @@ function renderAlerts() {
   const list = alerts();
   const n = wide() ? 4 : 2;
   $('alerts').replaceChildren(...list.slice(0, n).map(([k, tab, text, room]) =>
-    h('button', { class: 'alert ' + k, title: text, onclick: () => (room ? showRoom(room) : go(tab, true)) }, k === 'bad' ? img(S.icon('skull'), 'icon s') : statusIco(k, 'icon s'), h('span', null, text))),
+    h('button', { class: 'alert ' + k, title: text, onclick: () => (room === '@anvil' ? openSmithy() : room === '@name' ? nameArtifact(F().artifacts.find((x) => x.unnamed).id) : room ? showRoom(room) : go(tab, true)) }, k === 'bad' ? img(S.icon('skull'), 'icon s') : statusIco(k, 'icon s'), h('span', null, text))),
     list.length > n ? h('button', { class: 'alert', onclick: () => go('fortress', true) }, h('span', null, `+${list.length - n} more`)) : '');
   // each tab wears the most pressing sign of its hints: stopped, then needs you, then done (idle shows nothing)
   const rank = { bad: 3, stop: 3, warn: 2, good: 1 };
@@ -365,7 +369,7 @@ function keepClear(id) {
 function onPick(q, at) {
   if (!q) { if (popOpen()) closeSheet(); return; }
   if (q.kind === 'bellows') return pump(q.id);
-  if (q.kind === 'quench') return bus.act({ type: 'quench', building: q.id, machine: q.machine || 0 });
+  if (q.kind === 'anvil') return openSmithy();
   if (q.kind === 'room') {
     const b = F().buildings.find((x) => x.id === q.id);
     if (b) { A.sfx('open'); keepClear(q.id); openRoomSheet(b, at); }
@@ -524,5 +528,5 @@ G.tab = null;
 G.heat = currentHeat;
 G.act = (a) => bus.act(a).then(() => renderToolbar());
 G.onBuildChange = () => renderToolbar();
-window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom, agents };
+window.__deepforge = { G, go, audio: A, lookAt, roomCenter, camera, showRoom, agents, smithy: () => smithyState() };
 boot();

@@ -32,6 +32,13 @@ public final class Actions {
         return def;
     }
 
+    static double dbl(Map<String, Object> a, String k, double def) {
+        Object v = a.get(k);
+        if (v instanceof Number n) return n.doubleValue();
+        if (v instanceof String s && !s.isBlank()) return Double.parseDouble(s.trim());
+        return def;
+    }
+
     @SuppressWarnings("unchecked")
     static List<Integer> ids(Map<String, Object> a, String k) {
         List<Integer> l = new ArrayList<>();
@@ -73,7 +80,8 @@ public final class Actions {
             case "queueRemove" -> queueRemove(f, a);
             case "queueMove" -> queueMove(f, a);
             case "bellows" -> bellows(f, a, t);
-            case "quench" -> quench(f, a, t, r);
+            case "smith" -> smith(f, a, t, r);
+            case "nameArtifact" -> nameArtifact(f, a);
             case "equip" -> equip(f, a);
             case "wear" -> wear(f, a);
             case "unwear" -> unwear(f, a);
@@ -430,26 +438,27 @@ public final class Actions {
         b.heatT = t;
     }
 
-    static void quench(Fortress f, Map<String, Object> a, double t, Rng r) {
-        Building b = building(f, str(a, "building"));
-        check(b != null, "Nothing to quench right now.");
-        int i = Math.max(0, num(a, "machine", 0));
-        check(i < machines(b), "Nothing to quench right now.");
-        Dwarf w = seats(f, b)[i];
-        Sim.onMachine(b, i, () -> quenchJob(f, b, w, t, r));
+    /** The player hammered (forge 0..1, in time) and quenched (quench 0..1, at the golden mark) a piece at the anvil. */
+    static void smith(Fortress f, Map<String, Object> a, double t, Rng r) {
+        int id = num(a, "id", -1);
+        Forging g = f.anvil.stream().filter(x -> x.id == id).findFirst().orElse(null);
+        check(g != null, "That piece is already done.");
+        double forge = Math.max(0, Math.min(1, dbl(a, "forge", 0)));
+        double quench = Math.max(0, Math.min(1, dbl(a, "quench", 0)));
+        f.anvil.remove(g);
+        f.smithed = Sim.finishForging(f, g, 0.55 * forge + 0.45 * quench, r, t, true);
     }
 
-    static void quenchJob(Fortress f, Building b, Dwarf w, double t, Rng r) {
-        check(b.job != null && b.job.quenching, "Nothing to quench right now.");
-        Content.Metal m = Content.METALS.get(b.job.mat);
-        double since = t - b.job.quenchStart;
-        // generous: half a second of grace on both sides for network lag
-        boolean perfect = since >= m.qStart() - 0.5 && since <= m.qStart() + m.qWidth() + 0.5;
-        String item = Content.ITEMS.get(b.job.itype).name().toLowerCase();
-        Sim.finishQuench(f, b, w, perfect ? 18 : 0, r, t);
-        log(f, t, perfect ? "good" : "info", perfect
-                ? "Perfect quench! The " + Content.METALS.get(m.id()).name().toLowerCase() + " " + item + " sings in the water."
-                : "The " + item + " hisses in the water. " + (since < m.qStart() ? "A little early." : "A little late."));
+    static void nameArtifact(Fortress f, Map<String, Object> a) {
+        int id = num(a, "id", -1);
+        Artifact art = f.artifacts.stream().filter(x -> x.id == id).findFirst().orElse(null);
+        check(art != null, "That artifact is gone.");
+        String name = str(a, "name");
+        name = name == null ? "" : name.trim().replaceAll("\\s+", " ");
+        check(name.length() >= 2 && name.length() <= 40, "Pick a name with 2 to 40 letters.");
+        art.name = name;
+        art.unnamed = false;
+        log(f, "good", "The artifact is now known as " + name + ".");
     }
 
     // ------------------------------------------------------------ trade

@@ -46,6 +46,8 @@ public final class State {
         public Set<String> cities = new TreeSet<>();
         public Set<String> doneOnce = new TreeSet<>();     // one-time expeditions finished
         public List<Artifact> artifacts = new ArrayList<>();
+        public List<Forging> anvil = new ArrayList<>();     // forged pieces waiting for the player at the anvil (max 10)
+        public Smithed smithed;                             // the last piece the player finished by hand
         public List<Memorial> memorials = new ArrayList<>();
         public double xp;
         public int level = 1;
@@ -340,6 +342,30 @@ public final class State {
         public String name;
         public String desc;
         public double value;
+        public String item;       // forged artifacts: the item key it was made as (quality 5)
+        public boolean unnamed;   // waits for the player to name it
+    }
+
+    /** A piece of hot metal at the anvil, waiting to be hammered and quenched by the player. */
+    public static class Forging {
+        public int id;
+        public String building;
+        public String itype;
+        public String mat;
+        public int dwarf;         // who forged it (0: nobody any more)
+        public int skill;         // their smithing skill then
+        public boolean nimble;
+        public int level;         // forge level then
+        public double hours;      // working hours the piece took (artifact chance grows with it)
+        public double at;         // when it came off the fire
+    }
+
+    public static class Smithed {
+        public int forging;
+        public String key;        // the item made (null for an artifact)
+        public int quality;
+        public int artifact;      // artifact id, 0 for none
+        public double score;      // 0..1, how well the player did
     }
 
     public static class Memorial {

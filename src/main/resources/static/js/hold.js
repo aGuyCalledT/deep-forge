@@ -872,10 +872,10 @@ function drawRoom(ctx, t, r, dwarves) {
   const rnd = Math.random;
   for (const p of r.parts) {
     const i = p.i, job = jobOf(b, i);
-    const working = !f.siege && (job && !job.quenching || (continuous && workers[i] != null));
+    const working = !f.siege && (job || (continuous && workers[i] != null));
     for (const s of spotsOf(r, 'chimney', i)) if ((working || b.type === 'tavern') && rnd() < 0.25) particles.push({ x: s.x - 6 + rnd() * 12, y: s.y, vx: (rnd() - 0.5) * 6, vy: -12, life: 1.8, c: '#9a92a8', s: 2 });
     if (working) for (const s of spotsOf(r, 'anvil', i)) if (rnd() < 0.3) for (let k = 0; k < 3; k++) particles.push({ x: s.x, y: s.y, vx: (rnd() - 0.5) * 60, vy: -20 - rnd() * 28, life: 0.45, c: rnd() < 0.5 ? '#ffd98e' : '#fff6d6', g: 60 });
-    if (job && job.quenching) for (const s of spotsOf(r, 'quench', i)) if (rnd() < 0.7) particles.push({ x: s.x - 6 + rnd() * 12, y: s.y, vx: (rnd() - 0.5) * 6, vy: -14, life: 1.2, c: '#e8eef4', s: 2 });
+    if (i === 0 && waiting(b)) for (const s of spotsOf(r, 'anvil', i)) if (rnd() < 0.7) particles.push({ x: s.x - 6 + rnd() * 12, y: s.y, vx: (rnd() - 0.5) * 6, vy: -14, life: 1.2, c: '#e8eef4', s: 2 });
     if (working) for (const s of spotsOf(r, 'steam', i)) if (rnd() < 0.4) particles.push({ x: s.x - 6 + rnd() * 12, y: s.y, vx: (rnd() - 0.5) * 4, vy: -10, life: 1.4, c: '#e8eef4', s: 2 });
     if (working) for (const s of spotsOf(r, 'wheel', i)) if (rnd() < 0.5) particles.push({ x: s.x + (s.spot.flip ? -16 : 16), y: s.y + 6, vx: 20 + rnd() * 28, vy: -12, life: 0.4, c: '#fff6d6', g: 60 });
     if (working && (b.type === 'jeweler' || b.type === 'farm')) for (const s of spotsOf(r, 'work', i)) if (rnd() < 0.06) particles.push({ x: s.x - 8 + rnd() * 16, y: s.y - rnd() * 10, vx: 0, vy: b.type === 'farm' ? -6 : 0, life: 0.6, c: b.type === 'farm' ? '#c6e3b8' : '#ffffff' });
@@ -1173,7 +1173,10 @@ export const holdScreen = {
 /** The market stall in world pixels (clicking it opens the Trade tab). */
 function stallRect() { return { x: SURFACE.stall - STALL_W / 2 - 4, y: GRASS - 70, w: STALL_W + 8, h: 72 }; }
 
-/** The bellows of a smelter and the quench barrel of a forge waiting for it: things you use by clicking. */
+/** Pieces of this forge that wait at the anvil for the player. */
+function waiting(b) { return b.type === 'forge' && (F().anvil || []).some((g) => g.building === b.id); }
+
+/** The bellows of a smelter and the anvil of a forge with hot pieces waiting: things you use by clicking. */
 function machineHit(r, x, y) {
   const b = r.b;
   if (F().siege) return null;
@@ -1184,16 +1187,14 @@ function machineHit(r, x, y) {
       ...spotsOf(r, 'fire').map((s) => [s.x - (s.spot.w || 30) / 2 - 8, s.y - 40, (s.spot.w || 30) + 16, 70])];
     for (const bx of boxes) if (inside(...bx)) return { kind: 'bellows', id: b.id, rect: bx.map(Math.round), round: true };
   }
-  if (b.type === 'forge') for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
-    const job = jobOf(b, i), q = spotsOf(r, 'quench', i)[0];
-    if (!job || !job.quenching || !q) continue;
-    const bx = [q.x - 20, q.y - 26, 40, 50];
-    if (inside(...bx)) return { kind: 'quench', id: b.id, machine: i, rect: bx.map(Math.round), round: true };
+  if (waiting(b)) for (const q of [...spotsOf(r, 'anvil'), ...spotsOf(r, 'quench')]) {
+    const bx = [q.x - 22, q.y - 28, 44, 52];
+    if (inside(...bx)) return { kind: 'anvil', id: b.id, rect: bx.map(Math.round), round: true };
   }
   return null;
 }
 
-/** Heat gauge beside the furnace, and a blinking QUENCH over a forge with hot metal. */
+/** Heat gauge beside the furnace, and a blinking FORGE! over a forge with hot pieces at the anvil. */
 function machineOverlay(ctx, t, r) {
   const b = r.b;
   if (b.type === 'smelter') {
@@ -1205,9 +1206,9 @@ function machineOverlay(ctx, t, r) {
     for (let i = 0; i < fill; i++) { ctx.fillStyle = S.mix('#a9473c', '#ffd98e', i / hh); ctx.fillRect(tx + 1, ty + hh - 1 - i, 4, 1); }
     ctx.fillStyle = heat > 5 ? '#d9704a' : '#623e45'; ctx.fillRect(tx - 2, ty + hh, 10, 6);
   }
-  if (b.type === 'forge' && Math.floor(t * 3) % 2) for (let i = 0; i < Math.max(1, b.machines || 1); i++) {
-    const job = jobOf(b, i), q = spotsOf(r, 'quench', i)[0];
-    if (job && job.quenching && q) big(ctx, q.x, q.y - 50, () => sign(ctx, 'QUENCH!', 0, 0, '#e3c06e'));
+  if (Math.floor(t * 3) % 2 && waiting(b)) {
+    const q = spotsOf(r, 'anvil', 0)[0];
+    if (q) big(ctx, q.x, q.y - 50, () => sign(ctx, 'FORGE!', 0, 0, '#e3c06e'));
   }
 }
 
@@ -1235,7 +1236,7 @@ function opaque(spr, x, y) {
  * What a room shows over its door:
  *   'stop'  red octagon: it stopped (cut off from the hallways, orders it cannot work on, the warehouse is full);
  *   'warn'  yellow triangle: something wants you (a decision, a rule that broke, a critter and nobody on guard);
- *   'good'  green circle with !: something is done and waits for you (loot to collect, hot metal to quench);
+ *   'good'  green circle with !: something is done and waits for you (loot to collect, hot pieces at the anvil);
  *   'run'   green arrow: it stands still, but could run right now;
  *   'idle'  grey dots: nothing to do, and nothing it needs to do;
  *   null    working, or nothing to say.
@@ -1249,7 +1250,7 @@ export function roomStatus(b, idle) {
   if (b.type === 'trade_depot' && reports.some((x) => x.kind === 'caravan')) return 'good';
   if (b.type === 'expedition_hall' && f.expeditions.some((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen)) return 'warn';
   if (b.type === 'expedition_hall' && reports.some((x) => x.kind === 'expedition')) return 'good';
-  if (b.job && b.job.quenching) return 'good';
+  if (waiting(b)) return 'good';
   if (b.type === 'entrance_hall' && (f.threats || []).some((x) => x.cell) && !f.dwarves.some((x) => x.job === 'warrior' && x.post === 'hall')) return 'warn';
   if (t.kind === 'passive' || f.siege) return null;
   if (canRun(b, idle)) return 'run';

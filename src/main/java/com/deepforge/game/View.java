@@ -73,6 +73,19 @@ public final class View {
         }
         d.put("dwarves", dw);
 
+        // pieces at the anvil: what each is worth at normal quality and when the dwarves finish it themselves
+        List<Object> anvil = new ArrayList<>();
+        for (Forging g : f.anvil) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", g.id);
+            m.put("value", round(forgingValue(g)));
+            m.put("until", g.at + ANVIL_WAIT);
+            m.put("mean", round(smithMean(f, g, 0)));
+            anvil.add(m);
+        }
+        d.put("anvil", anvil);
+        d.put("anvilMax", ANVIL_MAX);
+
         // mining per layer (ore per hour before the lift limit)
         double[] rate = new double[f.layers.size()];
         int[] miners = new int[f.layers.size()];

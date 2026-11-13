@@ -45,7 +45,7 @@ public final class Content {
 
     public record Tradition(String id, String name, String note, int maxRank) {}
 
-    public record Quality(int tier, String name, double mult) {}
+    public record Quality(int tier, String name, double mult, double power) {}
 
     // ---------------------------------------------------------------- tables
 
@@ -62,8 +62,9 @@ public final class Content {
     public static final Map<String, City> CITIES = new LinkedHashMap<>();
     public static final Map<String, Tradition> TRADITIONS = new LinkedHashMap<>();
     public static final List<Quality> QUALITIES = List.of(
-            new Quality(0, "Crude", 0.6), new Quality(1, "Common", 1.0), new Quality(2, "Fine", 1.4),
-            new Quality(3, "Superior", 1.9), new Quality(4, "Exceptional", 2.6), new Quality(5, "Masterwork", 4.0));
+            new Quality(0, "Crude", 0.7, 0.8), new Quality(1, "Normal", 1.0, 1.0), new Quality(2, "Fine", 1.2, 1.4),
+            new Quality(3, "Exceptional", 1.5, 1.8), new Quality(4, "Masterwork", 2.0, 2.0), new Quality(5, "Artifact", 20, 3));
+    public static final int ARTIFACT = 5;
     public static final List<String> SKILLS = List.of("mining", "smelting", "smithing", "crafting", "farming", "combat", "trading");
     public static final List<String> CATEGORIES = List.of("ore", "materials", "gems", "provisions", "bars",
             "tools", "weapons", "armor", "hardware", "tableware", "jewelry", "clothing");
