@@ -89,8 +89,14 @@ class BalanceBotTest {
     @Test
     void threeVisitsADayFor120Days() {
         StringBuilder log = new StringBuilder(" day   earned     guide  pop  lvl  coins deep  levels\n");
-        double[] e = play(1, new double[]{8, 13, 20}, DAYS, log);
+        Fortress[] keep = new Fortress[1];
+        double[] e = play(1, new double[]{8, 13, 20}, DAYS, log, keep);
         System.out.print(log);
+        int set = 0;
+        for (Dwarf x : keep[0].dwarves) set += Magic.gems(x.tool).size();
+        double mining = keep[0].dwarves.stream().filter(x -> x.job.equals("miner")).mapToDouble(x -> Magic.bonus(x, "mining")).average().orElse(0);
+        System.out.printf("Magic: %d gems set in tools, miners mine %.0f%% faster on average%n", set, mining * 100);
+        assertTrue(set > 0, "the wizard enchants and the miners carry the gems");
         System.out.printf("Marks earned: days 1-10 %.0f, 21-30 %.0f, 111-120 %.0f (guide %.0f, %.0f, %.0f)%n",
                 sum(e, 0, 10), sum(e, 20, 30), sum(e, 110, 120), 5500.0, 25500.0, 115500.0);
         assertTrue(sum(e, 0, 3) > 0, "the hold earns money in the first days");
@@ -167,6 +173,8 @@ class BalanceBotTest {
             smelter(t);
             forge(t);
             arm(t);
+            magic(t);
+            monsters(t);
             caravans(t);
             invest(t);
             connectRooms(t);
@@ -178,11 +186,12 @@ class BalanceBotTest {
             if (f.visitor == null) return;
             for (String k : new ArrayList<>(f.stock.keySet()))
                 if (f.visitor != null && Content.marketKey(k).equals(f.visitor.market) && sellable(k))
-                    act(t, "type", "sellVisitor", "key", k, "amount", Rules.stock(f, k));
+                    act(t, "type", "sellVisitor", "key", k, "amount", k.startsWith("item:pickaxe:") ? Math.min(Rules.stock(f, k), picksInStock() - miners()) : Rules.stock(f, k));
         }
 
         /** Goods the bot sells: finished pieces, and bars beyond what the forge needs. */
         boolean sellable(String k) {
+            if (k.startsWith("item:pickaxe:")) return picksInStock() > miners();   // picks for the miners stay
             return k.startsWith("item:") || (k.startsWith("bar:") && Rules.stock(f, k) > keepBars(k));
         }
 
@@ -209,6 +218,7 @@ class BalanceBotTest {
             // guards: two from the start, the whole hall when raiders are coming
             long guards = Rules.guards(f).size();
             int wantGuards = f.raid != null ? Rules.hallSeats(f) : f.dwarves.size() >= 9 ? 2 : 0;
+            if (f.threats.stream().anyMatch(x -> x.cell == null)) wantGuards = Math.max(wantGuards, Math.min(Rules.hallSeats(f), 2 + (int) guards));
             for (Dwarf x : f.dwarves) {
                 if (guards >= wantGuards) break;
                 if (x.busy == null && (x.job.equals("idle") || x.job.equals("miner"))
@@ -221,6 +231,7 @@ class BalanceBotTest {
                 if (!merchant && f.dwarves.size() >= 8) { act(t, "type", "assign", "dwarf", x.id, "job", "merchant"); merchant = true; continue; }
                 if (ores() > 60 && work(t, x, "smelter")) continue;
                 if (bars() > 30 && work(t, x, "forge")) continue;
+                if (plainGems() > 0 && f.dwarves.size() >= 6 && work(t, x, "wizard")) continue;
                 if (!act(t, "type", "assign", "dwarf", x.id, "job", "miner", "layer", deep)) act(t, "type", "assign", "dwarf", x.id, "job", "miner", "layer", 0);
             }
             // workshops without enough to do give their second worker back to the mine
@@ -256,6 +267,56 @@ class BalanceBotTest {
                 if (!x.job.equals("miner") || x.busy != null) continue;
                 if (food < 0 && work(t, x, "farm")) food += Rules.FARM_PER_H;
                 else if (ale < 0 && work(t, x, "brewery")) ale += Rules.BREW_PER_H;
+            }
+        }
+
+        /** A monster in the mine stops the miners there: send the warriors when they are strong enough, else arm more. */
+        void monsters(double t) {
+            for (Threat th : new ArrayList<>(f.threats)) {
+                if (th.cell != null) continue;
+                List<Dwarf> party = new ArrayList<>();
+                for (Dwarf x : f.dwarves) if (x.job.equals("warrior") && x.busy == null) party.add(x);
+                double p = 0;
+                for (Dwarf x : party) p += Rules.power(f, x);
+                if (!party.isEmpty() && p > th.power * 1.3) {
+                    List<Integer> ids = party.stream().map(x -> x.id).toList();
+                    act(t, "type", "fightThreat", "threat", th.id, "warriors", ids);
+                    continue;
+                }
+                // the miners of that layer stand still anyway: two of them take up arms
+                int n = 0;
+                for (Dwarf x : f.dwarves)
+                    if (n < 2 && x.job.equals("miner") && x.layer == th.layer && x.busy == null && act(t, "type", "assign", "dwarf", x.id, "job", "warrior", "post", "hall")) n++;
+            }
+        }
+
+        int miners() { return (int) f.dwarves.stream().filter(x -> x.job.equals("miner")).count(); }
+
+        int picksInStock() {
+            int n = 0;
+            for (Map.Entry<String, Integer> e : f.stock.entrySet()) if (e.getKey().startsWith("item:pickaxe:")) n += e.getValue();
+            return n;
+        }
+
+        int plainGems() {
+            return Rules.stock(f, "rough_gem") + Rules.stock(f, "cut_gem");
+        }
+
+        /** Earth magic for the miners: enchant every gem, set it in a miner's pick; the wizard digs again when there are none. */
+        void magic(double t) {
+            Building w = Rules.building(f, "wizard");
+            if (w == null || w.level <= 0) return;
+            int gems = plainGems();
+            if (gems > 0 && w.queue.isEmpty()) act(t, "type", "queueAdd", "building", w.id, "recipe", "enchant", "mat", "earth", "count", Math.min(gems, 5));
+            if (gems == 0 && w.queue.isEmpty() && w.job == null)
+                for (Dwarf x : Rules.assigned(f, w)) act(t, "type", "assign", "dwarf", x.id, "job", "miner", "layer", 0);
+            for (String k : new ArrayList<>(f.stock.keySet())) {
+                Magic.Gem g = Magic.parseGem(k);
+                if (g == null || !g.enchanted() || Rules.stock(f, k) <= 0) continue;
+                for (Dwarf x : f.dwarves) {
+                    if (!x.job.equals("miner") || x.tool == null || Magic.withGem(x.tool, k) == null) continue;
+                    if (act(t, "type", "socket", "dwarf", x.id, "slot", "tool", "gem", k)) break;
+                }
             }
         }
 
@@ -343,6 +404,17 @@ class BalanceBotTest {
             for (Building b : f.buildings) {
                 if (!b.type.equals("forge") || b.level <= 0) continue;
                 if (b.queue.size() >= 2) continue;
+                // picks first: every miner without one gets one of the hardest metal there is
+                int need = (int) f.dwarves.stream().filter(x -> x.job.equals("miner") && x.tool == null).count() - picksInStock();
+                boolean queued = b.queue.stream().anyMatch(j -> "pickaxe".equals(j.itype));
+                if (need > 0 && !queued) {
+                    Content.ItemType pick = Content.ITEMS.get("pickaxe");
+                    Content.Metal hard = null;
+                    for (Content.Metal mt : Content.METALS.values())
+                        if (Content.metalFits(pick, mt) && Rules.stock(f, "bar:" + mt.id()) >= pick.bars() && (hard == null || mt.hardness() > hard.hardness())) hard = mt;
+                    if (hard != null && act(t, "type", "queueAdd", "building", b.id, "recipe", "craft", "itype", "pickaxe", "mat", hard.id(),
+                            "count", Math.max(1, Math.min(need, Math.min(5, Rules.stock(f, "bar:" + hard.id()) / pick.bars()))))) continue;
+                }
                 String best = null, bestMetal = null;
                 double bestValue = 0;
                 for (Content.Metal mt : Content.METALS.values()) {
@@ -372,7 +444,8 @@ class BalanceBotTest {
             keys.sort(Comparator.comparingDouble(k -> -Content.baseValue(k)));
             for (String k : keys) {
                 if (!sellable(k) || cap <= 0) continue;
-                int n = Math.min(cap, k.startsWith("bar:") ? Rules.stock(f, k) - keepBars(k) : Rules.stock(f, k));
+                int n = Math.min(cap, k.startsWith("bar:") ? Rules.stock(f, k) - keepBars(k)
+                        : k.startsWith("item:pickaxe:") ? Math.min(Rules.stock(f, k), picksInStock() - miners()) : Rules.stock(f, k));
                 if (n <= 0) continue;
                 cargo.put(k, n);
                 cap -= n;

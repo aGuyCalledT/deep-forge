@@ -1,6 +1,10 @@
 # Konzept: Magie, Edelsteine, Fassungen und legendäre Artefakte
 
-Mit dem Nutzer abgestimmt. Was umgesetzt ist, wandert nach `BALANCING.md`.
+Mit dem Nutzer abgestimmt und umgesetzt; die Zahlen stehen in `BALANCING.md` („Magie“).
+
+Abweichungen bei der Umsetzung: Einsetzen und Herausnehmen am **Turm des Zauberers** (sofort), nicht beim Juwelier;
+der Juwelier schleift nur. Hearth hat „farming and brewing“ als eine Wirkung, dazu mood und „food and ale“ (weniger
+Verbrauch); Steel heilt („healing“). Der Turm würfelt ab Stufe 3 zweimal und nimmt den besseren Wurf.
 
 Entschieden: Fassungen nach Qualität (Anzahl) und Metall-Zeitalter (Güte); ein Werkzeug je Beruf; Schule wählen,
 Wirkung und Stärke würfeln, Schliff bestimmt die Chancen; jeder Stein nur einmal verzaubert; Herausnehmen frei mit

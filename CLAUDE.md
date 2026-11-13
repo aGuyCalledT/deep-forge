@@ -32,6 +32,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/Rules.java` | Formeln: Tempo, Kraft, Kapazitäten, Kosten, Kampf, Tod, Spitzhacken (Härte, Tempo, Abnutzung) |
 | `game/Sim.java` | Zeitschritt: Bedürfnisse, Stimmung, Mine, Werkstätten, Monster, Überfälle, Karawanen, Zuwanderung |
 | `game/Recipes.java` | was jede Werkstatt kann und braucht |
+| `game/Magic.java` | Edelsteine (Schliff, Schulen, Wirkungen, Wörter), Fassungen (Zahl aus Qualität, Metall, Passung), Werkzeug je Beruf, legendäre Wirkungen, Summen je Zwerg mit Obergrenzen |
 | `game/Expeditions.java` | Gerüchte, Etappen, Entscheidungen, Beute |
 | `game/Market.java` | Weltkurs und Stadtkurse je Sorte (`type:`/`cat:`), Verlauf 7 Tage, Kauf und Verkauf mit Preiseinfluss nach Marktanteil |
 | `game/Depot.java` | Handelsdepot: gespeicherte Karawanen, Regeln, Kauf-Aufträge, Lieferungen, Marktanteil-Verlauf |
@@ -49,6 +50,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `art-src/props48/facade.py` | Tor: Mauer mit zwei Statuen in Nischen, Bogen, Runenfries (`gate`); der rechte Teil (`gate_front`) liegt über den Zwergen, damit sie im Tor verschwinden |
 | `static/js/views.js` | Login-Bild |
 | `static/js/minigame.js`, `static/js/games.js` | Minispiele der Produktionsräume, jedes im eigenen Screen (Rahmen wie der Amboss): Blasebalg im Takt, Fässer schütteln, Schleifstein, Runen, Edelstein und Webstuhl heizen den Raum (Aktion `boost`, `Rules.BOOSTED`, bis ×2, der Server deckelt die Taps); Dünger auf die Pilzfarm (`fertilize`, `Building.fert`/`fertUntil`); Ader freischlagen mit Ausdauer (`vein`, `LayerState.veinAt`, Erz direkt in den Wagen). Zugang über das Raumfenster, den Blasebalg in der Festung und „Vein“ im Minen-Screen |
+| `static/js/magic.js` | Fenster eines Stücks (`pieceSheet`: Fassungen, grüne Wirkungen, orange legendäre, Steine einsetzen und herausnehmen), Magie-Summen des Zwergs |
 | `static/js/smithy.js` | Amboss-Screen der Schmiede: Taktspiel (Schmieden) und Abschrecken, Ergebnis, Namensdialog für Artefakte. Stücke liegen in `Fortress.anvil` (`Forging`), Aktion `smith` mit `forge`/`quench` 0–1, `nameArtifact`; Qualität würfelt der Server (`Sim.finishForging`, `Rules.smithMean`, `Rules.artifactChance`) |
 | `static/js/popups.js` | Fenster beim Anklicken von Räumen und Zwergen (öffnen sich neben dem Objekt), Cheat-Werkzeuge |
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
@@ -96,6 +98,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   `Sim.happinessTarget` oder `Expeditions`.
 - **Neues Expeditions-Ereignis:** in `Expeditions.choice()` (Text + Optionen) und `applyChoice()` (Wirkung).
 - **Neue Aktion:** `Actions.apply` + eigene Methode mit `check(...)`, Aufruf im Client mit `bus.act({type: ...})`.
+- **Neue Magie-Wirkung:** `effect(...)` in `Magic.java` (Schule, Grundwert, Grenze, Passung in `FITS`), Wirkung über
+  `Magic.bonus(d, id)` in `Rules`/`Sim`; der Client liest die Tabellen aus `G.data.magic` (`Magic.asData`). Legendäre Wirkung: `LEGENDS` und `Magic.active`.
 - **Neue Schicht:** `LAYERS` in `Content.java` (Erze, Rate, Monster, Kosten), Erkundungs-Expedition in
   `Expeditions.refreshOffers`.
 

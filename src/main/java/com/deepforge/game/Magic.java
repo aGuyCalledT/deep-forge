@@ -176,8 +176,9 @@ public final class Magic {
 
     /** The gems in a piece, in socket order. */
     public static List<Gem> gems(String itemKey) {
-        String s = Content.parseItem(itemKey)[4];
         List<Gem> out = new ArrayList<>();
+        if (itemKey == null || !Content.isItem(itemKey)) return out;
+        String s = Content.parseItem(itemKey)[4];
         if (s.isEmpty()) return out;
         for (String part : s.split(",")) {
             String[] x = part.split("\\.");

@@ -278,7 +278,11 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Leichter gemacht (Pilze 3/h, erster Überfall nach 5 Tagen und mit den Tagen statt der Festungsstufe stärker,
       halber Diebstahl, mehr Stein, halber Stein beim Ausbau, Rohedelstein ab Schicht 1). Feste Leitkurve gestrichen;
       der Bot prüft stetiges Wachstum.
-- [ ] Magie, Edelsteine, Fassungen, Werkzeuge je Beruf, legendäre Wirkungen (`docs/KONZEPT-MAGIE.md`).
+- [x] Magie, Edelsteine, Fassungen, Werkzeuge je Beruf, legendäre Wirkungen (`docs/KONZEPT-MAGIE.md`).
+- [x] Bot: Monster in der Mine jagen, Spitzhacken behalten, Earth-Steine verzaubern und einsetzen.
+- [ ] Magie: Steine im Lager zeigen, was sie im gewählten Stück bringen würden; Steine auch im Karawanen- und Amboss-Fenster.
+- [ ] Zauberer-Raum: Werkzeug „staff“ in der Hand der Zwerge zeichnen (`dwarf48`), bisher Meißel.
+- [ ] Ein Monster sperrt eine Schicht, bis man es jagt: Hinweis-Chip, damit Spieler es nicht übersehen.
 - [ ] Bot: Expeditionen, Aufträge gezielt bedienen, Feinmechaniker, Graveur, Schichten 3–5 und Monokultur-Strategie.
 - [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
 - [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.

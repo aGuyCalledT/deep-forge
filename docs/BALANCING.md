@@ -274,6 +274,46 @@ Masterwork 2, Artifact 3.
 - Banditen: `10 + 160 × Gefahr × (1 + 0,08 × (Stufe−1))`.
 - Expeditions-Gegner: `Gefahr × 12 × 0,7–1,25`. Empfohlene Trupp-Kraft: `Gefahr × 14`.
 
+## Magie (`Magic.java`)
+
+- **Schliff** beim Juwelier (`cutgem`, Rohedelstein → `gem:<Schliff>`): Mittel `−0,2 + 0,14 × crafting + 0,25 × (Stufe − 1)`,
+  Streuung 0,8 (gauß), gerundet auf 0–4 = Rough cut, Fair cut, Fine cut, Brilliant, Flawless. Wert 4 000 / 6 000 / 9 000 /
+  14 000 / 22 000 Jots; verzaubert × `(1 + 0,4 × Wort)`. Steine handeln unter „cut_gem“, kaufen kann man sie nicht.
+  Juwelier: Bau 50 Marks + 30 Stein + 10 Bronze.
+- **Verzaubern** im Turm des Zauberers (`enchant`, 30 min, Fertigkeit arcana, steht ab Stufe 1 ohne Arbeiter): Schule
+  wählen, Wirkung der Schule gleich verteilt. Wort-Chancen je Schliff (Rough → Flawless):
+  greatly 0 / 3 / 8 / 15 / 25 %, a lot 5 / 15 / 25 / 35 / 40 %, better 35 / 40 / 40 / 35 / 30 %, Rest slightly.
+  Arcana gibt bis zu 50 % Chance auf eine Stufe mehr (`arcana / 20 × 0,5`); ab Turmstufe 3 zwei Würfe, der bessere zählt.
+  Ohne geschliffenen Stein nimmt der Zauberer einen Rohedelstein als Rough cut.
+- **Wirkungen** (Grundwert je Wortstufe, Obergrenze je Zwerg):
+
+| Schule | Wirkung | Grundwert | Grenze |
+|---|---|---|---|
+| Earth | mining speed / gem finds / tool wear | 5 % / 3 % / −4 % | 200 % / 100 % / −80 % |
+| Fire | smelting speed / smithing quality / forging speed | je 5 % | 200 % |
+| Steel | combat power / defence / healing | je 5 % | 200 % |
+| Hearth | farming and brewing / mood / food and ale | 5 % / 2 Punkte / −4 % | 200 % / 40 / −80 % |
+| Gold | trade prices / learning / crafting speed | 2 % / 5 % / 5 % | 50 % / 200 % / 200 % |
+
+- **Zahl** = Grundwert × Wort (slightly 1, better 2, a lot 3, greatly 4) × Fassung × Passung.
+  Fassungen je Qualität: Crude 0, Normal 1, Fine 1, Exceptional 2, Masterwork 3, Artifact 3.
+  Fassung nach Metall-Zeitalter (Wert ≤ 600 / 1 300 / 3 200 / 8 000 / 18 000 / darüber): ×1 / 1,5 / 2 / 3 / 4 / 5,
+  Artefakte zusätzlich ×1,5. Passt die Wirkung zum Stück (`Magic.FITS`): ×2; Schmuck (Platz trinket) ×1,5 für alles.
+  Beispiel: „a lot better smithing quality“ im Stahlhammer: 5 % × 3 × 2 × 2 = +60 %.
+- **Einsetzen** und **Herausnehmen** am Turm, sofort; heraus bricht der Stein zu 25 %. Ein Stück, das kaputtgeht
+  oder verschrottet wird, gibt seine Steine zurück.
+- **Werkzeug je Beruf** (Platz tool): pickaxe mining, hammer smithing, ladle smelting, sickle farming, chisel crafting,
+  scales trading, staff arcana. Tempo +5 % × Zeitalter × Kraft der Qualität; die Waage +2 % Preis je Zeitalter.
+  Abnutzung wie Spitzhacken, nur bei der eigenen Arbeit.
+- **Legendär** (Qualität Artifact): nie kaputt, nie im Lager, eine orange Wirkung (je Festung einmal):
+  Heart of the Mountain (Bergarbeiter der Schicht +15 %), Forgefather (+1 Qualitätsstufe, höchstens Meisterwerk),
+  Bottomless Tankard (Bier ×0,75), Gatekeeper (Überfälle ×0,7, wenn der Träger Wache steht), Golden Touch (Verkauf ×1,15),
+  Deepsight (Adern alle 6/7 der Zeit), Undying (einmal am Tag fällt der Träger nur, statt zu sterben),
+  Voice of the Clans (Zuwanderer alle 4 h statt 8 h).
+- Balance-Bot (120 Tage, drei Besuche): verzaubert Earth-Steine aus Rohedelsteinen und setzt sie in die Spitzhacken,
+  jagt Monster in der Mine. Tag 111–120: rund 7 300 Marks (vorher, ohne Monsterjagd und Magie, 2 600, weil Monster
+  die Schichten dauerhaft sperrten).
+
 ## Kosten
 
 - Aufwerten auf Stufe n: `Grundpreis × n² / 4` Jots und `Grundstein × n² / 4` Stein (`Rules.levelSquare`, Stufe 2 ×1,
