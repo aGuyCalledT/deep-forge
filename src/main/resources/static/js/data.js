@@ -26,15 +26,66 @@ export const now = () => Date.now() / 1000 + G.offset;
 
 export function isItem(k) { return k.startsWith('item:'); }
 export function isBar(k) { return k.startsWith('bar:'); }
-export function parseItem(k) { const p = k.split(':'); return { type: p[1], metal: p[2], q: +p[3], mods: p[4] || '' }; }
+export function parseItem(k) { const p = k.split(':'); return { type: p[1], metal: p[2], q: +p[3], mods: p[4] || '', gems: p[5] || '', legend: p[6] || '' }; }
+
+// ------------------------------------------------------------------ magic (mirrors Magic.java, display only)
+const MG = () => G.data.magic;
+export const isGem = (k) => k.startsWith('gem:');
+/** "gem:2:smithq:3" -> {cut, effect, word}; a plain cut gem has no effect. */
+export function parseGem(k) { const p = k.split(':'); return { cut: +p[1], effect: p[2] || null, word: +(p[3] || 0) }; }
+export const gemKeyOf = (g) => g.effect ? `gem:${g.cut}:${g.effect}:${g.word}` : `gem:${g.cut}`;
+export const effectDef = (id) => MG().effects.find((e) => e.id === id);
+export const schoolOf = (effect) => effectDef(effect).school;
+export function wordText(effect, word) { const e = effectDef(effect); return (e.less ? MG().lessWords : MG().words)[word - 1]; }
+/** "a lot better smithing quality" */
+export function gemEffectText(g) { return wordText(g.effect, g.word) + ' ' + effectDef(g.effect).name; }
+export function gemValue(g) { return MG().cutValue[g.cut] * (g.effect ? 1 + 0.4 * g.word : 1); }
+export function gemName(k) {
+  const g = parseGem(k), cut = MG().cuts[g.cut] || 'Cut';
+  if (!g.effect) return cut + ' gem';
+  const sc = MG().schools.find((x) => x.id === schoolOf(g.effect));
+  return `${sc.name} gem (${cut.toLowerCase()}): ${gemEffectText(g)}`;
+}
+/** The gems in a piece, in socket order. */
+export function itemGems(k) {
+  const s = parseItem(k).gems;
+  return s ? s.split(',').map((x) => { const [effect, w, c] = x.split('.'); return { effect, word: +w, cut: +c }; }).filter((g) => effectDef(g.effect)) : [];
+}
+export function itemLegend(k) { const l = parseItem(k).legend; return l && MG().legends.find((x) => x.id === l) || null; }
+export function metalAge(m) { const v = m.value; return v <= 600 ? 1 : v <= 1300 ? 2 : v <= 3200 ? 3 : v <= 8000 ? 4 : v <= 18000 ? 5 : 6; }
+export function sockets(k) { const s = MG().sockets; return s[Math.min(s.length - 1, parseItem(k).q)]; }
+export function socketFactor(k) {
+  const p = parseItem(k), f = MG().ageFactor[metalAge(byId.metals[p.metal]) - 1];
+  return p.q >= 5 ? f * MG().legendFactor : f;
+}
+export function gemFit(type, effect) {
+  const t = byId.items[type]; if (!t) return 1;
+  if (t.category === 'jewelry') return MG().jewelryFit;
+  const f = MG().fits[type] || (t.slot && MG().fits[t.slot]);
+  return f && f.includes(effect) ? MG().fit : 1;
+}
+/** What a gem gives in a piece: base × word × socket factor × fit. */
+export function gemAmount(k, g) { return effectDef(g.effect).base * g.word * socketFactor(k) * gemFit(parseItem(k).type, g.effect); }
+/** "+90% smithing quality", "-12% tool wear", "+6 mood" */
+export function effectLine(effect, v) {
+  const e = effectDef(effect);
+  return e.points ? `+${Math.round(v)} ${e.name}` : `${e.less ? '-' : '+'}${Math.round(v * 100)}% ${e.name}`;
+}
+export function pieceEffects(k) {
+  const m = {};
+  for (const g of itemGems(k)) m[g.effect] = (m[g.effect] || 0) + gemAmount(k, g);
+  return m;
+}
 
 export function goodName(k) {
   if (isItem(k)) {
     const p = parseItem(k);
     const q = G.data.qualities[p.q].name;
     const mods = [...p.mods].map((c) => byId.mods[c].name.toLowerCase()).join(' ');
-    return `${q} ${mods ? mods + ' ' : ''}${byId.metals[p.metal].name.toLowerCase()} ${byId.items[p.type].name.toLowerCase()}`;
+    const n = itemGems(k).length;
+    return `${q} ${mods ? mods + ' ' : ''}${byId.metals[p.metal].name.toLowerCase()} ${byId.items[p.type].name.toLowerCase()}${n ? (n === 1 ? ' with a gem' : ` with ${n} gems`) : ''}`;
   }
+  if (isGem(k)) return gemName(k);
   if (k.startsWith('wear:')) {
     const p = k.split(':'), c = byId.clothes && byId.clothes[p[1]];
     return c ? p[2][0].toUpperCase() + p[2].slice(1) + ' ' + c.name.toLowerCase() : k;
@@ -48,6 +99,7 @@ export function goodName(k) {
 
 export function category(k) {
   if (k.startsWith('wear:')) return 'clothing';
+  if (isGem(k)) return 'gems';
   if (isItem(k)) return byId.items[parseItem(k).type].category;
   if (isBar(k)) return 'bars';
   if (byId.ores[k]) return 'ore';
@@ -58,6 +110,7 @@ export function category(k) {
 export function marketKey(k) {
   if (k.startsWith('wear:')) return 'cat:clothing';
   if (isItem(k)) return 'type:' + parseItem(k).type;
+  if (isGem(k)) return 'cut_gem';
   return k;
 }
 
@@ -98,8 +151,10 @@ export function baseValue(k) {
     const p = parseItem(k), t = byId.items[p.type], m = byId.metals[p.metal];
     let v = (m.value * t.bars + extraValue(p.type, p.mods)) * t.factor * qualityMult(t, p.q);
     for (const c of p.mods) v *= byId.mods[c].mult;
+    for (const g of itemGems(k)) v += gemValue(g);
     return v;
   }
+  if (isGem(k)) return gemValue(parseGem(k));
   if (isBar(k)) return byId.metals[k.slice(4)].value;
   if (byId.ores[k]) return byId.ores[k].value;
   return byId.raws[k] ? byId.raws[k].value : 0;
@@ -231,7 +286,11 @@ export function canPay(c) {
   return true;
 }
 
-export function stock(k) { return F().stock[k] || 0; }
+/** "cut_gem" counts every plain cut gem, whatever its cut (like the server). */
+export function stock(k) {
+  if (k === 'cut_gem') { let n = F().stock.cut_gem || 0; for (let c = 0; c < 5; c++) n += F().stock['gem:' + c] || 0; return n; }
+  return F().stock[k] || 0;
+}
 
 // ------------------------------------------------------------------ resource overview per tab
 
@@ -261,7 +320,8 @@ export function contextResources() {
       if (t === 'engraver') return [{ title: 'Can be engraved', keys: items((p) => byId.items[p.type].mods.includes('e') && !p.mods.includes('e')).slice(0, 14), empty: 'Nothing to engrave.' }];
       if (t === 'tailor') return [{ title: 'Fibre and cloth', keys: ['food', 'cloth'] }, { title: 'Sewn clothes', keys: stockKeys((k) => k.startsWith('wear:')).slice(0, 12), empty: 'Nothing sewn yet.' }];
       if (t === 'mechanic') return [{ title: 'Bars and parts', keys: ['bar:brass', 'gears', 'bar:copper', 'bar:bronze', 'bar:gold', 'bar:nickel_silver', 'cut_gem', 'coal'] }, { title: 'Made here', keys: items((p) => !!(G.data.parts || {})[p.type]).slice(0, 12), empty: 'Nothing made yet.' }];
-      if (t === 'jeweler') return [{ title: 'Gems', keys: ['rough_gem', 'cut_gem'] }, { title: 'Can take a gem', keys: items((p) => byId.items[p.type].mods.includes('g') && !p.mods.includes('g')).slice(0, 12), empty: 'No rings, crowns or goblets.' }];
+      if (t === 'jeweler') return [{ title: 'Gems', keys: ['rough_gem', ...[0, 1, 2, 3, 4].map((c) => 'gem:' + c).filter((k) => stock(k) > 0)] }];
+      if (t === 'wizard') return [{ title: 'Gems to enchant', keys: ['rough_gem', ...[0, 1, 2, 3, 4].map((c) => 'gem:' + c).filter((k) => stock(k) > 0)] }, { title: 'Enchanted gems', keys: stockKeys((k) => /^gem:\d:/.test(k)).slice(0, 12), empty: 'None yet.' }];
       return [prov];
     }
     case 'trade': return [{ title: 'Your goods', keys: ['coins', ...stockKeys((k) => k !== 'food' && k !== 'ale').slice(0, 16)] }, prov];

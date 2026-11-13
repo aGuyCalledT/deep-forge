@@ -172,14 +172,14 @@ export function bar(metal) {
 }
 
 /** A finished good: item shape in its metal, with marks for sharpened, engraved, gem-set, masterwork. */
-export function item(type, metal, q = 1, mods = '') {
-  const key = `item:${type}:${metal}:${q}:${mods}`;
+export function item(type, metal, q = 1, mods = '', gems = 0) {
+  const key = `item:${type}:${metal}:${q}:${mods}:${gems}`;
   if (cache.has(key)) return cache.get(key);
   const c = recolor(copy('item_' + type), swapMap('metal', byId.metals[metal] ? byId.metals[metal].color : '#999999'));
   const ctx = c.getContext('2d');
   if (mods.includes('e')) draw(ctx, 'mod_e', 1, c.height - 5);
   if (mods.includes('s')) draw(ctx, 'mod_s', c.width - 6, 0);
-  if (mods.includes('g')) draw(ctx, 'mod_g', c.width - 6, c.height - 6);
+  if (mods.includes('g') || gems > 0) draw(ctx, 'mod_g', c.width - 6, c.height - 6);
   if (mods.includes('i')) draw(ctx, 'mod_i', 1, 0);
   if (q >= 4) draw(ctx, 'mod_star', 0, 0);
   cache.set(key, c);
@@ -190,7 +190,13 @@ export function good(key) {
   if (key.startsWith('wear:')) return wearIcon(key);
   if (key.startsWith('item:')) {
     const p = key.split(':');
-    return item(p[1], p[2], +p[3], p[4] || '');
+    return item(p[1], p[2], +p[3], p[4] || '', p[5] ? p[5].split(',').length : 0);
+  }
+  if (key.startsWith('gem:')) {
+    const p = key.split(':');
+    if (!p[2]) return raw('cut_gem');
+    const fx = G.data.magic.effects.find((e) => e.id === p[2]);
+    return sprite('gem_' + (fx ? fx.school : 'earth'));
   }
   if (key.startsWith('bar:')) return bar(key.slice(4));
   if (byId.ores[key]) return ore(key);

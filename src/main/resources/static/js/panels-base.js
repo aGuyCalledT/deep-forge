@@ -7,6 +7,7 @@ import { api, setToken } from './api.js';
 import { openAudioSheet } from './panels-audio.js';
 import { cheatsSection } from './popups.js';
 import { notesView, markNotesSeen } from './notes.js';
+import { pieceSheet, effectLines, dwarfEffects } from './magic.js';
 
 // ================================================================== fortress
 
@@ -31,7 +32,7 @@ function stacks(list) {
     const name = byId.metals[s.p.metal].name + ' ' + plural(byId.items[s.p.type].name.toLowerCase());
     const head = h('summary', null, goodIcon(s.list[0][0]), h('span', { class: 'nm' }, name), h('span', { class: 'n' }, fmt(s.n)));
     return h('details', { class: 'stack' }, head,
-      h('div', { class: 'pieces' }, s.list.map(([k, v]) => h('div', { class: 'piece' }, goodIcon(k, 'icon s'),
+      h('div', { class: 'pieces' }, s.list.map(([k, v]) => h('div', { class: 'piece', role: 'button', tabindex: 0, style: { cursor: 'pointer' }, onclick: () => pieceSheet({ item: k }) }, goodIcon(k, 'icon s'),
         h('span', { class: 'nm small' }, goodName(k)), h('span', { class: 'v small' }, moneyText(baseValue(k))), h('span', { class: 'n' }, fmt(v))))));
   }));
 }
@@ -93,7 +94,9 @@ export function renderFortress() {
       g === 'Goods' ? stacks(list) : h('div', { class: 'stock-grid' }, list.map(cell))));
   }
   if (f.artifacts.length) out.push(h('div', { class: 'card' }, h('h3', null, 'Artifacts'),
-    f.artifacts.map((a) => h('div', { class: 'row' }, a.item ? goodIcon(a.item) : img(S.artifact()), h('span', { class: 'grow' }, a.name),
+    f.artifacts.map((a) => h('div', { class: 'row' }, a.item ? goodIcon(a.item) : img(S.artifact()),
+      a.item ? h('button', { class: 'linkish grow', style: { textAlign: 'left' }, onclick: () => pieceSheet({ artifact: a.id }) }, h('span', { class: 'fx legend' }, a.name),
+        a.wornBy ? h('span', { class: 'small muted' }, ' · worn by ' + fullName(f.dwarves.find((d) => d.id === a.wornBy) || { first: '?', clan: '' })) : null) : h('span', { class: 'grow' }, a.name),
       a.unnamed ? h('button', { class: 'btn small primary', onclick: () => bus.nameArtifact(a.id) }, 'Name it') : null,
       h('span', { class: 'gold-t' }, '~' + moneyText(a.value))))));
 
@@ -256,32 +259,45 @@ export function jobSheet(x) {
     opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
 }
 
-const SLOTS = [['tool', 'Tool', 'Pickaxes dig faster, break harder rock and wear out'], ['weapon', 'Weapon', 'Axes for fighting; wear out in battle'], ['helm', 'Helm', 'Protection; wears out in battle'], ['armor', 'Armor', 'Chain mail; wears out in battle']];
+const SLOTS = [['tool', 'Tool', 'One for each job: pickaxe, hammer, ladle, sickle, chisel, scales, staff. Wears out'], ['trinket', 'Jewelry', 'Rings, crowns, music boxes: gems in them help with everything'], ['weapon', 'Weapon', 'Axes for fighting; wear out in battle'], ['helm', 'Helm', 'Protection; wears out in battle'], ['armor', 'Armor', 'Chain mail; wears out in battle']];
 
 /** How much of an equipped piece is left (0..1), and whether it has been used (then taking it off scraps it). */
 function left(me, slot) {
   const dd = D().dwarves[me.id] || {};
   return slot === 'tool' ? (dd.toolLeft ?? 1) : ((dd.gearLeft || {})[slot] ?? 1);
 }
-function worn(me, slot) { return slot === 'tool' ? me.toolWear > 0.25 : ((me.gearWear || {})[slot] || 0) > 0; }
+function worn(me, slot) {
+  if (slot === 'trinket' || (me[slot] && parseItem(me[slot]).q >= 5)) return false;
+  return slot === 'tool' ? me.toolWear > 0.25 : ((me.gearWear || {})[slot] || 0) > 0;
+}
 
 export function gearSheet(x) {
   openSheet(() => {
     const f = F();
     const me = f.dwarves.find((y) => y.id === x.id) || x;
+    const dd = D().dwarves[me.id] || {}, fx = dwarfEffects(me.id);
+    const toolFor = (k) => { const ts = G.data.magic.toolSkill[parseItem(k).type]; return ts && ts === dd.jobSkill; };
     return h('div', null, h('h2', null, fullName(me) + "'s gear"),
+      fx.length ? h('div', { class: 'card sub' }, h('div', { class: 'row between' }, h('b', null, 'Magic'),
+        info('All gems and the job tool together. Each effect has a limit per dwarf: +200% speed, quality and power, +40 mood, -80% wear and food, +50% prices.')), fx) : null,
       SLOTS.map(([slot, name, note]) => {
         const items = Object.entries(f.stock).filter(([k, v]) => v > 0 && isItem(k) && byId.items[parseItem(k).type].slot === slot)
-          .sort((a, b) => baseValue(b[0]) - baseValue(a[0])).slice(0, 8);
+          .sort((a, b) => (slot === 'tool' ? (toolFor(b[0]) - toolFor(a[0])) * 1e9 : 0) + baseValue(b[0]) - baseValue(a[0])).slice(0, 8);
+        const arts = f.artifacts.filter((a) => a.item && byId.items[parseItem(a.item).type].slot === slot && a.wornBy !== me.id);
         return h('div', { class: 'card sub' },
           h('div', { class: 'row between' }, h('b', null, name), h('span', { class: 'small muted' }, note)),
-          me[slot] ? h('div', { class: 'row' }, goodIcon(me[slot]), h('span', { class: 'grow small' }, goodName(me[slot])),
+          me[slot] ? h('div', { class: 'row' }, goodIcon(me[slot]), h('button', { class: 'linkish grow small', style: { textAlign: 'left' }, onclick: () => pieceSheet({ dwarf: me.id, slot }) }, goodName(me[slot])),
             h('button', { class: 'btn small', title: worn(me, slot) ? 'A used piece is worn: taking it off scraps it' : '',
               onclick: async () => { await bus.act({ type: 'unequip', dwarf: me.id, slot }); refreshSheet(); } }, worn(me, slot) ? 'Scrap' : 'Remove'))
             : h('p', { class: 'small muted' }, slot === 'tool' ? 'Makeshift pick: free, slow, never breaks, only soft rock.' : 'Nothing equipped.'),
-          me[slot] ? h('div', null, h('div', { class: 'row between small' }, h('span', { class: 'muted' }, 'Condition'), h('span', null, Math.round(left(me, slot) * 100) + '%')),
+          me[slot] ? effectLines(me[slot]) : null,
+          me[slot] && slot === 'tool' && dd.jobSkill && !dd.toolFits ? h('p', { class: 'small warn-t' }, `Not the tool for ${dd.jobSkill}. Give them the right one.`) : null,
+          me[slot] && slot !== 'trinket' && parseItem(me[slot]).q < 5 ? h('div', null, h('div', { class: 'row between small' }, h('span', { class: 'muted' }, 'Condition'), h('span', null, Math.round(left(me, slot) * 100) + '%')),
             bar(left(me, slot), left(me, slot) < 0.15 ? 'bad' : '')) : null,
-          items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${v})`),
+          arts.map((a) => h('div', { class: 'row' }, goodIcon(a.item), h('span', { class: 'grow small' }, h('span', { class: 'fx legend' }, a.name), a.wornBy ? ' (worn by another)' : ''),
+            h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, artifact: a.id }); refreshSheet(); } }, 'Equip'))),
+          items.map(([k, v]) => h('div', { class: 'row' }, goodIcon(k), h('button', { class: 'linkish grow small', style: { textAlign: 'left' }, onclick: () => pieceSheet({ item: k }) },
+            `${goodName(k)} (${v})`, slot === 'tool' && toolFor(k) ? h('span', { class: 'fx' }, ' · for the job') : null),
             h('button', { class: 'btn small good', onclick: async () => { await bus.act({ type: 'equip', dwarf: me.id, item: k }); refreshSheet(); } }, 'Equip'))));
       }),
       h('h3', null, 'Clothes'),

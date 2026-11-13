@@ -366,7 +366,7 @@ function levelOf(type) { const b = F().buildings.find((x) => x.type === type); r
 export function jobOf(b, i) { return i === 0 ? b.job : (b.more || [])[i - 1] || null; }
 
 /** What each workshop's worker holds while working (kept for the panels; the 48-px dwarves work bare-handed). */
-export const TOOL_OF = { forge: 'hammer', smelter: 'shovel', brewery: 'paddle', farm: 'hoe', engraver: 'chisel', jeweler: 'chisel', mechanic: 'chisel', grindstone: 'hammer', tailor: 'chisel' };
+export const TOOL_OF = { forge: 'hammer', smelter: 'shovel', brewery: 'paddle', farm: 'hoe', engraver: 'chisel', jeweler: 'chisel', wizard: 'chisel', mechanic: 'chisel', grindstone: 'hammer', tailor: 'chisel' };
 
 /** Free places for this round of planning: seats, bar places and idle spots of every room, and the beds. */
 function placeCtx(g) {
@@ -1289,7 +1289,8 @@ function hasInputs(b) {
     case 'engraver': return keys.some((k) => k.startsWith('item:') && !k.split(':')[4].includes('e') && !/^item:chain/.test(k));
     case 'tailor': return stock('food') >= 3 || stock('cloth') > 0;
     case 'mechanic': return stock('bar:brass') >= 2;
-    case 'jeweler': return stock('rough_gem') > 0 || (stock('cut_gem') > 0 && keys.some((k) => /^item:(ring|crown|goblet):/.test(k)));
+    case 'jeweler': return stock('rough_gem') > 0;
+    case 'wizard': return stock('rough_gem') > 0 || stock('cut_gem') > 0;
     default: return false;
   }
 }

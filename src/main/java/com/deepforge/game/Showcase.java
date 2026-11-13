@@ -27,6 +27,19 @@ public final class Showcase {
                     Rules.add(f, Content.itemKey(it.id(), m.id(), 2 + Math.floorMod((it.id() + m.id()).hashCode(), 3), ""), 2);
         for (String c : Content.CLOTHES.keySet())
             for (String dye : Content.DYES.keySet()) Rules.add(f, Content.wearKey(c, dye), 1);
+        // gems: plain cuts and one enchanted gem of every effect, and three legendary pieces
+        for (int c = 0; c < Magic.CUTS.size(); c++) Rules.add(f, Magic.gemKey(c), 3);
+        for (Magic.Effect e : Magic.EFFECTS.values()) Rules.add(f, Magic.gemKey(2 + r.nextInt(3), e.id(), 2 + r.nextInt(3)), 1);
+        String[][] legends = {{"axe", "star_steel", "Grudgebearer"}, {"crown", "gold", "Crown of the Deep King"}, {"hammer", "steel", "Emberfall"}};
+        for (String[] l : legends) {
+            State.Artifact a = new State.Artifact();
+            a.id = f.nextId++;
+            a.item = Content.itemKey(l[0], l[1], Content.ARTIFACT, "", "", Magic.rollLegend(r, l[0]));
+            a.name = l[2];
+            a.desc = "Made for the showcase.";
+            a.value = Content.baseValue(a.item);
+            f.artifacts.add(a);
+        }
 
         // everything known and open
         for (Content.ItemType it : Content.ITEMS.values()) if (it.blueprint() != null) f.blueprints.add(it.blueprint());

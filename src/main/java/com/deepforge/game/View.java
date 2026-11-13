@@ -190,7 +190,7 @@ public final class View {
             m.put("maxMachines", maxMachines(b));
             m.put("cells", Layouts.hasRoom(b) ? Layouts.width(b) : 0);
             m.put("active", b.level <= 0 || active(f, b));
-            if (isWorkshop(b) && machines(b) < MAX_MACHINES)
+            if (isWorkshop(b) && machines(b) < MAX_MACHINES && Layouts.MACHINE_CELLS.containsKey(b.type))
                 m.put("canGrow", Layouts.hasRoom(b) && f.layout.rooms.containsKey(b.id) && Layouts.spaceToGrow(f, b) != null);
             List<String> jobNames = new ArrayList<>();
             jobNames.add(b.job == null ? null : Sim.jobName(b.job));

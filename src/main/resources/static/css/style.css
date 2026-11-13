@@ -25,6 +25,7 @@
   --honey: #e0a54e;
   --ember: #e98a5e;
   --good: #8fd9a8;
+  --legend: #ffa046;           /* the orange effect of legendary pieces */
   --bad: #ff9a8e;
   --warn: #f2c46c;
   --blue: #9cc0ff;
@@ -833,3 +834,12 @@ label.inline input { display: inline-block; margin: 0; }
 .bar.gold > i { background: linear-gradient(180deg, #fff0b8, #e3c06e 55%, #a8743a); }
 .bar.good > i { background: linear-gradient(180deg, #d8f5c0, #6fb84a 55%, #3d7a2c); }
 .bar.good.bad > i { background: linear-gradient(180deg, #ffd0c0, #d9704a 55%, #8a3a2c); }
+
+/* magic: sockets and effect lines under a piece */
+.sockets { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin: 4px 0; }
+.sockets .sock { width: 32px; height: 32px; image-rendering: pixelated; }
+.fx { color: var(--good); font-size: 12px; line-height: 16px; }
+.fx.legend { color: var(--legend); }
+.fx.dim { color: var(--dim); }
+.linkish { background: none; border: 0; padding: 4px 0; min-height: 40px; color: var(--ink); font: inherit; cursor: pointer; text-decoration: underline dotted var(--dim); text-underline-offset: 3px; }
+.linkish:hover { color: var(--hl); }
