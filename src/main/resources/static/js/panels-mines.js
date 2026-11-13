@@ -58,9 +58,9 @@ export function renderMines() {
       card.append(cartRule(i, ls, inCart));
       const veinIn = Math.max(0, (ls.veinAt || 0) - now());
       card.append(h('div', { class: 'row between', style: { marginTop: '6px' } },
-        h('span', null, 'Vein ', info(`Break a vein out of the rock yourself: ${dl.veinOre || 10} ore go straight into the cart. A new vein shows every 20 minutes.`)),
-        veinIn > 0 ? h('span', { class: 'muted small' }, 'next in ', h('span', { 'data-until': ls.veinAt }, dur(veinIn)))
-          : h('button', { class: 'btn small primary', disabled: !!th, onclick: () => bus.vein(i) }, ico('mines'), 'Break a vein')));
+        h('span', null, 'Vein ', info(`Break a vein out of the rock yourself: ${dl.veinOre || 10} ore go straight into the cart. A new vein shows every 4 hours, up to 3 wait for you.`)),
+        veinIn > 0 && !dl.veins ? h('span', { class: 'muted small' }, 'next in ', h('span', { 'data-until': ls.veinAt }, dur(veinIn)))
+          : h('button', { class: 'btn small primary', disabled: !!th, onclick: () => bus.vein(i) }, ico('mines'), dl.veins > 1 ? `Break a vein (${dl.veins})` : 'Break a vein')));
       if (inCart >= target && f.storageFull) card.append(h('p', { class: 'bad-t small' }, 'The cart is ready but the warehouse is full. Make room to send it up.'));
       card.append(h('div', { class: 'row between', style: { marginTop: '6px' } },
         h('span', null, h('b', { class: 'gold-t' }, fmt(dl.rate) + ' ore/h'), h('span', { class: 'muted' }, ` from ${dl.miners} miner${dl.miners === 1 ? '' : 's'}`)),

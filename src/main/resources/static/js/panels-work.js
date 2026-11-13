@@ -9,7 +9,7 @@ import { jobOf } from './hold.js';
 import { api } from './api.js';
 
 export function orderLabel(e) {
-  const n = e.remaining === -1 ? '∞' : '×' + e.remaining;
+  const n = e.keep > 0 ? 'keep ' + e.keep : e.remaining === -1 ? '∞' : '×' + e.remaining;
   switch (e.recipe) {
     case 'smelt': return [goodIcon(e.mat, 'icon s'), ` Smelt ${byId.ores[e.mat].name.toLowerCase()} ${n}`];
     case 'alloy': return [goodIcon('bar:' + e.mat, 'icon s'), ` ${byId.metals[e.mat].name} ${n}`];
@@ -187,7 +187,7 @@ export function anvilBlock() {
   return h('div', { class: 'anvil-card card' + (list.length ? ' hot' : '') },
     h('div', { class: 'row between' },
       h('b', null, 'At the anvil ', h('span', { class: 'gold-t' }, `${list.length}/${max}`)),
-      info('Every forged piece waits here for two hours. Hammer it in time and quench it at the golden mark for better quality. Pieces you leave are finished by the dwarves, but never as well. When the anvil is full, a better piece pushes out the cheapest.')),
+      info('Every forged piece waits here for eight hours. Hammer it in time and quench it at the golden mark for better quality. Pieces you leave are finished by the dwarves, but never as well. When the anvil is full, a better piece pushes out the cheapest.')),
     list.length ? h('div', { class: 'anvil-row' }, list.slice(0, 10).map((g) => img(S.item(g.itype, g.mat), 'icon s')))
       : h('p', { class: 'small muted' }, 'Nothing hot right now. Forged pieces come here.'),
     h('button', { class: 'btn big primary', disabled: !list.length, onclick: () => bus.smithy() }, ico('work'), list.length ? 'To the anvil' : 'Nothing to forge'),
@@ -239,12 +239,13 @@ function assignSheet(b, machine = -1) {
 }
 
 const COUNTS = [1, 5, 10, 25, -1];
+const KEEPS = [2, 5, 10, 25];
 
 function orderSheet(b) {
-  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : 'cutgem', mat: null, itype: null, count: -1 };
+  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : 'cutgem', mat: null, itype: null, count: -1, keep: 0 };
   const send = async () => {
     try {
-      await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count }, false, true);
+      await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count, keep: st.keep }, false, true);
       closeSheet();
     } catch (e) { toast(e.message, 'bad'); }
   };
@@ -323,7 +324,10 @@ function orderSheet(b) {
         h('div', { class: 'small muted' }, 'Each one needs'), inputChips(ins),
         h('div', { class: 'small ' + (can > 0 ? 'good-t' : 'bad-t') }, can > 0 ? `You have enough for ${fmt(can)}.` : 'You have not got enough yet - the order waits until you do.')));
     }
-    parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c ? ' primary' : ''), onclick: () => { st.count = c; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
+    parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c && !st.keep ? ' primary' : ''), onclick: () => { st.count = c; st.keep = 0; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
+    parts.push(h('h3', null, 'Or keep in stock ', info('The workshop only works on this order while the warehouse has fewer than this many. Good for pickaxes, bars and chains that other workshops need.')),
+      b.level >= 2 ? h('div', { class: 'row' }, KEEPS.map((c) => h('button', { class: 'btn small' + (st.keep === c ? ' primary' : ''), onclick: () => { st.keep = c; st.count = -1; refreshSheet(); } }, 'Keep ' + c)))
+        : h('p', { class: 'small muted' }, 'Upgrade the workshop to level 2 to keep goods in stock.'));
     const ready = st.recipe === 'cutgem' || st.recipe === 'weave' || (st.recipe === 'sew' && st.itype && st.mat) || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
     parts.push(h('button', { class: 'btn big primary', style: { marginTop: '12px' }, disabled: !ready, onclick: send }, 'Add to queue'));
     return h('div', null, parts);

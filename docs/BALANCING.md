@@ -45,8 +45,8 @@ und hier.
 
 ## Qualität (Amboss: Schmieden und Abschrecken)
 
-Jedes geschmiedete Stück wartet am Amboss (`Rules.ANVIL_MAX` = 10 Stück, `ANVIL_WAIT` = 2 h). Der Spieler spielt
-zwei Minispiele (Takt am Amboss, 8 Schläge; Abschrecken an der goldenen Mitte). Nach 2 h machen die Zwerge es allein
+Jedes geschmiedete Stück wartet am Amboss (`Rules.ANVIL_MAX` = 10 Stück, `ANVIL_WAIT` = 8 h). Der Spieler spielt
+zwei Minispiele (Takt am Amboss, 8 Schläge; Abschrecken an der goldenen Mitte). Nach 8 h machen die Zwerge es allein
 fertig (Spielwert 0). Ist der Amboss voll, verdrängt ein wertvolleres Stück das billigste; das billigste machen die
 Zwerge sofort fertig.
 
@@ -148,6 +148,25 @@ Masterwork 2, Artifact 3.
   (`Rules.SHARE_DAYS`). `Anteil = (V + B) / (V + B + W)`, `W = L × 7 × Bezugswert`, `B` so, dass man mit 1 % startet.
   Marktmacht `= √(Anteil / 1 %)`, begrenzt auf 1–5: wer viel handelt, bewegt den Preis stärker.
 
+## Tagesplan, Bauen, Schichtberichte, Bestand halten
+
+- **Tagesplan** (`Rules.pace`): Jeder Besuch (Laden des Spielstands oder eine Aktion, `Fortress.lastVisit`) startet ihn
+  neu. Bis 24 h nach dem Besuch volles Tempo, dann in 48 h gleichmäßig auf 20 %, bis 7 Tage 20 %, danach Ruhe (0).
+  Das Tempo multipliziert die Zeit für Bedürfnisse, Stimmung, Graben, Mine, Werkstätten, Training und
+  Schichtberichte; Karawanen, Expeditionen, Bauen und der Amboss laufen nach der Uhr. Ein Monat ohne Besuch bringt
+  etwa 3 Tage Arbeit. Überfälle, Monster und Kriechtiere kommen nur, wenn der letzte Besuch höchstens 24 h her ist
+  (`Rules.watched`).
+- **Vorarbeiter** (Beruf `foreman`, ab Festungsstufe 5, einer): volles Tempo 36 h, ist eine seiner Fertigkeiten ≥ 15,
+  48 h (`Rules.planFull`).
+- **Bauen** (`Rules.buildTime`): ein Bautrupp, ein Ausbau zur Zeit. Ausbau auf Stufe n dauert `10 min × n^1,6`
+  (Stufe 2: 30 min, 5: 2 h 10 min, 10: 6 h 38 min), höchstens 24 h. Der Raum arbeitet währenddessen auf der alten Stufe
+  weiter. Neue Räume (Stufe 0 → 1) stehen sofort. Schichten öffnen und Schächte ausbauen geht weiterhin sofort.
+- **Schichtbericht** (`Sim.shiftReports`): alle 4 h Arbeit einer, bis zu 3 warten. Fund: 40 % Erz der tiefsten offenen
+  Schicht (`6 + 4 × Schicht` bis +4), 20 % Rohedelsteine (`1 + Schicht/2`), 20 % alte Münzen (`(3 + 2 × Festungsstufe)`
+  Marks × 0,8–1,4), 15 % Barren (`2 + Schicht`), 5 % ein fehlender Bauplan (sonst ein geschliffener Stein).
+- **Bestand halten** (`QueueEntry.keep`, ab Werkstattstufe 2): Der Auftrag läuft nur, solange weniger als `keep`
+  Stück im Lager sind (Stücke am Amboss zählen mit, `Recipes.productCount`).
+
 ## Sofortverkauf und besuchende Karawanen
 
 - **Sell at the gate** (Aktion `quickSell`): jede Ware sofort für 10 % des Grundwerts (`Rules.QUICK_SALE`), ohne
@@ -218,4 +237,4 @@ Masterwork 2, Artifact 3.
 | Schleifstein | 2,2 je Sekunde in der grünen Zone |
 | Runen, Edelstein, Webstuhl | je Treffer bis 1 (Runen: schneller getippt mehr; Edelstein und Schiffchen nach Abstand zur Marke) |
 | Dünger (Pilzfarm) | alle 2 h einmal: +60 % × Anteil der bedüngten Pilze (`FERT_MAX`, `FERT_TIME`); der Sack reicht für 10 s Streuen |
-| Ader (Mine) | je Schicht alle 20 min (`VEIN_WAIT`): `8 + 2 × Schachtstufe` Erz (`Rules.veinOre`) nach den Erz-Gewichten der Schicht direkt in den Wagen. Ausdauer 100, ein Schlag kostet 20 und erholt sich mit 45/s ab 0,25 s nach dem Schlag; Schlagkraft `0,4 + 0,6 × Ausdauer` (müde 0,15); Fels um die Ader hält `1 + ⌊Schicht/2⌋` Treffer (+1 innen) |
+| Ader (Mine) | je Schicht alle 4 h eine (`VEIN_WAIT`), bis zu 3 warten (`VEINS_MAX`, `Rules.veins`): `24 + 6 × Schachtstufe` Erz (`Rules.veinOre`) nach den Erz-Gewichten der Schicht direkt in den Wagen. Ausdauer 100, ein Schlag kostet 20 und erholt sich mit 45/s ab 0,25 s nach dem Schlag; Schlagkraft `0,4 + 0,6 × Ausdauer` (müde 0,15); Fels um die Ader hält `1 + ⌊Schicht/2⌋` Treffer (+1 innen) |

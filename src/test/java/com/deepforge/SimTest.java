@@ -131,6 +131,12 @@ class SimTest {
         assertTrue(m.sellPrice("stonebridge", "bar:copper", 1) > p1 * 0.99, "price recovers over time");
     }
 
+    /** Upgrade and let the builders finish at once. */
+    static void upgradeNow(Fortress f, Market m, double t, Building b) {
+        act(f, m, t, "type", "upgrade", "building", b.id);
+        if (b.upUntil > 0) Actions.raise(f, b, t);
+    }
+
     static int count(Fortress f, String prefix) {
         int n = 0;
         for (Map.Entry<String, Integer> e : f.stock.entrySet()) if (e.getKey().startsWith(prefix)) n += e.getValue();
@@ -155,8 +161,8 @@ class SimTest {
         assertNotNull(f.smithed);
         assertEquals(id, f.smithed.forging);
         assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 3600, "type", "smith", "id", id, "forge", 1, "quench", 1));
-        Sim.advance(f, T0 + 4 * 3600, m);
-        assertTrue(f.anvil.isEmpty(), "after two hours the dwarves finish them");
+        Sim.advance(f, T0 + 10 * 3600, m);
+        assertTrue(f.anvil.isEmpty(), "after eight hours the dwarves finish them");
         assertEquals(3, count(f, "item:goblet:copper") + f.artifacts.size());
     }
 
@@ -249,7 +255,10 @@ class SimTest {
         act(f, m, T0, "type", "vein", "layer", 0);
         int after = l.cart.values().stream().mapToInt(Integer::intValue).sum();
         assertTrue(after - before >= Rules.veinOre(l) - 0 && after > before, "ore in the cart: " + before + " -> " + after);
+        act(f, m, T0 + 60, "type", "vein", "layer", 0);   // three veins wait at first
+        act(f, m, T0 + 60, "type", "vein", "layer", 0);
         assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 60, "type", "vein", "layer", 0));
+        assertEquals(1, Rules.veins(l, T0 + 60 + Rules.VEIN_WAIT));
         assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 60, "type", "vein", "layer", f.layers.size() - 1));
     }
 
@@ -371,7 +380,7 @@ class SimTest {
         c.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
         Dwarf a = f.dwarves.get(0), b = f.dwarves.get(1), x = f.dwarves.get(2);
         act(f, m, T0, "type", "assign", "dwarf", a.id, "job", "worker", "building", "forge-1");
-        act(f, m, T0, "type", "upgrade", "building", "forge-1");
+        upgradeNow(f, m, T0, forge);
         assertEquals(2, forge.machines);
         assertEquals(Layouts.ROOM_CELLS.get("forge") + Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
         // the room grew over the cells to its right: nothing else may stand there
@@ -383,7 +392,7 @@ class SimTest {
         Sim.advance(f, T0 + 60, m);
         assertNotNull(forge.job);
         assertNotNull(forge.more.get(0));
-        Sim.advance(f, T0 + 3 * 3600, m);
+        Sim.advance(f, T0 + 11 * 3600, m);   // the dwarves finish the pieces at the anvil after 8 h
         int goblets = 0;
         for (Map.Entry<String, Integer> e : f.stock.entrySet())
             if (e.getKey().startsWith("item:goblet:copper")) goblets += e.getValue();
@@ -545,7 +554,7 @@ class SimTest {
         f.stock.put("bar:bronze", 500);
         Building forge = Rules.building(f, "forge-1");
         open(f, Layouts.SHAFT, Layouts.COLS - 1, 0, 1, 2, 3, 4, 5, 6, 7);
-        while (forge.level < 3) { act(f, m, T0, "type", "upgrade", "building", forge.id); }
+        while (forge.level < 3) upgradeNow(f, m, T0, forge);
         assertEquals(3, Rules.machines(forge));
         List<Dwarf> ds = f.dwarves.stream().filter(d -> d.busy == null).limit(3).toList();
         for (Dwarf d : ds) act(f, m, T0, "type", "assign", "dwarf", d.id, "job", "idle");
@@ -799,5 +808,77 @@ class SimTest {
         act(f, m, f.t, "type", "sellVisitor", "key", key, "amount", 1);
         assertTrue(f.coins - c0 > Content.baseValue(key) * 0.5, "they pay far more than the gate trader");
         assertTrue(f.visitor == null || f.visitor.want == want - 1);
+    }
+
+    @Test
+    void leavingTheHoldAlonePaysLessAndLess() {
+        Fortress f = fresh(35);
+        f.lastVisit = T0;
+        double H = 3600;
+        assertEquals(1, Rules.pace(f, T0 + 20 * H), 1e-9);
+        assertEquals(0.6, Rules.pace(f, T0 + 48 * H), 1e-9);
+        assertEquals(0.2, Rules.pace(f, T0 + 100 * H), 1e-9);
+        assertEquals(0, Rules.pace(f, T0 + 8 * 24 * H), 1e-9);
+        // a month away brings about what three days bring
+        double work = 0;
+        for (double t = 0; t < 30 * 24 * H; t += 600) work += Rules.pace(f, T0 + t) * 600;
+        assertTrue(work / (24 * H) < 3.5 && work / (24 * H) > 2.5, "days of work in a month: " + work / 86400);
+        assertFalse(Rules.watched(f, T0 + 30 * H), "no raids while the player is away for long");
+        // a foreman keeps the full pace longer
+        f.level = Rules.FOREMAN_LEVEL;
+        Market m = Market.inMemory(35, T0);
+        act(f, m, T0, "type", "assign", "dwarf", f.dwarves.get(0).id, "job", "foreman");
+        f.lastVisit = T0;
+        assertEquals(1, Rules.pace(f, T0 + 30 * H), 1e-9);
+    }
+
+    @Test
+    void buildersTakeTimeAndOneCrewWorksAtATime() {
+        Fortress f = fresh(36);
+        Market m = Market.inMemory(36, T0);
+        f.coins = 10_000_000;
+        f.stock.put("stone", 5000);
+        for (Content.Metal mt : Content.METALS.values()) f.stock.put("bar:" + mt.id(), 500);
+        Building wh = Rules.building(f, "warehouse"), tav = Rules.building(f, "tavern");
+        int lv = wh.level;
+        act(f, m, T0, "type", "upgrade", "building", wh.id);
+        assertEquals(lv, wh.level, "not done yet");
+        assertEquals(T0 + Rules.buildTime(lv + 1), wh.upUntil, 1e-6);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0 + 1, "type", "upgrade", "building", tav.id));
+        Sim.advance(f, wh.upUntil + 1, m);
+        assertEquals(lv + 1, wh.level);
+        assertTrue(Rules.buildTime(5) > 3600 * 2 && Rules.buildTime(10) < 3600 * 7 && Rules.buildTime(30) == 24 * 3600);
+    }
+
+    @Test
+    void keepInStockOrdersStopWhenTheWarehouseHasEnough() {
+        Fortress f = fresh(37);
+        Market m = Market.inMemory(37, T0);
+        Building forge = Rules.building(f, "forge-1");
+        forge.level = 2;
+        forge.queue.clear();
+        f.stock.put("bar:copper", 100);
+        f.stock.put("coal", 100);
+        QueueEntry e = new QueueEntry();
+        e.recipe = "craft"; e.itype = "pickaxe"; e.mat = "copper"; e.remaining = -1; e.keep = 2; e.id = 1;
+        forge.queue.add(e);
+        Rules.add(f, Content.itemKey("pickaxe", "copper", 1, ""), 2);
+        assertEquals(2, Recipes.productCount(f, e));
+        Sim.startNext(f, forge);
+        assertNull(forge.job, "two in stock: nothing to do");
+        f.stock.remove(Content.itemKey("pickaxe", "copper", 1, ""));
+        Sim.startNext(f, forge);
+        assertNotNull(forge.job);
+    }
+
+    @Test
+    void shiftReportsWaitWithAFind() {
+        Fortress f = fresh(38);
+        Market m = Market.inMemory(38, T0);
+        Sim.advance(f, T0 + 30 * 3600, m);
+        long n = f.reports.stream().filter(r -> r.kind.equals("shift")).count();
+        assertEquals(Rules.FINDS_MAX, n, "three reports wait");
+        Report r = f.reports.stream().filter(x -> x.kind.equals("shift")).findFirst().orElseThrow();
+        assertTrue(r.coins > 0 || !r.goods.isEmpty() || !r.extras.isEmpty());
     }
 }

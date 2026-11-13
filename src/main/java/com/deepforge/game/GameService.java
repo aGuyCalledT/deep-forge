@@ -79,6 +79,7 @@ public class GameService {
         synchronized (lock(uid)) {
             Fortress f = load(uid, owner, now);
             Sim.advance(f, now, market);
+            f.lastVisit = now;   // the player looked in: the day plan starts again
             save(f);
             return View.of(f, now, cheats);
         }
@@ -97,6 +98,7 @@ public class GameService {
                 Actions.apply(f, action, now, r);
             }
             f.rng = r.s;
+            f.lastVisit = now;
             save(f);
             return View.of(f, now, cheats);
         }

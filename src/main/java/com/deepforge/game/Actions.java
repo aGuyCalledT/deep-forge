@@ -20,6 +20,7 @@ public final class Actions {
         if (!ok) throw new GameException(msg);
     }
 
+    static final int KEEP_LEVEL = 2;   // workshop level for "keep in stock" orders
     static final double USED_PICK_HOURS = 0.25;   // a pick that worked longer than this is worn: taking it off scraps it
 
     static String str(Map<String, Object> a, String k) {
@@ -74,7 +75,7 @@ public final class Actions {
         switch (type) {
             case "assign" -> assign(f, a);
             case "build" -> build(f, a);
-            case "upgrade" -> upgrade(f, a);
+            case "upgrade" -> upgrade(f, a, t);
             case "upgradeLayer" -> upgradeLayer(f, a);
             case "cartRule" -> cartRule(f, a);
             case "autoPicks" -> autoPicks(f, a);
@@ -152,6 +153,11 @@ public final class Actions {
         check(job != null, "Choose a job.");
         switch (job) {
             case "idle", "merchant" -> d.job = job;
+            case "foreman" -> {
+                check(f.level >= FOREMAN_LEVEL, "Reach hold level " + FOREMAN_LEVEL + " to name a foreman.");
+                for (Dwarf o : f.dwarves) if (o != d && o.job.equals("foreman")) o.job = "idle";
+                d.job = "foreman";
+            }
             case "miner" -> {
                 int layer = num(a, "layer", 0);
                 check(layer >= 0 && layer < f.layers.size() && f.layers.get(layer).unlocked, "That layer is not open yet.");
@@ -368,22 +374,41 @@ public final class Actions {
         log(f, "info", "Built a new " + bt.name().toLowerCase() + ".");
     }
 
-    static void upgrade(Fortress f, Map<String, Object> a) {
+    static void upgrade(Fortress f, Map<String, Object> a, double t) {
         Building b = building(f, str(a, "building"));
         check(b != null, "No such building.");
         check(b.level < 30, "Already at the highest level.");
+        check(b.upUntil <= t, "The builders are already at work here.");
+        Building busy = underConstruction(f, t);
+        String name = Content.BUILDINGS.get(b.type).name();
+        check(b.level == 0 || busy == null, "The builders are busy with the " + (busy == null ? "" : Content.BUILDINGS.get(busy.type).name().toLowerCase())
+                + ". Ready in " + Rules.duration(busy == null ? 0 : busy.upUntil - t) + ".");
         Cost c = upgradeCost(b);
         check(canPay(f, c), "Not enough money or materials.");
         Layouts.ensure(f);
-        boolean grows = isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
-        String name = Content.BUILDINGS.get(b.type).name();
-        int[] spot = grows ? Layouts.spaceToGrow(f, b) : null;
-        check(!grows || spot != null, "The " + name.toLowerCase() + " gets wider when upgraded, but there is no dug-out space for it. "
+        boolean grows = grows(f, b);
+        check(!grows || Layouts.spaceToGrow(f, b) != null, "The " + name.toLowerCase() + " gets wider when upgraded, but there is no dug-out space for it. "
                 + "Mark rock beside it with the Dig tool, and your miners dig it out.");
-        boolean fresh = b.level == 0 && Layouts.ROOM_CELLS.containsKey(b.type) && !f.layout.rooms.containsKey(b.id);
-        int[] newSpot = fresh ? Layouts.spotForNew(f, b.type) : null;
         pay(f, c);
-        if (fresh) Layouts.place(f, b, newSpot);
+        if (b.level == 0) { raise(f, b, t); return; }   // a new room stands at once
+        b.upUntil = t + buildTime(b.level + 1);
+        log(f, t, "info", "The builders started on the " + name.toLowerCase() + " (level " + (b.level + 1) + "). Ready in "
+                + Rules.duration(b.upUntil - t) + ". It keeps working meanwhile.");
+    }
+
+    static boolean grows(Fortress f, Building b) {
+        return isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
+    }
+
+    /** The builders are done: the building gains its level (a workshop also grows by a machine where there is room). */
+    public static void raise(Fortress f, Building b, double t) {
+        Layouts.ensure(f);
+        String name = Content.BUILDINGS.get(b.type).name();
+        boolean grows = grows(f, b);
+        int[] spot = grows ? Layouts.spaceToGrow(f, b) : null;
+        if (grows && spot == null) grows = false;
+        boolean fresh = b.level == 0 && Layouts.ROOM_CELLS.containsKey(b.type) && !f.layout.rooms.containsKey(b.id);
+        if (fresh) Layouts.place(f, b, Layouts.spotForNew(f, b.type));
         boolean moved = false;
         if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
             int[] p = f.layout.rooms.get(b.id);
@@ -392,9 +417,10 @@ public final class Actions {
             b.machines = machines(b) + 1;
         }
         b.level++;
+        b.upUntil = 0;
         Layouts.ensure(f);
         fortressXp(f, 5 * b.level);
-        log(f, "info", name + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
+        log(f, t, "good", name + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
                 + (moved ? " It needed more space, so it moved to floor " + (f.layout.rooms.get(b.id)[1] + 1) + "." : "")
                 + (grows ? " A new machine stands in it: put another dwarf to work there." : "")));
     }
@@ -454,6 +480,10 @@ public final class Actions {
         e.itype = str(a, "itype");
         e.remaining = num(a, "count", -1);
         check(e.remaining == -1 || (e.remaining > 0 && e.remaining <= 999), "Count must be 1-999 or forever.");
+        e.keep = num(a, "keep", 0);
+        check(e.keep >= 0 && e.keep <= 999, "Keep 1-999 in stock.");
+        check(e.keep == 0 || b.level >= KEEP_LEVEL, "Upgrade the workshop to level " + KEEP_LEVEL + " to keep goods in stock.");
+        if (e.keep > 0) e.remaining = -1;
         String err = Recipes.validate(f, b, e);
         check(err == null, err);
         e.id = f.nextId++;
@@ -507,12 +537,12 @@ public final class Actions {
         check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
         LayerState l = f.layers.get(idx);
         check(l.threat == null, "Something lurks in this layer. Drive it out first.");
-        check(l.veinAt <= t, "No vein shows yet. Look again in " + Rules.duration(l.veinAt - t) + ".");
+        check(veins(l, t) > 0, "No vein shows yet. Look again in " + Rules.duration(l.veinAt - t) + ".");
         Content.Layer layer = Content.LAYERS.get(idx);
         int n = veinOre(l);
         if (l.cart.isEmpty()) l.cartStart = t;
         for (int i = 0; i < n; i++) l.cart.merge(r.weighted(layer.weights()), 1, Integer::sum);
-        l.veinAt = t + VEIN_WAIT;
+        l.veinAt = Math.max(l.veinAt, t - (VEINS_MAX - 1) * VEIN_WAIT) + VEIN_WAIT;
         log(f, "good", "You broke a vein out of the " + layer.name() + ": " + n + " ore in the cart.");
     }
 

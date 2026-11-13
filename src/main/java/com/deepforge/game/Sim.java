@@ -31,16 +31,24 @@ public final class Sim {
 
     static void step(Fortress f, double dt, Rng r, Market market) {
         double t = f.t;
-        needs(f, dt, t);
-        happiness(f, dt, t);
-        digging(f, dt, t);
-        mining(f, dt, r, t + dt);
-        buildings(f, dt, r, t);
+        // the day plan: away too long, the dwarves slow down and at last rest (no work, no eating, no raids)
+        double w = dt * pace(f, t + dt / 2);
+        if (w > 0) {
+            needs(f, w, t);
+            happiness(f, w, t);
+            digging(f, w, t);
+            mining(f, w, r, t + dt);
+            buildings(f, w, r, t);
+            training(f, w);
+            shiftReports(f, r, t + dt);
+        }
+        builders(f, t + dt);
         anvil(f, r, t + dt);
-        training(f, dt);
-        threats(f, dt, r, t + dt);
-        critters(f, dt, r, t + dt);
-        raids(f, r, t + dt);
+        if (watched(f, t)) {
+            threats(f, dt, r, t + dt);
+            critters(f, dt, r, t + dt);
+            raids(f, r, t + dt);
+        }
         caravans(f, r, t + dt, market);
         visitors(f, r, t + dt, market);
         Depot.step(f, r, t + dt, market);
@@ -229,6 +237,55 @@ public final class Sim {
         d.tool = best;
         d.toolWear = 0;
         return best;
+    }
+
+    /** Builders finish their work. */
+    static void builders(Fortress f, double t) {
+        for (Building b : f.buildings) if (b.upUntil > 0 && t >= b.upUntil) Actions.raise(f, b, b.upUntil);
+    }
+
+    /**
+     * Every 4 h of work the dwarves leave a shift report with a find; up to 3 wait. Finds grow with the hold: ore from
+     * the deepest open layer, bars, a rough gem, old coins, now and then a blueprint.
+     */
+    static void shiftReports(Fortress f, Rng r, double t) {
+        if (f.findAt == 0) f.findAt = t + FIND_EVERY;
+        if (t < f.findAt) return;
+        f.findAt = t + FIND_EVERY;
+        if (f.reports.stream().filter(x -> x.kind.equals("shift")).count() >= FINDS_MAX) return;
+        int deep = 0;
+        for (LayerState l : f.layers) if (l.unlocked) deep = l.index;
+        Content.Layer layer = Content.LAYERS.get(deep);
+        Dwarf who = f.dwarves.isEmpty() ? null : f.dwarves.get(r.nextInt(f.dwarves.size()));
+        String name = who == null ? "A dwarf" : who.first;
+        Report rep = report(f, "shift", 0, "Shift report", t);
+        double roll = r.next();
+        if (roll < 0.4) {
+            String ore = r.weighted(layer.weights());
+            int n = 6 + 4 * deep + r.nextInt(5);
+            rep.goods.put(ore, n);
+            rep.lines.add(name + " found a pocket of " + Content.goodName(ore).toLowerCase() + " behind old timbering.");
+        } else if (roll < 0.6) {
+            rep.goods.put("rough_gem", 1 + deep / 2);
+            rep.lines.add(name + " spotted a glint in the spoil heap.");
+        } else if (roll < 0.8) {
+            rep.coins = Math.round((3 + 2 * f.level) * JOTS_PER_MARK * r.range(0.8, 1.4));
+            rep.lines.add(name + " dug up a purse of old coins. Nobody claims it.");
+        } else if (roll < 0.95) {
+            String metal = Content.ORES.get(layer.weights().keySet().stream().filter(Content.ORES::containsKey).findFirst().orElse("native_copper")).metal();
+            rep.goods.put("bar:" + metal, 2 + deep);
+            rep.lines.add(name + " found bars someone hid in a crack long ago.");
+        } else {
+            List<String> missing = new ArrayList<>(Content.BLUEPRINTS);
+            missing.removeAll(f.blueprints);
+            if (missing.isEmpty()) { rep.goods.put("cut_gem", 1); rep.lines.add(name + " found a cut gem in a dusty pouch."); }
+            else {
+                String bp = r.pick(missing);
+                f.blueprints.add(bp);
+                rep.lines.add(name + " found old plans scratched into a wall.");
+                rep.extras.add("New blueprint: " + Content.BLUEPRINT_NAMES.get(bp));
+            }
+        }
     }
 
     /** Empties a layer's cart into the warehouse. Returns how much it carried. */
@@ -512,12 +569,13 @@ public final class Sim {
     }
 
     /** Try queue entries in order; the first one with materials starts. */
-    static boolean startNext(Fortress f, Building b) {
+    public static boolean startNext(Fortress f, Building b) {
         if (b.queue.isEmpty()) {
             b.status = "Queue empty";
             return false;
         }
         for (QueueEntry e : new ArrayList<>(b.queue)) {
+            if (e.keep > 0 && Recipes.productCount(f, e) >= e.keep) continue;   // enough in stock
             Job j = Recipes.start(f, b, e);
             if (j != null) {
                 b.job = j;

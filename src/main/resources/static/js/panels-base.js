@@ -1,6 +1,7 @@
 // Fortress overview, dwarves, war and "more" panels.
 import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue, moneyText } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp } from './ui.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp, hourglass } from './ui.js';
+import { reportCards } from './collect.js';
 import * as S from './sprites.js';
 import { api, setToken } from './api.js';
 import { openAudioSheet } from './panels-audio.js';
@@ -55,6 +56,10 @@ export function renderFortress() {
     h('div', { class: 'row between' }, h('h3', null, f.name), h('span', { class: 'gold-t pix' }, 'Level ' + f.level)),
     bar(f.xp / d.xpNeed), h('p', { class: 'small muted' }, `${fmt(f.xp)} / ${fmt(d.xpNeed)} xp to the next level.`
       + (d.traditionPoints > 0 ? ` You have ${d.traditionPoints} tradition point(s) to spend (More tab).` : ''))));
+  out.push(...reportCards('shift'));
+  if (d.planUntil) out.push(h('div', { class: 'card sub' },
+    h('div', { class: 'row between' }, h('h3', { style: { marginTop: 0 } }, 'Day plan ', info(`Each time you look in, the dwarves get a new day plan. They work at full pace for ${Math.round(d.planFull / 3600)} hours, then slow down to a fifth over two days. After a week the hold rests: nobody works, eats or attacks. ${f.level >= d.foremanLevel ? 'A foreman keeps the full pace for 36 hours, a master foreman (any skill 15) for 48.' : `At hold level ${d.foremanLevel} you can name a foreman for longer plans.`}`)),
+      h('span', { class: 'small muted' }, 'full pace for ', h('span', { 'data-until': d.planUntil }, dur(d.planUntil - now()))))));
   const alerts = bus.alerts ? bus.alerts() : [];
   if (alerts.length) out.push(h('div', { class: 'card sub' }, h('h3', { style: { marginTop: 0 } }, 'Needs attention'),
     alerts.map(([k, tab, text, room]) => h('button', { class: 'alert ' + k, style: { margin: '4px 0', width: '100%' }, onclick: () => (room ? bus.showRoom(room) : bus.go(tab)) },
@@ -116,11 +121,17 @@ export function renderFortress() {
 
 export function upgradeBtn(b) {
   if (!b) return null;
-  const info = D().buildings[b.id], c = info.upgrade;
+  const info = D().buildings[b.id], c = info.upgrade, cons = D().building;
+  if (cons && cons.id === b.id) return h('div', { class: 'cost-action' }, hourglass({ from: cons.until - buildTimeOf(cons.level), to: cons.until }),
+    h('span', { class: 'small' }, `Builders at work on level ${cons.level}. Ready in `, h('span', { 'data-until': cons.until }, dur(cons.until - now())), '.'));
+  if (cons && b.level > 0) return costBtn(`Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`, c, null, `Builders are busy with the ${buildingName(building(cons.id)).toLowerCase()}.`);
   const label = b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`;
   if (info.canGrow === false) return costBtn(label, c, null, 'It gets wider when upgraded, but no floor has space for it. Dig out more of the hold.');
   return costBtn(info.canGrow ? label + ', +1 machine' : label, c, { type: 'upgrade', building: b.id });
 }
+
+/** Same as Rules.buildTime: 10 min × level^1.6, at most a day; a new room 15 min. */
+export function buildTimeOf(level) { return level <= 1 ? 900 : Math.min(86400, 600 * Math.pow(level, 1.6)); }
 
 export function costBtn(label, cost, action, blocked) {
   const miss = missingText(cost);
@@ -217,6 +228,7 @@ export function jobSheet(x) {
     opt('Guard in the entrance hall', `defends the gate, chases critters · ${D().guards}/${D().hallSeats} posted`, { job: 'warrior', post: 'hall' }, x.job === 'warrior' && x.post !== 'mine'),
     opt('Warrior on mine patrol', 'fights monsters in the mine', { job: 'warrior', post: 'mine' }, x.job === 'warrior' && x.post === 'mine'),
     opt('Merchant', 'leads caravans', { job: 'merchant' }, x.job === 'merchant'),
+    f.level >= D().foremanLevel ? opt('Foreman', 'keeps the day plan going: 36 h at full pace, 48 h for a master', { job: 'foreman' }, x.job === 'foreman') : null,
     opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
 }
 

@@ -220,7 +220,13 @@ public final class Rules {
     public static final double BOOST_PER_TAP = 7;     // heat per good tap
     public static final double BOOST_TAPS_PER_SEC = 2.5;   // the server never gives more than this (bellows refill in about half a second)
     public static final double FERT_MAX = 0.6, FERT_TIME = 2 * 3600;   // fertilizer: up to +60 % mushrooms for two hours
-    public static final double VEIN_WAIT = 20 * 60;   // minutes between two veins broken out by hand, per layer
+    public static final double VEIN_WAIT = 4 * 3600;  // a new vein shows every 4 h per layer; up to 3 wait
+    public static final int VEINS_MAX = 3;
+
+    /** Veins ready to break out by hand on a layer. */
+    public static int veins(LayerState l, double t) {
+        return t < l.veinAt ? 0 : Math.min(VEINS_MAX, 1 + (int) Math.floor((t - l.veinAt) / VEIN_WAIT));
+    }
 
     /** Heat 0..100 for a boosted building (0 for every other one). */
     public static double boostAt(Building b, double t) { return BOOSTED.contains(b.type) ? heatAt(b, t) : 0; }
@@ -234,10 +240,10 @@ public final class Rules {
     }
 
     /** Ore a vein broken out by hand gives. */
-    public static int veinOre(LayerState l) { return 8 + 2 * l.level; }
+    public static int veinOre(LayerState l) { return 24 + 6 * l.level; }
 
     public static final int ANVIL_MAX = 10;
-    public static final double ANVIL_WAIT = 2 * 3600;     // then the dwarves finish the piece themselves
+    public static final double ANVIL_WAIT = 8 * 3600;     // then the dwarves finish the piece themselves
     public static final double ARTIFACT_PER_HOUR = 0.009; // best smith (skill 20), forge level 1, no help: ~1.5 a week
 
     public static final double ITEM_SKILL_PENALTY = 0.35;   // mean quality tiers lost per skill level of the piece above 1
@@ -513,6 +519,54 @@ public final class Rules {
     public static final int JOTS_PER_TALENT = 10, JOTS_PER_MARK = 1000;
 
     /** Money for log texts: "2 Marks 35 Talents", "4 Talents 5 Jots". */
+    // ------------------------------------------------------------ the day plan: leaving the hold alone pays less and less
+
+    public static final double PLAN_FALL = 48 * 3600, PLAN_REST = 7 * 86400, PLAN_SLOW = 0.2;
+
+    /** How long the hold works at full pace after a visit: 24 h, 36 h with a foreman, 48 h with a master foreman. */
+    public static double planFull(Fortress f) {
+        Dwarf fm = f.dwarves.stream().filter(d -> d.job.equals("foreman") && d.busy == null).findFirst().orElse(null);
+        if (fm == null) return 24 * 3600;
+        int best = 0;
+        for (String s : Content.SKILLS) best = Math.max(best, skill(fm, s));
+        return (best >= 15 ? 48 : 36) * 3600;
+    }
+
+    /** Work pace of the whole hold (0..1) at time t: full after a visit, then down to 20 %, after a week at rest. */
+    public static double pace(Fortress f, double t) {
+        if (f.lastVisit <= 0) return 1;
+        double away = t - f.lastVisit, full = planFull(f);
+        if (away <= full) return 1;
+        if (away <= full + PLAN_FALL) return 1 - (1 - PLAN_SLOW) * (away - full) / PLAN_FALL;
+        if (away <= PLAN_REST) return PLAN_SLOW;
+        return 0;
+    }
+
+    /** Raids and monsters only come while the player has been here in the last day. */
+    public static boolean watched(Fortress f, double t) {
+        return f.lastVisit <= 0 || t - f.lastVisit <= 24 * 3600;
+    }
+
+    public static final int FOREMAN_LEVEL = 5;   // fortress level for the foreman job
+
+    // ------------------------------------------------------------ builders
+
+    /** Time to build a level: 10 min × level^1.6, at most a day; a new room 15 min. */
+    public static double buildTime(int level) {
+        return level <= 1 ? 15 * 60 : Math.min(24 * 3600, 600 * Math.pow(level, 1.6));
+    }
+
+    /** The building the builders are working on (one crew), or null. */
+    public static Building underConstruction(Fortress f, double t) {
+        for (Building b : f.buildings) if (b.upUntil > t) return b;
+        return null;
+    }
+
+    // ------------------------------------------------------------ shift reports
+
+    public static final double FIND_EVERY = 4 * 3600;
+    public static final int FINDS_MAX = 3;
+
     public static final double QUICK_SALE = 0.1;            // the trader at the gate pays 10 % of the base value, at once
     public static final double VISITOR_STAY = 6 * 3600;     // how long a visiting caravan waits at the gate
     public static final double VISITOR_EVERY_MIN = 8 * 3600, VISITOR_EVERY_MAX = 16 * 3600;

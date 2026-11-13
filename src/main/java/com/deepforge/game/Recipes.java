@@ -130,6 +130,34 @@ public final class Recipes {
     }
 
     /** Start a job if materials are there. Takes the inputs. */
+    /** How many of an order's product the hold has (for "keep in stock"). Pieces at the anvil count too. */
+    public static int productCount(Fortress f, QueueEntry e) {
+        String prefix;
+        String mod = null;
+        switch (e.recipe) {
+            case "smelt" -> prefix = "bar:" + Content.ORES.get(e.mat).metal();
+            case "alloy" -> prefix = "bar:" + e.mat;
+            case "cutgem" -> prefix = "cut_gem";
+            case "weave" -> prefix = "cloth";
+            case "sew" -> prefix = Content.wearKey(e.itype, e.mat);
+            case "craft" -> prefix = "item:" + e.itype + ":" + (e.mat == null ? "" : e.mat + ":");
+            default -> {
+                prefix = "item:" + e.itype + ":";
+                mod = e.recipe.equals("sharpen") ? "s" : e.recipe.equals("engrave") ? "e" : "g";
+            }
+        }
+        int n = 0;
+        for (Map.Entry<String, Integer> s : f.stock.entrySet()) {
+            String k = s.getKey();
+            if (prefix.endsWith(":") ? !k.startsWith(prefix) : !k.equals(prefix)) continue;
+            if (mod != null && !Content.parseItem(k)[3].contains(mod)) continue;
+            n += s.getValue();
+        }
+        if (e.recipe.equals("craft"))
+            for (Forging g : f.anvil) if (g.itype.equals(e.itype) && (e.mat == null || g.mat.equals(e.mat))) n++;
+        return n;
+    }
+
     public static Job start(Fortress f, Building b, QueueEntry e) {
         if (validate(f, b, e) != null) return null;
         Map<String, Integer> in = inputs(f, e);

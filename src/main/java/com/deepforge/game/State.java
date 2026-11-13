@@ -25,6 +25,8 @@ public final class State {
         public boolean autoPicks = true;   // miners without a pick take the best one from the warehouse
         public List<LayerState> layers = new ArrayList<>();
         public List<Caravan> caravans = new ArrayList<>();
+        public double lastVisit;         // when the player last looked (0: always counts as present, old saves and tests)
+        public double findAt;            // the next shift report with a find (every 4 h, up to 3 wait)
         public Visitor visitor;          // a caravan from a city at the gate that wants to buy (no risk, no road)
         public double nextVisitor;       // when the next one may come (0: soon)
         public List<Expedition> expeditions = new ArrayList<>();
@@ -182,6 +184,7 @@ public final class State {
         public String id;
         public String type;
         public int level = 1;
+        public double upUntil;        // builders at work: the next level is ready at this time (0: nobody builds here)
         public List<QueueEntry> queue = new ArrayList<>();
         public Job job;
         public double heat;       // bellows heat 0..100 at heatT
@@ -202,6 +205,7 @@ public final class State {
         public String mat;        // ore id, alloy metal or metal for items (null = any)
         public String itype;      // item type
         public int remaining;     // -1 = forever
+        public int keep;          // > 0: only work while fewer than this many of the product are in the warehouse
     }
 
     public static class Job {

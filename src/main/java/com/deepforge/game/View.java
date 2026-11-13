@@ -57,6 +57,12 @@ public final class View {
         dep.put("shares", shares);
         dep.put("stock", counts);
         d.put("depot", dep);
+        d.put("pace", round(pace(f, now)));
+        d.put("planFull", planFull(f));
+        d.put("planUntil", f.lastVisit <= 0 ? 0 : f.lastVisit + planFull(f));
+        d.put("foremanLevel", FOREMAN_LEVEL);
+        Building cons = underConstruction(f, now);
+        if (cons != null) d.put("building", Map.of("id", cons.id, "until", cons.upUntil, "level", cons.level + 1));
         d.put("minePower", power(f, warriors(f, "mine")));
 
         // per dwarf numbers
@@ -106,6 +112,7 @@ public final class View {
             m.put("cartSize", cartSize(l));
             m.put("cartTarget", cartTarget(l));
             m.put("veinOre", veinOre(l));
+            m.put("veins", veins(l, now));
             // rock no miner on this layer can break with the picks they have
             int pick = Math.max(best[l.index], Content.MAKESHIFT_HARDNESS);
             m.put("bestPick", pick);

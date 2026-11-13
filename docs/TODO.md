@@ -267,7 +267,8 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Abnutzung auch für Waffen und Rüstung (nach „Bestand halten“).
 - [ ] Sternstahl (Härte 8) und ein Erz dafür.
 - [ ] Schritt 1: Balance-Bot, Preisformel (quadratische Kosten), neue Werte und Zeiten.
-- [ ] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“.
+- [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
+- [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.
 - [ ] Schritt 3: Rest (siehe oben: Waffen und Rüstung, Sternstahl).
 - [ ] Schritt 4: Ruf, Aufträge, Aufnahme je Stadt und Warengruppe, Münze.
 - [ ] Schritt 5: Verbundwaren, Einlage, Feinmechaniker-Werkbank.

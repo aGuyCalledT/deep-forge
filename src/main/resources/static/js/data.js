@@ -197,6 +197,7 @@ export function jobLabel(d) {
     case 'worker': { const b = building(d.building); return b ? buildingName(b) : 'Worker'; }
     case 'warrior': return d.post === 'mine' ? 'Warrior · mine patrol' : 'Guard · entrance hall';
     case 'merchant': return 'Merchant';
+    case 'foreman': return 'Foreman';
     default: return 'Idle';
   }
 }
