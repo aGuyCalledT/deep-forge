@@ -258,3 +258,13 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Eigene Sounds: `bellows-puff`, `barrel-slosh`, `grind-scrape`, `rune-tap`, `shuttle-clack` fehlen.
 - [ ] Werkstätten außer der Schmelze in der Festung direkt anklicken (heute über den Knopf im Raumfenster).
 - [ ] Nahaufnahmen als Sprites (Edelstein, Runenplatte, Kettfäden sind im Screen gezeichnet).
+
+## Balance und Fortschritt (Konzept in `docs/KONZEPT-BALANCE.md`, noch nicht umgesetzt)
+
+- [ ] Entscheidungen aus Abschnitt 14 klären (Abnutzung, Bremse beim Liegenlassen, Tempo der Kurve, alte Spielstände).
+- [ ] Schritt 1: Balance-Bot, Preisformel (quadratische Kosten), neue Werte und Zeiten.
+- [ ] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“.
+- [ ] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.
+- [ ] Schritt 4: Ruf, Aufträge, Aufnahme je Stadt und Warengruppe, Münze.
+- [ ] Schritt 5: Verbundwaren, Einlage, Feinmechaniker-Werkbank.
+- [ ] Schritt 6: Ränge, Lehre, Wünsche der Zwerge.
