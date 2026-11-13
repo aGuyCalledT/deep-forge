@@ -159,9 +159,14 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   Wiese, Bäume, Stand, Brunnen, Fels (`rock_0..4` nach Tiefe, nahtlos in beide Richtungen: `voronoi(..., wrap_y=True)`,
   `blocks(..., wrap_y=True)` in `rock.py`), Gänge (`hallway`), Schacht (auf jeder Etage die Treppenhaus-Vorlage mit
   Tür, keine Leitern), Treppenhäuser, Tunnel, Tor,
-  Säulen mit Tür (`walldoor`, `walldoor_stone`, `walldoor_grand` je Wege-Stil, 4 Bilder) im Vordergrund überall, wo eine
-  Wand einen Raum von einem anderen Raum oder einem Gang trennt (`wallsOf`, `drawWalls`); die Tür geht auf, solange ein
-  Zwerg auf seinem Weg daneben ist. Jeder Raum und jeder Abschnitt aus Gängen/Treppenhäusern hat an allen vier
+  schlanke Trennsäulen (16 px, `divider_rock|brick|sand|slate|stone|oak` in `ways.py`, 4 Bilder: zu, Tür halb, fast,
+  ganz offen) im Vordergrund überall, wo eine Wand einen Raum von einem anderen Raum oder einem Gang trennt (`wallsOf`,
+  `drawWalls`). Die Säule nimmt das Material der Rückwand des Raums (`PILLAR` in `hold.js`), oben trifft sie die
+  Gewölbe-Ecken der Räume, Kapitell und Sockel sind Blöcke. Schmuck je Säule (`pillar_band`, `pillar_runes`,
+  `pillar_banner`, zufällig aus der Lage). Die Tür steckt in der Säule und ist nur zu sehen, solange ein Zwerg auf seinem
+  Weg daneben ist (dann schwingt sie heraus). Die alten `walldoor*`-Bilder sind noch im Sheet, aber unbenutzt.
+  Rückwände: `wall_rock`, `wall_hewn`, `wall_brick`, `wall_ashlar`, `wall_panel`, dazu `wall_plaster` (Fachwerk),
+  `wall_slate` (Schiefer) und `wall_tile` (glasierte Fliesen mit Goldfries). Jeder Raum und jeder Abschnitt aus Gängen/Treppenhäusern hat an allen vier
   Innenkanten gestuften Schatten (`drawEdges`),
   Höhlen mit Bewuchs (`moss_*`, `glowshrooms`, `roots`, `stalactites`), Risse beim Graben und Monster. Räume: Hülle
   und hintere Möbel, die Zwerge im Raum, vordere Möbel; die leuchtenden Pixel (`glow`) kommen nach der Lichtschicht.

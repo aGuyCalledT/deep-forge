@@ -282,7 +282,7 @@ export function info(text) {
 // ------------------------------------------------------------------ toasts
 
 export function toast(msg, kind = '') {
-  const t = h('div', { class: 'toast ' + kind }, msg);
+  const t = h('div', { class: 'toast ' + kind }, statusIco(kind === 'bad' ? 'warn' : kind), h('span', null, msg));
   document.getElementById('toasts').append(t);
   setTimeout(() => t.remove(), kind === 'bad' ? 5000 : 3000);
 }
@@ -299,6 +299,19 @@ export function skulls(n) {
 
 /** A small drawn icon (from sprites.icon) for buttons and labels. */
 export function ico(name, cls = 'icon s') { return img(S.icon(name), cls, ''); }
+
+/**
+ * The status signs, the same everywhere (rooms, hints, tabs, messages, lists):
+ * 'stop' red octagon (stopped), 'warn' yellow triangle (needs you), 'good' green circle (done, collect it),
+ * 'idle' grey dots (nothing to do). Anything else gives null. With cls 'badge': the 14 px tab badge (28 px on screen).
+ */
+export const STATUS = { stop: 'stop', bad: 'stop', warn: 'warn', good: 'good', idle: 'idle' };
+export function statusIco(kind, cls = 'icon st') {
+  const name = STATUS[kind];
+  if (!name) return null;
+  const sprite = cls === 'badge' && name !== 'idle' ? S.sprite('badge_' + name) : S.icon(name);   // tabs: the small badge
+  return h('img', { src: img(sprite).src, class: cls + ' st-' + name, alt: '', draggable: false });
+}
 
 // ------------------------------------------------------------------ have / need
 

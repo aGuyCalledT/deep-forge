@@ -9,7 +9,7 @@
 import * as Art from './art48.js';
 
 export const FLOOR = 135, RH = 144, CELL = 48;
-export const WALLS = ['wall_rock', 'wall_hewn', 'wall_brick', 'wall_ashlar', 'wall_panel'];
+export const WALLS = ['wall_rock', 'wall_hewn', 'wall_brick', 'wall_ashlar', 'wall_panel', 'wall_plaster', 'wall_slate', 'wall_tile'];
 export const FLOORS = ['floor_planks', 'floor_flags', 'floor_earth'];
 
 /** Spot kinds: what the game reads from a template. Colour and letter are for the editor's markers; help is the short

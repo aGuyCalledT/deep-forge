@@ -1,6 +1,6 @@
 // Workshops: queues, the bellows and the quench.
 import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, parseItem } from './data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand } from './ui.js';
+import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand, statusIco } from './ui.js';
 import * as A from './audio.js';
 const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'tailor', 'farm', 'brewery', 'barracks'];
 import * as S from './sprites.js';
@@ -53,7 +53,7 @@ export function renderWork() {
         img(S.room(x), 'thumb'),
         h('span', { class: 'grow' }, h('b', null, buildingName(x)), h('span', { class: 'small muted' }, ` · level ${x.level} · ${(info_.workers || []).length}/${info_.machines || 1} at work`), h('br'),
           h('span', { class: 'small ' + (st === 'ok' ? 'good-t' : st === 'bad' ? 'bad-t' : st === 'hot' ? 'gold-t' : 'warn-t') }, label)),
-        h('i', { class: 'dot ' + st }));
+        statusIco({ bad: 'stop', hot: 'good', warn: label === 'Queue empty' ? 'idle' : 'stop' }[st]) || h('i', { class: 'icon st' }));
     })),
     list.length ? null : h('p', { class: 'muted' }, 'No workshops yet. Build one in the Hold tab.'),
   ];

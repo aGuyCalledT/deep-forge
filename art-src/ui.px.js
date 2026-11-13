@@ -90,8 +90,25 @@ sprite("ui_stop", { mx: true, outline: "k" }, `
   ..ffffC
   ...ffff
   ....fff`);
-// good: an emerald with a cream ! (tabs with something good to do). 12 x 12, mirrored.
+// good: an emerald circle with a cream ! (something is done: collect it). 16 x 16 like the other signs, mirrored.
 sprite("ui_good", { mx: true, outline: "k" }, `
+  ....|||
+  ..|||||
+  .||$$$C
+  .|$$$$C
+  $$$$$$C
+  $$$$$$C
+  $$$$$$C
+  $$$$$$C
+  $$$$$$C
+  -------
+  .-----C
+  .-----C
+  ..-----
+  ....---`);
+
+// Small signs for the tabs (14 x 14, shown at twice the size): done, needs you, stopped.
+sprite("badge_good", { mx: true, outline: "k" }, `
   ...|||
   .|||||
   .|$$$C
@@ -104,6 +121,32 @@ sprite("ui_good", { mx: true, outline: "k" }, `
   .----C
   .-----
   ...---`);
+sprite("badge_stop", { mx: true, outline: "k" }, `
+  ...***
+  ..*&&&
+  .*&&&C
+  *&&&&C
+  &&&&&C
+  &&&&&C
+  &&&&&C
+  ffffff
+  fffffC
+  .ffffC
+  ..ffff
+  ...fff`);
+sprite("badge_warn", { mx: true, outline: "k" }, `
+  .....y
+  .....y
+  ....yy
+  ....yw
+  ...yyw
+  ...yyw
+  ..yyyw
+  ..yyyy
+  .yyyyw
+  .yyyyw
+  yyyyyy
+  yyyyyy`);
 icon("idle", (c) => {
   c.rect(1, 4, 12, 6, "5"); c.hline(2, 3, 10, "5"); c.hline(2, 10, 10, "5"); c.hline(2, 4, 10, "6");
   for (const x of [3, 6, 9]) c.rect(x, 6, 2, 2, "2");

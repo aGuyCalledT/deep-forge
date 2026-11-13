@@ -1,7 +1,7 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
-import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money } from './ui.js';
+import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money, statusIco } from './ui.js';
 import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
@@ -207,7 +207,7 @@ function alerts() {
   if (quench.length) a.push(['good', 'work', 'Hot metal ready to quench at the forge!', quench[0].id]);
   for (const r of f.reports || []) a.push(['good', r.kind === 'caravan' ? 'trade' : 'explore', `${r.title}: collect the loot.`]);
   const choices = f.expeditions.filter((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen);
-  if (choices.length) a.push(['good', 'explore', `An expedition needs your decision.`]);
+  if (choices.length) a.push(['warn', 'explore', `An expedition needs your decision.`]);
   const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
   const stuck = f.buildings.filter((b) => byId.buildings[b.type].kind === 'queue' && b.queue.length && roomStatus(b, idle) === 'stop' && d.buildings[b.id].active !== false);
   if (stuck.length) a.push(['stop', 'work', `${byId.buildings[stuck[0].type].name} stopped: its orders need materials or a worker.`, stuck[0].id]);
@@ -222,13 +222,17 @@ function renderAlerts() {
   const list = alerts();
   const n = wide() ? 4 : 2;
   $('alerts').replaceChildren(...list.slice(0, n).map(([k, tab, text, room]) =>
-    h('button', { class: 'alert ' + k, title: text, onclick: () => (room ? showRoom(room) : go(tab, true)) }, img(S.icon({ bad: 'skull', stop: 'stop', idle: 'idle' }[k] || 'warn'), 'icon s'), h('span', null, text))),
+    h('button', { class: 'alert ' + k, title: text, onclick: () => (room ? showRoom(room) : go(tab, true)) }, k === 'bad' ? img(S.icon('skull'), 'icon s') : statusIco(k, 'icon s'), h('span', null, text))),
     list.length > n ? h('button', { class: 'alert', onclick: () => go('fortress', true) }, h('span', null, `+${list.length - n} more`)) : '');
-  const hot = new Set(list.filter(([k]) => k !== 'warn' && k !== 'idle').map(([, tab]) => tab));
+  // each tab wears the most pressing sign of its hints: stopped, then needs you, then done (idle shows nothing)
+  const rank = { bad: 3, stop: 3, warn: 2, good: 1 };
+  const best = new Map();
+  for (const [k, tab] of list) if (rank[k] && rank[k] > (rank[best.get(tab)] || 0)) best.set(tab, k);
   document.querySelectorAll('.tab').forEach((el) => {
-    const dot = el.querySelector('.dot');
-    if (hot.has(el.dataset.tab) && !dot) el.append(h('span', { class: 'dot' }));
-    if (!hot.has(el.dataset.tab) && dot) dot.remove();
+    const k = best.get(el.dataset.tab), old = el.querySelector('.badge');
+    if (old && old.dataset.k === k) return;
+    if (old) old.remove();
+    if (k) { const b = statusIco(k, 'badge'); b.dataset.k = k; el.append(b); }
   });
 }
 
@@ -448,7 +452,7 @@ async function start() {
   requestAnimationFrame(tick);
 }
 
-/** Hand the pixel-art button plates, the window X and the green badge to the CSS as image variables. */
+/** Hand the pixel-art button plates and the window X to the CSS as image variables. */
 function artToCss() {
   const root = document.documentElement.style;
   const url = (name) => `url(${S.sprite(name).toDataURL()})`;
@@ -458,7 +462,6 @@ function artToCss() {
   }
   root.setProperty('--xbtn', url('ui_xbtn'));
   root.setProperty('--xbtn-down', url('ui_xbtn_down'));
-  root.setProperty('--badge-good', url('ui_good'));
 }
 
 async function boot() {

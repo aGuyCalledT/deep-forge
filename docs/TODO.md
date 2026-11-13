@@ -201,6 +201,9 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.
 - [ ] Kleinigkeiten: Fächer-Muster im Fels glätten, größere Scheren der Magmakrabbe, zweiter Arm des Ogers,
       Lichtringe in Stufen statt Kreisen.
+
+## Zeichen, Trennsäulen, neue Wände
+
 - [x] **Symmetrische Symbole:** Stoppschild (geprägtes Achteck), gelbes Dreieck, grüner Pfeil und X als gespiegelte
   Hälften neu gezeichnet.
 - [x] **Grünes Abzeichen** (Smaragd mit !) statt rotem Punkt auf den Tabs.
@@ -208,3 +211,13 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] **Knopfplatten** in Eisen, Gold, Grün, Rot als dehnbares `border-image` für alle `.btn` und `.tool`.
 - [x] Klick ins Tal öffnet nicht mehr die Mine; Logzeilen der Art `info` wurden vom Info-Knopf-Stil zerdrückt.
 - [ ] Übrige Symbole noch nicht ganz symmetrisch: Totenkopf, Herz, Info, Schloss, Pfeile hoch/runter.
+- [x] Status überall mit den drei Zeichen (`statusIco`): Stopp-Achteck, gelbes Dreieck, grüner Kreis mit ! (fertig,
+      einsammeln). Ersetzt die Farbkreise in den Hinweis-Chips, Toasts, Tab-Abzeichen und der Werkstatt-Liste.
+- [x] Raum-Status „fertig“ (grün) für Handelsdepot und Abenteurergilde mit Berichten und für heißes Metall zum Abschrecken.
+- [x] Trennsäulen halb so breit, Material nach der Rückwand, Gewölbe-Ecken oben, Tür nur beim Öffnen sichtbar,
+      Schmuck (Band, Runen, Banner).
+- [x] Drei neue Rückwände: Fachwerk, Schiefer, Fliesen (im Editor wählbar).
+- [x] Helle Fugen im Bergfels (Kacheln bei krummem Zoom) und die helle Kante neben dem Schacht entfernt.
+- [ ] Neue Rückwände in eingebauten Vorlagen nutzen (z. B. Fliesen im Badehaus, Fachwerk in der Taverne).
+- [ ] Alte `walldoor*`-Bilder aus `ways.py` entfernen, wenn niemand sie mehr braucht.
+- [ ] Säulen-Schmuck im Editor wählbar machen (heute zufällig je Lage).

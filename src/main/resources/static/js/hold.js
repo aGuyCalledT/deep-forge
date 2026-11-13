@@ -624,14 +624,25 @@ function rockShape() {
 const band = (fl) => Math.max(0, Math.min(3, Math.floor(fl / 2)));
 const rockAt = (y) => 'rock_' + (y < SURF ? 0 : Math.min(4, band(Math.floor((y - SURF) / RH)) + (y >= H() ? 1 : 0)));
 
+const patterns = new Map();
+/** A repeating pattern of a rock tile, lined up with the world grid (x from 0, y from the surface line). */
+function rockPattern(ctx, name) {
+  if (patterns.has(name)) return patterns.get(name);
+  const p = ctx.createPattern(Art.frame(name, 0).canvas, 'repeat');
+  p.setTransform(new DOMMatrix().translate(0, SURF));
+  patterns.set(name, p);
+  return p;
+}
+
 function drawRock(ctx) {
   ctx.save();
   ctx.clip(rockShape());
-  const tw = 96, th = RH;
-  const x0 = Math.floor(view.x / tw) * tw, y0 = SURF + Math.floor((view.y - SURF) / th) * th;
-  for (let y = y0; y < view.y + view.h; y += th) for (let x = x0; x < view.x + view.w; x += tw) {
-    const fr = Art.frame(rockAt(y), 0);
-    ctx.drawImage(fr.canvas, x, y);
+  // one pattern fill per band of stone instead of single tiles: drawn tile by tile, a zoom between whole pixels
+  // left thin light seams where the tiles met
+  const th = RH, y0 = SURF + Math.floor((view.y - SURF) / th) * th;
+  for (let y = y0; y < view.y + view.h; y += th) {
+    ctx.fillStyle = rockPattern(ctx, rockAt(y));
+    ctx.fillRect(view.x - 2, y, view.w + 4, th + 1);   // 1 px over the next band: no seam between them
   }
   // deeper is darker and cooler
   const fade = ctx.createLinearGradient(0, GROUND, 0, H());
@@ -826,21 +837,37 @@ function drawEdges(ctx, g) {
         for (let i = 0; i < bottom.length; i++) { ctx.fillStyle = SHADE + bottom[i] + ')'; ctx.fillRect(x0, y + RH - 2 - i * 2, w, 2); }
         // the sides: from the rock edge, or from just behind the pillar where a wall parts two spaces
         const tunnelEnd = fl === ENTRY && c === -FACE / CELL;
-        const li = walls.has(c + ',' + fl) ? 16 : 0, ri = walls.has((e + 1) + ',' + fl) ? 16 : 0;
+        const li = walls.has(c + ',' + fl) ? 8 : 0, ri = walls.has((e + 1) + ',' + fl) ? 8 : 0;   // half a pillar
         if (!tunnelEnd) for (let i = 0; i < side.length; i++) { ctx.fillStyle = SHADE + side[i] + ')'; ctx.fillRect(x0 + li + i * 2, y, 2, RH); }
         for (let i = 0; i < side.length; i++) { ctx.fillStyle = SHADE + (side[i] * 0.8).toFixed(3) + ')'; ctx.fillRect(x1 - ri - (i + 1) * 2, y, 2, RH); }
-        if (!spaceOf(g, e + 1, fl)) { ctx.fillStyle = 'rgba(232,190,140,0.3)'; ctx.fillRect(x1, y + 4, 1, RH - 4); }
       }
       c = e + 1;
     }
   }
 }
 
-/** The pillars between rooms, in front of everything; a door opens while a dwarf is right at it. */
+/**
+ * The wall between two spaces, seen end-on: a slim pillar (16 px) in the material of the room's back wall, so it
+ * fits any wall. Its door cannot be seen while shut; it swings out towards you while a dwarf goes through.
+ * Some pillars wear an iron band, a rune plate or a pennant (fixed per pillar).
+ */
+const PILLAR = { wall_rock: 'rock', wall_hewn: 'rock', wall_brick: 'brick', wall_ashlar: 'sand', wall_panel: 'oak',
+  wall_plaster: 'oak', wall_slate: 'slate', wall_tile: 'stone' };
+const PILLAR_DECO = [null, 'pillar_band', 'pillar_runes', 'pillar_banner'];
+/** The back wall (tile name) of the space in a cell: a room's part, a hallway or a stairwell. */
+function wallTileAt(g, c, fl) {
+  const v = g.cells.get(c + ',' + fl);
+  if (!v) return null;
+  if (v.kind === 'room') {
+    const r = g.rooms.find((q) => q.b.id === v.id), x = c * CELL;
+    const p = r && (r.parts.find((q) => x >= q.x && x < q.x + q.w) || r.parts[r.parts.length - 1]);
+    return p ? p.tpl.wall : null;
+  }
+  if (v.kind === 'hall') return v.tpl.wall;
+  return v.well ? v.well.tpl.wall : null;
+}
 const wallDoors = new Map();   // "c,f" -> how far open (0 shut .. 3 open)
 function drawWalls(ctx, dt) {
-  const names = { timber: 'walldoor', stone: 'walldoor_stone', grand: 'walldoor_grand' };
-  const name = names[wayStyle()] || names[tierStyle()] || 'walldoor';     // a player's own entrance-hall look: by level
   const near = [...agents.values()].filter((a) => !a.hidden && a.f >= 0 && a.path.length);   // only dwarves on their way
   for (const w of G_.walls) {
     const k = w.c + ',' + w.f;
@@ -848,7 +875,16 @@ function drawWalls(ctx, dt) {
     let v = wallDoors.get(k) || 0;
     v = want > v ? Math.min(want, v + dt * 16) : Math.max(want, v - dt * 9);
     if (v) wallDoors.set(k, v); else wallDoors.delete(k);
-    if (seen(w.x - 16, ftop(w.f), 32, RH, 10)) Art.draw(ctx, name, Math.round(v), w.x, ftop(w.f) + RH);
+    if (!seen(w.x - 8, ftop(w.f), 40, RH, 10)) continue;
+    // the room's side decides (left first); a pillar between two ways takes the left one
+    const isRoom = (c) => (G_.cells.get(c + ',' + w.f) || {}).kind === 'room';
+    const side = isRoom(w.c - 1) || !isRoom(w.c) ? w.c - 1 : w.c;
+    const mat = PILLAR[wallTileAt(G_, side, w.f)] || 'sand';
+    const y = ftop(w.f);
+    Art.draw(ctx, 'divider_' + mat, Math.round(v), w.x, y + RH);
+    const deco = PILLAR_DECO[S.hash('pillar' + k) % PILLAR_DECO.length];
+    if (deco === 'pillar_banner') Art.draw(ctx, deco, 0, w.x, y + 12);
+    else if (deco) Art.draw(ctx, deco, 0, w.x, y + 34);
   }
 }
 
@@ -1170,7 +1206,8 @@ function opaque(spr, x, y) {
 /**
  * What a room shows over its door:
  *   'stop'  red octagon: it stopped (cut off from the hallways, orders it cannot work on, the warehouse is full);
- *   'warn'  yellow triangle: something wants you (loot to collect, a critter and nobody on guard);
+ *   'warn'  yellow triangle: something wants you (a decision, a rule that broke, a critter and nobody on guard);
+ *   'good'  green circle with !: something is done and waits for you (loot to collect, hot metal to quench);
  *   'run'   green arrow: it stands still, but could run right now;
  *   'idle'  grey dots: nothing to do, and nothing it needs to do;
  *   null    working, or nothing to say.
@@ -1180,8 +1217,11 @@ export function roomStatus(b, idle) {
   if (!roomActive(b.id)) return 'stop';
   if (b.type === 'warehouse' && f.storageFull) return 'stop';
   const reports = f.reports || [];
-  if (b.type === 'trade_depot' && (reports.some((x) => x.kind === 'caravan') || (f.rules || []).some((x) => x.on && /deleted|don't know/.test(x.status || '')))) return 'warn';
-  if (b.type === 'expedition_hall' && (reports.some((x) => x.kind === 'expedition') || f.expeditions.some((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen))) return 'warn';
+  if (b.type === 'trade_depot' && (f.rules || []).some((x) => x.on && /deleted|don't know/.test(x.status || ''))) return 'warn';
+  if (b.type === 'trade_depot' && reports.some((x) => x.kind === 'caravan')) return 'good';
+  if (b.type === 'expedition_hall' && f.expeditions.some((e) => e.state === 'active' && e.stages[e.next] && e.stages[e.next].kind === 'choice' && !e.stages[e.next].chosen)) return 'warn';
+  if (b.type === 'expedition_hall' && reports.some((x) => x.kind === 'expedition')) return 'good';
+  if (b.job && b.job.quenching) return 'good';
   if (b.type === 'entrance_hall' && (f.threats || []).some((x) => x.cell) && !f.dwarves.some((x) => x.job === 'warrior' && x.post === 'hall')) return 'warn';
   if (t.kind === 'passive' || f.siege) return null;
   if (canRun(b, idle)) return 'run';
@@ -1190,9 +1230,10 @@ export function roomStatus(b, idle) {
   return b.queue.length ? 'stop' : 'idle';     // orders waiting for materials or a worker: stopped; no orders: resting
 }
 
-/** A status sign (ui_stop, ui_warn, ui_idle) centred on x, bobbing a little. */
+/** A status sign (ui_stop, ui_warn, ui_good, ui_idle) centred on x, bobbing a little. */
 function statusIcon(ctx, t, st, x, y) {
-  ui(ctx, 'ui_' + st, x - 16, y + (st === 'idle' ? 0 : Math.round(Math.sin(t * 3) * 2)));
+  const w = S.sprite('ui_' + st).width;   // drawn at twice its size
+  ui(ctx, 'ui_' + st, x - w, y + (st === 'idle' ? 0 : Math.round(Math.sin(t * 3) * 2)));
 }
 
 /** Green arrow: the workshop stands still but could run (materials, worker, or an idle dwarf there). */
