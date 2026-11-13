@@ -513,6 +513,10 @@ public final class Rules {
     public static final int JOTS_PER_TALENT = 10, JOTS_PER_MARK = 1000;
 
     /** Money for log texts: "2 Marks 35 Talents", "4 Talents 5 Jots". */
+    public static final double QUICK_SALE = 0.1;            // the trader at the gate pays 10 % of the base value, at once
+    public static final double VISITOR_STAY = 6 * 3600;     // how long a visiting caravan waits at the gate
+    public static final double VISITOR_EVERY_MIN = 8 * 3600, VISITOR_EVERY_MAX = 16 * 3600;
+
     public static String money(double jots) {
         long j = Math.round(Math.abs(jots));
         long m = j / JOTS_PER_MARK, t = (j % JOTS_PER_MARK) / JOTS_PER_TALENT, k = j % JOTS_PER_TALENT;

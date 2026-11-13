@@ -1,5 +1,5 @@
 // Trade (caravans, cities, prices) and expeditions.
-import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstimate, marketKey, stock, baseValue, isItem } from './data.js';
+import { G, F, D, byId, fmt, dur, goodName, now, sellPrice, buyPrice, saleEstimate, marketKey, marketName, stock, baseValue, isItem } from './data.js';
 import { h, img, goodIcon, openSheet, closeSheet, refreshSheet, bus, toast, skulls, dwarfPicker, ico, hourglass, money, info } from './ui.js';
 import { marketList } from './panels-market.js';
 import { openDepotSheet } from './panels-depot.js';
@@ -24,6 +24,7 @@ export function renderTrade() {
   const merchants = f.dwarves.filter((x) => x.job === 'merchant' && !x.busy);
   const slots = d.caravanSlots - f.caravans.length;
   out.push(...reportCards('caravan'));
+  if (f.visitor && f.visitor.leaves > t) out.push(visitorCard(f.visitor));
   out.push(h('div', { class: 'card' },
     h('div', { class: 'row between' }, h('h3', null, 'Caravans ', info('Merchants carry goods to a city, sell at the price on arrival, buy what you ordered and come back. Roads can be dangerous.')), h('span', { class: 'muted' }, `${f.caravans.length} / ${d.caravanSlots} on the road`)),
     h('button', { class: 'btn primary', disabled: !merchants.length || slots <= 0, onclick: () => caravanSheet() },
@@ -46,6 +47,11 @@ export function renderTrade() {
     h('p', { class: 'small muted' }, `${f.rules.filter((x) => x.on).length} rule(s) running, ${f.orders.filter((o) => o.left > 0).length} buy order(s) posted, ${f.deliveries.length} delivery(s) on the way.`),
     h('button', { class: 'btn', disabled: !depotB || depotB.level <= 0, onclick: (e) => openDepotSheet(e.currentTarget) }, 'Open the depot')));
 
+  out.push(h('div', { class: 'card' },
+    h('div', { class: 'row between' }, h('h3', null, 'Quick sale ', info('The trader at the gate buys anything at once, but pays only a tenth of the base value. Handy to clear the warehouse.')),
+      h('span', { class: 'muted small' }, '10% of base value')),
+    h('button', { class: 'btn', onclick: () => quickSaleSheet() }, 'Sell at the gate')));
+
   out.push(h('h2', null, 'Market', info('Every city has its own price for each good. They drift on their own, and every sale pushes a price down, every purchase pushes it up. Prices stay between 10% and 1000% of the base price. Tap a good to see which city pays what.')));
   out.push(marketList());
 
@@ -60,6 +66,35 @@ export function renderTrade() {
     }
   }
   return out;
+}
+
+/** A caravan from a city at the gate: what they want, what you have of it, sell with one tap. */
+function visitorCard(v) {
+  const f = F(), c = byId.cities[v.city];
+  const have = Object.entries(f.stock).filter(([k, n]) => n > 0 && marketKey(k) === v.market).sort((a, b) => baseValue(b[0]) - baseValue(a[0]));
+  return h('div', { class: 'card good' },
+    h('div', { class: 'row between' }, h('h3', null, `Caravan from ${c.name}`), h('span', { class: 'small muted' }, 'leaves in ', h('span', { 'data-until': v.leaves }, dur(v.leaves - now())))),
+    h('p', { class: 'small' }, `They want ${fmt(v.want)} ${marketName(v.market).toLowerCase()} and pay on the spot. No road, no bandits.`),
+    have.length ? have.slice(0, 6).map(([k, n]) => {
+      const q = Math.min(n, v.want), unit = baseValue(k) * v.mult;
+      return h('div', { class: 'row' }, goodIcon(k), h('span', { class: 'grow small' }, `${goodName(k)} (${fmt(n)})`, h('br'), h('span', { class: 'muted' }, money(unit), ' each')),
+        h('button', { class: 'btn small good', onclick: () => bus.act({ type: 'sellVisitor', key: k, amount: q }) }, `Sell ${fmt(q)}`));
+    }) : h('p', { class: 'small muted' }, 'You have none left. Make some before they leave.'),
+    h('button', { class: 'btn small', onclick: () => bus.act({ type: 'sendVisitor' }) }, 'Send them away'));
+}
+
+/** Sell anything at once to the trader at the gate for 10 % of its base value. */
+function quickSaleSheet() {
+  openSheet(() => {
+    const f = F();
+    const goods = Object.entries(f.stock).filter(([k, n]) => n > 0 && baseValue(k) > 0).sort((a, b) => baseValue(b[0]) * b[1] - baseValue(a[0]) * a[1]);
+    return h('div', null, h('h2', null, 'Sell at the gate'),
+      h('p', { class: 'small muted' }, 'Paid at once: a tenth of the base value. Caravans and visitors pay far more.'),
+      goods.length ? goods.map(([k, n]) => h('div', { class: 'row' }, goodIcon(k),
+        h('span', { class: 'grow small' }, `${goodName(k)} (${fmt(n)})`, h('br'), h('span', { class: 'muted' }, money(baseValue(k) * 0.1), ' each')),
+        h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'quickSell', key: k, amount: 1 }); refreshSheet(); } }, '1'),
+        h('button', { class: 'btn small primary', onclick: async () => { await bus.act({ type: 'quickSell', key: k, amount: n }); refreshSheet(); } }, 'All'))) : h('p', { class: 'muted' }, 'The warehouse is empty.'));
+  }, null, 'trade');
 }
 
 /** Send a caravan; city and a market key to load can be preset (from the market window). */

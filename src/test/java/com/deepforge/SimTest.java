@@ -778,4 +778,26 @@ class SimTest {
         assertEquals(0, count(f, "item:pickaxe"));
         assertNull(d.tool);
     }
+
+    @Test
+    void quickSaleAndVisitingCaravans() {
+        Fortress f = fresh(34);
+        Market m = Market.inMemory(34, T0);
+        String axe = Content.itemKey("axe", "bronze", 1, "");
+        Rules.add(f, axe, 5);
+        double before = f.coins;
+        act(f, m, T0, "type", "quickSell", "key", axe, "amount", 2);
+        assertEquals(Math.floor(2 * Content.baseValue(axe) * 0.1), f.coins - before, 1e-6);
+        assertEquals(3, Rules.stock(f, axe));
+        // within a day a caravan comes to the gate and buys at a fair price
+        Visitor seen = null;
+        for (int h = 1; h <= 24 && seen == null; h++) { Sim.advance(f, T0 + h * 3600, m); seen = f.visitor; }
+        assertNotNull(seen, "a caravan visits within a day");
+        String key = f.stock.keySet().stream().filter(k -> Content.marketKey(k).equals(f.visitor.market)).findFirst().orElseThrow();
+        int want = f.visitor.want;
+        double c0 = f.coins;
+        act(f, m, f.t, "type", "sellVisitor", "key", key, "amount", 1);
+        assertTrue(f.coins - c0 > Content.baseValue(key) * 0.5, "they pay far more than the gate trader");
+        assertTrue(f.visitor == null || f.visitor.want == want - 1);
+    }
 }

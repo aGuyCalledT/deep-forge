@@ -78,6 +78,9 @@ public final class Actions {
             case "upgradeLayer" -> upgradeLayer(f, a);
             case "cartRule" -> cartRule(f, a);
             case "autoPicks" -> autoPicks(f, a);
+            case "quickSell" -> quickSell(f, a, t);
+            case "sellVisitor" -> sellVisitor(f, a, t);
+            case "sendVisitor" -> { check(f.visitor != null, "No caravan at the gate."); f.visitor.leaves = t; }
             case "unlockLayer" -> unlockLayer(f, a, t);
             case "queueAdd" -> queueAdd(f, a);
             case "queueRemove" -> queueRemove(f, a);
@@ -259,6 +262,38 @@ public final class Actions {
         if (old != null && !(slot.equals("tool") && d.toolWear > USED_PICK_HOURS)) add(f, old, 1);
         slotSet(d, slot, null);
         if (slot.equals("tool")) d.toolWear = 0;
+    }
+
+    /** Sell goods at once to the trader at the gate, for a tenth of their base value. */
+    static void quickSell(Fortress f, Map<String, Object> a, double t) {
+        String key = str(a, "key");
+        int n = num(a, "amount", 0);
+        check(key != null && Content.baseValue(key) > 0, "That can't be sold.");
+        n = Math.min(n, stock(f, key));
+        check(n > 0, "You have none of that.");
+        double coins = Math.floor(n * Content.baseValue(key) * QUICK_SALE);
+        add(f, key, -n);
+        f.coins += coins;
+        f.stats.coinsEarned += coins;
+        log(f, t, "info", "Sold " + n + " " + Content.goodName(key).toLowerCase() + " at the gate for " + money(coins) + ".");
+    }
+
+    /** Sell to the caravan visiting from a city: its price, paid at once. */
+    static void sellVisitor(Fortress f, Map<String, Object> a, double t) {
+        Visitor v = f.visitor;
+        check(v != null && t < v.leaves, "The caravan has moved on.");
+        String key = str(a, "key");
+        check(key != null && Content.marketKey(key).equals(v.market), "They don't want that.");
+        int n = Math.min(Math.min(num(a, "amount", 0), stock(f, key)), v.want);
+        check(n > 0, "You have none of that.");
+        double coins = Math.floor(n * Content.baseValue(key) * v.mult);
+        add(f, key, -n);
+        f.coins += coins;
+        f.stats.coinsEarned += coins;
+        v.want -= n;
+        String city = Content.CITIES.get(v.city).name();
+        log(f, t, "good", "The caravan from " + city + " bought " + n + " " + Content.goodName(key).toLowerCase() + " for " + money(coins) + ".");
+        if (v.want <= 0) f.visitor = null;
     }
 
     static void autoPicks(Fortress f, Map<String, Object> a) {

@@ -25,6 +25,8 @@ public final class State {
         public boolean autoPicks = true;   // miners without a pick take the best one from the warehouse
         public List<LayerState> layers = new ArrayList<>();
         public List<Caravan> caravans = new ArrayList<>();
+        public Visitor visitor;          // a caravan from a city at the gate that wants to buy (no risk, no road)
+        public double nextVisitor;       // when the next one may come (0: soon)
         public List<Expedition> expeditions = new ArrayList<>();
         public List<Report> reports = new ArrayList<>();   // returned caravans and expeditions whose loot waits to be collected
         public List<Offer> offers = new ArrayList<>();
@@ -228,6 +230,17 @@ public final class State {
         public int cartFill = 100;   // the cart goes up when it is this full (percent of its size)
         public int cartMinutes;      // ... or this many minutes after the first ore went in (0: no time limit)
         public double veinAt;        // the player may break the next vein out by hand from this time on
+    }
+
+    /** Traders from a city at the gate. They buy up to `want` goods of one market key at a fixed price per unit. */
+    public static class Visitor {
+        public int id;
+        public String city;
+        public String market;      // market key: "type:axe", "cat:clothing", "bar:iron", "coal"...
+        public int want;
+        public double mult;        // price per unit = base value × mult
+        public double came;
+        public double leaves;
     }
 
     public static class Caravan {

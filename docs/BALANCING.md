@@ -148,6 +148,15 @@ Masterwork 2, Artifact 3.
   (`Rules.SHARE_DAYS`). `Anteil = (V + B) / (V + B + W)`, `W = L × 7 × Bezugswert`, `B` so, dass man mit 1 % startet.
   Marktmacht `= √(Anteil / 1 %)`, begrenzt auf 1–5: wer viel handelt, bewegt den Preis stärker.
 
+## Sofortverkauf und besuchende Karawanen
+
+- **Sell at the gate** (Aktion `quickSell`): jede Ware sofort für 10 % des Grundwerts (`Rules.QUICK_SALE`), ohne
+  Markt, ohne Weg. Zum Lager-Leeren, nicht zum Verdienen.
+- **Besuchende Karawane** (`Fortress.visitor`, `Sim.visitors`): alle 8–16 h (die erste nach 2–6 h) kommt eine Karawane
+  aus einer bekannten Stadt ans Tor und will 40–120 % des Bestands einer Sorte, die die Festung hat. Sie zahlt den
+  Stadtkurs × 1,05–1,3 sofort, ohne Risiko und ohne Preiseinfluss, und wartet 6 h (`VISITOR_STAY`). Aktion
+  `sellVisitor`, wegschicken mit `sendVisitor`.
+
 ## Handelsdepot (`Depot.java`)
 
 - Gespeicherte Karawanen: `1 + Stufe`; Regeln (WENN Vorrat ≥ N DANN schicke Karawane nach Stadt): `Stufe`, eine Regel

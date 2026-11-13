@@ -42,6 +42,7 @@ public final class Sim {
         critters(f, dt, r, t + dt);
         raids(f, r, t + dt);
         caravans(f, r, t + dt, market);
+        visitors(f, r, t + dt, market);
         Depot.step(f, r, t + dt, market);
         Expeditions.step(f, r, t + dt);
         migrants(f, r, t + dt);
@@ -781,6 +782,42 @@ public final class Sim {
     }
 
     // ------------------------------------------------------------ caravans
+
+    /**
+     * Now and then a caravan from a known city comes to the gate and wants goods the hold has: a fair price, paid at
+     * once, no road and no bandits. It waits a few hours.
+     */
+    static void visitors(Fortress f, Rng r, double t, Market market) {
+        if (f.visitor != null && t >= f.visitor.leaves) {
+            log(f, t, "info", "The caravan from " + Content.CITIES.get(f.visitor.city).name() + " moved on.");
+            f.visitor = null;
+        }
+        if (f.nextVisitor == 0) f.nextVisitor = t + r.range(2 * H, 6 * H);
+        if (f.visitor != null || t < f.nextVisitor || f.cities.isEmpty() || market == null) return;
+        f.nextVisitor = t + r.range(VISITOR_EVERY_MIN, VISITOR_EVERY_MAX);
+        // what could they want: market keys the hold has goods of (not food and ale), worth at least a little
+        Map<String, Integer> have = new TreeMap<>();
+        for (Map.Entry<String, Integer> e : f.stock.entrySet()) {
+            String k = e.getKey();
+            if (e.getValue() <= 0 || k.equals("food") || k.equals("ale") || k.equals("stone") || Content.baseValue(k) <= 0) continue;
+            have.merge(Content.marketKey(k), e.getValue(), Integer::sum);
+        }
+        if (have.isEmpty()) return;
+        List<String> keys = new ArrayList<>(have.keySet());
+        String mk = keys.get(r.nextInt(keys.size()));
+        String city = r.pick(new ArrayList<>(f.cities));
+        Visitor v = new Visitor();
+        v.id = f.nextId++;
+        v.city = city;
+        v.market = mk;
+        v.want = Math.max(1, (int) Math.round(have.get(mk) * r.range(0.4, 1.2)));
+        v.mult = market.mult(city, mk) * r.range(1.05, 1.3);
+        v.came = t;
+        v.leaves = t + VISITOR_STAY;
+        f.visitor = v;
+        log(f, t, "good", "A caravan from " + Content.CITIES.get(city).name() + " is at the gate. They want "
+                + v.want + " " + Content.marketName(mk).toLowerCase() + ". Open Trade to sell.");
+    }
 
     static void caravans(Fortress f, Rng r, double t, Market market) {
         for (Caravan c : new ArrayList<>(f.caravans)) {
