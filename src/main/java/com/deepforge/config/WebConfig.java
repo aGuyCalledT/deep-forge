@@ -24,7 +24,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(auth).addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**", "/api/data", "/api/sprites", "/api/audio");
+                .excludePathPatterns("/api/auth/**", "/api/data", "/api/sprites", "/api/audio", "/api/rooms", "/api/rooms/template");
     }
 
     /** Custom sprites: PNG files in the sprites folder replace the generated pixel art with the same id. */

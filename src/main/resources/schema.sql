@@ -22,3 +22,14 @@ CREATE TABLE IF NOT EXISTS world (
     state TEXT NOT NULL,
     updated_at BIGINT NOT NULL
 );
+
+-- room looks made by players with the in-game room editor (the built-in ones are files in static/art/props48/rooms)
+CREATE TABLE IF NOT EXISTS room_templates (
+    type VARCHAR(32) NOT NULL,
+    part VARCHAR(8) NOT NULL,
+    name VARCHAR(32) NOT NULL,
+    author_id BIGINT NOT NULL,
+    data TEXT NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (type, part, name)
+);

@@ -157,22 +157,36 @@ export function blank(type, part, cells) {
 }
 
 // ------------------------------------------------------------------ loading
-let idx = null;
+// Looks come from the server (/api/rooms): the built-in templates (files under art/props48/rooms) and the ones
+// players made with the room editor (database). meta: "type/part/name" -> {author, mine} for players' looks.
+let idx = null, meta = {};
 const cache = new Map();
-export async function load(base = 'art/props48/rooms/') {
-  idx = await fetch(base + 'index.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
-  load.base = base;
+export async function load() {
+  const d = await fetch('/api/rooms', { cache: 'no-store', headers: authHeaders() }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  idx = d.index || {};
+  meta = d.looks || {};
   return idx;
+}
+function authHeaders() {
+  try { const t = localStorage.getItem('deepforge-token'); return t ? { Authorization: 'Bearer ' + t } : {}; } catch { return {}; }
 }
 export const index = () => idx || {};
 export const looks = (type, part = 'room') => ((idx || {})[type] || {})[part] || [];
+/** Who made a look ({author, mine}), null for built-in looks. */
+export const lookInfo = (type, part, name) => meta[`${type}/${part}/${name}`] || null;
+/** Forget a cached look (after it was saved again in the editor). */
+export const forget = (type, part, name) => cache.delete(`${type}/${part}_${name}`);
 /** The template for a room: the chosen look, else the first one there is (null if the type has none). */
 export async function get(type, part = 'room', name = '') {
   const list = looks(type, part);
   const pick = list.includes(name) ? name : list[0];
   if (!pick) return null;
   const k = `${type}/${part}_${pick}`;
-  if (!cache.has(k)) cache.set(k, fetch(`${load.base}${type}/${part}_${pick}.json`).then(r => r.json()));
+  if (!cache.has(k)) {
+    const q = `type=${encodeURIComponent(type)}&part=${part}&name=${encodeURIComponent(pick)}`;
+    cache.set(k, fetch('/api/rooms/template?' + q).then(r => r.ok ? r.json() : Promise.reject(new Error('look ' + k))));
+    cache.get(k).catch(() => cache.delete(k));
+  }
   return cache.get(k);
 }
 

@@ -1,7 +1,10 @@
-// Room template editor: place props, mark spots, save templates for the game. See tools/room-editor/serve.py.
-import * as Art from '/static/js/art48.js';
-import * as R from '/static/js/rooms48.js';
-import * as D from '/static/js/dwarf48.js';
+// Room template editor: place props, mark spots, save looks. Runs inside the game (/editor/, looks go to the server's
+// database and everyone can pick them) and locally with tools/room-editor/serve.py (built-in looks, written as files).
+// In the game it may sit in a frame (?embed=1): Close and Save tell the game through postMessage.
+import * as Art from '../js/art48.js';
+import * as R from '../js/rooms48.js';
+import * as D from '../js/dwarf48.js';
+import { token } from '../js/api.js';
 import { UI, PROPS as PROP_INFO, GROUPS as GROUP_INFO } from './info.js';
 
 const $ = id => document.getElementById(id);
@@ -10,16 +13,34 @@ const GROUPS = ['furniture', 'living', 'workshop', 'storage', 'shell', 'rock', '
 const LOOKS = [{ sex: 'm', hair: 'short', beard: 'full' }, { sex: 'f', hair: 'bun' }, { sex: 'm', hair: 'bald', beard: 'fork', hat: 'cap' }];
 const STANDERS = ['worker', 'seat', 'bar', 'stand', 'door'];   // spots that stand on the floor
 
-let types = [], idx = {}, tpl = null, cur = { type: '', part: 'room', name: '' }, dirty = false;
+let types = [], idx = {}, meta = {}, local = false, tpl = null, cur = { type: '', part: 'room', name: '' }, dirty = false;
 let sels = [];              // selection: [{k: 'prop'|'spot', i}], the last one is the main one
 let tool = null;            // null = select, {prop: name} or {spot: kind}
 let drag = null, box = null, hover = null;
-const opt = { light: true, ghost: true, anim: true, grid: true, zoom: 3, front: true, snap: 4 };
+const opt = { light: true, ghost: true, anim: true, grid: true, zoom: innerWidth < 760 ? 2 : 3, front: true, snap: 4 };
 let placeLayer = 'back';    // where new props go
 const PAD = 16;             // margin around the room for things that stick out (hanging lamps, smoke)
 
 // ------------------------------------------------------------------ helpers
-const api = (p, body) => fetch(p, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}).then(r => r.json());
+const Q = new URLSearchParams(location.search), EMBED = Q.get('embed') === '1';
+async function api(p, body) {
+  const headers = { 'Content-Type': 'application/json' }, t = token();
+  if (t) headers.Authorization = 'Bearer ' + t;
+  try {
+    const r = await fetch(p, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
+    return await r.json().catch(() => ({ error: 'The server sent nothing back. Try again.' }));
+  } catch { return { error: 'No connection to the server. Try again.' }; }
+}
+const tell = (msg) => { if (EMBED && parent !== window) parent.postMessage({ deepforge: 'editor', ...msg }, location.origin); };
+/** Who made a look: null for built-in ones. */
+const lookInfo = (type, part, name) => meta[`${type}/${part}/${name}`] || null;
+/** May this player change or delete the look? Built-in ones only in the local editor, player looks only by their maker. */
+function canEdit(name) {
+  if (!name) return true;
+  const m = lookInfo(cur.type, cur.part, name);
+  return local || (m ? m.mine : false);
+}
+function applyList(d) { types = d.types; idx = d.index; meta = d.looks || {}; local = !!d.local; }
 function status(t) { const s = $('status'); s.textContent = t; s.classList.add('show'); clearTimeout(status.t); status.t = setTimeout(() => s.classList.remove('show'), 1800); }
 function setDirty(d = true) { dirty = d; $('dirty').textContent = d ? 'unsaved' : ''; $('dirty').className = d ? 'dirty' : ''; }
 const typeInfo = () => types.find(t => t.type === cur.type) || { cells: 5, bay: 0 };
@@ -331,8 +352,9 @@ function hitSpot(x, y) {
 }
 function pos(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / opt.zoom - PAD, y: (e.clientY - r.top) / opt.zoom - PAD }; }
 
-cv.addEventListener('mousedown', e => {
+cv.addEventListener('pointerdown', e => {
   if (!tpl || e.button !== 0) return;
+  cv.setPointerCapture(e.pointerId);
   const p = pos(e);
   if (tool) { place(p.x, p.y, e.altKey); return; }
   let hit = null, i = hitSpot(p.x, p.y);
@@ -344,7 +366,7 @@ cv.addEventListener('mousedown', e => {
   const m = objOf(hit);         // drag moves the whole selection; the grabbed one snaps, the rest keep their offsets
   drag = { hit, ox: m.x - p.x, oy: m.y - p.y, start: sels.map(s => ({ s, x: objOf(s).x, y: objOf(s).y })), mx: m.x, my: m.y, moved: false };
 });
-addEventListener('mousemove', e => {
+addEventListener('pointermove', e => {
   if (!tpl) return;
   const p = pos(e); hover = p;
   if (box) { box.x1 = p.x; box.y1 = p.y; return; }
@@ -356,7 +378,8 @@ addEventListener('mousemove', e => {
   for (const q of drag.start) { const o = objOf(q.s); o.x = q.x + dx; o.y = q.y + dy; }
   drag.moved = true; setDirty();
 });
-addEventListener('mouseup', () => {
+addEventListener('pointercancel', () => { drag = null; box = null; });
+addEventListener('pointerup', () => {
   if (box) {
     const x0 = Math.min(box.x0, box.x1), x1 = Math.max(box.x0, box.x1), y0 = Math.min(box.y0, box.y1), y1 = Math.max(box.y0, box.y1);
     const got = [];
@@ -508,7 +531,10 @@ function fillTypes() {
 function fillTemplates() {
   const s = $('tpls'); s.innerHTML = '';
   const list = ((idx[cur.type] || {})[cur.part]) || [];
-  for (const n of list) s.append(el('option', { value: n, textContent: n }));
+  for (const n of list) {
+    const m = lookInfo(cur.type, cur.part, n);
+    s.append(el('option', { value: n, textContent: m ? `${n} (by ${m.author})` : local ? n : `${n} (built-in)` }));
+  }
   s.append(el('option', { value: '', textContent: '(new, unsaved)' }));
   s.value = cur.name && list.includes(cur.name) ? cur.name : '';
 }
@@ -516,21 +542,31 @@ function confirmLeave() { return !dirty || confirm('Drop the unsaved changes?');
 async function open(type, part, name) {
   cur = { type, part, name: name || '' };
   if (name) {
-    const d = await api(`/api/template?type=${type}&part=${part}&name=${encodeURIComponent(name)}`);
+    const d = await api(`/api/rooms/template?type=${type}&part=${part}&name=${encodeURIComponent(name)}`);
     tpl = d.error ? R.blank(type, part, cells()) : { ...R.blank(type, part, cells()), ...d };
   } else tpl = R.blank(type, part, cells());
   tpl.cells = cells();
   sels = []; setDirty(false);
   $('name').value = cur.name; $('wall').value = tpl.wall; $('floor').value = tpl.floor; $('vault').checked = !!tpl.vault;
-  fillTypes(); fillTemplates(); buildSide();
+  fillTypes(); fillTemplates(); buildSide(); rights();
+}
+/** Delete only for looks you may change; someone else's look is saved as a copy under a new name. */
+function rights() {
+  const mine = canEdit(cur.name);
+  $('del').disabled = !cur.name || !mine;
+  $('del').title = !cur.name ? 'Nothing saved yet' : mine ? 'Delete this look' : 'Only its maker can delete this look';
+  if (!local && !token()) { $('save').disabled = true; status('Log in to the game to save looks.'); }
 }
 async function save() {
   const name = $('name').value.trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(name)) { status('Give it a name: a-z, 0-9, _ or -'); $('name').focus(); return; }
+  const taken = (((idx[cur.type] || {})[cur.part]) || []).includes(name);
+  if (taken && name !== cur.name && !confirm(`Replace the look "${name}"?`)) return;
   tpl.cells = cells();
-  const d = await api('/api/save', { type: cur.type, part: cur.part, name, data: tpl });
+  const d = await api('/api/rooms/save', { type: cur.type, part: cur.part, name, data: tpl });
   if (d.error) { status(d.error); return; }
-  idx = d.index; cur.name = name; setDirty(false); fillTypes(); fillTemplates();
+  applyList(d); cur.name = name; setDirty(false); fillTypes(); fillTemplates(); rights();
+  tell({ saved: { type: cur.type, part: cur.part, name } });
   const miss = R.missing(tpl);
   status(miss.length ? `saved; still missing ${miss.map(m => m.kind).join(', ')}` : 'saved');
 }
@@ -539,11 +575,15 @@ $('type').onchange = e => { if (!confirmLeave()) { e.target.value = cur.type; re
 $('part').onchange = e => { if (!confirmLeave()) { e.target.value = cur.part; return; } const l = (idx[cur.type] || {})[e.target.value] || []; open(cur.type, e.target.value, l[0]); };
 $('tpls').onchange = e => { if (!confirmLeave()) { e.target.value = cur.name; return; } open(cur.type, cur.part, e.target.value); };
 $('new').onclick = () => { if (confirmLeave()) open(cur.type, cur.part, ''); };
-$('dup').onclick = () => { cur.name = ''; $('name').value = ''; fillTemplates(); setDirty(); status('copy: give it a new name and save'); };
+$('dup').onclick = () => { cur.name = ''; $('name').value = ''; fillTemplates(); setDirty(); rights(); status('copy: give it a new name and save'); };
+$('close').onclick = () => { if (confirmLeave()) { setDirty(false); tell({ close: true }); } };
+$('close').hidden = !EMBED;
 $('del').onclick = async () => {
   if (!cur.name || !confirm(`Delete template "${cur.name}"?`)) return;
-  const d = await api('/api/delete', { type: cur.type, part: cur.part, name: cur.name });
-  idx = d.index; const l = (idx[cur.type] || {})[cur.part] || []; open(cur.type, cur.part, l[0]);
+  const d = await api('/api/rooms/delete', { type: cur.type, part: cur.part, name: cur.name });
+  if (d.error) { status(d.error); return; }
+  tell({ deleted: { type: cur.type, part: cur.part, name: cur.name } });
+  applyList(d); const l = (idx[cur.type] || {})[cur.part] || []; open(cur.type, cur.part, l[0]);
 };
 $('save').onclick = save;
 $('wall').onchange = e => { tpl.wall = e.target.value; setDirty(); };
@@ -553,6 +593,7 @@ for (const [id, k] of [['tLight', 'light'], ['tGhost', 'ghost'], ['tFront', 'fro
   $(id).classList.toggle('on', opt[k]);
   $(id).onclick = e => { opt[k] = !opt[k]; e.target.classList.toggle('on', opt[k]); };
 }
+$('zoom').value = String(opt.zoom);
 $('zoom').onchange = e => { opt.zoom = +e.target.value; };
 $('snap').onchange = e => { opt.snap = +e.target.value; buildSide(); };
 for (const [id, text] of Object.entries(UI)) {          // tooltip and i button next to every header control
@@ -561,20 +602,33 @@ for (const [id, text] of Object.entries(UI)) {          // tooltip and i button 
   c.title = text;
   (c.closest('label') || c).after(info(text));
 }
-addEventListener('beforeunload', e => { if (dirty) e.preventDefault(); });
+addEventListener('beforeunload', e => { if (dirty && !EMBED) e.preventDefault(); });
 
 // ------------------------------------------------------------------ start
 (async () => {
-  await Art.load('/static/art/props48/');
-  D.load('/static/art/dwarf48/').catch(e => status('dwarf kit missing: ' + e));
+  await Art.load('../art/props48/');
+  D.load('../art/dwarf48/').catch(e => status('dwarf kit missing: ' + e));
   for (const w of R.WALLS) $('wall').append(el('option', { value: w, textContent: w.replace('wall_', '') }));
   for (const f of R.FLOORS) $('floor').append(el('option', { value: f, textContent: f.replace('floor_', '') }));
   const d = await api('/api/rooms');
-  types = d.types; idx = d.index;
+  if (d.error) { status(d.error); return; }
+  applyList(d);
   buildPalette();
-  const first = types[0].type;
-  await open(first, 'room', ((idx[first] || {}).room || [])[0]);
+  // ?type=&part=&name= opens that look (the game passes the room the player came from)
+  const qt = types.some(t => t.type === Q.get('type')) ? Q.get('type') : types[0].type;
+  const qp = Q.get('part') === 'bay' && (types.find(t => t.type === qt) || {}).bay ? 'bay' : 'room';
+  const ql = (idx[qt] || {})[qp] || [];
+  await open(qt, qp, ql.includes(Q.get('name')) ? Q.get('name') : ql[0]);
+  if (Q.get('copy') === '1') $('dup').onclick();
+  tell({ ready: true });
   window.__editor = { get tpl() { return tpl; }, set tpl(v) { tpl = v; buildSide(); }, open, save, autoSpots, R, Art, cur: () => cur,
     setName: n => { $('name').value = n; }, select, get sels() { return sels; }, align, center, distribute, opt };
   requestAnimationFrame(frameLoop);
 })();
+
+// on a phone the view options (wall, floor, light, grid, zoom …) fold away behind "View"
+const viewBtn = document.getElementById('tView');
+viewBtn.onclick = () => {
+  const open = document.querySelector('header').classList.toggle('open');
+  viewBtn.setAttribute('aria-expanded', String(open));
+};

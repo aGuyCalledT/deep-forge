@@ -38,17 +38,45 @@ const ftop = (f) => SURF + f * RH;
 
 // ------------------------------------------------------------------ art and room templates
 
-const tpls = new Map();   // "type/part/look" -> template (all of them are loaded at start)
+const tpls = new Map();   // "type/part/look" -> template; built-in looks load at start, players' looks when first used
+const asked = new Set();
 
-/** Load the 48-px art, the dwarf kit and every room template. Called once before the first frame. */
+/** Load the 48-px art, the dwarf kit and the built-in room templates. Called once before the first frame. */
 export async function loadArt() {
   await Promise.all([Art.load(), DW.load(), R.load()]);
-  const idx = R.index(), jobs = [];
-  for (const [type, parts] of Object.entries(idx)) for (const [part, names] of Object.entries(parts)) {
-    for (const n of names) jobs.push(R.get(type, part, n).then((t) => tpls.set(`${type}/${part}/${n}`, t)).catch(() => {}));
-  }
-  await Promise.all(jobs);
+  await preload();
 }
+function preload() {
+  const jobs = [];
+  for (const [type, parts] of Object.entries(R.index())) for (const [part, names] of Object.entries(parts)) {
+    for (const n of names) if (!R.lookInfo(type, part, n)) jobs.push(fetchTpl(type, part, n));
+  }
+  return Promise.all(jobs);
+}
+function fetchTpl(type, part, n) {
+  const k = `${type}/${part}/${n}`;
+  asked.add(k);
+  return R.get(type, part, n).then((t) => { if (t) tpls.set(k, t); }).catch(() => {});
+}
+/**
+ * Read the list of looks again (players may have made new ones). `changed` = {type, part, name} of a look that was
+ * saved or deleted just now: it is fetched again.
+ */
+export async function refreshLooks(changed) {
+  if (changed) {
+    const k = `${changed.type}/${changed.part || 'room'}/${changed.name}`;
+    R.forget(changed.type, changed.part || 'room', changed.name); tpls.delete(k); asked.delete(k);
+  }
+  await R.load();
+  await preload();
+}
+/** A look's template if it is loaded (asks the server for it once otherwise). */
+export function lookTpl(type, part, name) {
+  const k = `${type}/${part}/${name}`;
+  if (!tpls.has(k) && !asked.has(k) && R.looks(type, part).includes(name)) fetchTpl(type, part, name);
+  return tpls.get(k) || null;
+}
+export const lookInfo = R.lookInfo;
 export const artReady = () => Art.ready() && DW.ready();
 
 /** The looks a room type can pick (template names), the first is the default. */
@@ -60,7 +88,9 @@ export function roomLooks(type) {
 /** The template of a room (part 'room') or of its machine bays ('bay'), in its chosen look; a bare shell if none. */
 function tplOf(type, part, look, cells) {
   const list = R.looks(type, part), name = list.includes(look) ? look : list[0];
-  return (name && tpls.get(`${type}/${part}/${name}`)) || { ...R.blank(type, part, cells), vault: part === 'room' };
+  // a player's look still on its way from the server: show the default look meanwhile
+  return (name && lookTpl(type, part, name)) || (list[0] && tpls.get(`${type}/${part}/${list[0]}`))
+    || { ...R.blank(type, part, cells), vault: part === 'room' };
 }
 
 /**
@@ -107,7 +137,7 @@ function grid() {
   const marks = new Map((L.marks || []).map((k) => [k, (L.digs || {})[k] || 0]));   // rock to dig: cell -> work done
   const critters = (f.threats || []).filter((th) => th.cell).map((th) => { const [c, fl] = th.cell.split(',').map(Number); return { th, c, f: fl }; });
   // stairwells: two cells wide, the way in is an arch in the middle of the back wall
-  const wellTpl = tplOf('stairwell', 'room', style, 2);
+  const wellTpl = tplOf('stairwell', 'room', wayLook('stairwell', style), 2);
   const doorX = ((wellTpl.spots || []).find((s) => s.kind === 'door') || { x: CELL }).x;
   const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + doorX, tpl: wellTpl }; });
   for (const w of wells) for (let dx = 0; dx < 2; dx++) cells.set((w.c + dx) + ',' + w.f, { kind: 'well', well: w });
@@ -130,12 +160,18 @@ const WAY_STYLES = ['timber', 'stone', 'grand'];
 function wayStyle() {
   const b = F().buildings.find((x) => x.type === 'entrance_hall');
   if (b && b.look && R.looks('entrance_hall').includes(b.look)) return b.look;
+  return tierStyle();
+}
+function tierStyle() {
+  const b = F().buildings.find((x) => x.type === 'entrance_hall');
   return WAY_STYLES[b && b.level ? hallTier(b.level) : 0];
 }
+/** The way look of a type in a style; a player's hall look without a matching hallway or stairwell keeps the level's. */
+const wayLook = (type, style) => (R.looks(type).includes(style) ? style : tierStyle());
 /** A hallway template: the style's variant if there is one, else the plain style. */
 function hallTpl(style, variant) {
-  const looks = R.looks('hallway');
-  return tplOf('hallway', 'room', looks.includes(style + variant) ? style + variant : style, 1);
+  const looks = R.looks('hallway'), base = wayLook('hallway', style);
+  return tplOf('hallway', 'room', looks.includes(base + variant) ? base + variant : base, 1);
 }
 /** Lights of a way's template at x0, y0. */
 function tplLights(tpl, x0, y0) {

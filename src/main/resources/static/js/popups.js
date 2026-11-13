@@ -1,14 +1,17 @@
 // Windows that open when you click something in the game: a room, a dwarf. Plus the cheat tools.
 import { G, F, D, byId, fmt, goodName, fullName, buildingName, jobLabel } from './data.js';
-import { h, img, openSheet, refreshSheet, closeSheet, bus, ico, toast, info } from './ui.js';
+import { h, img, openSheet, refreshSheet, closeSheet, bus, ico, toast, info, frameDecor, slideIn, slideOut } from './ui.js';
 import * as S from './sprites.js';
 import { workCard } from './panels-work.js';
 import { dwarfCard, EFFECT, upgradeBtn } from './panels-base.js';
 import { roomMaterial } from './plate.js';
-import { roomLooks } from './hold.js';
+import { roomLooks, lookInfo, refreshLooks } from './hold.js';
+import * as R from './rooms48.js';
 
+let looksFresh = false;     // the list of looks loads before login; fetch it once more to know which are yours
 export function openRoomSheet(b, at) {
   G.ws = b.id;
+  if (!looksFresh) { looksFresh = true; refreshLooks().then(refreshSheet).catch(() => { looksFresh = false; }); }
   openSheet(() => {
     const cur = F().buildings.find((x) => x.id === b.id) || b;
     const t = byId.buildings[cur.type];
@@ -40,16 +43,102 @@ export function openRoomSheet(b, at) {
   }, at || null, roomMaterial(b.type));
 }
 
-/** The room's look: one button per template made for its type (room editor), the chosen one gold. */
+const lookName = (n) => n.replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase());
+/** Who made a look, for the list: "built-in", "by you" or "by <name>". */
+function byWhom(type, n) {
+  const m = lookInfo(type, 'room', n);
+  return !m ? 'built-in' : m.mine ? 'by you' : 'by ' + m.author;
+}
+
+/** The room's look: the one in use, a button to the list of all looks (built-in and made by players). */
 function lookRow(b) {
   const list = roomLooks(b.type);
-  if (list.length < 2) return null;
   const cur = list.includes(b.look) ? b.look : list[0];
-  const name = (n) => n.replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase());
-  return h('div', { class: 'row wrap' }, h('span', { class: 'small muted' }, 'Look'),
-    info('How the room is furnished. It only changes the picture, not what the room does.'),
-    ...list.map((n) => h('button', { class: 'btn small' + (n === cur ? ' primary' : ''), 'aria-pressed': String(n === cur),
-      onclick: () => { if (n !== cur) bus.act({ type: 'roomLook', building: b.id, look: n }); } }, name(n))));
+  return h('div', { class: 'row wrap look-row' }, h('span', { class: 'small muted' }, 'Look'),
+    info('How the room is furnished. It only changes the picture, not what the room does. Pick one anyone made, or make your own in the room editor.'),
+    h('span', { class: 'grow' }, h('b', null, cur ? lookName(cur) : 'Bare'), h('br'), h('span', { class: 'small muted' }, cur ? byWhom(b.type, cur) : '')),
+    h('button', { class: 'btn small', onclick: () => openLooks(b) }, ico('build'), 'Change look'));
+}
+
+/** Every look for the room's type with a picture of it: use one, change your own, copy any into the editor. */
+function openLooks(b0) {
+  openSheet(() => {
+    const b = F().buildings.find((x) => x.id === b0.id) || b0;
+    const list = roomLooks(b.type), cur = list.includes(b.look) ? b.look : list[0];
+    return h('div', null,
+      h('h2', null, 'Looks for ' + buildingName(b), info('Built-in looks come with the game; the others were made by players in the room editor, and everyone can use them. A look only changes the picture.')),
+      h('div', { class: 'looks' }, list.map((n) => {
+        const mine = (lookInfo(b.type, 'room', n) || {}).mine;
+        return h('div', { class: 'card sub look' + (n === cur ? ' on' : '') },
+          lookPreview(b.type, n),
+          h('div', { class: 'row wrap' },
+            h('span', { class: 'grow' }, h('b', null, lookName(n)), h('br'), h('span', { class: 'small muted' }, byWhom(b.type, n))),
+            mine ? h('button', { class: 'btn small', onclick: () => openEditor({ type: b.type, name: n, building: b.id }) }, 'Edit') : null,
+            h('button', { class: 'btn small', title: 'Open a copy in the room editor', onclick: () => openEditor({ type: b.type, name: n, copy: true, building: b.id }) }, 'Copy'),
+            n === cur ? h('span', { class: 'chip-in-use small' }, 'In use')
+              : h('button', { class: 'btn small primary', onclick: () => bus.act({ type: 'roomLook', building: b.id, look: n }) }, 'Use'))
+        );
+      })),
+      h('button', { class: 'btn primary wide', onclick: () => openEditor({ type: b.type, name: cur, copy: true, building: b.id }) }, ico('build'), 'Make a new look'));
+  }, null, roomMaterial(b0.type));
+  refreshLooks().then(refreshSheet).catch(() => {});          // others may have made new looks meanwhile
+}
+
+/** A small picture of a look: wall, floor and furniture, a little dimmed like the inside of the mountain. */
+function lookPreview(type, n) {
+  const c = h('canvas', { class: 'look-pic', width: 1, height: R.RH, 'aria-hidden': 'true' });
+  R.get(type, 'room', n).then((t) => {
+    if (!t) return;
+    const w = (t.cells || 5) * R.CELL;
+    c.width = w;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    R.drawShell(g, t, 0, 0, w);
+    R.drawProps(g, t, 0, 0, 0, { layer: 'back' });
+    R.drawProps(g, t, 0, 0, 0, { layer: 'front' });
+    g.fillStyle = 'rgba(20,12,28,0.18)'; g.fillRect(0, 0, w, R.RH);
+    R.drawProps(g, t, 0, 0, 0, { glow: true });
+  }).catch(() => {});
+  return c;
+}
+
+// ------------------------------------------------------------------ the room editor, inside the game
+
+let dock = null;
+/**
+ * Open the room editor over the game ({type, part, name, copy, building}). It runs in a frame and tells the game
+ * when it saved a look (then the room gets it) and when it is closed.
+ */
+export function openEditor(o = {}) {
+  if (dock) return;
+  const q = new URLSearchParams({ embed: '1', type: o.type || '', part: o.part || 'room', name: o.name || '' });
+  if (o.copy) q.set('copy', '1');
+  const frame = h('iframe', { class: 'editor-frame', src: 'editor/index.html?' + q, title: 'Room editor' });
+  const body = h('div', { class: 'editor-win win forge' }, ...frameDecor(false), frame);
+  dock = h('div', { class: 'editor-dock', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Room editor' }, body);
+  document.body.append(dock);
+  slideIn(body, 'bottom');
+  const onMsg = async (e) => {
+    if (e.origin !== location.origin || e.source !== frame.contentWindow || !e.data || e.data.deepforge !== 'editor') return;
+    const d = e.data;
+    if (d.saved || d.deleted) {
+      await refreshLooks(d.saved || d.deleted).catch(() => {});
+      const b = o.building && F().buildings.find((x) => x.id === o.building);
+      if (d.saved && b && d.saved.type === b.type && (d.saved.part || 'room') === 'room') {
+        await bus.act({ type: 'roomLook', building: b.id, look: d.saved.name });
+        toast(`${lookName(d.saved.name)} is now the look of ${buildingName(b)}.`, 'good');
+      }
+      refreshSheet();
+    }
+    if (d.close) close();
+  };
+  const close = () => {
+    removeEventListener('message', onMsg);
+    const el = dock; dock = null;
+    slideOut(body, 'bottom').done.then(() => el.remove());
+    refreshSheet();
+  };
+  addEventListener('message', onMsg);
 }
 
 /** The guards of the entrance hall, and who could join them. */

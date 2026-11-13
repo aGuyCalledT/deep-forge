@@ -164,10 +164,20 @@ dazu Punkte, die das Spiel liest (`worker` mit Blickrichtung `face` – `front`,
 Betrachter – und `sit`, `seat`, `bar`, `bed`, `light` mit Radius, Farbe und
 Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kettle`, `steam`, `stand`).
 
-- **Editor starten:** `python3 tools/room-editor/serve.py`, dann `http://localhost:8099` öffnen. Er braucht nur
-  Python 3. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
+- **Im Spiel:** Raumfenster → „Change look“ zeigt alle Vorlagen des Raumtyps mit Bild (eingebaut und von Spielern).
+  „Use“ wählt, „Copy“ öffnet eine Kopie im Editor, „Edit“ die eigene, „Make a new look“ eine Kopie der aktuellen. Der
+  Editor (`static/editor/`) läuft als Fenster über dem Spiel (`openEditor` in `popups.js`, `?embed=1&type=&part=&name=&copy=1`)
+  und meldet `saved`, `deleted` und `close` per `postMessage`; nach dem Speichern bekommt der Raum die neue Vorlage.
+  Am Handy liegen die Ansichts-Schalter hinter „View“.
+- **Spieler-Vorlagen** speichert der Server in der Tabelle `room_templates` (`RoomTemplates.java`): jeder Eingeloggte
+  darf Vorlagen anlegen (höchstens 40), alle sehen und nutzen sie, ändern oder löschen darf nur der Ersteller (oder ein
+  Admin). Namen eingebauter Vorlagen sind vergeben. Der Server baut jede Vorlage aus bekannten Feldern neu auf
+  (Sprites und Kacheln aus `sheet.json`, bekannte Punkte, Zahlen begrenzt). API: `GET /api/rooms` (Liste mit Ersteller),
+  `GET /api/rooms/template`, `POST /api/rooms/save`, `POST /api/rooms/delete`.
+- **Lokal (eingebaute Vorlagen):** `python3 tools/room-editor/serve.py`, dann `http://localhost:8099` öffnen. Braucht nur
+  Python 3, speichert als Dateien. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
 - **Hilfe:** Jedes Bedienelement, jeder Punkt und jede Möbel-Gruppe hat einen Info-Knopf (i) und einen Tooltip mit
-  einer kurzen englischen Erklärung. Texte: Bedienung und Möbel in `tools/room-editor/info.js`, Punkte in
+  einer kurzen englischen Erklärung. Texte: Bedienung und Möbel in `static/editor/info.js`, Punkte in
   `rooms48.js` (`SPOTS[kind].about`, das Spiel nutzt sie mit).
 - **Raster:** „Snap“ (Standard 4 px) rastet Platzieren, Ziehen und Pfeiltasten ein, gezählt ab der Bodenlinie, die
   Decke (y 0) rastet auch. Alt platziert pixelgenau. Der Schalter „grid“ zeigt die Rasterpunkte, die 48-px-Zellen und
@@ -184,7 +194,7 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
   und Arbeitsplatz …). Rechts steht, welche Punkte der Raumtyp mindestens braucht. Schalter für Licht, Zwerge an den
   Punkten, Animation, Raster und Zoom.
 - **Wege:** Eingangshalle (`entrance_hall`, 6 Zellen), Treppenhaus (`stairwell`, 2) und Gang (`hallway`, 1) sind im
-  Editor zusätzliche Typen (`WAYS` in `serve.py`). Vorlagen je Stil `timber`, `stone`, `grand`; Gänge dazu `<stil>_lit`
+  Editor zusätzliche Typen (`WAYS` in `RoomTemplates.java` und `serve.py`). Vorlagen je Stil `timber`, `stone`, `grand`; Gänge dazu `<stil>_lit`
   (jede vierte Zelle, Fackel) und `<stil>_deco` (Banner, Fass, Waffen). Ein Treppenhaus braucht einen Punkt `door` (am Fuß
   der Tür `stairdoor*`, dort gehen Zwerge hinein); das Spiel setzt das Bild der Tür selbst (0 zu bis 3 offen). Teile in
   `art-src/props48/ways.py`.
@@ -193,7 +203,7 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
   (`SPOTS`, `NEEDS`, `PROP_SPOTS`), zeichnen mit `drawRoom(ctx, tpl, x, y, t, {between})`: Hülle und hintere Ebene, dann `between` (die Zwerge),
   dann die vordere Ebene, jede Ebene für sich beleuchtet.
 - **Im Spiel:** `Building.look` (leer = erste Vorlage) und die Aktion `roomLook {building, look}`. Der Server prüft
-  gegen `rooms/index.json` (`RoomLooks.java`). Ein Test verlangt für jeden Raumtyp und jede Erweiterung mindestens
+  gegen `rooms/index.json` (`RoomLooks.java`) und die Spieler-Vorlagen. Ein Test verlangt für jeden Raumtyp und jede Erweiterung mindestens
   eine Vorlage. Zu sehen ist das erst mit dem neuen Renderer.
 
 ## Tiefe

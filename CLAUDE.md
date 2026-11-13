@@ -49,7 +49,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/sun.js` | Sonnenstand und Uhrzeit für Essen (`Europe/Berlin`) |
 | `static/js/sprites.js` | lädt das Sprite-Sheet, färbt Metall um, liefert Zwerge, Fremde und Porträts |
 | `art-src/props48/` | Grafik 48 px als Code (Räume aus Teilen, Tal, Fels, Monster, Effekte, Wege in `ways.py`), `export.py` schreibt `static/art/props48/` (Sheet, Glow, JSON), Lader `static/js/art48.js` |
-| `tools/room-editor/` | lokaler Raumvorlagen-Editor (`python3 tools/room-editor/serve.py`, Port 8099): Möbel und Punkte (Arbeitsplatz, Sitz, Bett, Licht …) setzen, speichert nach `static/art/props48/rooms/`; Format und Zeichnen in `static/js/rooms48.js`, Server-Liste `RoomLooks.java`, Wahl je Raum `Building.look` |
+| `static/editor/` | Raumvorlagen-Editor (Möbel und Punkte setzen), im Spiel über „Change look“ im Raumfenster als Fenster (`openEditor` in `popups.js`, `?embed=1`, meldet `saved`/`close` per `postMessage`). Spieler-Vorlagen speichert der Server (`game/RoomTemplates.java`, Tabelle `room_templates`, API `/api/rooms…`): jeder darf anlegen, alle sehen und nutzen sie, ändern/löschen nur der Ersteller oder Admins. Format und Zeichnen in `static/js/rooms48.js`, eingebaute Vorlagen `RoomLooks.java`, Wahl je Raum `Building.look` |
+| `tools/room-editor/` | `serve.py` (Port 8099) startet denselben Editor lokal ohne Spiel und speichert eingebaute Vorlagen als Dateien nach `static/art/props48/rooms/` |
 | `art-src/dwarf48/` | nächster Zwerg-Satz 48 × 64 als Code (`parts.py`, `build.py`), Ergebnis in `static/art/dwarf48/`, Lader `static/js/dwarf48.js` (zeichnet die Zwerge in der Festung) |
 | `static/js/dwarfkit.js` | setzt Zwerge aus den PNG-Teilen in `static/art/dwarf/` zusammen (`kit.json`: Bilder, Reihenfolge, Platzhalterfarben) und färbt sie um; gezeichnet im Pixelwright-Projekt „Deep Forge Dwarves“ |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt) |
@@ -80,7 +81,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   Breite in `Layouts.ROOM_CELLS`, Vorräte für den Tab in `contextResources()`, Pfeil-Logik in `hold.js` (`hasInputs`).
   Werkstatt mit Maschinen: Breite einer Erweiterung in `Layouts.MACHINE_CELLS`, Grafik mit `bay(...)` in
   `rooms.px.js`, Anker in `BAYS` (`shared.js`).
-- **Neue Raumvorlage:** im Editor (`tools/room-editor`) bauen und speichern; ein neuer Raumtyp braucht mindestens
+- **Neue Raumvorlage:** Spieler bauen sie im Spiel (Raumfenster → „Change look“). Eingebaute Vorlagen im lokalen
+  Editor (`python3 tools/room-editor/serve.py`) bauen und speichern; ein neuer Raumtyp braucht mindestens
   eine (Test in `SimTest`), Pflichtpunkte in `NEEDS` (`rooms48.js`).
 - **Neue Eigenschaft:** `trait(...)` in `Content.java`, Wirkung in `Rules.workSpeed`, `Rules.power`,
   `Sim.happinessTarget` oder `Expeditions`.

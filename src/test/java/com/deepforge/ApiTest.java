@@ -63,4 +63,49 @@ class ApiTest {
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"tester\",\"password\":\"nope-nope\"}")).andExpect(status().isBadRequest());
     }
+
+    private String register(String name) throws Exception {
+        String body = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"password\":\"secret123\",\"invite\":\"friends\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return "Bearer " + om.readValue(body, Map.class).get("token");
+    }
+
+    /** Player looks: anyone saves, everyone sees and uses them, only the author changes or deletes them. */
+    @Test
+    void roomLooksAreShared() throws Exception {
+        String a = register("Builder"), b = register("Guest");
+        String look = "{\"type\":\"tavern\",\"part\":\"room\",\"name\":\"snug\",\"data\":{\"wall\":\"wall_brick\",\"floor\":\"floor_planks\","
+                + "\"props\":[{\"s\":\"barrel\",\"x\":40,\"y\":135},{\"s\":\"<script>\",\"x\":1,\"y\":1}],"
+                + "\"spots\":[{\"kind\":\"seat\",\"x\":9999,\"y\":131,\"evil\":1},{\"kind\":\"nope\",\"x\":1,\"y\":1}]}}";
+        mvc.perform(post("/api/rooms/save").contentType(MediaType.APPLICATION_JSON).content(look)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/rooms/save").header("Authorization", a).contentType(MediaType.APPLICATION_JSON).content(look))
+                .andExpect(status().isOk());
+        // everyone sees it, without logging in too; unknown sprites, spot kinds and fields are dropped, numbers clamped
+        mvc.perform(get("/api/rooms")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.index.tavern.room[?(@ == 'snug')]").exists())
+                .andExpect(jsonPath("$.looks['tavern/room/snug'].author").value("Builder"));
+        mvc.perform(get("/api/rooms").header("Authorization", b))
+                .andExpect(jsonPath("$.looks['tavern/room/snug'].mine").value(false));
+        mvc.perform(get("/api/rooms/template").param("type", "tavern").param("part", "room").param("name", "snug"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.props.length()").value(1))
+                .andExpect(jsonPath("$.spots.length()").value(1))
+                .andExpect(jsonPath("$.spots[0].x").value(9 * 48 + 48))
+                .andExpect(jsonPath("$.spots[0].evil").doesNotExist());
+        // another player uses it, but can't overwrite or delete it
+        mvc.perform(post("/api/action").header("Authorization", b).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"roomLook\",\"building\":\"tavern\",\"look\":\"snug\"}")).andExpect(status().isOk());
+        mvc.perform(post("/api/rooms/save").header("Authorization", b).contentType(MediaType.APPLICATION_JSON).content(look))
+                .andExpect(status().isBadRequest());
+        String del = "{\"type\":\"tavern\",\"part\":\"room\",\"name\":\"snug\"}";
+        mvc.perform(post("/api/rooms/delete").header("Authorization", b).contentType(MediaType.APPLICATION_JSON).content(del))
+                .andExpect(status().isBadRequest());
+        // built-in names are taken
+        mvc.perform(post("/api/rooms/save").header("Authorization", a).contentType(MediaType.APPLICATION_JSON)
+                .content(look.replace("snug", "starter"))).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/rooms/delete").header("Authorization", a).contentType(MediaType.APPLICATION_JSON).content(del))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/rooms")).andExpect(jsonPath("$.index.tavern.room[?(@ == 'snug')]").doesNotExist());
+    }
 }

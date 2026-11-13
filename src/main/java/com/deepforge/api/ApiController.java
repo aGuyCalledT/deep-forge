@@ -5,6 +5,7 @@ import com.deepforge.auth.AuthService;
 import com.deepforge.game.Actions;
 import com.deepforge.game.Content;
 import com.deepforge.game.GameService;
+import com.deepforge.game.RoomTemplates;
 import com.deepforge.store.Store;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,11 +25,13 @@ public class ApiController {
     private final String spritesDir;
     private final String staticLocations;
     private final boolean cheatsForAll;
+    private final RoomTemplates looks;
 
-    public ApiController(AuthService auth, GameService game, @Value("${deepforge.sprites-dir:./sprites}") String spritesDir,
+    public ApiController(AuthService auth, GameService game, RoomTemplates looks, @Value("${deepforge.sprites-dir:./sprites}") String spritesDir,
                          @Value("${spring.web.resources.static-locations:}") String staticLocations,
                          @Value("${deepforge.cheats:false}") boolean cheatsForAll) {
         this.cheatsForAll = cheatsForAll;
+        this.looks = looks;
         this.auth = auth;
         this.game = game;
         this.spritesDir = spritesDir;
@@ -165,6 +168,36 @@ public class ApiController {
         auth.resetPassword(b.get("name"), b.get("password"));
         return Map.of("ok", true);
     }
+
+    // ---------------------------------------------------------------- room looks (room editor)
+
+    /** Every room look, built-in and made by players; readable without logging in (the editor and the game load it). */
+    @GetMapping("/rooms")
+    public Map<String, Object> rooms(HttpServletRequest req) {
+        return looks.list(auth.userForToken(AuthInterceptor.token(req)));
+    }
+
+    @GetMapping("/rooms/template")
+    public Map<String, Object> roomTemplate(@RequestParam("type") String type, @RequestParam(value = "part", defaultValue = "room") String part,
+                                            @RequestParam("name") String name) {
+        return looks.get(type, part, name);
+    }
+
+    @PostMapping("/rooms/save")
+    public Map<String, Object> saveRoom(@RequestBody Map<String, Object> b, HttpServletRequest req) {
+        Store.User u = user(req);
+        looks.save(u, auth.isAdmin(u), str(b.get("type")), str(b.getOrDefault("part", "room")), str(b.get("name")), b.get("data"));
+        return looks.list(u);
+    }
+
+    @PostMapping("/rooms/delete")
+    public Map<String, Object> deleteRoom(@RequestBody Map<String, Object> b, HttpServletRequest req) {
+        Store.User u = user(req);
+        looks.delete(u, auth.isAdmin(u), str(b.get("type")), str(b.getOrDefault("part", "room")), str(b.get("name")));
+        return looks.list(u);
+    }
+
+    private static String str(Object o) { return o instanceof String s ? s : null; }
 
     // ---------------------------------------------------------------- errors
 
