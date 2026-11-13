@@ -224,3 +224,4 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Ungenutzter Fels ist schwarz (Nebel): eine Raumhöhe um jeden gegrabenen Raum sichtbar, weich auslaufend; Tal und
       Bergaußenseite bleiben hell, beim Bauen schimmert der Fels durch.
 - [ ] Nebel: Höhlen mit Monstern weiter weg später erst zeigen, wenn ein Späher sie gefunden hat?
+- [x] Patchnotes im Spiel (More → „What's new“, Details aufklappbar, Hinweis-Chip nach neuem Release).

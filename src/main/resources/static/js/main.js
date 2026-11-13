@@ -1,6 +1,7 @@
 // Boot, login, tabs, polling and the global animation loop.
 import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
+import { loadNotes, unseenNotes } from './notes.js';
 import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money, statusIco } from './ui.js';
 import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
@@ -214,6 +215,8 @@ function alerts() {
   if (idle) a.push(['idle', 'dwarves', `${idle} idle dwarf(s). Give them a job.`]);
   const empty = f.buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive' && !d.buildings[b.id].worker);
   if (empty.length && !idle) a.push(['idle', 'work', `${empty.length} workshop(s) without a worker.`, empty[0].id]);
+  const news = unseenNotes();
+  if (news) a.push(['good', 'more', `New in ${news.version}: ${news.title}. Open More to read.`]);
   if (d.traditionPoints > 0) a.push(['good', 'more', `${d.traditionPoints} tradition point(s) to spend.`]);
   return a;
 }
@@ -466,7 +469,7 @@ function artToCss() {
 
 async function boot() {
   try { await Promise.all(['16px "Germania One"', '500 16px "Alegreya Sans"', '800 16px "Alegreya Sans SC"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
-  await Promise.all([S.loadArt(), loadArt48()]);
+  await Promise.all([S.loadArt(), loadArt48(), loadNotes()]);
   artToCss();
   const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
   A.initAudio(audio);

@@ -60,6 +60,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/plate.js` | Hover-Schild, das an Ketten aus der Raumdecke fällt; Material je Raum (`roomMaterial`) |
 | `static/js/collect.js` | Beute-Berichte von Karawanen und Expeditionen als Karten mit „Collect“-Knopf, Flug-Animation in die Vorräte |
 | `static/js/audio.js` | Sounds, Hintergrund-Schleifen, Musik (Stimmung je Tab); Zuordnung in `docs/AUDIO.md` |
+| `static/patchnotes.json`, `static/js/notes.js` | Patchnotes (neueste zuerst: Version, Datum, Titel, Kurzform, Details nach Gruppen); im Spiel unter More („What's new“, Details aufklappbar), einmal als Hinweis-Chip nach einem neuen Release |
 | `static/js/data.js` → `contextResources()` | welche Vorräte jeder Tab in der Übersicht zeigt (aufklappbar oben in der Schublade) |
 
 ## Rezepte
@@ -144,5 +145,9 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 
 ## Git
 
-- Ein Branch pro Etappe oder Feature, PR nur auf Wunsch.
+- Gearbeitet wird nur auf `development`. Andere Branches nur, wenn der Nutzer es will.
+- `master` ist der Haupt-Branch: nur bei einem vorzeigbaren Stand von `development` nach `master` mergen, und zwar auf
+  Wunsch des Nutzers. Vorher einen neuen Eintrag oben in `static/patchnotes.json` schreiben (englisch, kurz und
+  freundlich, Kurzform mit 2–4 Punkten, Details nach Gruppen), Version hochzählen.
+- PR nur auf Wunsch.
 - Keine Modellnamen in Commits, PRs oder Code.

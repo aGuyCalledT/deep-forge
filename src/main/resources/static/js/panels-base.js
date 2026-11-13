@@ -5,6 +5,7 @@ import * as S from './sprites.js';
 import { api, setToken } from './api.js';
 import { openAudioSheet } from './panels-audio.js';
 import { cheatsSection } from './popups.js';
+import { notesView, markNotesSeen } from './notes.js';
 
 // ================================================================== fortress
 
@@ -294,6 +295,8 @@ function fightSheet(title, enemy, makeAction) {
 export function renderMore() {
   const f = F(), d = D();
   const out = [];
+  const notes = notesView();
+  if (notes) { out.push(...section("What's new", notes)); markNotesSeen(); }
   out.push(...section('Traditions', h('div', { class: 'card' },
     h('p', { class: 'small muted' }, `Choose how your fortress specialises. One point per fortress level. Points left: `, h('b', { class: 'gold-t' }, d.traditionPoints)),
     G.data.traditions.map((t) => {
