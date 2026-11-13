@@ -3,7 +3,6 @@ import { api, token, setToken } from './api.js';
 import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
 import { loadNotes, unseenNotes } from './notes.js';
 import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money, statusIco } from './ui.js';
-import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
 import { initCanvas, zoomBy, lookAt, camera, toScreen, homeCamera } from './canvas.js';
 import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt as loadArt48 } from './hold.js';
@@ -280,7 +279,6 @@ function closeDrawer() {
 
 function setScreen(name) {
   G.screen = name;
-  hidePlate();
   if (name !== 'hold') G.build = null;
   $('scene-wrap').classList.remove('scroll');
   renderToolbar();

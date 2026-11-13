@@ -105,7 +105,7 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [x] Keine Namensschilder mehr über den Räumen; beim Hovern fällt ein Metallschild an Ketten aus der Decke.
 - [ ] Quests gibt es noch nicht als eigenes System; das Papier (`paper.js`) ist dafür vorbereitet.
 - [ ] Felsgrafik aus den Referenzbildern des Nutzers für den Berg übernehmen (Bilder fehlen noch in `art-src/ref/`).
-- [ ] Hover-Schild nur mit Maus; auf dem Handy öffnet ein Tipp gleich das Fenster.
+- [x] Hover-Schild entfernt (Raumfenster docken rechts an, Hover zeigt nur den Umriss).
 
 ## Aus früheren Runden
 

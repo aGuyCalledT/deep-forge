@@ -9,7 +9,6 @@ import * as R from './rooms48.js';
 import * as DW from './dwarf48.js';
 import { sun, daylight, skyColors, berlinHour } from './sun.js';
 import { text, sign } from './pixfont.js';
-import { roomPlate } from './plate.js';
 
 // The hold is cut into a mountain from its left side. Left of the grid (x < 0) lies the valley with the
 // market and the gate; the mountain face rises at x = -FACE, a short tunnel leads from the gate to the shaft.
@@ -1131,7 +1130,6 @@ export const holdScreen = {
     const f = F();
     const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
     drawFog(ctx, G_);
-    roomPlate(hover);
     if (G_.hall) R.drawProps(ctx, G_.hall, -FACE, ftop(ENTRY), t, { glow: true });
     for (const [k, v] of G_.cells) {
       if (v.kind !== 'hall') continue;

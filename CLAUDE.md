@@ -60,7 +60,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `static/js/panels-market.js` | Marktliste mit Wochenlinie, Waren-Fenster mit Kursverlauf und Städte-Tabelle |
 | `static/js/panels-depot.js` | Fenster des Handelsdepots: Marktanteil, Karawanen, Regeln, Kauf-Aufträge |
 | `static/js/paper.js` | Papier-Zettel (Risse, Flecken, Falten aus der id) und Abhaklisten |
-| `static/js/plate.js` | Hover-Schild, das an Ketten aus der Raumdecke fällt; Material je Raum (`roomMaterial`) |
+| `static/js/plate.js` | Material je Raum (`roomMaterial`), danach richtet sich der Rahmen des Raumfensters |
 | `static/js/collect.js` | Beute-Berichte von Karawanen und Expeditionen als Karten mit „Collect“-Knopf, Flug-Animation in die Vorräte |
 | `static/js/audio.js` | Sounds, Hintergrund-Schleifen, Musik (Stimmung je Tab); Zuordnung in `docs/AUDIO.md` |
 | `static/patchnotes.json`, `static/js/notes.js` | Patchnotes (neueste zuerst: Version, Datum, Titel, Kurzform, Details nach Gruppen); im Spiel unter More („What's new“, Details aufklappbar), einmal als Hinweis-Chip nach einem neuen Release |
@@ -117,7 +117,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 - **Sanduhr** statt Balken für ablaufende Zeit: `hourglass({job, machine} | {from, to} | {p})`, echter Fortschritt.
   Balken (`bar`) nur für Mengen (Lager, Gesundheit, Stimmung, Hitze).
 - **Bewegung mechanisch:** Fenster fahren aus dem Bildschirmrand ein und wieder hinaus (`slideIn`/`slideOut`), das
-  Hover-Schild eines Raums fällt an Ketten aus der Decke (`plate.js`). Bei `prefers-reduced-motion` bewegt sich nichts.
+  Raumfenster docken am Desktop rechts an (beim Hovern erscheint nur der grüne Umriss). Bei `prefers-reduced-motion` bewegt sich nichts.
 - Schriften (selbst gehostet in `static/fonts/`): Germania One für Titel, Alegreya Sans für Text, Alegreya Sans SC
   für Knöpfe und Tabs, Kalam für Handschrift auf Papier. Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
   Räume tragen keine Namensschilder mehr im Canvas.
