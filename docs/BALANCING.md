@@ -10,7 +10,7 @@ und hier.
 |---|---|---|
 | Simulationsschritt | 60 s | Server rechnet jede Minute alle Festungen weiter |
 | Offline-Nachholen | max. 7 Tage | danach friert die Festung ein |
-| Lager voll (Start) | ca. 6 h | 4 Miner × 12 Erz/h gegen 500 Plätze |
+| Lager voll (Start) | ca. 20 h | 4 Miner × 6 Erz/h gegen 500 Plätze |
 | Karawane | 2–8 h hin und zurück | Stonebridge 1 h pro Weg … Emberton 4 h |
 | Expedition | 2–12 h | lange Touren über Nacht |
 | Überfall-Warnung | 3 h | passt zu 3–5 Besuchen am Tag |
@@ -27,20 +27,21 @@ und hier.
 |---|---|
 | Arbeitstempo | `(1 + 0,06 × Fertigkeit) × Stimmung (0,6–1,4) × Eigenschaften × Traditionen`, verletzt (< 40 HP) halbiert |
 | Fertigkeitsstufe | `floor(sqrt(xp / 40))`, max. 20. Arbeit gibt 10–12 xp pro Stunde |
-| Miner | Schicht-Grundwert (12 / 10 / 8 / 6,5 / 5 Erz/h) × Tempo × Schacht (+20 %/Stufe) × Spitzhacke (siehe „Spitzhacken“) |
+| Miner | Schicht-Grundwert (6 / 5 / 4,5 / 4 / 3,5 Erz/h) × Tempo × Schacht (+20 %/Stufe) × Spitzhacke (siehe „Spitzhacken“) |
 | Lift | `80 × 1,35^(Stufe−1)` Erz/h |
 | Erzwagen | fasst `10 + 5 × (Schachtstufe−1)` Erz je Schicht; Erz kommt erst ins Lager, wenn der Wagen voll ist und losfährt. Ist das Lager voll, wartet der volle Wagen. Der Spieler kann ihn früher schicken (`cartRule`): schon bei 25/50/75 % Füllung (`cartFill`, `Rules.cartTarget`) oder nach 5–60 Minuten ab dem ersten Erz (`cartMinutes`) |
 | Lager | `500 × 1,4^(Stufe−1)` (Pilze und Bier zählen nicht) |
 | Gebäudestufe | `+25 %` Tempo pro Stufe |
 | Maschinen | jede Werkstatt hat `min(5, Stufe)` Maschinen, jede braucht einen eigenen Zwerg und arbeitet ihre eigene Bestellung ab (gemeinsame Warteschlange, gemeinsame Hitze im Schmelzofen) |
 | Maschine | kommt mit jedem Ausbau dazu (keine eigenen Kosten). Abgebaute Maschinen wieder aufstellen kostet `6 × Stufe` Marks + `15 × Stufe` Stein (`Rules.machineCost`); der Raum wird um `MACHINE_CELLS` Zellen breiter. Ist rechts kein Platz, rückt er nach links oder zieht an die nächste freie Stelle (gleiche Etage zuerst) |
-| Schmelzen | 180 s × Hitzefaktor des Metalls, Blasebalg bis ×2 (siehe Minispiele) |
+| Schmelzen | 2 Erz + 1 Kohle → 1 Barren in 360 s × Hitzefaktor des Metalls (ein Bonuswurf auf einen zweiten), Blasebalg bis ×2 (siehe Minispiele) |
 | Legierung | 120 s × Hitzefaktor × max(1, Ausbeute/2) |
-| Schmieden | 100 s × Barren × √Hitzefaktor |
-| Schleifen / Gravieren / Edelstein | 90 / 150 / 150 s, Edelstein schleifen 180 s |
+| Schmieden | 300 s × Barren × √Hitzefaktor (`Recipes.FORGE_SECONDS`) |
+| Zusammensetzen (Feinmechaniker) | 600 s × (Barren + Teile), Krone mit Regalien doppelt |
+| Schleifen / Gravieren, Edelstein fassen, Einlage | 480 / 600 s, Edelstein schleifen 1 800 s |
 | Schneiderei | Weben 120 s: 3 Pilze → 2 Stoff. Nähen 80 s je Stoff: Hüte 1, Hemden, Hosen, Stiefel 2, bestickte Tunika 3 Stoff |
-| Pilzfarm | 5 Pilze/h × Tempo × Stufe |
-| Brauerei | 5 Bier/h aus 2,5 Pilzen |
+| Pilzfarm | 1,6 Pilze/h × Tempo × Stufe (`Rules.FARM_PER_H`) |
+| Brauerei | 2 Bier/h × Tempo × Stufe aus halb so vielen Pilzen (`Rules.BREW_PER_H`) |
 | Verbrauch | 0,2 Pilze und 0,2 Bier pro Zwerg und Stunde (Ale Lover doppelt, Teetotaler kein Bier) |
 
 ## Qualität (Amboss: Schmieden und Abschrecken)
@@ -126,7 +127,19 @@ Masterwork 2, Artifact 3.
   anderen Metalls (Stahl ist 3,2-mal so viel wert wie Kupfer, auch als Axt, Kette oder Spitzhacke).
 - Kleidung: Stoff 4 Marks, Kleidung 6–26 Marks (Flickenhemd 6, Strickpullover 16, bestickte Tunika 26); also etwa das
   Doppelte bis Dreifache des Stoffs. Eigene Markt-Sorte `cat:clothing` mit einem gemeinsamen Kurs. Brille, Ohrringe und Grubenhelm lassen sich nicht nähen.
-- Erz ist 45 % eines Barrens wert. Legierungen sind immer mehr wert als ihre Zutaten.
+- Erz ist 30 % eines Barrens wert (`Content.ORE_SHARE`), Kohle 50, Kalk 60, Stein 30 Jots. Legierungen sind immer mehr wert als ihre Zutaten.
+- Barrenwerte in sechs Stufen (Jots): Blei 400, Kupfer 450, Zinn 500, Zink 550 · Kalt-Zinn 850, Eisen 900, Flitter-Zinn 900,
+  Messing 1 000, Fein-Zinn 1 000, Bismut 1 100, Bronze 1 100, Roheisen 1 200, Nickel 1 300 · Billon 2 000, Neusilber 2 000,
+  Bismutbronze 2 200, Silber 2 500, Stahl 3 000, Sterlingsilber 3 200 · Elektrum 6 000, Gold 7 000, Rotgold 7 500,
+  Schwarzbronze 8 000 · Platin 15 000, Aluminium 16 000, Nickelstahl 18 000 · Sternstahl 30 000.
+- Typfaktoren: Spitzhacke 1,6, Kette 1,6, Helm 1,7, Kelch 1,7, Kettenhemd 1,8, Axt 1,9, Krone 2,2, Ring 2,5.
+- **Wertleiter** (`BalanceTest`): aus Schichtrate, Arbeitszeiten und Werten wird ausgerechnet, was eine Zwergenstunde auf
+  jeder Stufe bringt (Nebenfunde wie Kohle kosten so viel Zeit, wie ein Bergarbeiter in der Schicht für denselben Wert
+  bräuchte). Für jedes Metall gilt: Barren > 1,05 × Erz, Ware > 1,1 × Barren, gravierte Ware > 1,03 × Ware. Jede
+  Verbundware schlägt in mindestens einem Metall alle leichteren einfachen Waren (Teile haben feste Werte, darum lohnen
+  sie sich in mittleren Metallen: Lampe und Kompass in Messing, Schloss, Schild und Prunkaxt in Eisen, Krugset in
+  Kalt-Zinn, Kelch und Spieluhr in Silber, Regalien in Gold). Beispiel Kupfer: Erz 0,81, Barren 0,91, Ware 1,20,
+  graviert 1,46 Marks je Zwergenstunde; Gold: 8,4 / 10,4 / 21,3 / 25,8.
 
 ## Geld
 
@@ -209,15 +222,15 @@ Masterwork 2, Artifact 3.
 
 | Ware | Metall | Barren | Teile | Faktor | Skill | Gruppe |
 |---|---|---|---|---|---|---|
-| Miner's lamp | Messing | 1 | 1 Kupfer | 1,6 | 2 | tools |
-| Lock | hart | 1 | 1 Zahnräder | 1,6 | 3 | hardware |
-| Shield | hart | 2 | 1 Bronze | 1,6 | 2 | armor |
-| Tankard set | Zinnlegierung | 2 | 1 Messing | 1,6 | 2 | tableware |
-| Chalice | edel | 2 | 1 Gold, 1 geschliffener Stein | 1,7 | 3 | tableware |
-| Parade axe | hart | 2 | 1 Gold, 1 geschliffener Stein | 1,8 | 4 | weapons (Waffe) |
-| Sea compass (Bauplan clockwork) | Messing | 1 | 1 Neusilber, 1 Zahnräder | 1,8 | 3 | tools |
-| Music box (Bauplan clockwork) | edel | 1 | 1 Zahnräder | 2,0 | 4 | jewelry |
-| Crown and regalia (Bauplan regalia) | Gold | 3 | 1 Platin, 3 geschliffene Steine | 2,2 | 5 | jewelry |
+| Miner's lamp | Messing | 1 | 1 Kupfer | 2,4 | 2 | tools |
+| Lock | hart | 1 | 1 Zahnräder | 1,8 | 3 | hardware |
+| Shield | hart | 2 | 1 Bronze | 1,9 | 2 | armor |
+| Tankard set | Zinnlegierung | 2 | 1 Messing | 1,8 | 2 | tableware |
+| Chalice | edel | 2 | 1 Gold, 1 geschliffener Stein | 2,2 | 3 | tableware |
+| Parade axe | hart | 2 | 1 Gold, 1 geschliffener Stein | 2,0 | 4 | weapons (Waffe) |
+| Sea compass (Bauplan clockwork) | Messing | 1 | 1 Neusilber, 1 Zahnräder | 2,0 | 3 | tools |
+| Music box (Bauplan clockwork) | edel | 1 | 1 Zahnräder | 2,6 | 4 | jewelry |
+| Crown and regalia (Bauplan regalia) | Gold | 3 | 1 Platin, 3 geschliffene Steine | 3,6 | 5 | jewelry |
 
 - **Goldeinlage** (Veredelung `i`, Graveur, 1 Goldbarren): Wert + 2 × Goldwert vor Faktor und Qualität. Erlaubt auf
   Streitaxt, Helm, Kettenhemd, Kelch (goblet), Schild, Chalice, Parade axe.
@@ -259,12 +272,13 @@ Masterwork 2, Artifact 3.
 
 ## Kosten
 
-- Aufwerten: `Grundpreis × Wachstum^(Stufe−1)` Jots, Stein × 1,3^(Stufe−1), dazu `4 + 3 × Stufe` Barren
-  (bis Stufe 3 Kupfer, 4–5 Bronze, 6–8 Eisen, ab 9 Stahl).
-  Wachstum: Lager, Lift, Kaserne, Tor, Eingangshalle, Tresor, Handelsdepot 1,7 · Abenteurergilde 1,75 · Taverne 1,65 · Rest 1,55–1,6.
+- Aufwerten auf Stufe n: `Grundpreis × n² / 4` Jots und `Grundstein × n² / 4` Stein (`Rules.levelSquare`, Stufe 2 ×1,
+  Stufe 5 ×6,25, Stufe 10 ×25), dazu `4 + 3 × Stufe` Barren (bis Stufe 3 Kupfer, 4–5 Bronze, 6–8 Eisen, ab 9 Stahl).
 - Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener Werkstatt dieser Art.
 - Schichten: Freischalten in Marks: Grey Veins 80, Silver Halls 400, Golden Deep 1 500 + Erkundung, Crystal Abyss 5 000 + Erkundung.
   Schicht ausbauen: `25 Marks × (Schicht + 1) × 1,6^(Stufe−1)`.
+  Eine neue Schicht braucht nach dem Bezahlen Zeit, bis die Stollen offen sind (`Rules.LAYER_OPEN_HOURS`): Grey Veins 2 h,
+  Silver Halls 6 h, Golden Deep 12 h, Crystal Abyss 24 h (`LayerState.openAt`, Sanduhr im Minen-Tab).
 - Graben (`Rules.DIG_SECONDS`, `DIG_DEPTH`, `DIG_STONE`): Fels markieren ist frei. Ein Bergarbeiter gräbt eine Zelle
   in `300 s × Tiefenfaktor / (Arbeitstempo × Werkzeug)`; Faktor je zwei Etagen ×1 · ×1,5 · ×2,25 · ×3,25. Eine Zelle
   gräbt nur ein Zwerg, und nur, wenn links oder rechts schon offen ist (Schacht, Höhle, Gang, Raum). Jede Zelle gibt

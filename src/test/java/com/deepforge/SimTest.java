@@ -61,7 +61,7 @@ class SimTest {
         State.LayerState l = f.layers.get(0);
         // the first ore lands in the cart, not in the warehouse
         int coal = f.stock.getOrDefault("coal", 0);
-        Sim.advance(f, T0 + 120, m);
+        Sim.advance(f, T0 + 600, m);
         assertTrue(Rules.cartTotal(l) > 0 && Rules.cartTotal(l) < Rules.cartSize(l), "the cart fills up first");
         assertEquals(0, l.cartSent);
         assertEquals(coal, f.stock.getOrDefault("coal", 0));
@@ -114,9 +114,9 @@ class SimTest {
         assertEquals(before - 5000, f.coins, 1e-9);
         act(f, m, T0 + 2.1 * 3600, "type", "collect", "id", f.reports.get(0).id);
         assertTrue(f.reports.isEmpty());
-        // robbed caravans bring half; a normal one sells 30 copper bars for about 30 Marks
+        // robbed caravans bring half; a normal one sells 30 copper bars for about 13 Marks
         if (f.log.stream().noneMatch(l -> l.text.contains("Bandits")))
-            assertTrue(f.coins > before + 15000, "coins " + f.coins + " before " + before);
+            assertTrue(f.coins > before + 7000, "coins " + f.coins + " before " + before);
     }
 
     @Test
@@ -980,12 +980,12 @@ class SimTest {
         // value: own bars plus the parts, then the same factor and quality steps as every piece
         String lamp = Content.itemKey("lamp", "brass", 1, "");
         double parts = Content.baseValue("bar:copper");
-        assertEquals((Content.baseValue("bar:brass") + parts) * 1.6, Content.baseValue(lamp), 1e-6);
+        assertEquals((Content.baseValue("bar:brass") + parts) * Content.ITEMS.get("lamp").factor(), Content.baseValue(lamp), 1e-6);
         assertFalse(Content.metalFits(Content.ITEMS.get("lamp"), Content.METALS.get("copper")));
         assertTrue(Content.metalFits(Content.ITEMS.get("tankards"), Content.METALS.get("fine_pewter")));
         // the gold inlay adds twice the gold
         String axe = Content.itemKey("axe", "steel", 1, ""), inlaid = Content.itemKey("axe", "steel", 1, "i");
-        assertEquals(Content.baseValue(axe) + 2 * Content.baseValue("bar:gold") * 1.8, Content.baseValue(inlaid), 1e-6);
+        assertEquals(Content.baseValue(axe) + 2 * Content.baseValue("bar:gold") * Content.ITEMS.get("axe").factor(), Content.baseValue(inlaid), 1e-6);
         // build the bench, cut gears, make a lock
         f.coins = 1_000_000;
         f.stock.put("stone", 500);

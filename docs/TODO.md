@@ -271,7 +271,8 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Grubenlampe als zweiter Platz am Bergarbeiter (+10 % ab Schicht 3), Schild als eigener Ausrüstungsplatz,
       Krug-Satz für die Taverne, Goldfaden-Tunika (Kleidung): bisher nur Handelsware bzw. nicht gebaut.
 - [ ] Feinmechaniker: eigene 48-px-Möbel (Vorlagen nutzen Schreibtisch, Waage, Rohre).
-- [ ] Schritt 1: Balance-Bot, Preisformel (quadratische Kosten), neue Werte und Zeiten.
+- [x] Schritt 1: Preisformel (quadratische Kosten), neue Werte und Zeiten, Wertleiter-Test (`BalanceTest`).
+- [ ] Balance-Bot, der 120 Tage mit einer Strategie durchspielt (heute prüft `BalanceTest` nur die Wertleiter je Zwergenstunde).
 - [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
 - [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.
 - [x] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.

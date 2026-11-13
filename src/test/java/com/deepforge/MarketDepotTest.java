@@ -25,8 +25,8 @@ class MarketDepotTest {
             copper.add(Math.round(m.mult(c, "bar:copper") * 1000) / 1000.0);
         }
         assertTrue(copper.size() >= 4, "every city has its own copper price: " + copper);
-        // copper's base price is one Gold Mark
-        assertEquals(1000, Content.baseValue("bar:copper"), 1e-9);
+        // copper is the cheapest tier: 0.45 Marks a bar
+        assertEquals(450, Content.baseValue("bar:copper"), 1e-9);
     }
 
     @Test

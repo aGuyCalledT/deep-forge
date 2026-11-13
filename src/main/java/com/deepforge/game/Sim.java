@@ -44,6 +44,7 @@ public final class Sim {
             minting(f, w, t + dt);
         }
         builders(f, t + dt);
+        galleries(f, t + dt);
         anvil(f, r, t + dt);
         if (watched(f, t)) {
             threats(f, dt, r, t + dt);
@@ -505,7 +506,7 @@ public final class Sim {
         if (b.type.equals("farm")) {
             // fertilizer from the minigame: more mushrooms until it is used up
             double fert = b.fertUntil <= t ? 0 : b.fert * Math.min(1, (b.fertUntil - t) / Math.max(1e-9, dt));
-            b.acc += 5 * speed * (1 + fert) * dt / H;
+            b.acc += FARM_PER_H * speed * (1 + fert) * dt / H;
             int n = (int) Math.floor(b.acc);
             if (n > 0) {
                 add(f, "food", n);
@@ -514,7 +515,7 @@ public final class Sim {
             b.status = "Growing mushrooms";
         } else {
             // 2 ale from 1 mushroom; shaking the barrels (minigame) makes it faster
-            b.acc += 5 * speed * (1 + boostAt(b, t + dt / 2) / 100) * dt / H;
+            b.acc += BREW_PER_H * speed * (1 + boostAt(b, t + dt / 2) / 100) * dt / H;
             int pairs = (int) Math.floor(b.acc / 2);
             int n = Math.min(pairs, stock(f, "food"));
             if (pairs > 0 && n == 0) {
@@ -624,9 +625,9 @@ public final class Sim {
         if (j.recipe.equals("smelt")) {
             Content.Ore ore = Content.ORES.get(j.mat);
             int bonus = 0;
-            if (ore.bonusMetal() != null) for (int i = 0; i < 2; i++) if (r.chance(ore.bonusChance())) bonus++;
+            if (ore.bonusMetal() != null) if (r.chance(ore.bonusChance())) bonus++;
             if (bonus > 0) add(f, "bar:" + ore.bonusMetal(), bonus);
-            f.stats.barsSmelted += 2 + bonus;
+            f.stats.barsSmelted += 1 + bonus;
             fortressXp(f, 1);
         } else if (j.recipe.equals("alloy")) {
             f.stats.barsSmelted += Content.ALLOYS.get(j.mat).out();
@@ -663,6 +664,18 @@ public final class Sim {
             for (Forging x : f.anvil) if (forgingValue(x) < forgingValue(low)) low = x;
             f.anvil.remove(low);
             finishForging(f, low, 0, r, at, false);
+        }
+    }
+
+    /** A gallery the miners drove down opens its layer. */
+    static void galleries(Fortress f, double t) {
+        for (LayerState l : f.layers) {
+            if (l.unlocked || l.openAt <= 0 || t < l.openAt) continue;
+            l.unlocked = true;
+            l.openAt = 0;
+            fortressXp(f, 100 * l.index);
+            Content.Layer layer = Content.LAYERS.get(l.index);
+            log(f, t, "good", "The " + layer.name() + " are open! " + layer.note());
         }
     }
 

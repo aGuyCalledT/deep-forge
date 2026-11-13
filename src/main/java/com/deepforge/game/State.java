@@ -231,6 +231,7 @@ public final class State {
     }
 
     public static class LayerState {
+        public double openAt;        // the gallery down here is being driven and opens at this time (0: not started)
         public int index;
         public boolean unlocked;
         public int level = 1;

@@ -220,8 +220,8 @@ public final class View {
         for (Building b : f.buildings) {
             if (f.siege != null) continue;
             for (Dwarf w : workers(f, b)) {
-                if (b.type.equals("farm")) grow += 5 * workSpeed(f, w, "farming") * buildingMult(b);
-                if (b.type.equals("brewery")) brew += 5 * workSpeed(f, w, "farming") * buildingMult(b);
+                if (b.type.equals("farm")) grow += FARM_PER_H * workSpeed(f, w, "farming") * buildingMult(b);
+                if (b.type.equals("brewery")) brew += BREW_PER_H * workSpeed(f, w, "farming") * buildingMult(b);
             }
         }
         d.put("foodPerHour", round(grow - eat - brew / 2));

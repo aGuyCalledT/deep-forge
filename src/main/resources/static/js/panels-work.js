@@ -260,7 +260,7 @@ function orderSheet(b) {
     if (b.type === 'smelter') {
       parts.push(h('div', { class: 'row' }, ['smelt', 'alloy'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.mat = null; refreshSheet(); } }, r === 'smelt' ? 'Smelt ore' : 'Make alloy'))));
       if (st.recipe === 'smelt') {
-        parts.push(h('p', { class: 'small muted' }, '2 ore + 1 coal → 2 bars.'));
+        parts.push(h('p', { class: 'small muted' }, '2 ore + 1 coal → 1 bar.'));
         for (const o of G.data.ores) {
           const have = stock(o.id);
           parts.push(choice(st.mat === o.id, [goodIcon(o.id), ' ', o.name, ' → ', goodIcon('bar:' + o.metal, 'icon s'), ' ', byId.metals[o.metal].name + (o.bonusMetal ? ` (+${Math.round(o.bonusChance * 100)}% ${o.bonusMetal})` : '')],

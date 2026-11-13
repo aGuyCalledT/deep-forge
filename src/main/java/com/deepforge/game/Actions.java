@@ -533,10 +533,11 @@ public final class Actions {
                 "Nobody knows the way down yet. Send an expedition to scout it.");
         Cost c = layerUnlockCost(idx);
         check(canPay(f, c), "Not enough money or materials.");
+        check(l.openAt <= 0, "The miners are already driving the gallery down.");
         pay(f, c);
-        l.unlocked = true;
-        fortressXp(f, 100 * idx);
-        log(f, t, "good", "The " + layer.name() + " are open! " + layer.note());
+        l.openAt = t + LAYER_OPEN_HOURS[Math.min(idx, LAYER_OPEN_HOURS.length - 1)] * H;
+        log(f, t, "info", "The miners start the gallery down to the " + layer.name() + ". It opens in "
+                + (int) LAYER_OPEN_HOURS[Math.min(idx, LAYER_OPEN_HOURS.length - 1)] + " h.");
     }
 
     // ------------------------------------------------------------ queues

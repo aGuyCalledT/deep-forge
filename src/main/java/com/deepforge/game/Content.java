@@ -57,7 +57,8 @@ public final class Content {
     public static final Map<String, Ore> ORES = new LinkedHashMap<>();
     /** Hardness of what a miner breaks out (1..8). A pickaxe breaks what is at most as hard as its metal. */
     public static final Map<String, Integer> ROCK_HARDNESS = new LinkedHashMap<>();
-    public static final int MAKESHIFT_HARDNESS = 1;   // the free makeshift pick every miner carries
+    public static final int MAKESHIFT_HARDNESS = 1;
+    public static final double ORE_SHARE = 0.3;   // one ore is worth 35 % of its bar (two ore make one bar)   // the free makeshift pick every miner carries
 
     public static final Map<String, Raw> RAWS = new LinkedHashMap<>();
     public static final Map<String, Alloy> ALLOYS = new LinkedHashMap<>();
@@ -97,7 +98,7 @@ public final class Content {
     }
 
     private static void ore(String id, String name, String color, String metal, String bonus, double chance) {
-        ORES.put(id, new Ore(id, name, color, metal, bonus, chance, Math.round(METALS.get(metal).value() * 0.45)));
+        ORES.put(id, new Ore(id, name, color, metal, bonus, chance, Math.round(METALS.get(metal).value() * ORE_SHARE)));
     }
 
     private static void raw(String id, String name, String color, double value, String cat, String note) {
@@ -147,60 +148,60 @@ public final class Content {
 
     static {
         // --- base metals. All money is in Jots: 1 Mark = 100 Talents = 1000 Jots. value = Jots per bar at the base price
-        metal("copper", "Copper", "#b5653b", 1000, 2, false, 1.0, false,
+        metal("copper", "Copper", "#b5653b", 450, 2, false, 1.0, false,
                 "Copper flows warm and willing.", "Copper takes the water calmly.", 3, 6);
-        metal("tin", "Tin", "#9fb7b3", 1200, 1, false, 0.6, false,
+        metal("tin", "Tin", "#9fb7b3", 500, 1, false, 0.6, false,
                 "Tin melts almost the moment it sees fire.", "Tin hisses happily - quench it early.", 1.5, 6);
-        metal("zinc", "Zinc", "#a7b5b5", 1200, 1, false, 0.8, false,
+        metal("zinc", "Zinc", "#a7b5b5", 550, 1, false, 0.8, false,
                 "Zinc fumes a little. Mind the beard.", "Zinc wants a quick dip.", 2, 5);
-        metal("lead", "Lead", "#5d544b", 800, 1, false, 0.6, false,
+        metal("lead", "Lead", "#5d544b", 400, 1, false, 0.6, false,
                 "Lead slumps into the crucible like a tired miner.", "Lead barely cares when you quench it.", 1, 8);
-        metal("bismuth", "Bismuth", "#a874b8", 1800, 1, false, 0.8, false,
+        metal("bismuth", "Bismuth", "#a874b8", 1100, 1, false, 0.8, false,
                 "Bismuth shimmers in rainbow colours as it melts.", "Bismuth blooms into crystals if you wait a moment.", 4, 5);
-        metal("iron", "Iron", "#8c8c8c", 1400, 4, false, 1.5, false,
+        metal("iron", "Iron", "#8c8c8c", 900, 4, false, 1.5, false,
                 "Iron needs a roaring fire and patience.", "Iron wants a cherry-red glow before the water.", 5, 4.5);
-        metal("nickel", "Nickel", "#93b0ac", 2000, 3, false, 1.3, false,
+        metal("nickel", "Nickel", "#93b0ac", 1300, 3, false, 1.3, false,
                 "Nickel glows a stubborn white.", "Nickel likes a late quench.", 6, 4.5);
-        metal("silver", "Silver", "#c9cbd0", 3000, 2, true, 1.0, false,
+        metal("silver", "Silver", "#c9cbd0", 2500, 2, true, 1.0, false,
                 "Silver turns liquid like moonlight.", "Silver cools fast - be quick.", 2, 4);
-        metal("gold", "Gold", "#d6a43a", 6000, 1, true, 1.1, false,
+        metal("gold", "Gold", "#d6a43a", 7000, 1, true, 1.1, false,
                 "Gold melts like honey on a hearth.", "Gold forgives almost any timing.", 2, 8);
-        metal("platinum", "Platinum", "#d9dae2", 9000, 3, true, 2.0, false,
+        metal("platinum", "Platinum", "#d9dae2", 15000, 3, true, 2.0, false,
                 "Platinum barely glows, even with the bellows roaring.", "Platinum holds its heat a long time.", 7, 5);
-        metal("aluminum", "Aluminum", "#cfd2d6", 12000, 2, true, 2.2, false,
+        metal("aluminum", "Aluminum", "#cfd2d6", 16000, 2, true, 2.2, false,
                 "Aluminum is strange, light and hard to coax from stone.", "Aluminum gives no warning colour - trust your count.", 5, 4);
         // --- alloys
-        metal("bronze", "Bronze", "#8f5a3f", 1600, 4, false, 0.9, true,
+        metal("bronze", "Bronze", "#8f5a3f", 1100, 4, false, 0.9, true,
                 "Bronze pours with a golden-brown sheen.", "Bronze likes a steady hand.", 3, 5);
-        metal("bismuth_bronze", "Bismuth bronze", "#a99877", 2400, 5, false, 1.0, true,
+        metal("bismuth_bronze", "Bismuth bronze", "#a99877", 2200, 5, false, 1.0, true,
                 "Bismuth bronze swirls with faint purple streaks.", "Bismuth bronze rings like a bell in the water.", 4, 4.5);
-        metal("black_bronze", "Black bronze", "#3d3a3a", 4000, 4, true, 1.0, true,
+        metal("black_bronze", "Black bronze", "#3d3a3a", 8000, 4, true, 1.0, true,
                 "Black bronze drinks the light of the forge.", "Black bronze darkens beautifully when quenched late.", 5, 4.5);
-        metal("brass", "Brass", "#b9a052", 1800, 3, false, 0.9, true,
+        metal("brass", "Brass", "#b9a052", 1000, 3, false, 0.9, true,
                 "Brass gleams like a dwarf's best buckle.", "Brass is happy with an early dip.", 2.5, 5);
-        metal("billon", "Billon", "#8b7a6d", 2200, 2, true, 1.0, true,
+        metal("billon", "Billon", "#8b7a6d", 2000, 2, true, 1.0, true,
                 "Billon - silver that went to the tavern with copper.", "Billon takes the water without complaint.", 3, 6);
-        metal("electrum", "Electrum", "#ba8a2c", 5500, 2, true, 1.05, true,
+        metal("electrum", "Electrum", "#ba8a2c", 6000, 2, true, 1.05, true,
                 "Electrum glows pale gold, older than kingdoms.", "Electrum wants a gentle, quick quench.", 2.5, 5);
-        metal("fine_pewter", "Fine pewter", "#a3a3a7", 1500, 1, false, 0.7, true,
+        metal("fine_pewter", "Fine pewter", "#a3a3a7", 1000, 1, false, 0.7, true,
                 "Fine pewter melts soft and bright.", "Pewter barely needs the water at all.", 1.5, 7);
-        metal("lay_pewter", "Lay pewter", "#c5c6ca", 1300, 1, false, 0.7, true,
+        metal("lay_pewter", "Lay pewter", "#c5c6ca", 850, 1, false, 0.7, true,
                 "Lay pewter - everyday metal for everyday dwarves.", "Pewter barely needs the water at all.", 1.5, 7);
-        metal("trifle_pewter", "Trifle pewter", "#5e5248", 1200, 1, false, 0.7, true,
+        metal("trifle_pewter", "Trifle pewter", "#5e5248", 900, 1, false, 0.7, true,
                 "Trifle pewter, dark and humble.", "Pewter barely needs the water at all.", 1.5, 7);
-        metal("nickel_silver", "Nickel silver", "#a9abae", 2200, 3, false, 1.1, true,
+        metal("nickel_silver", "Nickel silver", "#a9abae", 2000, 3, false, 1.1, true,
                 "Nickel silver - no silver in it, don't tell the buyers.", "Nickel silver likes a mid quench.", 4, 4.5);
-        metal("pig_iron", "Pig iron", "#5b5149", 1800, 3, false, 1.4, true,
+        metal("pig_iron", "Pig iron", "#5b5149", 1200, 3, false, 1.4, true,
                 "Pig iron comes out heavy and brittle.", "Pig iron cracks if you rush it.", 5, 4.5);
-        metal("steel", "Steel", "#a5a9b6", 3200, 6, false, 1.6, true,
+        metal("steel", "Steel", "#a5a9b6", 3000, 6, false, 1.6, true,
                 "Steel: iron that listened to a master.", "Steel wants a straw-yellow glow, then the water.", 6, 3.5);
-        metal("nickel_steel", "Nickel steel", "#8fa6b8", 5000, 7, false, 1.8, true,
+        metal("nickel_steel", "Nickel steel", "#8fa6b8", 18000, 7, false, 1.8, true,
                 "Steel takes the nickel slowly. Stir, and keep the fire white.", "Nickel steel forgives a late quench.", 6.5, 3);
-        metal("star_steel", "Star steel", "#b8c8e8", 16000, 8, false, 2.2, true,
+        metal("star_steel", "Star steel", "#b8c8e8", 30000, 8, false, 2.2, true,
                 "Star steel sings in the crucible. Only the hottest fire will do.", "Star steel waits for you: quench it at the very end.", 7, 2.5);
-        metal("rose_gold", "Rose gold", "#c97473", 6000, 2, true, 1.1, true,
+        metal("rose_gold", "Rose gold", "#c97473", 7500, 2, true, 1.1, true,
                 "Rose gold blushes in the crucible.", "Rose gold is patient with you.", 3, 7);
-        metal("sterling_silver", "Sterling silver", "#d2d3d6", 3600, 2, true, 1.0, true,
+        metal("sterling_silver", "Sterling silver", "#d2d3d6", 3200, 2, true, 1.0, true,
                 "Sterling silver - silver with a backbone.", "Sterling cools fast - be quick.", 2, 4.5);
 
         // --- alloy recipes (bars in -> bars out). Flux = 1 limestone. Every smelt also burns 1 coal.
@@ -221,7 +222,7 @@ public final class Content {
         alloy("rose_gold", false, 4, null, "gold", 3, "copper", 1);
         alloy("sterling_silver", false, 4, null, "silver", 3, "copper", 1);
 
-        // --- ores (yield: 1 bar of metal per ore, bonus metal by chance)
+        // --- ores (two ore and a coal smelt into one bar, bonus metal by chance)
         ore("native_copper", "Native copper", "#c4703f", "copper", null, 0);
         ore("malachite", "Malachite", "#3f9a64", "copper", null, 0);
         ore("tetrahedrite", "Tetrahedrite", "#6d6a63", "copper", "silver", 0.2);
@@ -240,9 +241,9 @@ public final class Content {
         ore("native_aluminum", "Native aluminum", "#d4d7db", "aluminum", null, 0);
 
         // --- other raw goods
-        raw("coal", "Coal", "#2b2b2e", 200, "materials", "Fuel. Every smelt and every forging burns one.");
-        raw("limestone", "Limestone", "#d8d2bd", 200, "materials", "Flux for pig iron and steel.");
-        raw("stone", "Stone", "#7d7a73", 100, "materials", "For building and upgrades.");
+        raw("coal", "Coal", "#2b2b2e", 50, "materials", "Fuel. Every smelt and every forging burns one.");
+        raw("limestone", "Limestone", "#d8d2bd", 60, "materials", "Flux for pig iron and steel.");
+        raw("stone", "Stone", "#7d7a73", 30, "materials", "For building and upgrades.");
         raw("rough_gem", "Rough gem", "#5fb7a6", 2500, "gems", "Cut it at the jeweler.");
         raw("cut_gem", "Cut gem", "#6fe0c8", 6000, "gems", "Set it into rings, crowns and goblets.");
         raw("gears", "Gears", "#b9a052", 4500, "materials", "Brass clockwork from the fine mechanic. Goes into locks, compasses and music boxes.");
@@ -260,17 +261,17 @@ public final class Content {
         ROCK_HARDNESS.put("native_aluminum", 7);
 
         // --- item types. rule: hard = hardness >= 3 (not pig iron), precious = precious metals only, any = all
-        ITEMS.put("pickaxe", new ItemType("pickaxe", "Pickaxe", 2, 1.5, 1, "tools", "tool", "tool", List.of("s", "e"), null,
+        ITEMS.put("pickaxe", new ItemType("pickaxe", "Pickaxe", 2, 1.6, 1, "tools", "tool", "tool", List.of("s", "e"), null,
                 "Equip a miner: digs faster, and harder metal breaks harder rock. Wears out."));
-        ITEMS.put("axe", new ItemType("axe", "Battle axe", 2, 1.8, 2, "weapons", "hard", "weapon", List.of("s", "e", "i"), null,
+        ITEMS.put("axe", new ItemType("axe", "Battle axe", 2, 1.9, 2, "weapons", "hard", "weapon", List.of("s", "e", "i"), null,
                 "Equip a warrior: hits harder."));
-        ITEMS.put("helm", new ItemType("helm", "Helm", 2, 1.6, 2, "armor", "hard", "helm", List.of("e", "i"), null,
+        ITEMS.put("helm", new ItemType("helm", "Helm", 2, 1.7, 2, "armor", "hard", "helm", List.of("e", "i"), null,
                 "Equip anyone: protects the head."));
-        ITEMS.put("mail", new ItemType("mail", "Chain mail", 4, 1.7, 3, "armor", "hard", "armor", List.of("e", "i"), "mail",
+        ITEMS.put("mail", new ItemType("mail", "Chain mail", 4, 1.8, 3, "armor", "hard", "armor", List.of("e", "i"), "mail",
                 "Equip anyone: strong protection."));
-        ITEMS.put("chain", new ItemType("chain", "Chain", 1, 1.3, 1, "hardware", "any", null, List.of(), null,
+        ITEMS.put("chain", new ItemType("chain", "Chain", 1, 1.6, 1, "hardware", "any", null, List.of(), null,
                 "Every city needs chains."));
-        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.6, 2, "tableware", "any", null, List.of("e", "g", "i"), null,
+        ITEMS.put("goblet", new ItemType("goblet", "Goblet", 1, 1.7, 2, "tableware", "any", null, List.of("e", "g", "i"), null,
                 "Kept in stock, fine goblets make the tavern nicer."));
         ITEMS.put("ring", new ItemType("ring", "Ring", 1, 2.5, 4, "jewelry", "precious", null, List.of("e", "g"), null,
                 "Small and valuable."));
@@ -278,23 +279,23 @@ public final class Content {
                 "Fit for a mountain king."));
 
         // made at the fine mechanic's bench from bars and parts (PARTS); the bars of the type are its own metal
-        assembled("lamp", "Miner's lamp", 1, 1.6, 2, "tools", "only:brass", null, List.of("e"), null,
+        assembled("lamp", "Miner's lamp", 1, 2.4, 2, "tools", "only:brass", null, List.of("e"), null,
                 "A brass lamp with a copper hood. Harbors and deep mines buy them.", "bar:copper", 1);
-        assembled("lock", "Lock", 1, 1.6, 3, "hardware", "hard", null, List.of("e"), null,
+        assembled("lock", "Lock", 1, 1.8, 3, "hardware", "hard", null, List.of("e"), null,
                 "Steel and clockwork. Stonebridge and the harbor pay well.", "gears", 1);
-        assembled("shield", "Shield", 2, 1.6, 2, "armor", "hard", null, List.of("e", "i"), null,
+        assembled("shield", "Shield", 2, 1.9, 2, "armor", "hard", null, List.of("e", "i"), null,
                 "A round shield with a bronze rim.", "bar:bronze", 1);
-        assembled("tankards", "Tankard set", 2, 1.6, 2, "tableware", "pewter", null, List.of("e"), null,
+        assembled("tankards", "Tankard set", 2, 1.8, 2, "tableware", "pewter", null, List.of("e"), null,
                 "Pewter tankards with brass lids. Taverns love them.", "bar:brass", 1);
-        assembled("chalice", "Chalice", 2, 1.7, 3, "tableware", "precious", null, List.of("e", "i"), null,
+        assembled("chalice", "Chalice", 2, 2.2, 3, "tableware", "precious", null, List.of("e", "i"), null,
                 "Gold rim, a cut gem in the foot. The monks of Highcrag pay best.", "bar:gold", 1, "cut_gem", 1);
-        assembled("parade_axe", "Parade axe", 2, 1.8, 4, "weapons", "hard", "weapon", List.of("s", "e", "i"), null,
+        assembled("parade_axe", "Parade axe", 2, 2.0, 4, "weapons", "hard", "weapon", List.of("s", "e", "i"), null,
                 "A battle axe with gold and a gem. A warrior can carry it.", "bar:gold", 1, "cut_gem", 1);
-        assembled("compass", "Sea compass", 1, 1.8, 3, "tools", "only:brass", null, List.of("e"), "clockwork",
+        assembled("compass", "Sea compass", 1, 2.0, 3, "tools", "only:brass", null, List.of("e"), "clockwork",
                 "Brass, nickel silver and clockwork. Every harbor wants one.", "bar:nickel_silver", 1, "gears", 1);
-        assembled("music_box", "Music box", 1, 2.0, 4, "jewelry", "precious", null, List.of("e", "g"), "clockwork",
+        assembled("music_box", "Music box", 1, 2.6, 4, "jewelry", "precious", null, List.of("e", "g"), "clockwork",
                 "Plays a dwarven song. Amberfall can't get enough.", "gears", 1);
-        assembled("regalia", "Crown and regalia", 3, 2.2, 5, "jewelry", "only:gold", null, List.of("e"), "regalia",
+        assembled("regalia", "Crown and regalia", 3, 3.6, 5, "jewelry", "only:gold", null, List.of("e"), "regalia",
                 "Three gold bars, platinum and three cut gems. Long work, and now and then an artifact.", "bar:platinum", 1, "cut_gem", 3);
 
         MODS.put("s", new Mod("s", "Sharpened", 1.3, "grindstone", "+25% attack or digging"));
@@ -314,25 +315,25 @@ public final class Content {
         MONSTERS.put("deep_wyrm", new Monster("deep_wyrm", "Deep wyrm", 180, "Something old woke up."));
 
         // --- mine layers
-        LAYERS.add(new Layer(0, "Shallow Caves", "#6b5a48", 12, 0.25,
+        LAYERS.add(new Layer(0, "Shallow Caves", "#6b5a48", 6, 0.25,
                 goods("native_copper", 22, "malachite", 14, "cassiterite", 18, "coal", 24, "limestone", 12, "stone", 14),
                 List.of("giant_rat", "cave_crawler"), 0, goods(), false, "Copper, tin, coal. Where every fortress starts."));
-        LAYERS.add(new Layer(1, "Grey Veins", "#5a5a5e", 10, 0.4,
+        LAYERS.add(new Layer(1, "Grey Veins", "#5a5a5e", 5, 0.4,
                 goods("hematite", 18, "limonite", 14, "galena", 12, "sphalerite", 12, "tetrahedrite", 10, "coal", 18,
                         "limestone", 8, "stone", 10),
                 List.of("cave_spider", "goblin_scouts"), 80000, goods("stone", 150, "bar:copper", 20), false,
                 "Iron, lead, zinc - and silver hidden in galena."));
-        LAYERS.add(new Layer(2, "Silver Halls", "#4a4d5c", 8, 0.55,
+        LAYERS.add(new Layer(2, "Silver Halls", "#4a4d5c", 4.5, 0.55,
                 goods("native_silver", 12, "horn_silver", 10, "magnetite", 16, "garnierite", 14, "bismuthinite", 10,
                         "coal", 14, "rough_gem", 4, "stone", 10),
                 List.of("cave_spider", "rock_troll"), 400000, goods("stone", 300, "bar:bronze", 30), false,
                 "Silver, nickel, bismuth and the first gems."));
-        LAYERS.add(new Layer(3, "Golden Deep", "#5a4a32", 6.5, 0.75,
+        LAYERS.add(new Layer(3, "Golden Deep", "#5a4a32", 4, 0.75,
                 goods("native_gold", 14, "tetrahedrite", 8, "magnetite", 14, "galena", 10, "coal", 12, "rough_gem", 8,
                         "stone", 10),
                 List.of("magma_crab", "blind_ogre"), 1500000, goods("stone", 500, "bar:iron", 40, "bar:steel", 20), true,
                 "Gold. Must be found by an expedition first."));
-        LAYERS.add(new Layer(4, "Crystal Abyss", "#3c3556", 5, 1.0,
+        LAYERS.add(new Layer(4, "Crystal Abyss", "#3c3556", 3.5, 1.0,
                 goods("native_platinum", 10, "native_aluminum", 6, "native_gold", 8, "rough_gem", 14, "garnierite", 10,
                         "bismuthinite", 10, "stone", 8),
                 List.of("crystal_golem", "deep_wyrm"), 5000000, goods("stone", 800, "bar:steel", 60), true,
@@ -658,6 +659,7 @@ public final class Content {
         d.put("traditions", TRADITIONS.values());
         d.put("qualities", QUALITIES);
         d.put("rockHardness", ROCK_HARDNESS);
+        d.put("layerOpenHours", Rules.LAYER_OPEN_HOURS);
         d.put("makeshiftHardness", MAKESHIFT_HARDNESS);
         d.put("skills", SKILLS);
         d.put("blueprints", BLUEPRINT_NAMES);

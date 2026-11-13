@@ -1,6 +1,6 @@
 // The mines: lift, layers, miners.
 import { G, F, D, byId, fmt, goodName, building, stock, now, dur, isItem, parseItem } from './data.js';
-import { h, img, goodIcon, bar, bus, ico, info, statusIco } from './ui.js';
+import { h, img, goodIcon, bar, bus, ico, info, statusIco, hourglass } from './ui.js';
 import { mineLayer } from './mine48.js';
 import * as S from './sprites.js';
 import { costBtn, upgradeBtn } from './panels-base.js';
@@ -73,6 +73,10 @@ export function renderMines() {
       if (miners.length) card.append(h('div', { class: 'miners' }, miners.map((m) => h('span', { class: 'miner', title: `${m.first} ${m.clan} · mining ${d.dwarves[m.id].skills.mining} · ${fmt(d.dwarves[m.id].rate || 0)} ore/h` },
         img(S.portrait(m), 'icon'), h('span', { class: 'small' }, m.first), h('span', { class: 'small dim' }, fmt(d.dwarves[m.id].rate || 0) + '/h')))));
       card.append(costBtn('Improve shafts to level ' + (ls.level + 1), dl.upgrade, { type: 'upgradeLayer', layer: i }));
+    } else if (ls.openAt > 0) {
+      card.append(h('p', { class: 'small muted' }, layer.note),
+        h('div', { class: 'row' }, hourglass({ from: ls.openAt - (G.data.layerOpenHours || [])[i] * 3600, to: ls.openAt }),
+          h('span', { class: 'small' }, 'The miners drive the gallery down. Opens in ', h('span', { 'data-until': ls.openAt }, dur(ls.openAt - now())), '.')));
     } else if (dl.discovered) {
       card.append(h('p', { class: 'small muted' }, layer.note));
       card.append(costBtn('Open the ' + layer.name, dl.unlock, { type: 'unlockLayer', layer: i }, !f.layers[i - 1].unlocked ? 'Open the layer above first.' : null));

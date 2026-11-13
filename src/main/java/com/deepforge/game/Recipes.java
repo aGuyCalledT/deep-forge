@@ -24,6 +24,9 @@ public final class Recipes {
 
     static final Map<String, String> MOD_OF = Map.of("sharpen", "s", "engrave", "e", "setgem", "g", "inlay", "i");
     public static final int GEAR_BRASS = 2;
+    /** Work seconds (at speed 1): smelting 6 min a bar, forging 10 min a bar, sharpening 8, engraving, setting and inlay 20, a gem 30. */
+    public static final double SMELT_SECONDS = 360, FORGE_SECONDS = 300, SHARPEN_SECONDS = 480, FINISH_SECONDS = 600,
+            CUT_SECONDS = 1800, ASSEMBLE_SECONDS = 600;
 
     /** Check a queue entry is valid. Returns an error message or null. */
     public static String validate(Fortress f, Building b, QueueEntry e) {
@@ -190,8 +193,8 @@ public final class Recipes {
         switch (e.recipe) {
             case "smelt" -> {
                 Content.Ore ore = Content.ORES.get(e.mat);
-                j.time = 180 * Content.METALS.get(ore.metal()).heat();
-                j.out.put("bar:" + ore.metal(), 2);
+                j.time = SMELT_SECONDS * Content.METALS.get(ore.metal()).heat();
+                j.out.put("bar:" + ore.metal(), 1);
             }
             case "alloy" -> {
                 Content.Alloy a = Content.ALLOYS.get(e.mat);
@@ -200,10 +203,10 @@ public final class Recipes {
             }
             case "craft" -> {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
-                j.time = 100 * t.bars() * Math.sqrt(Content.METALS.get(e.mat).heat());
+                j.time = FORGE_SECONDS * t.bars() * Math.sqrt(Content.METALS.get(e.mat).heat());
             }
             case "cutgem" -> {
-                j.time = 180;
+                j.time = CUT_SECONDS;
                 j.out.put("cut_gem", 1);
             }
             case "gears" -> {
@@ -213,7 +216,7 @@ public final class Recipes {
             case "assemble" -> {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
                 int parts = Content.PARTS.get(t.id()).values().stream().mapToInt(Integer::intValue).sum();
-                j.time = 150 * (t.bars() + parts) * (t.skill() >= 5 ? 2 : 1);   // the regalia take long
+                j.time = ASSEMBLE_SECONDS * (t.bars() + parts) * (t.skill() >= 5 ? 2 : 1);   // the regalia take long
             }
             case "weave" -> {
                 j.time = 120;
@@ -229,7 +232,7 @@ public final class Recipes {
                 String[] p = Content.parseItem(item);
                 j.inItem = item;
                 j.mat = p[1];
-                j.time = e.recipe.equals("sharpen") ? 90 : 150;
+                j.time = e.recipe.equals("sharpen") ? SHARPEN_SECONDS : FINISH_SECONDS;
                 add(f, item, -1);
                 j.out.put(Content.itemKey(p[0], p[1], Integer.parseInt(p[2]), p[3] + MOD_OF.get(e.recipe)), 1);
             }

@@ -827,13 +827,22 @@ public final class Rules {
 
     public record Cost(double coins, Map<String, Integer> goods) {}
 
+    public static final double FARM_PER_H = 1.6, BREW_PER_H = 2;   // a farmer feeds about 8 dwarves, a brewer about 10
+    /** Hours to drive the gallery down to a layer (index 1..4). */
+    public static final double[] LAYER_OPEN_HOURS = {0, 2, 6, 12, 24};
+
+    /** Upgrades cost the square of the level: base × (level / 2)², so income can grow in a straight line. */
+    public static double levelSquare(int target) {
+        return target * target / 4.0;
+    }
+
     public static Cost upgradeCost(Building b) {
         Content.BuildingType t = Content.BUILDINGS.get(b.type);
         int target = b.level + 1;
         if (b.level == 0) return new Cost(t.multi() ? t.buildCoins() : t.upCoins(), t.multi() ? t.buildGoods() : Map.of("stone", t.upStone()));
-        double g = Math.pow(t.growth(), b.level - 1);
+        double g = levelSquare(target);
         Map<String, Integer> goods = new LinkedHashMap<>();
-        goods.put("stone", (int) Math.round(t.upStone() * Math.pow(1.3, b.level - 1)));
+        goods.put("stone", (int) Math.round(t.upStone() * g));
         goods.put(Content.upgradeBar(target), 4 + 3 * b.level);
         return new Cost(Math.round(t.upCoins() * g), goods);
     }
