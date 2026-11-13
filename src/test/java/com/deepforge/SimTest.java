@@ -53,6 +53,26 @@ class SimTest {
     }
 
     @Test
+    void oreGoesUpOnlyInAFullCart() {
+        Fortress f = fresh(11);
+        Market m = Market.inMemory(11, T0);
+        Rules.building(f, "smelter-1").queue.clear();
+        f.nextRaidAt = Double.MAX_VALUE;
+        State.LayerState l = f.layers.get(0);
+        // the first ore lands in the cart, not in the warehouse
+        int coal = f.stock.getOrDefault("coal", 0);
+        Sim.advance(f, T0 + 120, m);
+        assertTrue(Rules.cartTotal(l) > 0 && Rules.cartTotal(l) < Rules.cartSize(l), "the cart fills up first");
+        assertEquals(0, l.cartSent);
+        assertEquals(coal, f.stock.getOrDefault("coal", 0));
+        // after a while full carts have gone up, and what is left waits for the next one
+        Sim.advance(f, T0 + 3 * 3600, m);
+        assertTrue(l.cartSent > T0, "a full cart should have left");
+        assertTrue(l.cartLoad >= Rules.cartSize(l));
+        assertTrue(Rules.cartTotal(l) < Rules.cartSize(l));
+    }
+
+    @Test
     void caravanSellsAndComesBack() {
         Fortress f = fresh(3);
         Market m = Market.inMemory(3, T0);

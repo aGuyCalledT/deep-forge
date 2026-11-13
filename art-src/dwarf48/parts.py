@@ -9,9 +9,10 @@ K = {'h': ('hair', 1), 'H': ('hair', 3), 'k': ('hair', 0), 'w': ('white', 0), 'i
 VIEWS = ['front', 'back', 'side']
 STYLES = ['short', 'bald', 'topknot', 'long', 'braids', 'bun']
 BEARDS = ['full', 'wide', 'fork', 'long', 'short']
-HATS = ['helm', 'cap', 'hood']
+HATS = ['helm', 'cap', 'hood', 'miner']
 MOODS = ['neutral', 'happy', 'angry', 'open', 'blink', 'sleep']
 PROPS = ['mug_down', 'mug_up', 'spoon_mid', 'spoon_up', 'axe', 'sack']
+SIDE_PROPS = ['pick_up', 'pick_mid', 'pick_down']   # held in the side view (mining)
 HAT_CLIP = 19          # with a hat on, hair above this row is hidden
 
 def strands(m, bias=0.05, lean=0.0, period=3):
@@ -326,6 +327,19 @@ def hat(view, kind):
         for x in (range(16, 33, 4) if view != 'side' else range(15, 32, 4)): p.px([(x, 20)], 'metal', 4)
         if view == 'side': p.fill(poly([(30.5, 21), (33, 21), (32, 24.5), (30.8, 24)]), 'metal', bias=0.1)     # little brim at the front
         return p
+    if kind == 'miner':
+        # a hardened leather miner's hat with a brim and a brass lamp in front
+        cx = 24 if view != 'side' else 23.2
+        p.fill(ell(cx, 20.0, 9.8, 8.2) & (yy < 20), 'belt', bias=0.12, round_=1.3)
+        p.fill(poly([(cx - 11.4, 18.6), (cx + 11.4, 18.6), (cx + 11.4, 21.2), (cx - 11.4, 21.2)]), 'belt', idx=np.where(yy == 19, 3, 2))
+        p.fill(poly([(cx - 1.2, 12.5), (cx + 1.2, 12.5), (cx + 1.2, 19), (cx - 1.2, 19)]), 'belt', idx=np.full((H, W), 3), outline=False)
+        if view == 'front':
+            p.fill(ell(cx, 15.6, 2.6, 2.4), 'gold', bias=0.2)
+            p.px([(int(cx) - 1, 15), (int(cx), 15), (int(cx) - 1, 16)], 'cream', 4)
+        elif view == 'side':
+            p.fill(poly([(29.5, 13.5), (33.5, 13.0), (34.2, 17.5), (30.0, 18.0)]), 'gold', bias=0.2)
+            p.px([(33, 14), (33, 15), (33, 16)], 'cream', 4)
+        return p
     if kind == 'cap':
         cx = 24 if view != 'side' else 23.0
         p.fill(ell(cx, 19.5, 9.6, 7.0) & (yy < 19), 'cloth', bias=0.1, round_=1.2)
@@ -362,6 +376,25 @@ def prop(kind):
     elif kind == 'sack':
         p.fill(ell(38.2, 52.5, 4.6, 5.0), 'cream', bias=-0.1, round_=1.3)
         p.fill(poly([(36.6, 46), (39.6, 46), (39.4, 48.5), (36.8, 48.5)]), 'cream', bias=0.0)
+    return p
+
+# ================================================================== the pickaxe, held in the side view
+def side_prop(kind):
+    """A pickaxe in both hands: raised over the head, swinging, striking low in front."""
+    hand, top, head = {
+        'pick_up':   ((30.5, 37.5), (13.0, 17.0), 10.0),   # over the shoulder, behind the head (drawn behind the body)
+        'pick_mid':  ((31.0, 41.0), (42.0, 25.0), 9.0),
+        'pick_down': ((29.5, 44.5), (42.5, 52.5), 8.5),
+    }[kind]
+    p = Part()
+    dx, dy = top[0] - hand[0], top[1] - hand[1]
+    n = math.hypot(dx, dy); ux, uy = dx / n, dy / n
+    p.fill(cap((hand[0] - ux * 3, hand[1] - uy * 3), top, 0.9), 'wood', bias=0.1)
+    # the head across the end of the haft, a little curved, the pointed end ahead of the swing
+    px, py = -uy, ux
+    a = (top[0] - px * head * 0.45, top[1] - py * head * 0.45); b = (top[0] + px * head * 0.55, top[1] + py * head * 0.55)
+    p.fill(cap(a, top, 1.3) | cap(top, b, 1.0), 'metal', bias=0.15, round_=1.2)
+    p.fill(ell(top[0], top[1], 1.6, 1.6), 'metal', bias=0.2)
     return p
 
 # ================================================================== sleeping quilt (side view, before turning it on its side)

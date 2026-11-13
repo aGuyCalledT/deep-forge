@@ -196,7 +196,10 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Treppenhaus-Türen gehen auf, wenn jemand hinein- oder herauskommt.
 - [ ] Tor-Stufen haben noch kein eigenes Bild (nur Kohlebecken ab Stufe 3).
 - [ ] Stil der Gänge und Treppenhäuser einzeln wählbar machen (heute folgt er der Eingangshalle).
-- [ ] Login-Bild (`views.js`) und Minen-Screen noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
+- [x] Minen-Screen neu im 48-px-Stil (`mine48.js`): eine Szene je Schicht, Erzwagen, Grubenhelm.
+- [ ] Login-Bild (`views.js`) noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
+- [ ] Mine: Wachen und Monster nur einfach gezeigt (Monster läuft hin und her, Bergleute warten am Wagen); Kampf nicht zu sehen.
+- [ ] Mine: Wagen hat noch keinen Sound (Rollen, Erz fällt hinein).
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.
 - [ ] Kleinigkeiten: Fächer-Muster im Fels glätten, größere Scheren der Magmakrabbe, zweiter Arm des Ogers,

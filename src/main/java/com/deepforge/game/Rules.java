@@ -184,6 +184,17 @@ public final class Rules {
         return 1 + 0.2 * (l.level - 1);
     }
 
+    /** How much ore the mine cart of a layer holds; only a full cart goes up the lift into the warehouse. */
+    public static int cartSize(LayerState l) {
+        return 10 + 5 * (l.level - 1);
+    }
+
+    public static int cartTotal(LayerState l) {
+        int n = 0;
+        for (int v : l.cart.values()) n += v;
+        return n;
+    }
+
     /** Ore per hour for one miner on a layer. */
     public static double minerRate(Fortress f, Dwarf d, LayerState l) {
         Content.Layer layer = Content.LAYERS.get(l.index);

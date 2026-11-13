@@ -1,6 +1,7 @@
 // The mines: lift, layers, miners.
 import { G, F, D, byId, fmt, goodName, building, stock } from './data.js';
-import { h, img, goodIcon, bar, bus, ico } from './ui.js';
+import { h, img, goodIcon, bar, bus, ico, info } from './ui.js';
+import { mineLayer } from './mine48.js';
 import * as S from './sprites.js';
 import { costBtn, upgradeBtn } from './panels-base.js';
 
@@ -27,13 +28,18 @@ export function renderMines() {
     const ores = Object.entries(layer.weights).sort((a, b) => b[1] - a[1]);
     const total = ores.reduce((s, [, w]) => s + w, 0);
     const card = h('div', { class: 'card layer-card' + (th ? ' bad' : '') + (G.focus === 'layer:' + i ? ' good' : ''), id: 'layer-' + i });
-    card.append(h('div', { class: 'row between' }, h('h3', null, layer.name),
+    card.append(h('div', { class: 'row between' }, h('h3', null, layer.name,
+      h('button', { class: 'btn small', style: { marginLeft: '8px' }, 'aria-label': 'Show this layer', disabled: G.screen === 'mines' && mineLayer() === i, onclick: () => bus.showLayer(i) }, ico('mines'))),
       ls.unlocked ? h('span', { class: 'muted small' }, 'Shaft level ' + ls.level) : h('span', { class: 'muted small' }, ico('lock'), ' Locked')));
     card.append(h('div', { class: 'ore-list' }, ores.map(([k, w]) => h('div', { class: 'ore', title: goodName(k) },
       goodIcon(k), h('span', { class: 'nm' }, goodName(k)), h('span', { class: 'dim small' }, Math.round(w / total * 100) + '%'), h('b', null, fmt(stock(k)))))));
     if (ls.unlocked) {
       if (th) card.append(h('p', { class: 'bad-t' }, img(S.monster(th.monster, 0), 'icon'), ` ${th.name} blocks this layer! `,
         h('button', { class: 'btn small danger', onclick: () => bus.go('war') }, 'Send warriors')));
+      const inCart = Object.values(ls.cart || {}).reduce((s, v) => s + v, 0), size = dl.cartSize || 10;
+      card.append(h('div', { class: 'row between', style: { marginTop: '6px' } }, h('span', null, 'Ore cart ', info('Miners fill the cart. When it is full it rolls to the lift, and only then is the ore in your warehouse.')),
+        h('span', { class: inCart >= size && f.storageFull ? 'bad-t' : 'muted' }, `${fmt(Math.min(inCart, size))} / ${fmt(size)}`)), bar(Math.min(1, inCart / size)));
+      if (inCart >= size && f.storageFull) card.append(h('p', { class: 'bad-t small' }, 'The cart is full but the warehouse is too. Make room to send it up.'));
       card.append(h('div', { class: 'row between', style: { marginTop: '6px' } },
         h('span', null, h('b', { class: 'gold-t' }, fmt(dl.rate) + ' ore/h'), h('span', { class: 'muted' }, ` from ${dl.miners} miner${dl.miners === 1 ? '' : 's'}`)),
         h('span', { class: 'row', style: { gap: '6px' } },

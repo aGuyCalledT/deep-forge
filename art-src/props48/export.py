@@ -15,6 +15,7 @@ from ambient import *
 import valley as V
 import shells as SH
 from ways import WAYS, WAY_SPRITES, WAY_TILES
+from mine import MINE, minecart, rail
 from PIL import Image
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '../../src/main/resources/static/art/props48')
@@ -45,6 +46,9 @@ add('ways', 'prop', WAY_SPRITES)
 for k, f in WAY_TILES.items(): ITEMS[k] = ('tile', 'shell', [as_sprite(f())])
 add('rock', 'prop', ROCK)
 ITEMS['drip'] = ('prop', 'rock', frames_of(drip))
+add('mine', 'prop', MINE)
+ITEMS['minecart'] = ('prop', 'mine', [minecart(i) for i in range(5)])   # empty .. heaped
+ITEMS['rail'] = ('tile', 'mine', [as_sprite(rail())])
 add('monster', 'prop', MONSTERS)
 add('ambient', 'prop', AMBIENT)
 for k, s in pipes().items(): ITEMS[k] = ('prop', 'ambient', [s])

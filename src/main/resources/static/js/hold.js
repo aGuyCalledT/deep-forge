@@ -485,7 +485,7 @@ const OLD_BEARD = { full: 'full', wide: 'wide', braid: 'long', fork: 'fork', lon
 const HAIRS = Object.keys(OLD_HAIR), BEARDS = Object.keys(OLD_BEARD);
 
 /** Five tones from one colour (tone 3 is the colour itself), the way the kit's ramps are built. */
-function ramp(hex) {
+export function ramp(hex) {
   if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return null;
   const dark = '#140c16', light = '#fff2dc';
   return [S.mix(hex, dark, 0.66), S.mix(hex, dark, 0.44), S.mix(hex, dark, 0.22), hex.toLowerCase(), S.mix(hex, light, 0.32)];
@@ -495,7 +495,7 @@ const lookCache = new Map();
 /** The dwarf48 look of a dwarf of the hold: hair, beard, colours from its looks and clothes, its mood. */
 export function look48(d, extra = {}) {
   const md = S.mood(d);
-  const key = [d.id, d.sex, d.hairStyle, d.beardStyle, d.skin, d.hair, d.outfit, d.helm, JSON.stringify(d.wear || {}), md, extra.prop || '', extra.quilt].join('|');
+  const key = [d.id, d.sex, d.hairStyle, d.beardStyle, d.skin, d.hair, d.outfit, d.helm, JSON.stringify(d.wear || {}), md, extra.prop || '', extra.quilt, extra.hat || ''].join('|');
   let L = lookCache.get(key);
   if (L) return L;
   const o = S.look(d), wear = {};
@@ -507,7 +507,7 @@ export function look48(d, extra = {}) {
   if (wear.apron) put('vest', wear.apron);
   L = {
     sex: o.sex, hair: OLD_HAIR[HAIRS[o.hairStyle]] || 'short', beard: o.sex === 'm' ? OLD_BEARD[BEARDS[o.beard]] || 'full' : null,
-    hat: d.helm ? 'helm' : null, vest: true, mood: md, prop: extra.prop || null, quilt: extra.quilt, ramps,
+    hat: extra.hat || (d.helm ? 'helm' : null), vest: true, mood: md, prop: extra.prop || null, quilt: extra.quilt, ramps,
   };
   if (lookCache.size > 600) lookCache.clear();
   lookCache.set(key, L);

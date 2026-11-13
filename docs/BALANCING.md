@@ -29,6 +29,7 @@ und hier.
 | Fertigkeitsstufe | `floor(sqrt(xp / 40))`, max. 20. Arbeit gibt 10–12 xp pro Stunde |
 | Miner | Schicht-Grundwert (12 / 10 / 8 / 6,5 / 5 Erz/h) × Tempo × Schacht (+20 %/Stufe) × Spitzhacke (`1 + Härte × 0,05 × Qualität`, +15 % geschärft) |
 | Lift | `80 × 1,35^(Stufe−1)` Erz/h |
+| Erzwagen | fasst `10 + 5 × (Schachtstufe−1)` Erz je Schicht; Erz kommt erst ins Lager, wenn der Wagen voll ist und losfährt. Ist das Lager voll, wartet der volle Wagen |
 | Lager | `500 × 1,4^(Stufe−1)` (Pilze und Bier zählen nicht) |
 | Gebäudestufe | `+25 %` Tempo pro Stufe |
 | Maschinen | jede Werkstatt hat `min(5, Stufe)` Maschinen, jede braucht einen eigenen Zwerg und arbeitet ihre eigene Bestellung ab (gemeinsame Warteschlange, gemeinsame Hitze im Schmelzofen) |

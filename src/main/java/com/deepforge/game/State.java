@@ -215,6 +215,9 @@ public final class State {
         public int level = 1;
         public double pending;
         public String threat;     // threat id while blocked
+        public Map<String, Integer> cart = new TreeMap<>();   // ore in the mine cart; it goes up the lift when full
+        public double cartSent;   // when the last full cart left (0: never)
+        public int cartLoad;      // how much it carried
     }
 
     public static class Caravan {

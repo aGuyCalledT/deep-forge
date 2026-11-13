@@ -133,6 +133,8 @@ Porträts in den Panels und das Cheat-Fenster nutzen noch das alte Kit (`dwarfki
 - **Lader:** `static/js/dwarf48.js` (`load`, `frame(look, pose, f)`, `draw(ctx, look, pose, f, x, y, {flip})`, Umfärben
   über `look.ramps`, `quilt: false` lässt die Decke weg). Der Raum-Editor zeigt seine Punkte damit. Im Spiel übersetzt
   `look48(d)` in `hold.js` einen Zwerg (Frisur, Bart, Haut, Haar, Kleidung, Helm, Stimmung) in einen `look`.
+- **Mine:** vierter Hut `miner` (Lederhelm mit Messinglampe), Pose `mine` (Seitenansicht, Spitzhacke oben/Mitte/unten,
+  `side_prop` / `side_prop_back` in `kit.json`; oben liegt die Hacke hinter dem Kopf). `look48(d, {hat: 'miner'})`.
 
 ## Grafik 48 px (im Spiel)
 
@@ -172,6 +174,10 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   und hintere Möbel, die Zwerge im Raum, vordere Möbel; die leuchtenden Pixel (`glow`) kommen nach der Lichtschicht.
   Lichter, Rauch, Funken, Dampf und Klickflächen kommen aus den Punkten der Vorlage. Alte Symbole (Status, Pfeile,
   Pixelschrift) werden doppelt groß gezeichnet.
+- **Mine** (`art-src/props48/mine.py`, Gruppe `mine`): gehauene Stützpfeiler `mine_pillar` und dunkler `mine_pillar_fg`
+  (40 × 230), Vordergrund-Felsen `mine_fg_rock_0..2`, große Tropfsteine `mine_fg_stal_0..1`, Felsnadeln `mine_spire_0..1`,
+  Erzadern `ore_seam_0..2` (Platzhalter `ingot` = Erzfarbe), Tunnelloch `mine_hole`, Erzwagen `minecart` (5 Bilder:
+  leer bis voll, Haufen in `ingot`), Schiene `rail` (Kachel). Fels überall in `rockd`, gezeichnet in `mine48.js`.
 
 ### Raumvorlagen (Editor)
 

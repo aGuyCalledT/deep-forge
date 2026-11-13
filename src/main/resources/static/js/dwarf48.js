@@ -36,6 +36,11 @@ function part(layer, view, look, row) {
     case 'arm_far': return ['side_arm_far', af];
     case 'arm_near': return ['side_arm_near', af];
     case 'prop': { const p = extra || look.prop; const i = typeof p === 'string' ? idx('props', p) : null; return i == null ? null : ['front_prop', i]; }
+    case 'side_prop': case 'side_prop_back': {   // a raised tool (name ends in _up) is behind the body
+      const back = typeof extra === 'string' && extra.endsWith('_up');
+      const i = typeof extra === 'string' && kit.sideProps && back === (layer === 'side_prop_back') ? idx('sideProps', extra) : null;
+      return i == null ? null : ['side_prop', i];
+    }
     case 'quilt': return typeof extra === 'number' && look.quilt !== false ? ['side_quilt', extra] : null;   // quilt: false = the bed has one
   }
   return null;

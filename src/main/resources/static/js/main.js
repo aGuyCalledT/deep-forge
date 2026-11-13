@@ -5,9 +5,10 @@ import { loadNotes, unseenNotes } from './notes.js';
 import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money, statusIco } from './ui.js';
 import { hidePlate } from './plate.js';
 import * as S from './sprites.js';
-import { initCanvas, zoomBy, lookAt, camera, toScreen } from './canvas.js';
+import { initCanvas, zoomBy, lookAt, camera, toScreen, homeCamera } from './canvas.js';
 import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt as loadArt48 } from './hold.js';
-import { minesScreen, drawLoginArt } from './views.js';
+import { drawLoginArt } from './views.js';
+import { mineScreen, mineLayer } from './mine48.js';
 import { openRoomSheet, openDwarfSheet } from './popups.js';
 import { berlinTime } from './sun.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
@@ -281,7 +282,7 @@ function setScreen(name) {
   G.screen = name;
   hidePlate();
   if (name !== 'hold') G.build = null;
-  $('scene-wrap').classList.toggle('scroll', name !== 'hold');
+  $('scene-wrap').classList.remove('scroll');
   renderToolbar();
 }
 
@@ -333,6 +334,16 @@ function showRoom(id) {
   requestAnimationFrame(() => { const r = roomRect(id); if (b && r) openRoomSheet(b, toScreen(r.x, r.y, r.w, r.h)); });
 }
 bus.showRoom = showRoom;
+/** Show one mine layer in the mines screen (from the toolbar arrows or a layer card). */
+function showLayer(i) {
+  const n = G.data.layers.length;
+  G.mineLayer = ((i % n) + n) % n;
+  if (G.screen !== 'mines') { if (G.tab === 'mines') setScreen('mines'); else go('mines'); }
+  homeCamera();
+  renderToolbar();
+  if (G.tab === 'mines') render();
+}
+bus.showLayer = showLayer;
 
 function onPick(q, at) {
   if (!q) { if (popOpen()) closeSheet(); return; }
@@ -350,6 +361,7 @@ function onPick(q, at) {
   }
   if (q.kind === 'layer') {
     G.focus = 'layer:' + q.id;
+    G.mineLayer = q.id;
     if (G.tab !== 'mines') go('mines'); else render();
     const el = document.getElementById('layer-' + q.id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -373,8 +385,14 @@ function renderToolbar() {
   bar.hidden = !G.state;
   const time = h('span', { class: 'clock', title: 'Time of day in Essen. Day and night follow it.' }, berlinTime() + ' · Essen');
   if (!onHold) {
+    const i = mineLayer(), name = G.data.layers[i].name;
     bar.replaceChildren(h('div', { class: 'tool-row' },
-      h('button', { class: 'tool', onclick: () => { if (G.tab === 'mines') go('mines'); else setScreen('hold'); } }, img(S.icon('fortress'), 'icon s'), 'Back to the hold'), time));
+      h('button', { class: 'tool', onclick: () => { if (G.tab === 'mines') go('mines'); else setScreen('hold'); } }, img(S.icon('fortress'), 'icon s'), 'Hold'),
+      h('button', { class: 'tool', 'aria-label': 'Layer above', disabled: i === 0, onclick: () => showLayer(i - 1) }, img(S.icon('up'), 'icon s')),
+      h('span', { class: 'tool-label' }, name),
+      h('button', { class: 'tool', 'aria-label': 'Layer below', disabled: i === G.data.layers.length - 1, onclick: () => showLayer(i + 1) }, img(S.icon('down'), 'icon s')),
+      wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom in', onclick: () => zoomBy(1) }, img(S.icon('zoom_in'), 'icon s')) : null,
+      wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom out', onclick: () => zoomBy(-1) }, img(S.icon('zoom_out'), 'icon s')) : null));
     return;
   }
   const b = G.build;
@@ -435,7 +453,7 @@ async function start() {
   setState(await api.get('/state'));
   $('app').hidden = false;
   document.documentElement.style.setProperty('--top-h', document.querySelector('.top').offsetHeight + 'px');
-  initCanvas($('scene'), $('scene-wrap'), { hold: holdScreen, mines: minesScreen }, onPick);
+  initCanvas($('scene'), $('scene-wrap'), { hold: holdScreen, mines: mineScreen }, onPick);
   renderToolbar();
   setInterval(() => { if (G.screen !== 'hold' || !G.build) renderToolbar(); }, 30000);
   document.addEventListener('keydown', (e) => {

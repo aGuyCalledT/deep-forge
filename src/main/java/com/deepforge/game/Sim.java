@@ -35,7 +35,7 @@ public final class Sim {
         needs(f, dt, t);
         happiness(f, dt, t);
         digging(f, dt, t);
-        mining(f, dt, r);
+        mining(f, dt, r, t + dt);
         buildings(f, dt, r, t);
         training(f, dt);
         threats(f, dt, r, t + dt);
@@ -146,7 +146,7 @@ public final class Sim {
 
     // ------------------------------------------------------------ mining
 
-    static void mining(Fortress f, double dt, Rng r) {
+    static void mining(Fortress f, double dt, Rng r, double t) {
         double cap = capacity(f);
         int used = used(f);
         double[] rate = new double[f.layers.size()];
@@ -170,22 +170,35 @@ public final class Sim {
         f.storageFull = used >= cap;
         if (f.storageFull) return;
         for (LayerState l : f.layers) {
+            // a full cart waiting for room in the warehouse goes as soon as there is some
+            if (cartTotal(l) >= cartSize(l) && used < cap) used += sendCart(f, l, t);
             if (rate[l.index] == 0) continue;
             l.pending += rate[l.index] * scale;
             Content.Layer layer = Content.LAYERS.get(l.index);
             double sniffChance = 0.15 * sniff[l.index] / Math.max(1, miners[l.index]);
-            while (l.pending >= 1 && used < cap) {
+            // the miners fill the cart; a full cart goes up the lift and only then the ore is in the warehouse
+            while (l.pending >= 1) {
+                if (cartTotal(l) >= cartSize(l)) {
+                    if (used >= cap) { l.pending = Math.min(l.pending, 1); f.storageFull = true; break; }
+                    used += sendCart(f, l, t);
+                }
                 String ore = r.weighted(layer.weights());
-                int n = r.chance(sniffChance) ? 2 : 1;
-                add(f, ore, n);
-                used += n;
+                l.cart.merge(ore, r.chance(sniffChance) ? 2 : 1, Integer::sum);
                 l.pending -= 1;
             }
-            if (used >= cap) {
-                l.pending = Math.min(l.pending, 1);
-                f.storageFull = true;
-            }
+            if (cartTotal(l) >= cartSize(l) && used < cap) used += sendCart(f, l, t);
+            if (used >= cap) f.storageFull = true;
         }
+    }
+
+    /** Empties a layer's cart into the warehouse. Returns how much it carried. */
+    static int sendCart(Fortress f, LayerState l, double t) {
+        int n = 0;
+        for (Map.Entry<String, Integer> e : l.cart.entrySet()) { add(f, e.getKey(), e.getValue()); n += e.getValue(); }
+        l.cart.clear();
+        l.cartSent = t;
+        l.cartLoad = n;
+        return n;
     }
 
     // ------------------------------------------------------------ digging out the hold
