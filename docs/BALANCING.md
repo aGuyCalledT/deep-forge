@@ -140,6 +140,9 @@ Masterwork 2, Artifact 3.
   sie sich in mittleren Metallen: Lampe und Kompass in Messing, Schloss, Schild und Prunkaxt in Eisen, Krugset in
   Kalt-Zinn, Kelch und Spieluhr in Silber, Regalien in Gold). Beispiel Kupfer: Erz 0,81, Barren 0,91, Ware 1,20,
   graviert 1,46 Marks je Zwergenstunde; Gold: 8,4 / 10,4 / 21,3 / 25,8.
+- **Balance-Bot** (`BalanceBotTest`): spielt eine neue Festung 120 Tage mit drei Besuchen am Tag und druckt das
+  Einkommen neben der Leitkurve (100 Marks × Tag). Stand heute: 20–100 Marks am Tag, flach ab Tag 10; die Leitkurve ist
+  noch nicht erreicht (offene Aufgabe in `TODO.md`).
 
 ## Geld
 

@@ -24,7 +24,7 @@ public final class Recipes {
 
     static final Map<String, String> MOD_OF = Map.of("sharpen", "s", "engrave", "e", "setgem", "g", "inlay", "i");
     public static final int GEAR_BRASS = 2;
-    /** Work seconds (at speed 1): smelting 6 min a bar, forging 10 min a bar, sharpening 8, engraving, setting and inlay 20, a gem 30. */
+    /** Work seconds (at speed 1): smelting 6 min a bar, forging 5 min a bar, sharpening 8, engraving, setting and inlay 10, a gem 30, assembling 10 a part. */
     public static final double SMELT_SECONDS = 360, FORGE_SECONDS = 300, SHARPEN_SECONDS = 480, FINISH_SECONDS = 600,
             CUT_SECONDS = 1800, ASSEMBLE_SECONDS = 600;
 

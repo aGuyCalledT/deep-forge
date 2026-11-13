@@ -272,7 +272,16 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Krug-Satz für die Taverne, Goldfaden-Tunika (Kleidung): bisher nur Handelsware bzw. nicht gebaut.
 - [ ] Feinmechaniker: eigene 48-px-Möbel (Vorlagen nutzen Schreibtisch, Waage, Rohre).
 - [x] Schritt 1: Preisformel (quadratische Kosten), neue Werte und Zeiten, Wertleiter-Test (`BalanceTest`).
-- [ ] Balance-Bot, der 120 Tage mit einer Strategie durchspielt (heute prüft `BalanceTest` nur die Wertleiter je Zwergenstunde).
+- [x] Balance-Bot (`BalanceBotTest`): spielt 120 Tage mit drei Besuchen am Tag (sammeln, verkaufen, Werkstätten füllen,
+      Farmen bauen, Wachen bewaffnen, graben, Gänge legen, Kohle und Stein zukaufen, günstigsten Ausbau kaufen) und
+      druckt die Tabelle. Dazu ein, drei und sechs Besuche im Vergleich und ein Monat ohne Besuch.
+- [ ] **Leitkurve nicht erreicht** (Test `incomeFollowsTheGuideCurve` ist abgeschaltet): der Bot verdient 20–100 Marks
+      am Tag statt 100 × Tag und kommt nach Tag 10 nicht weiter (Tage 1–10 zusammen 434 statt 5 500 Marks). Gründe:
+      Versorgung bindet die Hälfte der Zwerge (Pilze 1,6/h, die Brauerei frisst auch Pilze, zwei Wachen), Überfälle ab
+      Tag 2 wachsen mit der Festungsstufe schneller als die Wachen und nehmen 30 % des Lagers, Stein für Ausbauten
+      (Stufe 3 braucht 135) kommt kaum aus der Mine, ein Bergarbeiter bringt nur etwa 20–45 Marks am Tag. Entscheiden:
+      Leitkurve senken oder Werte und Raten anheben.
+- [ ] Bot: Expeditionen, Aufträge gezielt bedienen, Feinmechaniker, Graveur, Schichten 3–5 und Monokultur-Strategie.
 - [x] Schritt 2: Tagesplan, Schichtbericht mit Fundstück, Bauzeiten, „Bestand halten“, Vorarbeiter, Amboss 8 h, Ader 4 h.
 - [x] Sofortverkauf am Tor (10 %) und besuchende Karawanen.
 - [x] Schritt 3: Gesteinshärte, Abnutzung, Nickelstahl und Sternstahl.
