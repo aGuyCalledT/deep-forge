@@ -62,6 +62,18 @@ public class GameService {
         }
     }
 
+    /** A new hold for this player, finished at once (demo account). */
+    public void showcase(long uid, String owner) {
+        double now = now();
+        synchronized (lock(uid)) {
+            Fortress f = load(uid, owner, now);
+            Rng r = new Rng(f.rng);
+            Showcase.fill(f, now, r);
+            f.rng = r.s;
+            save(f);
+        }
+    }
+
     public Map<String, Object> state(long uid, String owner, boolean cheats) {
         double now = now();
         synchronized (lock(uid)) {

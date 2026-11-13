@@ -24,11 +24,13 @@ public class AuthService {
 
     public AuthService(Store store,
                        @Value("${deepforge.invite-code:}") String inviteCode,
-                       @Value("${deepforge.admins:}") String admins) {
+                       @Value("${deepforge.admins:}") String admins,
+                       @Value("${deepforge.demo-user:}") String demoUser) {
         this.store = store;
         this.inviteCode = inviteCode == null ? "" : inviteCode.trim();
         this.admins = new HashSet<>();
         for (String a : admins.split(",")) if (!a.isBlank()) this.admins.add(a.trim().toLowerCase());
+        if (demoUser != null && !demoUser.isBlank()) this.admins.add(demoUser.trim().toLowerCase());   // the test account has cheats
     }
 
     public static class AuthException extends RuntimeException {
@@ -55,6 +57,12 @@ public class AuthService {
         if (store.userByName(name) != null) throw new AuthException("That name is taken.");
         Store.User u = store.createUser(name, bcrypt.encode(password));
         return newSession(u);
+    }
+
+    /** An account made by the server itself (the demo account): no invite code, no rate limit. */
+    public Store.User createUser(String name, String password) {
+        if (password == null || password.length() < 8) throw new AuthException("Password: at least 8 characters.");
+        return store.createUser(name, bcrypt.encode(password));
     }
 
     public Session login(String name, String password, String ip) {

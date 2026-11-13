@@ -254,6 +254,24 @@ class SimTest {
     }
 
     @Test
+    void theShowcaseHoldHasEveryRoomWorking() {
+        Fortress f = fresh(34);
+        Market m = Market.inMemory(34, T0);
+        Rng r = new Rng(f.rng);
+        Showcase.fill(f, T0, r);
+        for (Building b : f.buildings) {
+            if (!Layouts.ROOM_CELLS.containsKey(b.type)) continue;
+            assertTrue(f.layout.rooms.containsKey(b.id), "no place for " + b.id);
+            assertTrue(Rules.active(f, b), b.id + " stands still");
+        }
+        assertTrue(f.layers.stream().allMatch(l -> l.unlocked));
+        assertEquals(Showcase.DWARVES, f.dwarves.size());
+        assertTrue(Rules.beds(f) >= f.dwarves.size());
+        Sim.advance(f, T0 + 24 * 3600, m);
+        assertTrue(f.dwarves.size() >= Showcase.DWARVES - 2);
+    }
+
+    @Test
     void oldQualitiesAreMappedToTheNewOnes() {
         String json = "{\"stock\":{\"item:axe:iron:5:s\":2,\"item:goblet:gold:4:\":1,\"item:goblet:gold:3:\":1,\"item:ring:silver:1:\":3}}";
         String out = Factory.toVersion3(json);

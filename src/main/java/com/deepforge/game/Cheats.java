@@ -85,6 +85,7 @@ public final class Cheats {
                 Sim.advance(f, now, market);
                 Rules.log(f, now, "info", "[cheat] Skipped " + (h == Math.floor(h) ? String.valueOf((int) h) : String.valueOf(h)) + " hours.");
             }
+            case "cheatShowcase" -> Showcase.fill(f, now, r);
             default -> throw new GameException("Unknown cheat.");
         }
         return f;

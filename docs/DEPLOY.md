@@ -62,6 +62,11 @@ Ohne `DB_URL` legt das Spiel eine H2-Datenbank in `./data` an.
 `CHEATS=true` in `.env` gibt allen Spielern die Test-Hilfen (More → Cheats). Admins (`ADMINS`) haben sie immer.
 Für ein echtes Spiel unter Freunden: aus lassen.
 
+**Test-Konto:** Sind `DEMO_USER` und `DEMO_PASSWORD` gesetzt, legt der Server beim Start einmal dieses Konto an, mit
+fertiger Festung: alle Räume (Werkstätten voll ausgebaut), alle Schichten, Städte, Baupläne und Traditionen, viele
+Vorräte und 60 Zwerge bei der Arbeit (`Showcase.java`). Das Konto hat Cheats. Gibt es den Namen schon, bleibt das
+Konto, wie es ist. Dieselbe Festung macht der Cheat „Finish the hold“ aus jeder Festung.
+
 ## Passwort vergessen
 
 Ein Admin (Name in `ADMINS`) setzt es im Spiel unter **More → Admin** zurück.

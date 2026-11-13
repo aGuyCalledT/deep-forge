@@ -234,6 +234,7 @@ export function cheatsSection() {
     h('div', { class: 'row' }, what, amount, h('button', { class: 'btn small good', onclick: () => bus.act({ type: 'cheatGive', key: what.value, amount: +amount.value }) }, 'Give')),
     h('div', { class: 'row' },
       h('button', { class: 'btn small', onclick: () => bus.act({ type: 'cheatStarter' }) }, 'Cart of supplies'),
+      h('button', { class: 'btn small', onclick: () => { if (confirm('Finish the whole hold? Every room is rebuilt in a new place, and all dwarves get new jobs.')) bus.act({ type: 'cheatShowcase' }); } }, 'Finish the hold'),
       h('button', { class: 'btn small', onclick: () => bus.act({ type: 'cheatDwarves', count: 1 }) }, '+1 dwarf'),
       h('button', { class: 'btn small', onclick: () => bus.act({ type: 'cheatDwarves', count: 5 }) }, '+5 dwarves'),
       h('button', { class: 'btn small', onclick: () => bus.act({ type: 'cheatHeal' }) }, 'Heal and cheer everyone')),

@@ -31,6 +31,8 @@ services:
       INVITE_CODE: ${INVITE_CODE:-}
       ADMINS: ${ADMINS:-}
       CHEATS: ${CHEATS:-false}
+      DEMO_USER: ${DEMO_USER:-}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       SPRITES_DIR: /app/sprites
     volumes:
       - ./sprites:/app/sprites:ro
