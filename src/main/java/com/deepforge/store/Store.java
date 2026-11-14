@@ -45,6 +45,25 @@ public class Store {
                 (rs, i) -> new User(rs.getLong(1), rs.getString(2), rs.getString(3)));
     }
 
+    /** Every account with the day it was made and how many devices are logged in (for the admin list). */
+    public record Account(long id, String name, long createdAt, int sessions) {}
+
+    public List<Account> accounts() {
+        return db.query("SELECT u.id, u.name, u.created_at, (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id) FROM users u ORDER BY u.id",
+                (rs, i) -> new Account(rs.getLong(1), rs.getString(2), rs.getLong(3), rs.getInt(4)));
+    }
+
+    /** Removes the account, its sessions and its fortress. Room looks it made stay (other holds use them). */
+    public void deleteUser(long userId) {
+        db.update("DELETE FROM sessions WHERE user_id = ?", userId);
+        db.update("DELETE FROM fortresses WHERE user_id = ?", userId);
+        db.update("DELETE FROM users WHERE id = ?", userId);
+    }
+
+    public void deleteSessions(long userId) {
+        db.update("DELETE FROM sessions WHERE user_id = ?", userId);
+    }
+
     // ---- sessions (only a hash of the token is stored)
     public void addSession(String tokenHash, long userId) {
         db.update("INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?, ?, ?)", tokenHash, userId,

@@ -2,6 +2,17 @@
 
 Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebaut. Offen ist, was nicht abgehakt ist.
 
+## Erster Release (0.1.0)
+
+- [x] Schriften nur noch mit freier Lizenz (Jacquard 12, Pixelify Sans, beide OFL); Alagard und Fantastic Boogaloo entfernt.
+- [x] Version überall 0.1.0, Patchnotes beginnen mit „First release“.
+- [x] CI läuft auf `master` und `development`, prüft alle JS- und JSON-Dateien.
+- [x] Passwort ändern, Konto löschen, Kontenliste für Admins.
+- [x] Erste Schritte für neue Spieler.
+- [ ] `LICENSE` im Wurzelordner; Herkunft und Lizenz von Musik und Sounds aufschreiben.
+- [x] Die Schublade wird bei jedem Abruf (alle 5 s) neu gezeichnet: getippter Text, Fokus und Cursor bleiben jetzt erhalten (`typedFields` in `main.js`).
+- [ ] Ziffer 5 sieht in Pixelify Sans aus wie ein S.
+
 ## Aufräumen
 
 - [x] Projekt sortiert: alte 24-px-Grafik (Räume, Welt, Höhlen, Figuren, altes Zwerg-Kit), Vorschaubilder, fremde

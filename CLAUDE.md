@@ -40,7 +40,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/Actions.java` | alle Spieleraktionen mit Prüfung |
 | `game/View.java` | was der Client sieht (Spielstand + abgeleitete Zahlen) |
 | `game/GameService.java` | Laden, Weiterrechnen, Speichern, Minuten-Takt für alle Festungen |
-| `auth/` | Name + Passwort (BCrypt), Token-Sitzungen, Einladungscode, Admins |
+| `auth/` | Name + Passwort (BCrypt), Token-Sitzungen, Einladungscode, Admins; Passwort ändern und Konto löschen (`/api/account/…`), Admin-Liste aller Konten (`/api/admin/…`) |
 | `game/world/Layouts.java` | Grundriss: Räume, Gänge, Treppenhäuser auf einem Raster (48 × 8 Zellen à 24 × 96 px, Schacht links). Alles steht auf ausgegrabenem Boden (`caves`, von Bergarbeitern gegraben, `marks` sind markierter Fels). Ein Raum ohne Gang, Treppenhaus (2 Zellen) oder Schacht daneben steht still (`Rules.active`). Geplante Räume (`plans`, Aktion `build`/`upgrade` mit `col`/`floor`): Fels darunter wird markiert, nach dem Graben stellt `finishPlans` den Raum hin (`Actions.standPlan`), `cancelPlan` zahlt zurück. Eigener Look je Gang (ganze Strecke) oder Treppenhaus in `looks` (Aktion `wayLook`) |
 | `game/dev/Cheats.java` | Test-Hilfen (Ressourcen, Zwerge, Aussehen, Zeit überspringen, „Finish the hold“ = `Showcase.java`), nur Admins oder `CHEATS=true`. Test-Konto mit fertiger Festung beim Start über `DEMO_USER`/`DEMO_PASSWORD` (`DemoAccount.java`) |
 | `art-src/icons/` | Symbole, Waren, Werkzeuge, Edelsteine, Knopf-Platten als pxl (`*.px.js`, Palette und Umfärb-Platzhalter in `shared.js`); `node scripts/build-art.mjs` baut `static/art/icons/` (`atlas.png`, `atlas.json`, `meta.json`) |
@@ -64,6 +64,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `art-src/dwarves/` | Zwerge 48 × 64 als Python-Code (`parts.py`, `build.py`), Ergebnis in `static/art/dwarves/<Teil>/<Ansicht>.png` (arms, beard, body, face, hair, hat, head, legs, props, quilt, vest) mit `kit.json`, Lader `static/js/art/dwarves.js` |
 | `static/js/panels/*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt; Raumfenster mit `{dock: true}` am rechten Rand, `keepClear` in `main.js` schiebt den Raum ins Bild) |
 | `static/js/ui/orders.js` | neue Aufträge: Liste aller Rezepte einer Werkstatt (`recipesFor`, herstellbar zuerst, sonst ausgegraut, Zutaten mit Symbol und Bestand, ab 100 „>99“), Rezept auf Pergament (`recipeModal`: Zutaten → Produkt in Sepia, wie oft, Forever, aufklappbar Bedingungen WENN/UND/DANN/AUSSER). Jede Werkstatt hat eigene Knopf-Platten (`.ws-theme .ws-<Typ>`) |
+| `static/js/panels/account.js` | Fenster „Change password“ und „Delete account“ (More → Settings), Kontenliste für Admins (More → Accounts) |
+| `View.tutorial` | Erste Schritte für neue Festungen: fünf Schritte, abgehakt aus dem Spielstand (`stats`, Stufe), als Zettel oben im Hold-Tab (`firstSteps` in `panels/base.js`) und als Chip auf der Szene; wegklicken mit Aktion `tutorial` (`Fortress.tutorialOff`), wieder holen unter More → Settings |
 | `static/js/panels/market.js` | Marktliste mit Wochenlinie, Waren-Fenster mit Kursverlauf und Städte-Tabelle |
 | `static/js/panels/depot.js` | Fenster des Handelsdepots: Marktanteil, Karawanen, Regeln, Kauf-Aufträge |
 | `static/js/ui/paper.js` | Papier-Zettel (Risse, Flecken, Falten aus der id) und Abhaklisten |
@@ -126,16 +128,18 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   Abzeichen auf Tabs `ui_good` (`.tab .dot`). Symbole immer als linke Hälfte zeichnen und spiegeln (`mx`).
   Innen eingravierte Felder (`.card`) statt erhabener Karten.
 - **Papier** für Expeditionen, Gerüchte und Berichte: `paper(seed, opts, ...)` aus `paper.js` (Risse, Flecken, Falten,
-  je id verschieden, Nagel oder Wachssiegel; nie schräg gestellt, das flimmert bei Pixeln), Handschrift Fantastic Boogaloo, Abhakliste `todo()`.
+  je id verschieden, Nagel oder Wachssiegel; nie schräg gestellt, das flimmert bei Pixeln), Abhakliste `todo()`.
 - **Sanduhr** statt Balken für ablaufende Zeit: `hourglass({job, machine} | {from, to} | {p})`, echter Fortschritt.
   Balken (`bar`) nur für Mengen (Lager, Gesundheit, Stimmung, Hitze).
 - **Bewegung mechanisch:** Fenster fahren aus dem Bildschirmrand ein und wieder hinaus (`slideIn`/`slideOut`).
   Raumfenster docken am Desktop rechts an (beim Hovern erscheint nur der grüne Umriss). Bei `prefers-reduced-motion` bewegt sich nichts.
-- Schriften (selbst gehostet in `static/fonts/`, Pixelschriften): Alagard für Überschriften, Fantastic Boogaloo für Handschrift
-  auf Papier, Pixelify Sans (OFL, fester Schnitt 400) für alles andere (Text, Knöpfe, Tabs). Es gibt nur einen Schnitt: nichts fett, Hervorhebung
-  über Farbe (`b`/`strong` in `--hl`, auf Papier rot). Größen in Vielfachen von 4 px (8, 12, 16, 20, 24), sonst
-  verschwimmen die Pixel; kein `letter-spacing`. Fehlende Zeichen (· × → ↑ ↓ – — ∞ ’ …) in den Schriften
-  ergänzt `tools/fonts/add_glyphs.py` (Alagard, Fantastic Boogaloo mit Pixel 131, Pixelify Sans mit Pixel 92). Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
+- Schriften (selbst gehostet in `static/fonts/`, Pixelschriften, alle unter SIL Open Font License, Lizenztexte daneben):
+  Jacquard 12 für Überschriften (auch auf Papier), Pixelify Sans (fester Schnitt 400) für alles andere, auch als Tinte
+  auf Papier (`--f-hand`). Nur Schriften mit klarer freier Lizenz aufnehmen. Es gibt nur einen Schnitt: nichts fett,
+  Hervorhebung über Farbe (`b`/`strong` in `--hl`, auf Papier rot). Größen in Vielfachen von 4 px (8, 12, 16, 20, 24),
+  sonst verschwimmen die Pixel; kein `letter-spacing`. Jacquard 12 liegt auf einem 21-px-Raster, `size-adjust` im
+  `@font-face` rechnet es auf 16 px um. Fehlende Zeichen (· × → ↑ ↓ – — ∞ ’ …) in den Schriften ergänzt
+  `tools/fonts/add_glyphs.py` (Jacquard 12 mit Pixel 60, Pixelify Sans mit Pixel 92). Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
 - Im Spiel klicken statt Menüs: Räume und Zwerge öffnen ihr Fenster direkt (`popups.js`), Hover zeigt einen
   grünen Umriss, stillstehende Werkstätten mit Material bekommen einen grünen Pfeil.
 - Farben aus den CSS-Variablen in `style.css`.

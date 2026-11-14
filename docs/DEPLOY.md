@@ -24,6 +24,10 @@ Drei Wege, je nach Netz:
    ```
 2. **Cloudflare Tunnel:** keine Portfreigabe nötig, braucht aber eine Domain bei Cloudflare.
    `cloudflared` auf dem Server installieren und auf `http://localhost:8080` zeigen lassen.
+   In `.env` `APP_PORT=127.0.0.1:8080` setzen, dann ist das Spiel nur über den Tunnel erreichbar. Wird der Tunnel
+   über eine lokale Datei verwaltet (`/etc/cloudflared/config.yml`), dort unter `ingress` den Hostnamen mit
+   `service: http://localhost:8080` eintragen, `cloudflared` neu starten und im DNS einen CNAME auf
+   `<Tunnel-ID>.cfargotunnel.com` anlegen.
 3. **Tailscale:** nur eingeladene Geräte kommen dran. Jeder Freund installiert die Tailscale-App.
 
 ## Aktualisieren
@@ -69,4 +73,11 @@ Konto, wie es ist. Dieselbe Festung macht der Cheat „Finish the hold“ aus je
 
 ## Passwort vergessen
 
-Ein Admin (Name in `ADMINS`) setzt es im Spiel unter **More → Admin** zurück.
+Ein Admin (Name in `ADMINS`) setzt es im Spiel unter **More → Accounts** zurück.
+
+## Konten
+
+- Jeder Spieler ändert sein Passwort selbst und löscht sein Konto selbst (**More → Settings → Account**). Beim Löschen
+  verschwinden Konto und Festung endgültig; selbst gebaute Raumvorlagen bleiben, weil andere Festungen sie nutzen.
+- Admins sehen unter **More → Accounts** alle Konten (Festung, Stufe, zuletzt gesehen, angemeldete Geräte) und können
+  ein Passwort neu setzen, einen Spieler überall abmelden oder ein Konto löschen.

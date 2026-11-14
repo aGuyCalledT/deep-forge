@@ -87,6 +87,30 @@ public class AuthService {
         return u != null && admins.contains(u.name().toLowerCase());
     }
 
+    /** The player changes the own password: every device is logged out, this one gets a new session. */
+    public Session changePassword(Store.User u, String old, String password) {
+        if (old == null || !bcrypt.matches(old, u.pwHash())) throw new AuthException("The current password is wrong.");
+        if (password == null || password.length() < 8 || password.length() > 200)
+            throw new AuthException("New password: at least 8 characters.");
+        store.setPassword(u.id(), bcrypt.encode(password));
+        return newSession(u);
+    }
+
+    /** Before an account is deleted: the password once more. */
+    public void confirmPassword(Store.User u, String password) {
+        if (password == null || !bcrypt.matches(password, u.pwHash())) throw new AuthException("The password is wrong.");
+    }
+
+    public Store.User userByName(String name) {
+        Store.User u = name == null ? null : store.userByName(name.trim());
+        if (u == null) throw new AuthException("No such player.");
+        return u;
+    }
+
+    public void logoutEverywhere(Store.User u) {
+        store.deleteSessions(u.id());
+    }
+
     public void resetPassword(String name, String password) {
         Store.User u = store.userByName(name);
         if (u == null) throw new AuthException("No such player.");

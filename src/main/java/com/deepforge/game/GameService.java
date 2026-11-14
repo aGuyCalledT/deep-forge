@@ -160,6 +160,41 @@ public class GameService {
         return out;
     }
 
+    /** Deletes the account with its fortress. The lock keeps the minute tick from saving the hold again. */
+    public void deleteAccount(long uid) {
+        synchronized (lock(uid)) {
+            store.deleteUser(uid);
+        }
+        locks.remove(uid);
+    }
+
+    /** Admin list: every account, with a few numbers of its hold. */
+    public List<Map<String, Object>> accounts(java.util.function.Predicate<String> admin) {
+        Map<Long, String> holds = store.allFortresses();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Store.Account a : store.accounts()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("name", a.name());
+            m.put("admin", admin.test(a.name()));
+            m.put("created", a.createdAt() / 1000.0);
+            m.put("sessions", a.sessions());
+            String json = holds.get(a.id());
+            if (json != null) {
+                try {
+                    Fortress f = om.readValue(json, Fortress.class);
+                    m.put("hold", f.name);
+                    m.put("level", f.level);
+                    m.put("dwarves", f.dwarves.size());
+                    m.put("lastVisit", f.lastVisit);
+                } catch (Exception ex) {
+                    m.put("broken", true);
+                }
+            }
+            out.add(m);
+        }
+        return out;
+    }
+
     /** Every minute: move the market and every fortress forward, so caravans and raids happen on time. */
     @Scheduled(fixedDelay = 60_000, initialDelay = 10_000)
     public void tickAll() {
@@ -169,6 +204,7 @@ public class GameService {
         for (long uid : store.fortressIds()) {
             synchronized (lock(uid)) {
                 try {
+                    if (store.loadFortress(uid) == null) continue;   // the account was deleted a moment ago
                     Fortress f = load(uid, null, now);
                     Sim.advance(f, now, market);
                     save(f);

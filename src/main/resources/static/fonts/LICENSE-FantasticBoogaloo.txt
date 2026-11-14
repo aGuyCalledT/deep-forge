@@ -1,2 +1,0 @@
-Fantastic Boogaloo: Copyright (c) 2018, Heaven Castro. Supplied by the project owner.
-Middle dot, arrows and infinity added by tools/fonts/add_glyphs.py.

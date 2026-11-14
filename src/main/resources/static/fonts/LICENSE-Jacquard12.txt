@@ -1,0 +1,3 @@
+Jacquard 12: Copyright 2023 The Soft Type Project Authors (https://github.com/scfried/soft-type-jacquard).
+Licensed under the SIL Open Font License, Version 1.1 (full text in OFL-Jacquard12.txt).
+Arrows and infinity added by tools/fonts/add_glyphs.py.

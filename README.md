@@ -39,4 +39,4 @@ mvn test
 mvn -DskipTests package && java -jar target/deep-forge.jar
 ```
 
-Fonts: Germania One, Alegreya Sans, Alegreya Sans SC and Kalam (SIL Open Font License), see `src/main/resources/static/fonts/`.
+Fonts: Jacquard 12 and Pixelify Sans (SIL Open Font License), licence texts in `src/main/resources/static/fonts/`.

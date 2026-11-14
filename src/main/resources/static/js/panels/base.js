@@ -1,6 +1,6 @@
 // Fortress overview, dwarves, war and "more" panels.
 import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue, moneyText, category } from '../core/data.js';
-import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp, hourglass, statusIco } from '../ui/ui.js';
+import { h, img, goodIcon, bar, tickBox, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp, hourglass, statusIco } from '../ui/ui.js';
 import { reportCards } from '../ui/collect.js';
 import * as S from '../art/sprites.js';
 import { api, setToken } from '../core/api.js';
@@ -8,6 +8,8 @@ import { openAudioSheet } from './audio.js';
 import { cheatsSection } from '../ui/popups.js';
 import { notesView, markNotesSeen } from '../ui/notes.js';
 import { pieceSheet, effectLines, dwarfEffects } from '../ui/magic.js';
+import { paper } from '../ui/paper.js';
+import { openPasswordSheet, openDeleteSheet, adminSection } from './account.js';
 
 // ================================================================== fortress
 
@@ -50,6 +52,17 @@ export const EFFECT = {
   expedition_hall: () => `${D().expeditionSlots} expedition(s), up to ${D().partyMax} dwarves each`,
 };
 
+/** The first steps on a pinned note: done ones crossed out, the next one with a button that leads there. */
+function firstSteps(steps) {
+  const next = steps.find((s) => !s.done), n = steps.filter((s) => s.done).length;
+  return paper('first-steps', { nail: true, cls: 'first-steps' },
+    h('h3', null, 'First steps'),
+    h('p', { class: 'who' }, `${n} of ${steps.length} done`),
+    h('ul', { class: 'todo' }, steps.map((s) => h('li', { class: s.done ? 'done' : s === next ? 'next' : '' }, tickBox(s.done), h('span', { class: 'grow' }, s.text, s === next ? h('small', null, s.hint) : null),
+      s === next ? h('button', { class: 'btn small', onclick: () => (s.room ? bus.showRoom(s.room) : bus.go(s.tab)) }, 'Show me') : null))),
+    h('button', { class: 'linkish', onclick: () => bus.act({ type: 'tutorial', off: true }) }, 'Put this list away'));
+}
+
 export function renderFortress() {
   const f = F(), d = D();
   const out = [];
@@ -57,11 +70,12 @@ export function renderFortress() {
     h('div', { class: 'row between' }, h('h3', null, f.name), h('span', { class: 'gold-t pix' }, 'Level ' + f.level)),
     bar(f.xp / d.xpNeed), h('p', { class: 'small muted' }, `${fmt(f.xp)} / ${fmt(d.xpNeed)} xp to the next level.`
       + (d.traditionPoints > 0 ? ` You have ${d.traditionPoints} tradition point(s) to spend (More tab).` : ''))));
+  if (d.tutorial) out.push(firstSteps(d.tutorial));
   out.push(...reportCards('shift'));
   if (d.planUntil) out.push(h('div', { class: 'card sub' },
     h('div', { class: 'row between' }, h('h3', { style: { marginTop: 0 } }, 'Day plan ', info(`Each time you look in, the dwarves get a new day plan. They work at full pace for ${Math.round(d.planFull / 3600)} hours, then slow down to a fifth over two days. After a week the hold rests: nobody works, eats or attacks. ${f.level >= d.foremanLevel ? 'A foreman keeps the full pace for 36 hours, a master foreman (any skill 15) for 48.' : `At hold level ${d.foremanLevel} you can name a foreman for longer plans.`}`)),
       h('span', { class: 'small muted' }, 'full pace for ', h('span', { 'data-until': d.planUntil }, dur(d.planUntil - now()))))));
-  const alerts = bus.alerts ? bus.alerts() : [];
+  const alerts = (bus.alerts ? bus.alerts() : []).filter((x) => x[4] !== 'tutorial');
   if (alerts.length) out.push(h('div', { class: 'card sub' }, h('h3', { style: { marginTop: 0 } }, 'Needs attention'),
     alerts.map(([k, tab, text, room]) => h('button', { class: 'alert ' + k, style: { margin: '4px 0', width: '100%' }, onclick: () => (room ? bus.showRoom(room) : bus.go(tab)) },
       img(S.icon(k === 'bad' ? 'skull' : 'warn'), 'icon s'), h('span', { style: { whiteSpace: 'normal' } }, text)))));
@@ -410,17 +424,16 @@ export function renderMore() {
     h('label', null, 'Name of your hold', name),
     h('div', { class: 'row' }, h('button', { class: 'btn small', onclick: () => bus.act({ type: 'rename', name: name.value }) }, 'Rename'),
       h('button', { class: 'btn small', onclick: openAudioSheet }, ico('note'), 'Music and sound'),
-      h('button', { class: 'btn small danger', onclick: async () => { try { await api.post('/auth/logout'); } catch { /* ignore */ } setToken(null); location.reload(); } }, 'Log out')),
-    h('p', { class: 'small muted' }, `Logged in as ${G.me ? G.me.name : ''}.`))));
+      f.tutorialOff ? h('button', { class: 'btn small', onclick: async () => { await bus.act({ type: 'tutorial', off: false }); bus.go('fortress'); } }, 'Show first steps') : null),
+    h('h3', null, 'Account'),
+    h('p', { class: 'small muted' }, `Logged in as ${G.me ? G.me.name : ''}.`),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn small', onclick: openPasswordSheet }, 'Change password'),
+      h('button', { class: 'btn small', onclick: async () => { try { await api.post('/auth/logout'); } catch { /* ignore */ } setToken(null); location.reload(); } }, 'Log out'),
+      h('button', { class: 'btn small danger', onclick: openDeleteSheet }, 'Delete account')))));
 
   if (G.state.cheats) out.push(...section('Cheats', cheatsSection()));
-  if (G.me && G.me.admin) {
-    const who = h('input', { placeholder: 'Player name' }), pw = h('input', { placeholder: 'New password (8+ characters)', type: 'text' });
-    out.push(...section('Admin', h('div', { class: 'card' }, h('p', { class: 'small muted' }, 'Reset a forgotten password.'), who, pw,
-      h('button', { class: 'btn small', onclick: async () => {
-        try { await api.post('/admin/password', { name: who.value, password: pw.value }); toast('Password reset.', 'good'); } catch (e) { toast(e.message, 'bad'); }
-      } }, 'Reset password'))));
-  }
+  if (G.me && G.me.admin) out.push(...section('Accounts', adminSection()));
   out.push(h('p', { class: 'small dim' }, 'Deep Forge · stats: ' + `${f.stats.barsSmelted} bars smelted, ${f.stats.itemsCrafted} goods forged, ${f.stats.masterworks} masterworks, ${f.stats.expeditions} expeditions, ${f.stats.monstersSlain} monsters slain, ${f.stats.raidsRepelled} raids repelled, ${f.stats.dwarvesLost} dwarves lost.`));
   return out;
 }
