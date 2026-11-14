@@ -189,6 +189,9 @@ Masterwork 2, Artifact 3.
   Marks × 0,8–1,4), 15 % Barren (`2 + Schicht`), 5 % ein fehlender Bauplan (sonst ein geschliffener Stein).
 - **Bestand halten** (`QueueEntry.keep`, ab Werkstattstufe 2): Der Auftrag läuft nur, solange weniger als `keep`
   Stück im Lager sind (Stücke am Amboss zählen mit, `Recipes.productCount`).
+- **Aufträge mit Bedingungen** (ab Werkstattstufe 2, `QueueEntry.when`/`batch`): WENN bis zu drei Waren je mindestens
+  N im Lager sind, DANN macht die Werkstatt `batch` Stück am Stück (danach prüft sie neu), AUSSER es sind schon mehr
+  als M vom Produkt da (`over` → `keep = M + 1`). Der Auftrag bleibt in der Warteschlange.
 
 ## Sofortverkauf und besuchende Karawanen
 

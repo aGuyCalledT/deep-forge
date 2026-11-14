@@ -216,6 +216,9 @@ public final class State {
         public String itype;      // item type
         public int remaining;     // -1 = forever
         public int keep;          // > 0: only work while fewer than this many of the product are in the warehouse
+        public Map<String, Integer> when = new TreeMap<>();   // conditions: start only while the hold has at least this much of each
+        public int batch;         // with conditions: once they hold, make this many in a row (0: one at a time while they hold)
+        public int batchLeft;     // jobs left of the batch the conditions started
     }
 
     public static class Job {

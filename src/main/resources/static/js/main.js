@@ -513,6 +513,10 @@ function artToCss() {
     root.setProperty(`--plate-${m}`, url('btn_' + m));
     root.setProperty(`--plate-${m}-down`, url('btn_' + m + '_down'));
   }
+  for (const w of ['smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'wizard', 'mechanic', 'tailor']) {
+    root.setProperty(`--plate-ws-${w}`, url('wsbtn_' + w));
+    root.setProperty(`--plate-ws-${w}-down`, url('wsbtn_' + w + '_down'));
+  }
   root.setProperty('--xbtn', url('ui_xbtn'));
   root.setProperty('--xbtn-down', url('ui_xbtn_down'));
 }

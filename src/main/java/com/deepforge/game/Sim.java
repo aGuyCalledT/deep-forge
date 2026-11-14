@@ -614,16 +614,21 @@ public final class Sim {
             b.status = "Queue empty";
             return false;
         }
+        boolean full = false, cond = false, mats = false;
         for (QueueEntry e : new ArrayList<>(b.queue)) {
-            if (e.keep > 0 && Recipes.productCount(f, e) >= e.keep) continue;   // enough in stock
+            if (e.keep > 0 && Recipes.productCount(f, e) >= e.keep) { full = true; continue; }   // enough in stock
+            boolean rule = !e.when.isEmpty(), armed = e.batchLeft > 0;
+            if (rule && !armed && !Recipes.whenMet(f, e)) { cond = true; continue; }
             Job j = Recipes.start(f, b, e);
             if (j != null) {
                 b.job = j;
+                if (rule && e.batch > 0) e.batchLeft = (armed ? e.batchLeft : e.batch) - 1;
                 if (e.remaining > 0 && --e.remaining == 0) b.queue.remove(e);
                 return true;
             }
+            mats = true;
         }
-        b.status = "Waiting for materials";
+        b.status = mats ? "Waiting for materials" : cond ? "Waiting until its conditions hold" : full ? "Enough in stock" : "Waiting for materials";
         return false;
     }
 

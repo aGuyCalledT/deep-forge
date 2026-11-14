@@ -208,6 +208,9 @@ public final class View {
             Map<Integer, Object> q = new LinkedHashMap<>();
             for (QueueEntry e : b.queue) q.put(e.id, Recipes.missing(f, e));
             m.put("missing", q);
+            Map<Integer, String> wait = new LinkedHashMap<>();
+            for (QueueEntry e : b.queue) { String why = Recipes.waits(f, e); if (why != null) wait.put(e.id, why); }
+            m.put("waits", wait);
             bs.put(b.id, m);
         }
         d.put("buildings", bs);

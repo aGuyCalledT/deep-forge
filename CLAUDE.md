@@ -62,6 +62,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `art-src/dwarf48/` | nächster Zwerg-Satz 48 × 64 als Code (`parts.py`, `build.py`), Ergebnis in `static/art/dwarf48/`, Lader `static/js/dwarf48.js` (zeichnet die Zwerge in der Festung) |
 | `static/js/dwarfkit.js` | setzt Zwerge aus den PNG-Teilen in `static/art/dwarf/` zusammen (`kit.json`: Bilder, Reihenfolge, Platzhalterfarben) und färbt sie um; gezeichnet im Pixelwright-Projekt „Deep Forge Dwarves“ |
 | `static/js/panels-*.js` | die Tabs (Hold, Mines, Work, Dwarves, Trade, Explore, War, More); sie öffnen sich in einer Schublade über der Szene; Formulare laufen in Sheets (`openSheet(render, anker)`, mit Anker als kleines Fenster neben dem Objekt; Raumfenster mit `{dock: true}` am rechten Rand, `keepClear` in `main.js` schiebt den Raum ins Bild) |
+| `static/js/orders.js` | neue Aufträge: Liste aller Rezepte einer Werkstatt (`recipesFor`, herstellbar zuerst, sonst ausgegraut, Zutaten mit Symbol und Bestand, ab 100 „>99“), Rezept auf Pergament (`recipeModal`: Zutaten → Produkt in Sepia, wie oft, Forever, aufklappbar Bedingungen WENN/UND/DANN/AUSSER). Jede Werkstatt hat eigene Knopf-Platten (`.ws-theme .ws-<Typ>`) |
 | `static/js/panels-market.js` | Marktliste mit Wochenlinie, Waren-Fenster mit Kursverlauf und Städte-Tabelle |
 | `static/js/panels-depot.js` | Fenster des Handelsdepots: Marktanteil, Karawanen, Regeln, Kauf-Aufträge |
 | `static/js/paper.js` | Papier-Zettel (Risse, Flecken, Falten aus der id) und Abhaklisten |
@@ -87,7 +88,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   `Content.qualityStep`, gleich im Client in `data.js`). Pixel-Art in `sprites.js` → `item()`. Wenn ausrüstbar: Wirkung in `Rules.power`/`pickSpeed`.
 - **Neues Erz:** `ore(...)` und Härte in `ROCK_HARDNESS` (`Content.java`); eine Spitzhacke bricht nur, was höchstens so hart ist wie ihr Metall.
 - **Neues Gebäude:** `building(...)` in `Content.java`. Werkstatt (`queue`): Rezepte in `Recipes.java`
-  (`BY_BUILDING`, `validate`, `inputs`, `start`) und Bestell-Sheet in `panels-work.js`. Passiv: Wirkung in
+  (`BY_BUILDING`, `validate`, `inputs`, `start`) und Eintrag in der Rezeptliste (`recipesFor` in `orders.js`), Knopf-Platte `wsbtn_<Typ>` in `ui.px.js` mit Klasse `.ws-<Typ>` (`style.css`) und `artToCss` (`main.js`). Passiv: Wirkung in
   `Rules`/`Sim`, Text in `EFFECT` (`panels-base.js`), Raum in `art-src/rooms.px.js` (`room(...)`, drei Stufen), Anker in `art-src/shared.js` (`ROOMS`),
   Breite in `Layouts.ROOM_CELLS`, Vorräte für den Tab in `contextResources()`, Pfeil-Logik in `hold.js` (`hasInputs`).
   Werkstatt mit Maschinen: Breite einer Erweiterung in `Layouts.MACHINE_CELLS`, Grafik mit `bay(...)` in

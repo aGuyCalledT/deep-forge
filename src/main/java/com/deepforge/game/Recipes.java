@@ -230,6 +230,26 @@ public final class Recipes {
         return n;
     }
 
+    /** A good a condition can name: ore, bar, raw good or the gem totals. */
+    public static boolean conditionKey(String k) {
+        if (k == null) return false;
+        if (Content.isBar(k)) return Content.METALS.containsKey(k.substring(4));
+        return Content.ORES.containsKey(k) || Content.RAWS.containsKey(k);
+    }
+
+    /** Whether every condition of an order holds: the hold has at least that much of each good. */
+    public static boolean whenMet(Fortress f, QueueEntry e) {
+        for (Map.Entry<String, Integer> c : e.when.entrySet()) if (stock(f, c.getKey()) < c.getValue()) return false;
+        return true;
+    }
+
+    /** Why an order does not start although it could: "full" (enough in stock), "cond" (conditions do not hold) or null. */
+    public static String waits(Fortress f, QueueEntry e) {
+        if (e.keep > 0 && productCount(f, e) >= e.keep) return "full";
+        if (!e.when.isEmpty() && e.batchLeft <= 0 && !whenMet(f, e)) return "cond";
+        return null;
+    }
+
     public static Job start(Fortress f, Building b, QueueEntry e) {
         if (validate(f, b, e) != null) return null;
         Map<String, Integer> in = inputs(f, e);

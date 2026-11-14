@@ -9,6 +9,7 @@ import { upgradeBtn, costBtn } from './panels-base.js';
 import { jobOf } from './hold.js';
 import { api } from './api.js';
 import * as R48 from './rooms48.js';
+import { orderSheet, ruleText } from './orders.js';
 
 /** A small picture of a workshop: the old room art, or the room's 48-px look for rooms that only have that. */
 function roomThumb(b) {
@@ -24,7 +25,8 @@ function roomThumb(b) {
 }
 
 export function orderLabel(e) {
-  const n = e.keep > 0 ? 'keep ' + e.keep : e.remaining === -1 ? '∞' : '×' + e.remaining;
+  const rule = e.keep > 0 || Object.keys(e.when || {}).length;
+  const n = rule ? '' : e.remaining === -1 ? '∞' : '×' + e.remaining;
   switch (e.recipe) {
     case 'smelt': return [goodIcon(e.mat, 'icon s'), ` Smelt ${byId.ores[e.mat].name.toLowerCase()} ${n}`];
     case 'alloy': return [goodIcon('bar:' + e.mat, 'icon s'), ` ${byId.metals[e.mat].name} ${n}`];
@@ -79,7 +81,7 @@ export function workCard(b) {
   const w = info_.worker ? f.dwarves.find((x) => x.id === info_.worker) : null;
   const [st, label] = wsState(b);
   const multi = (info_.machines || 1) > 1;
-  const out = h('div', { class: 'card ws-card' });
+  const out = h('div', { class: 'card ws-card ws-theme ws-' + b.type });
   out.append(
     h('h2', null, buildingName(b), info(t.note)),
     h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Level ' + b.level + (info_.speed ? ` · speed ×${info_.speed.toFixed(2)}` : '')),
@@ -101,13 +103,16 @@ export function workCard(b) {
   out.append(h('h3', null, 'Orders', info('The worker takes the first order that has its materials. Orders without materials wait.')));
   if (!b.queue.length) out.append(h('p', { class: 'small muted' }, 'No orders yet.'));
   out.append(h('div', { class: 'list' }, b.queue.map((e, i) => {
-    const miss = Object.entries((info_.missing || {})[e.id] || {});
-    return h('div', { class: 'queue-item' + (miss.length ? ' blocked' : '') },
+    const miss = Object.entries((info_.missing || {})[e.id] || {}), wait = (info_.waits || {})[e.id], rule = ruleText(e);
+    return h('div', { class: 'queue-item' + (miss.length || wait ? ' blocked' : '') },
       h('div', { class: 'grow' }, h('div', { class: 'small' }, orderLabel(e)),
-        miss.length ? h('div', { class: 'small bad-t' }, 'Waiting for ', miss.map(([k, v]) => k.startsWith('item:') && k.split(':').length <= 3 ? missingName(k) : `${fmt(v)} more ${missingName(k)}`).join(', '))
-          : h('div', { class: 'small good-t' }, 'Ready')),
-      i > 0 ? h('button', { class: 'btn small ghost', 'aria-label': 'Move up', title: 'Move up', onclick: () => bus.act({ type: 'queueMove', building: b.id, entry: e.id, dir: -1 }) }, ico('up')) : null,
-      h('button', { class: 'btn small ghost', 'aria-label': 'Remove order', title: 'Remove', onclick: () => bus.act({ type: 'queueRemove', building: b.id, entry: e.id }) }, ico('close')));
+        rule ? h('div', { class: 'small gold-t' }, rule) : null,
+        wait === 'full' ? h('div', { class: 'small muted' }, 'Enough in stock. It starts again when there is less.')
+          : wait === 'cond' ? h('div', { class: 'small warn-t' }, 'Waiting until its conditions hold.')
+          : miss.length ? h('div', { class: 'small bad-t' }, 'Waiting for ', miss.map(([k, v]) => k.startsWith('item:') && k.split(':').length <= 3 ? missingName(k) : `${fmt(v)} more ${missingName(k)}`).join(', '))
+          : h('div', { class: 'small good-t' }, e.batchLeft > 0 ? `Ready · ${e.batchLeft} left of this batch` : 'Ready')),
+      i > 0 ? h('button', { class: 'btn small sq', 'aria-label': 'Move up', title: 'Move up', onclick: () => bus.act({ type: 'queueMove', building: b.id, entry: e.id, dir: -1 }) }, ico('up')) : null,
+      h('button', { class: 'btn small sq', 'aria-label': 'Remove order', title: 'Remove', onclick: () => bus.act({ type: 'queueRemove', building: b.id, entry: e.id }) }, ico('close')));
   })));
   out.append(h('div', { class: 'row', style: { marginTop: '8px' } },
     h('button', { class: 'btn primary', disabled: b.queue.length >= 10, onclick: () => orderSheet(b) }, ico('plus'), 'Add order'), upgradeBtn(b)));
@@ -137,8 +142,8 @@ function machinesBlock(b) {
         j ? h('div', { class: 'busy' }, hourglass({ job: b.id, machine: i }, 's'), what, h('span', { class: 'small gold-t', 'data-eta': b.id, 'data-machine': i })) : what),
       h('div', { class: 'machine-btns' },
         h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
-        w ? h('button', { class: 'btn small ghost', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
-        n > 1 ? h('button', { class: 'btn small ghost', disabled: !!busyJob, title: busyJob ? 'Wait until this machine is done.' : 'Take this machine out. The room gets narrower.',
+        w ? h('button', { class: 'btn small', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
+        n > 1 ? h('button', { class: 'btn small', disabled: !!busyJob, title: busyJob ? 'Wait until this machine is done.' : 'Take this machine out. The room gets narrower.',
           onclick: () => { if (confirm('Take machine ' + (i + 1) + ' out? ' + (w ? w.first + ' will rest. ' : '') + 'Putting it back costs money and stone.')) bus.act({ type: 'removeMachine', building: b.id, machine: i }); } }, 'Remove') : null)));
   }
   const waiting = (bi.waiting || []).map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
@@ -258,173 +263,5 @@ function assignSheet(b, machine = -1) {
   });
 }
 
-const COUNTS = [1, 5, 10, 25, -1];
-const KEEPS = [2, 5, 10, 25];
-
-export function orderSheet(b) {
-  const st = { recipe: b.type === 'smelter' ? 'smelt' : b.type === 'forge' ? 'craft' : b.type === 'grindstone' ? 'sharpen' : b.type === 'engraver' ? 'engrave' : b.type === 'tailor' ? 'weave' : b.type === 'mechanic' ? 'gears' : b.type === 'wizard' ? 'enchant' : 'cutgem', mat: null, itype: null, count: -1, keep: 0 };
-  const send = async () => {
-    try {
-      await bus.act({ type: 'queueAdd', building: b.id, recipe: st.recipe, mat: st.mat, itype: st.itype, count: st.count, keep: st.keep }, false, true);
-      closeSheet();
-    } catch (e) { toast(e.message, 'bad'); }
-  };
-  openSheet(() => {
-    const f = F();
-    const choice = (on, label, sub, onclick, disabled) => h('button', { class: 'pick' + (on ? ' on' : ''), style: { width: '100%', opacity: disabled ? 0.5 : 1 }, onclick: () => { onclick(); refreshSheet(); } },
-      label, h('span', { class: 'grow', style: { textAlign: 'left' } }), sub ? h('span', { class: 'small muted' }, sub) : null);
-    const parts = [h('h2', null, buildingName(b) + ': new order')];
-    if (b.type === 'smelter') {
-      parts.push(h('div', { class: 'row' }, ['smelt', 'alloy'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.mat = null; refreshSheet(); } }, r === 'smelt' ? 'Smelt ore' : 'Make alloy'))));
-      if (st.recipe === 'smelt') {
-        parts.push(h('p', { class: 'small muted' }, '2 ore + 1 coal → 1 bar.'));
-        for (const o of G.data.ores) {
-          const have = stock(o.id);
-          parts.push(choice(st.mat === o.id, [goodIcon(o.id), ' ', o.name, ' → ', goodIcon('bar:' + o.metal, 'icon s'), ' ', byId.metals[o.metal].name + (o.bonusMetal ? ` (+${Math.round(o.bonusChance * 100)}% ${o.bonusMetal})` : '')],
-            'have ' + have, () => { st.mat = o.id; }, have < 2));
-        }
-      } else {
-        parts.push(h('p', { class: 'small muted' }, 'Melt bars together. Every alloy also burns 1 coal.'));
-        for (const a of G.data.alloys) {
-          const locked = a.blueprint && !f.blueprints.includes(a.blueprint);
-          const ins = Object.entries(a.inputs).map(([k, v]) => `${v} ${byId.metals[k].name.toLowerCase()}`).join(' + ') + (a.flux ? ' + limestone' : '');
-          const can = Object.entries(a.inputs).every(([k, v]) => stock('bar:' + k) >= v);
-          parts.push(choice(st.mat === a.metal, [goodIcon('bar:' + a.metal), ' ', a.out + ' ' + byId.metals[a.metal].name],
-            locked ? 'needs blueprint' : ins, () => { if (!locked) st.mat = a.metal; }, locked || !can));
-        }
-      }
-    } else if (b.type === 'forge') {
-      parts.push(h('p', { class: 'small muted' }, 'Choose what to make, then the metal. Each piece burns 1 coal.'));
-      parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => !(G.data.parts || {})[t.id]).map((t) => {
-        const locked = t.blueprint && !f.blueprints.includes(t.blueprint);
-        return h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), disabled: locked, title: locked ? 'Needs a blueprint from an expedition' : t.note,
-          onclick: () => { st.itype = t.id; st.mat = null; refreshSheet(); } }, img(S.item(t.id, 'iron'), 'icon s'), t.name);
-      })));
-      if (st.itype) {
-        const t = byId.items[st.itype];
-        parts.push(h('p', { class: 'small' }, `${t.bars} bars each. ${t.note} `,
-          info(`Skill ${t.skill} of 5. Harder pieces come out crude more often, but every quality step is worth ×${qualityStep(t).toFixed(1)}: a masterwork is worth ×${qualityMult(t, 4).toFixed(1)}. Let your best smiths make them.`)));
-        if (t.slot === 'tool') parts.push(h('p', { class: 'small muted' }, 'A pick breaks rock up to its metal\'s hardness. Harder metal digs faster and lasts longer.'));
-        const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
-        for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
-        if (!metals.length) parts.push(h('p', { class: 'muted' }, 'No metal fits.'));
-      }
-    } else if (b.type === 'mechanic') {
-      parts.push(h('div', { class: 'row' }, ['gears', 'assemble'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'gears' ? 'Cut gears' : 'Make a piece'))));
-      if (st.recipe === 'gears') parts.push(h('p', null, goodIcon('bar:brass'), ' 2 brass → ', goodIcon('gears'), ` 1 gears. You have ${stock('gears')} gears.`));
-      else {
-        parts.push(h('p', { class: 'small muted' }, 'Pieces from several materials. The mechanic\'s skill decides the quality, no anvil needed.'));
-        parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => (G.data.parts || {})[t.id]).map((t) => {
-          const locked = t.blueprint && !f.blueprints.includes(t.blueprint);
-          return h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), disabled: locked, title: locked ? 'Needs a blueprint' : t.note,
-            onclick: () => { st.itype = t.id; st.mat = null; refreshSheet(); } }, img(S.item(t.id, G.data.metals.find((m) => fits(t, m)).id), 'icon s'), t.name);
-        })));
-        if (st.itype) {
-          const t = byId.items[st.itype];
-          parts.push(h('p', { class: 'small' }, t.note + ' ', info(`Skill ${t.skill} of 5. Every quality step is worth ×${qualityStep(t).toFixed(1)}.`)));
-          const metals = G.data.metals.filter((m) => fits(t, m)).sort((a, b) => stock('bar:' + b.id) - stock('bar:' + a.id));
-          for (const m of metals) parts.push(choice(st.mat === m.id, [img(S.item(t.id, m.id)), ' ', m.name], 'have ' + stock('bar:' + m.id) + ' bars', () => { st.mat = m.id; }, stock('bar:' + m.id) < t.bars));
-        }
-      }
-    } else if (b.type === 'wizard') {
-      const M = G.data.magic;
-      parts.push(h('p', { class: 'small muted' }, 'Choose a school. The stars choose the effect and its strength; a finer gem, a better cut and a more skilled wizard roll higher. ',
-        info('Each gem is enchanted once. Strength words: slightly ×1, better ×2, a lot ×3, greatly ×4. The kind counts most: an agate rarely takes strong magic, a diamond often. Rough gems work too, as a crude cut. From tower level 3 the wizard rolls twice and keeps the better.')));
-      for (const sc of M.schools) {
-        const fx = M.effects.filter((e) => e.school === sc.id).map((e) => e.name).join(', ');
-        parts.push(choice(st.mat === sc.id, [img(S.sprite('gem_' + sc.id)), ' ', sc.name], fx, () => { st.mat = sc.id; }));
-      }
-      const gems = [...gemsInStock(), ...gemsInStock(true)];
-      parts.push(h('h3', null, 'Which gem?'));
-      parts.push(choice(st.itype == null, 'The best I have', 'the cut gem that takes magic best, then rough gems', () => { st.itype = null; }));
-      for (const k of gems.slice(0, 12)) {
-        const ch = wordChances(gemGradeOf(k));
-        parts.push(choice(st.itype === k, [goodIcon(k), ' ', goodName(k)], `${stock(k)} · ${G.data.gems.tiers[gemKind(k).tier]} · a lot or better ${Math.round((ch[2] + ch[3]) * 100)}%`, () => { st.itype = k; }));
-      }
-      if (!gems.length) parts.push(h('p', { class: 'small warn-t' }, 'No gems yet. Miners find rough gems; the jeweler cuts them for stronger magic.'));
-    } else if (b.type === 'tailor') {
-      parts.push(h('div', { class: 'row' }, ['weave', 'sew'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'weave' ? 'Weave cloth' : 'Sew clothes'))));
-      if (st.recipe === 'weave') parts.push(h('p', null, goodIcon('food'), ' 3 mushrooms → ', goodIcon('cloth'), ` 2 cloth. You have ${stock('cloth')} cloth.`));
-      else {
-        parts.push(h('div', { class: 'row' }, G.data.clothes.filter((c) => c.cloth > 0).map((c) => h('button', { class: 'btn small' + (st.itype === c.id ? ' primary' : ''), onclick: () => { st.itype = c.id; refreshSheet(); } },
-          goodIcon(`wear:${c.id}:${st.mat || 'cream'}`, 'icon s'), c.name))));
-        if (st.itype) {
-          const c = byId.clothes[st.itype];
-          parts.push(h('p', { class: 'small muted' }, `${c.cloth} cloth each. Pick a colour.`));
-          parts.push(h('div', { class: 'row' }, Object.keys(G.data.dyes).map((d) => h('button', { class: 'btn small' + (st.mat === d ? ' primary' : ''), onclick: () => { st.mat = d; refreshSheet(); } },
-            goodIcon(`wear:${c.id}:${d}`, 'icon s'), d[0].toUpperCase() + d.slice(1)))));
-        }
-      }
-    } else {
-      if (b.type === 'engraver') parts.push(h('div', { class: 'row' }, ['engrave', 'inlay'].map((r) => h('button', { class: 'btn small' + (st.recipe === r ? ' primary' : ''), onclick: () => { st.recipe = r; st.itype = null; st.mat = null; refreshSheet(); } }, r === 'engrave' ? 'Engrave' : 'Gold inlay'))));
-      if (st.recipe === 'cutgem') {
-        parts.push(h('p', null, goodIcon('rough_gem'), ' 1 rough gem → ', goodIcon('cut_gem'), ` 1 cut gem. You have ${stock('rough_gem')} rough gems. `,
-          info('The quality of the cut comes from the jeweler\'s crafting skill and the workshop level: crude, fair, fine, brilliant or flawless. It multiplies the gem\'s value and helps at the wizard\'s tower. The shape (rose, table, pear …) is chance; at the market one or two cuts are in fashion and sell dearer.')));
-        parts.push(choice(st.itype == null, 'The finest first', 'the most valuable rough gem goes first', () => { st.itype = null; }));
-        for (const k of gemsInStock(true).slice(0, 12))
-          parts.push(choice(st.itype === k, [goodIcon(k), ' ', goodName(k)], `${stock(k)} · ${G.data.gems.tiers[gemKind(k).tier]} · ~${moneyText(baseValue(k))}`, () => { st.itype = k; }));
-      }
-      else {
-        const mod = { sharpen: 's', engrave: 'e', inlay: 'i' }[st.recipe];
-        parts.push(h('p', { class: 'small muted' }, byId.mods[mod].name + ': ' + byId.mods[mod].note + (mod === 'i' ? '' : `. Worth ×${byId.mods[mod].mult}`) + '. The best matching piece is picked first.'));
-        parts.push(h('div', { class: 'row' }, G.data.items.filter((t) => t.mods.includes(mod)).map((t) => h('button', { class: 'btn small' + (st.itype === t.id ? ' primary' : ''), onclick: () => { st.itype = t.id; refreshSheet(); } }, t.name))));
-        if (st.itype) {
-          const have = Object.entries(f.stock).filter(([k, v]) => v > 0 && isItem(k) && parseItem(k).type === st.itype && !parseItem(k).mods.includes(mod));
-          const mats = [...new Set(have.map(([k]) => parseItem(k).metal))];
-          parts.push(choice(st.mat == null, 'Any metal', `${have.reduce((s, [, v]) => s + v, 0)} in stock`, () => { st.mat = null; }));
-          for (const m of mats) parts.push(choice(st.mat === m, [img(S.item(st.itype, m)), ' ', byId.metals[m].name], '', () => { st.mat = m; }));
-        }
-      }
-    }
-    const ins = orderInputs(st);
-    if (ins) {
-      const can = Math.min(...Object.entries(ins).map(([k, v]) => Math.floor(stock(k) / v)));
-      parts.push(h('div', { class: 'card sub', style: { marginTop: '10px' } },
-        h('div', { class: 'small muted' }, 'Each one needs'), inputChips(ins),
-        h('div', { class: 'small ' + (can > 0 ? 'good-t' : 'bad-t') }, can > 0 ? `You have enough for ${fmt(can)}.` : 'You have not got enough yet - the order waits until you do.')));
-    }
-    parts.push(h('h3', null, 'How many?'), h('div', { class: 'row' }, COUNTS.map((c) => h('button', { class: 'btn small' + (st.count === c && !st.keep ? ' primary' : ''), onclick: () => { st.count = c; st.keep = 0; refreshSheet(); } }, c === -1 ? 'Forever' : c))));
-    parts.push(h('h3', null, 'Or keep in stock ', info('The workshop only works on this order while the warehouse has fewer than this many. Good for pickaxes, bars and chains that other workshops need.')),
-      b.level >= 2 ? h('div', { class: 'row' }, KEEPS.map((c) => h('button', { class: 'btn small' + (st.keep === c ? ' primary' : ''), onclick: () => { st.keep = c; st.count = -1; refreshSheet(); } }, 'Keep ' + c)))
-        : h('p', { class: 'small muted' }, 'Upgrade the workshop to level 2 to keep goods in stock.'));
-    const ready = st.recipe === 'cutgem' || (st.recipe === 'enchant' && st.mat) || st.recipe === 'weave' || (st.recipe === 'sew' && st.itype && st.mat) || (['smelt', 'alloy'].includes(st.recipe) && st.mat) || (st.itype && (st.recipe !== 'craft' || st.mat));
-    parts.push(h('button', { class: 'btn big primary', style: { marginTop: '12px' }, disabled: !ready, onclick: send }, 'Add to queue'));
-    return h('div', null, parts);
-  });
-}
-
-function orderInputs(st) {
-  if (st.recipe === 'smelt' && st.mat) return { [st.mat]: 2, coal: 1 };
-  if (st.recipe === 'alloy' && st.mat) {
-    const a = byId.alloys[st.mat], o = {};
-    for (const [k, v] of Object.entries(a.inputs)) o['bar:' + k] = v;
-    o.coal = 1;
-    if (a.flux) o.limestone = 1;
-    return o;
-  }
-  if (st.recipe === 'craft' && st.itype && st.mat) return { ['bar:' + st.mat]: byId.items[st.itype].bars, coal: 1 };
-  if (st.recipe === 'assemble' && st.itype && st.mat) {
-    const o = { ['bar:' + st.mat]: byId.items[st.itype].bars };
-    for (const [k, v] of Object.entries(G.data.parts[st.itype])) o[k] = (o[k] || 0) + v;
-    o.coal = (o.coal || 0) + 1;
-    return o;
-  }
-  if (st.recipe === 'gears') return { 'bar:brass': 2 };
-  if (st.recipe === 'inlay' && st.itype) return { ['bar:' + G.data.inlay.metal]: G.data.inlay.bars };
-  if (st.recipe === 'cutgem') return { [st.itype || 'rough_gem']: 1 };
-  if (st.recipe === 'weave') return { food: 3 };
-  if (st.recipe === 'sew' && st.itype) return { cloth: byId.clothes[st.itype].cloth };
-  if (st.recipe === 'enchant') return { [st.itype || (stock('cut_gem') > 0 || stock('rough_gem') === 0 ? 'cut_gem' : 'rough_gem')]: 1 };
-  return null;
-}
-
-function fits(t, m) {
-  if (t.rule === 'hard') return m.hardness >= 3 && m.id !== 'pig_iron';
-  if (t.rule === 'tool') return m.hardness >= 2 && !m.precious && m.id !== 'pig_iron';
-  if (t.rule === 'precious') return m.precious;
-  if (t.rule === 'pewter') return m.id.endsWith('_pewter');
-  if (t.rule.startsWith('only:')) return m.id === t.rule.slice(5);
-  return true;
-}
-
+export { orderSheet };
 export { api };

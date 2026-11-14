@@ -294,3 +294,11 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Schritt 4: Ruf, Aufträge, Nachfrage alle 12 h mit Vorschau, Münze im Tresor. Aufnahme je Fach über Ruf
       (Marktmacht); die Feineinstellung „eine Ware höchstens ein Viertel des Einkommens“ kommt mit dem Balance-Bot.
 - [x] Schritt 6: Ränge mit Spezialisierungen, Lehre, Üben, Wünsche der Zwerge.
+
+## Aufträge in den Werkstätten
+
+- [x] Neue Aufträge aus einer Liste: alles, was die Werkstatt kann, herstellbar zuerst, sonst ausgegraut; Zutaten mit Symbol und Bestand in Klammern (ab 100 „>99“).
+- [x] Rezept auf Pergament (Sepia-Symbole, Tusche-Pfeil): wie oft, Forever, aufklappbar Bedingungen (WENN … UND … DANN N, AUSSER mehr als M).
+- [x] Eigene Pixel-Knöpfe je Werkstatt (Ziegel, Schwarzeisen, Granit, Grünspan, Samt, Nachtblau, Bronze, Leinen).
+- [ ] Bedingungen auch für Stücke (z. B. „wenn 5 Spitzhacken im Lager“), bisher nur Erze, Barren und Rohwaren.
+- [ ] Bestehende Aufträge im Pergament bearbeiten statt löschen und neu anlegen.

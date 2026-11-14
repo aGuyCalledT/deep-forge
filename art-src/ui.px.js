@@ -232,3 +232,47 @@ for (const [name, keys] of Object.entries(PLATES)) {
   sprite("btn_" + name, { mx: true }, map(PLATE));
   sprite("btn_" + name + "_down", { mx: true }, map(PLATE_DOWN));
 }
+
+// Workshop plates (28 x 21, slice 7 8 7 8): each workshop has its own material and a small mark in the corners.
+// The corners (8 x 7) carry the mark, the flat middle stretches. a = mark dark, b = mark light.
+const wide = (g) => g.split("\n").map((r) => (r.trim() ? r + r.trim().slice(-1).repeat(2) : r)).join("\n");
+const MARKS = {
+  rivet: [[4, 4, "b"], [5, 4, "a"], [4, 5, "a"], [5, 5, "a"]],
+  star: [[5, 3, "a"], [4, 4, "a"], [5, 4, "b"], [6, 4, "a"], [5, 5, "a"]],
+  spark: [[4, 3, "a"], [6, 3, "a"], [5, 4, "b"], [4, 5, "a"], [6, 5, "a"]],
+  gem: [[5, 3, "b"], [4, 4, "a"], [5, 4, "b"], [6, 4, "a"], [5, 5, "a"]],
+  gear: [[4, 3, "b"], [5, 3, "a"], [6, 3, "a"], [4, 4, "a"], [6, 4, "a"], [4, 5, "a"], [5, 5, "a"], [6, 5, "a"]],
+  rune: [[4, 3, "a"], [4, 4, "a"], [4, 5, "a"], [5, 3, "b"], [6, 4, "a"], [5, 4, "a"]],
+  stitch: [[4, 3, "a"], [6, 3, "a"], [5, 4, "b"], [4, 5, "a"], [6, 5, "a"]],
+};
+// keys: H L B D E (plate), mark, a b (mark colours)
+const WS_PLATES = {
+  smelter: ["ZzQqs", "rivet", "Fy"],       // fire brick, embers for rivets
+  forge: ["5421s", "rivet", "57"],         // blackened iron, bright steel rivets
+  grindstone: ["}{][(", "spark", "y0"],    // granite, sparks off the wheel
+  engraver: ["HhGgk", "rune", "oj"],       // verdigris copper, a gold rune
+  jeweler: ["8jpq/", "gem", "&*"],         // velvet in a gold rim, a ruby
+  wizard: ["Nnb1s", "star", "j0"],         // night blue, a star
+  mechanic: ["@^~vw", "gear", "57"],       // bronze, a steel cog
+  tailor: ["CcUuV", "stitch", "fF"],       // linen, a red cross-stitch
+};
+for (const [ws, [keys, mark, ab]] of Object.entries(WS_PLATES)) {
+  const map = (g) => wide(g).replace(/[HLBDE]/g, (ch) => keys["HLBDE".indexOf(ch)]);
+  const marks = (dy) => (c) => {
+    for (const [x, y, k] of MARKS[mark]) {
+      const col = ab[k === "a" ? 0 : 1];
+      c.px(x, y + dy, col); c.px(27 - x, y + dy, col);              // top corners
+      c.px(x, 11 + y + dy, col); c.px(27 - x, 11 + y + dy, col);    // bottom corners (rows 14..17)
+    }
+  };
+  sprite("wsbtn_" + ws, { mx: true }, map(PLATE), marks(0));
+  sprite("wsbtn_" + ws + "_down", { mx: true }, map(PLATE_DOWN), marks(1));
+}
+
+// An ink arrow for recipes on parchment (24 x 12): a brush stroke with a barbed head.
+sprite("ui_arrow", { w: 24, h: 12 }, (c) => {
+  c.hline(1, 5, 17, "w"); c.hline(2, 6, 16, "w"); c.hline(3, 7, 13, "W");
+  c.px(0, 6, "W"); c.px(18, 7, "W");
+  c.line(14, 1, 22, 6, "w", 2); c.line(14, 11, 22, 6, "w", 2);
+  c.px(13, 0, "W"); c.px(13, 11, "W");
+});

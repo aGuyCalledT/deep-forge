@@ -351,6 +351,36 @@ class SimTest {
     }
 
     @Test
+    void ordersUnderConditionsWaitAndStopWhenThereIsPlenty() {
+        Fortress f = fresh(32);
+        Market m = Market.inMemory(32, T0);
+        Building sm = Rules.building(f, "smelter-1");
+        sm.queue.clear();
+        f.stock.put("bar:tin", 20);
+        f.stock.put("bar:copper", 0);
+        f.stock.put("coal", 30);
+        assertThrows(RuntimeException.class, () -> act(f, m, T0, "type", "queueAdd", "building", "smelter-1", "recipe", "alloy", "mat", "bronze",
+                "when", Map.of("bar:copper", 12), "batch", 1, "over", 3), "conditions need level 2");
+        sm.level = 2;
+        act(f, m, T0, "type", "queueAdd", "building", "smelter-1", "recipe", "alloy", "mat", "bronze",
+                "when", Map.of("bar:copper", 12), "batch", 1, "over", 3);
+        QueueEntry e = sm.queue.get(0);
+        assertEquals(-1, e.remaining);
+        assertEquals(4, e.keep);
+        Sim.advance(f, T0 + 3600, m);
+        assertEquals(0, f.stock.getOrDefault("bar:bronze", 0), "nothing while the condition does not hold");
+        assertEquals("cond", Recipes.waits(f, e));
+        f.stock.put("bar:copper", 40);
+        Sim.advance(f, T0 + 4 * 3600, m);
+        int bronze = f.stock.getOrDefault("bar:bronze", 0);
+        assertTrue(bronze >= 4 && bronze < 4 + Content.ALLOYS.get("bronze").out(), "stops once there are more than 3: " + bronze);
+        assertEquals(1, sm.queue.size(), "a standing order stays");
+        assertEquals("full", Recipes.waits(f, e));
+        assertThrows(RuntimeException.class, () -> act(f, m, T0 + 4 * 3600, "type", "queueAdd", "building", "smelter-1", "recipe", "alloy", "mat", "bronze",
+                "when", Map.of("nonsense", 3)));
+    }
+
+    @Test
     void newHoldsHaveAPlanWithEveryRoom() {
         Fortress f = fresh(41);
         for (Building b : f.buildings)

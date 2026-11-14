@@ -653,9 +653,26 @@ public final class Actions {
         e.remaining = num(a, "count", -1);
         check(e.remaining == -1 || (e.remaining > 0 && e.remaining <= 999), "Count must be 1-999 or forever.");
         e.keep = num(a, "keep", 0);
-        check(e.keep >= 0 && e.keep <= 999, "Keep 1-999 in stock.");
-        check(e.keep == 0 || b.level >= KEEP_LEVEL, "Upgrade the workshop to level " + KEEP_LEVEL + " to keep goods in stock.");
-        if (e.keep > 0) e.remaining = -1;
+        int over = num(a, "over", 0);                 // "unless more than <over> in stock" = keep over + 1
+        check(over >= 0 && over <= 9999, "Unless more than 1-9999.");
+        if (over > 0) e.keep = over + 1;
+        check(e.keep >= 0 && e.keep <= 10000, "Keep 1-9999 in stock.");
+        if (a.get("when") instanceof Map<?, ?> w) {
+            check(w.size() <= 3, "Three conditions at most.");
+            for (Map.Entry<?, ?> c : w.entrySet()) {
+                String k = String.valueOf(c.getKey());
+                check(Recipes.conditionKey(k), "Choose goods for the condition.");
+                int v = c.getValue() instanceof Number n ? n.intValue() : -1;
+                check(v >= 1 && v <= 9999, "A condition needs 1-9999.");
+                e.when.put(k, v);
+            }
+        }
+        e.batch = num(a, "batch", 0);
+        check(e.batch >= 0 && e.batch <= 999, "Make 1-999 each time.");
+        boolean rule = e.keep > 0 || !e.when.isEmpty();
+        check(!rule || b.level >= KEEP_LEVEL, "Upgrade the workshop to level " + KEEP_LEVEL + " for conditions.");
+        if (rule) e.remaining = -1;
+        if (e.when.isEmpty()) e.batch = 0;
         String err = Recipes.validate(f, b, e);
         check(err == null, err);
         e.id = f.nextId++;
