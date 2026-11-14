@@ -19,7 +19,8 @@ Ersatz-Sound oder gar nichts. So kann jeder Platzhalter jetzt schon im Code steh
   neue Stimmung („war“) wird automatisch erkannt, gespielt wird sie im Automatik-Modus aber erst, wenn ein Tab sie
   in `MOOD` (`main.js`) bekommt.
 - Für das Spiel bitte MP3 oder OGG verwenden: WAV ist rund achtmal so groß. Die WAV-Originale liegen in
-  `audio-src/music/` und gehören nicht ins Spiel.
+  `audio-src/music/` und gehören nicht ins Spiel. Schleifen besser als OGG: MP3 hat am Anfang eine kurze Stille,
+  die man beim Wiederholen hört.
 - Musik und Lautstärke stellt jeder Spieler über den Musik-Knopf oben rechts ein (oder unter More → Settings).
   Taste **M** schaltet alles stumm. Die Einstellung merkt sich der Browser.
 
@@ -29,29 +30,36 @@ Ersatz-Sound oder gar nichts. So kann jeder Platzhalter jetzt schon im Code steh
 |---|---|---|
 | `click` | `click` | Tab wechseln, kleine Knöpfe |
 | `open` / `close` | `pop` / `pop2` | Fenster auf/zu, Auftrag dazu/weg |
-| `build` | **`build`** (fehlt, sonst `anvil-hit`) | Bauen, Ausbauen, Schicht öffnen |
-| `levelup` | **`level-up`** (fehlt, sonst `fanfare`) | Festungsstufe |
+| `build` | `build` | Bauen, Ausbauen, Schicht öffnen |
+| `levelup` | `level-up` | Festungsstufe |
 | `fanfare` | `fanfare` | Meisterwerk, Expedition zurück, neue Schicht |
 | `chime` | `table-chime` | Stück in Fine oder besser am Amboss, Tradition gekauft |
-| `coins` | **`coins`** (fehlt, sonst `table-chime`) | Karawane zurück, Beute eingesammelt |
-| `collect` | **`collect`** (fehlt, sonst `fanfare`) | „Collect“ gedrückt: die Beute fliegt ins Lager |
+| `coinsLittle`, `coinsMedium`, `coinsMuch` | `coins-little`, `-medium`, `-much` | Geld kommt herein (Beute eingesammelt, Karawane zurück, Verkauf am Tor, an die besuchende Karawane, Auftrag geliefert). Welcher spielt, hängt davon ab, was der Betrag für diesen Spieler ist: verglichen mit seinem Einkommen pro Stunde (`Stats.incomeRate`, gleitender Schnitt über etwa einen Tag, `Sim.income`), unter einer halben Stunde wenig, unter drei Stunden mittel, sonst viel (`A.coins(betrag, rate)`) |
+| `collect` | `collect` | „Collect“ gedrückt: die Beute fliegt ins Lager |
 | `bell` | `bell2` | Zuwanderer |
 | `alarm` | `bell` | Vorräte leer |
-| `horn` | **`goblin-horn`** (fehlt, sonst `bell`) | Überfall angekündigt |
-| `monster` | **`monster-roar`** (fehlt, sonst `heavy-sword-parry`) | Monster in der Mine |
-| `death` | **`death-toll`** (fehlt, still) | ein Zwerg stirbt, Expedition verloren |
-| `cheer` | **`dwarf-cheer`** (fehlt, still) | Kampf gewonnen |
-| `defeat` | **`defeat`** (fehlt, sonst `heavy-sword-armor-hit`) | Kampf verloren |
-| `door` | **`door-creak`** (fehlt, still) | noch nicht benutzt |
+| `horn` | `goblin-horn` | Überfall angekündigt |
+| `monster` | `monster-roar` | Monster in der Mine |
+| `death` | `death-toll` | ein Zwerg stirbt, Expedition verloren |
+| `cheer` | `dwarf-cheer` | Kampf gewonnen |
+| `defeat` | `defeat` | Kampf verloren |
+| `doorOpen`, `doorClose` | `door-creak-open`, `door-creak-close` | Treppenhaus-Tür auf dem Bildschirm geht auf oder fällt zu (`doorSound` in `hold.js`), nur nah genug herangezoomt, höchstens alle 2,5 s |
+| `critter1`…`critter5` | `critter1`…`critter5` | ein Kriechtier in einer Höhle ist zu sehen: alle 15–45 s eins zufällig (`A.critter()`), und beim Anklicken |
+| `depotRule` | `depot-rule` | eine Depot-Regel löst aus |
+| `delivery` | `delivery` | Händler liefern eine Bestellung des Depots |
 | `ignite` | `igniting-fire` | erster Blasebalg-Stoß in kaltem Ofen |
-| `bellows` | **`bellows-puff`** (fehlt, still) | jeder Blasebalg-Stoß (Blasebalg-Spiel) |
-| `quench` | **`quench-hiss`** (fehlt, still) | Abschrecken am Amboss |
-| `anvil` | `anvil-hit` | Ersatz für `build` |
+| `bellows` | `bellows-puff` | jeder Blasebalg-Stoß (Blasebalg-Spiel) |
+| `quench` | `quench-hiss` | Abschrecken am Amboss |
+| `beat` | `forge-beat` | Takt-Klick auf jedem Schlag im Amboss-Spiel |
+| `anvilGood`, `anvilBad` | `anvil-good`, `anvil-bad` | Hammerschlag im Amboss-Spiel: gut oder besser / daneben |
+| `cart` | `cart-roll` | Minen-Screen: der volle Wagen rollt in den Tunnel |
+| `ore` | `ore-drop` | Minen-Screen: Erz fällt in den Wagen |
+| `anvil` | `anvil-hit` | Ersatz für `build`, `anvilGood`, `anvilBad` |
 | `pickaxe` | `pickaxe-hit` | Minen-Screen, solange gegraben wird |
-| `slosh` | **`barrel-slosh`** (fehlt, sonst `click`) | Fass geschüttelt (Brauerei-Spiel) |
-| `grind` | **`grind-scrape`** (fehlt, still) | Klinge in der grünen Zone (Schleifstein-Spiel) |
-| `rune` | **`rune-tap`** (fehlt, sonst `click`) | Rune getroffen (Graveur-Spiel) |
-| `shuttle` | **`shuttle-clack`** (fehlt, sonst `click`) | Schiffchen gefangen (Webstuhl-Spiel) |
+| `slosh` | `barrel-slosh` | Fass geschüttelt (Brauerei-Spiel) |
+| `grind` | `grind-scrape` | Klinge in der grünen Zone (Schleifstein-Spiel) |
+| `rune` | `rune-tap` | Rune getroffen (Graveur-Spiel) |
+| `shuttle` | `shuttle-clack` | Schiffchen gefangen (Webstuhl-Spiel) |
 | `moo` | `cow-moo` | ab und zu in der Pilzfarm. Frag nicht. |
 | `unsheathe` | `unsheathing-sword` | Zwerg wird Krieger, Kampfbeginn |
 | `unsheathe2` | `unsheathing-sword2` | Axt ausrüsten |
@@ -59,9 +67,9 @@ Ersatz-Sound oder gar nichts. So kann jeder Platzhalter jetzt schon im Code steh
 | `slash`, `slash2`, `slash3` | `sword-slash`, `medium-sword-slash`, `heavy-sword-slash` | Kämpfe |
 | `parry`, `parry2` | `sword-parry`, `heavy-sword-parry` | Kämpfe |
 | `hit`, `hit2` | `sword-armor-hit`, `heavy-sword-armor-hit` | Kämpfe |
-| `caravan` | **`caravan-depart`** (fehlt, sonst `bell2`) | Karawane bricht auf |
-| `expedition` | **`expedition-depart`** (fehlt, sonst `armored-march`) | Expedition bricht auf |
-| `error` | **`error`** (fehlt, still) | Aktion abgelehnt |
+| `caravan` | `caravan-depart` | Karawane bricht auf |
+| `expedition` | `expedition-depart` | Expedition bricht auf |
+| `error` | `error` | Aktion abgelehnt |
 
 Ein Kampf (Überfall, Monster, Belagerung) spielt eine kurze Folge aus Schwert-Sounds und am Ende `cheer` oder
 `defeat`.
@@ -73,12 +81,12 @@ Laufen in Schleife, solange der passende Screen offen ist.
 | Id | Datei | Wo |
 |---|---|---|
 | `forge` | `anvil-hit-continuous` | Werkstatt-Screen der Schmiede, solange geschmiedet wird |
-| `furnace` | **`furnace-roar`** (fehlt) | Schmelze in Betrieb |
-| `grindstone` | **`grindstone-loop`** (fehlt) | Schleifstein in Betrieb |
-| `brewing` | **`brewing-bubbles`** (fehlt) | Brauerei in Betrieb |
-| `mine` | **`mine-ambience`** (fehlt) | Minen-Screen |
-| `tavern` | **`tavern-ambience`** (fehlt) | Festungs-Screen und alle anderen Tabs |
-| `night` | **`night-ambience`** (fehlt) | wie `tavern`, zwischen 21 und 6 Uhr deutscher Zeit |
+| `furnace` | `furnace-roar` | Schmelze in Betrieb |
+| `grindstone` | `grindstone-loop` | Schleifstein in Betrieb |
+| `brewing` | `brewing-bubbles` | Brauerei in Betrieb |
+| `mine` | `mine-ambience` | Minen-Screen |
+| `tavern` | `tavern-ambience` | Festungs-Screen und alle anderen Tabs |
+| `night` | `night-ambience` | wie `tavern`, zwischen 21 und 6 Uhr deutscher Zeit |
 
 ## Platzhalter füllen
 

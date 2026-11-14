@@ -56,5 +56,5 @@ async function collect(r, btn) {
   });
   if (items.length && !reduce) card.classList.add('collected');
   await new Promise((res) => setTimeout(res, reduce || !items.length ? 0 : 650));
-  try { await bus.act({ type: 'collect', id: r.id }, true, true); A.sfx('coins'); } catch { btn.disabled = false; card.classList.remove('collected'); }
+  try { await bus.act({ type: 'collect', id: r.id }, true, true); A.coins(r.coins, F().stats.incomeRate); } catch { btn.disabled = false; card.classList.remove('collected'); }
 }

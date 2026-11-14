@@ -63,6 +63,17 @@ public final class Sim {
         Expeditions.step(f, r, t + dt);
         migrants(f, r, t + dt);
         Expeditions.refreshOffers(f, r, t + dt);
+        income(f, dt);
+    }
+
+    /** Average income per hour over about a day; the client picks a small, medium or big coin sound by it. */
+    static void income(Fortress f, double dt) {
+        State.Stats s = f.stats;
+        if (s.incomeSeen < 0) s.incomeSeen = s.coinsEarned;
+        double got = s.coinsEarned - s.incomeSeen;
+        s.incomeSeen = s.coinsEarned;
+        double k = 1 - Math.exp(-dt / (24 * H));
+        s.incomeRate += (got / (dt / H) - s.incomeRate) * k;
     }
 
     // ------------------------------------------------------------ needs & mood

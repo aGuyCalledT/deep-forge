@@ -104,7 +104,7 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
   Wurzeln, nach 12 h ziehen Kriechtiere ein.
 - [ ] Graben geht nur von einem offenen Ende aus, eine Zelle nach der anderen. Mehrere Bergarbeiter helfen erst, wenn
   mehrere Enden offen sind. Vielleicht später: zwei Zwerge an einer Zelle.
-- [ ] Kriechtiere haben noch keine eigenen kleinen Sprites (es sind die Minen-Monster) und keine eigenen Sounds.
+- [ ] Kriechtiere haben noch keine eigenen kleinen Sprites (es sind die Minen-Monster); Sounds `critter1–5` sind da.
 - [ ] Der freie Streifen rechts in jedem Raum (früher für die Hintertür) könnte wegfallen; dann würden alle Räume
   eine Zelle schmaler.
 - [x] Die Leitern im Schacht sind weg: der Schacht ist auf jeder Etage ein Treppenhaus (Bogen, Gleise, gekreuzte
@@ -148,7 +148,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] **Schwankende Preise** um einen Grundwert (10 %–1000 %), Handel bewegt Stadt und Welt nach Marktanteil.
 - [x] **Geld:** Gold Marks, Silver Talents, Copper Jots mit eigenen Münz-Symbolen; alte Spielstände umgerechnet.
 - [ ] Hinweis-Chip, wenn eine Regel pausiert oder ein Kauf-Auftrag mangels Geld nicht ausgeführt wird.
-- [ ] Sounds für Depot-Regel ausgelöst und Lieferung angekommen (`docs/AUDIO.md`).
+- [x] Sounds für Depot-Regel ausgelöst und Lieferung angekommen (`docs/AUDIO.md`).
 - [ ] Balancing der Marktmacht nach einigen Tagen echtem Spiel prüfen.
 
 ## Status und Tal
@@ -221,7 +221,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Minen-Screen neu im 48-px-Stil (`scene/mine.js`): eine Szene je Schicht, Erzwagen, Grubenhelm.
 - [x] Login-Bild (`scene/login.js`) aus der Tavernen-Vorlage mit Gästen; alte 24-px-Grafik entfernt.
 - [ ] Mine: Wachen und Monster nur einfach gezeigt (Monster läuft hin und her, Bergleute warten am Wagen); Kampf nicht zu sehen.
-- [ ] Mine: Wagen hat noch keinen Sound (Rollen, Erz fällt hinein).
+- [x] Mine: Wagen rollt und Erz fällt hinein (`cart-roll`, `ore-drop`).
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
 - [ ] Später: Möbel verschiebbar, Katalog in `Content.java`, Platzierungen in `State.java`.
 - [ ] Kleinigkeiten: Fächer-Muster im Fels glätten, größere Scheren der Magmakrabbe, zweiter Arm des Ogers,
@@ -258,7 +258,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Tempo, goldene Mitte); Ergebnis mit Qualitätsleiste.
 - [x] Qualitäten Crude, Normal, Fine, Exceptional, Masterwork, Artifact; Artefakte bekommen vom Spieler einen Namen.
 - [x] Waren im Lager als Stapel („Gold goblets“), aufgeklappt nach Wert sortiert mit Qualität.
-- [ ] Eigene Sounds: Takt-Klick, Hammerschlag je Wertung, `quench-hiss` fehlt noch.
+- [x] Eigene Sounds: Takt-Klick, Hammerschlag je Wertung, `quench-hiss`.
 - [ ] Eigener Hammer im Zwergen-Satz statt des im Screen gezeichneten.
 - [ ] Artefakte ausrüsten (heute nur Wert, Stimmung und Verkauf).
 
@@ -270,7 +270,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Alle heizen den Raum (Aktion `boost`, bis ×2).
 - [x] Pilzfarm: Dünger streuen (Aktion `fertilize`, bis +60 % für 2 h). Mine: Ader mit Ausdauerleiste freischlagen
       (Aktion `vein`, alle 20 min je Schicht), Knopf „Vein“ im Minen-Screen und im Minen-Tab.
-- [ ] Eigene Sounds: `bellows-puff`, `barrel-slosh`, `grind-scrape`, `rune-tap`, `shuttle-clack` fehlen.
+- [x] Eigene Sounds: `bellows-puff`, `barrel-slosh`, `grind-scrape`, `rune-tap`, `shuttle-clack`.
 - [ ] Werkstätten außer der Schmelze in der Festung direkt anklicken (heute über den Knopf im Raumfenster).
 - [ ] Nahaufnahmen als Sprites (Edelstein, Runenplatte, Kettfäden sind im Screen gezeichnet).
 

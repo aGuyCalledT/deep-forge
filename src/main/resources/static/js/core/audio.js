@@ -19,24 +19,39 @@ export const SFX = {
   levelup: { file: 'level-up', vol: 0.6, fallback: 'fanfare' },
   fanfare: { file: 'fanfare', vol: 0.5 },
   chime: { file: 'table-chime', vol: 0.5 },
-  coins: { file: 'coins', vol: 0.55, fallback: 'chime' },
+  coinsLittle: { file: 'coins-little', vol: 0.5, fallback: 'chime', max: 2 },
+  coinsMedium: { file: 'coins-medium', vol: 0.55, fallback: 'chime' },
+  coinsMuch: { file: 'coins-much', vol: 0.6, fallback: 'chime' },
   collect: { file: 'collect', vol: 0.6, fallback: 'fanfare' },
   bell: { file: 'bell2', vol: 0.5 },
   alarm: { file: 'bell', vol: 0.6 },
   death: { file: 'death-toll', vol: 0.6, fallback: null },
   cheer: { file: 'dwarf-cheer', vol: 0.5, fallback: null },
-  door: { file: 'door-creak', vol: 0.5, fallback: null },
+  doorOpen: { file: 'door-creak-open', vol: 0.25, fallback: null, cooldown: 2500 },
+  doorClose: { file: 'door-creak-close', vol: 0.25, fallback: null, cooldown: 2500 },
+  depotRule: { file: 'depot-rule', vol: 0.45, fallback: null },
+  delivery: { file: 'delivery', vol: 0.5, fallback: 'chime' },
   // workshops
   anvil: { file: 'anvil-hit', vol: 0.45, cooldown: 300 },
   ignite: { file: 'igniting-fire', vol: 0.45, cooldown: 4000, max: 2.5 },
   bellows: { file: 'bellows-puff', vol: 0.4, fallback: null, cooldown: 90 },
   quench: { file: 'quench-hiss', vol: 0.55, fallback: null },
+  beat: { file: 'forge-beat', vol: 0.35, fallback: 'click', cooldown: 30 },
+  anvilGood: { file: 'anvil-good', vol: 0.5, fallback: 'anvil', cooldown: 30 },
+  anvilBad: { file: 'anvil-bad', vol: 0.45, fallback: 'anvil', cooldown: 30 },
+  cart: { file: 'cart-roll', vol: 0.45, fallback: null, max: 5 },
+  ore: { file: 'ore-drop', vol: 0.35, fallback: null, cooldown: 1500, max: 2.5 },
   pickaxe: { file: 'pickaxe-hit', vol: 0.3, cooldown: 400 },
   slosh: { file: 'barrel-slosh', vol: 0.4, fallback: 'click', cooldown: 120 },
   grind: { file: 'grind-scrape', vol: 0.3, fallback: null, cooldown: 600 },
   rune: { file: 'rune-tap', vol: 0.4, fallback: 'click' },
   shuttle: { file: 'shuttle-clack', vol: 0.4, fallback: 'click' },
   moo: { file: 'cow-moo', vol: 0.35, cooldown: 30000 },
+  critter1: { file: 'critter1', vol: 0.3, fallback: null },
+  critter2: { file: 'critter2', vol: 0.3, fallback: null },
+  critter3: { file: 'critter3', vol: 0.3, fallback: null },
+  critter4: { file: 'critter4', vol: 0.3, fallback: null },
+  critter5: { file: 'critter5', vol: 0.3, fallback: null },
   // war
   unsheathe: { file: 'unsheathing-sword', vol: 0.45 },
   unsheathe2: { file: 'unsheathing-sword2', vol: 0.45 },
@@ -162,6 +177,17 @@ export function sfx(id, opts = {}) {
 export function sequence(ids, gap = 240) {
   ids.forEach((id, i) => setTimeout(() => sfx(id, { vol: 0.9 }), i * gap + Math.random() * 60));
 }
+
+/** Coins coming in: a small, medium or big sound by how much that is for this player
+ *  (rate = their average income per hour, Stats.incomeRate from the server). */
+export function coins(amount, rate) {
+  if (!(amount > 0)) return;
+  const x = amount / Math.max(rate || 0, 1000);   // at least 1 Mark an hour
+  sfx(x < 0.5 ? 'coinsLittle' : x < 3 ? 'coinsMedium' : 'coinsMuch');
+}
+
+/** One of the critter noises, at random. */
+export function critter(opts) { sfx('critter' + (1 + Math.floor(Math.random() * 5)), opts); }
 
 export function battle(win) {
   const pick = (l) => l[Math.floor(Math.random() * l.length)];

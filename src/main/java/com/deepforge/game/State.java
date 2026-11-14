@@ -151,6 +151,8 @@ public final class State {
 
     public static class Stats {
         public double coinsEarned;
+        public double incomeRate;          // coins earned per hour, averaged over about a day (for the coin sounds)
+        public double incomeSeen = -1;     // coinsEarned when incomeRate was last updated, -1 = not yet
         public int itemsCrafted;
         public int masterworks;
         public int expeditions;

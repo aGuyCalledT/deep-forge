@@ -7,6 +7,7 @@
 import { G, F, D, byId } from '../core/data.js';
 import * as S from '../art/sprites.js';
 import * as Art from '../art/scene.js';
+import * as A from '../core/audio.js';
 import * as DW from '../art/dwarves.js';
 import { sign, text } from '../art/pixfont.js';
 import { look48, ramp } from './hold.js';
@@ -124,9 +125,11 @@ const carts = new Map();   // layer -> {sent, ore, anim: start (performance seco
 function cartState(i, ls, size, tNow) {
   let c = carts.get(i);
   const ore = topOre(ls.cart);
-  if (!c) { c = { sent: ls.cartSent, ore: ore || 'native_copper', anim: null }; carts.set(i, c); }
-  if (ls.cartSent && ls.cartSent !== c.sent) { c.sent = ls.cartSent; c.anim = tNow; }   // a full cart just left
   const total = Object.values(ls.cart || {}).reduce((s, v) => s + v, 0);
+  if (!c) { c = { sent: ls.cartSent, ore: ore || 'native_copper', anim: null, total }; carts.set(i, c); }
+  if (ls.cartSent && ls.cartSent !== c.sent) { c.sent = ls.cartSent; c.anim = tNow; A.sfx('cart'); }   // a full cart just left
+  else if (total > c.total) A.sfx('ore');                                                                // more ore tipped in
+  c.total = total;
   const fill = total >= size ? 4 : total <= 0 ? 0 : Math.min(3, 1 + Math.floor(total / size * 3));
   let x = CART, frame = fill, alpha = 1, heap = ore || c.ore;
   if (c.anim != null) {

@@ -135,9 +135,9 @@ function tap(t) {
     let best = null;
     for (const b of game.beats) if (b.score == null && Math.abs(b.t - t) < 0.4 && (!best || Math.abs(b.t - t) < Math.abs(best.t - t))) best = b;
     game.strikes++;
-    if (!best) { game.strays++; say('MISS', '#c9715a'); return; }
+    if (!best) { game.strays++; A.sfx('anvilBad'); say('MISS', '#c9715a'); return; }
     best.score = strikeScore(t - best.t);
-    A.sfx('anvil');
+    A.sfx(best.score >= 0.6 ? 'anvilGood' : 'anvilBad');
     sparks(ANVIL.x + 4, ANVIL.y - 27, 6 + Math.round(best.score * 10));
     say(word(best.score), best.score >= 0.9 ? '#ffe38a' : best.score >= 0.6 ? '#e9d7b0' : '#c9a27a');
   } else if (game.phase === 'quench') {
@@ -278,7 +278,12 @@ function loop(ms) {
   raf = requestAnimationFrame(loop);
   if (!ctx) return;
   const t = ms / 1000;
-  if (game && game.phase === 'forge' && performance.now() / 1000 > game.end) startQuench();
+  if (game && game.phase === 'forge') {
+    // a dry tick on every beat, so the rhythm can be heard as well as seen
+    const nowS = performance.now() / 1000;
+    for (const b of game.beats) if (!b.ticked && nowS >= b.t) { b.ticked = true; if (nowS - b.t < 0.1) A.sfx('beat'); }
+    if (nowS > game.end) startQuench();
+  }
   if (game && game.phase === 'quench') stepQuench();
   draw(t);
   el.querySelectorAll('[data-left]').forEach((x) => { x.textContent = dur(Math.max(0, +x.dataset.left - now())); });

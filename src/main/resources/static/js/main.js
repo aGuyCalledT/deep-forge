@@ -52,8 +52,9 @@ function setState(s) {
 
 bus.act = async (action, quiet = false, rethrow = false) => {
   try {
+    const before = G.state ? F().coins : 0;
     const s = await api.action(action);
-    if (!quiet) soundForAction(action);
+    if (!quiet) soundForAction(action, s.fortress ? s.fortress.coins - before : 0);
     // bellows taps are frequent: skip the full re-render for them
     if (quiet) { G.state = s; G.offset = s.now - Date.now() / 1000; renderTop(); return s; }
     setState(s);
@@ -68,8 +69,9 @@ bus.act = async (action, quiet = false, rethrow = false) => {
 
 // ------------------------------------------------------------------ sounds
 
-function soundForAction(a) {
+function soundForAction(a, gained = 0) {
   switch (a.type) {
+    case 'quickSell': case 'sellVisitor': case 'fillContract': return A.coins(gained, F().stats.incomeRate);
     case 'assign': return A.sfx(a.job === 'warrior' ? 'unsheathe' : 'click');
     case 'build': case 'upgrade': case 'upgradeLayer': case 'unlockLayer': return A.sfx('build');
     case 'queueAdd': return A.sfx('open');
@@ -98,7 +100,9 @@ const LOG_SOUNDS = [
   [/Mining there has stopped/, () => A.sfx('monster')],
   [/ died: /, () => A.sfx('death')],
   [/lost with all hands/, () => A.sfx('death')],
-  [/Caravan back/, () => A.sfx('coins')],
+  [/Caravan back/, () => { const r = (F().reports || []).filter((x) => x.kind === 'caravan').pop(); A.coins(r ? r.coins : 0, F().stats.incomeRate); }],
+  [/Depot rule: /, () => A.sfx('depotRule')],
+  [/delivered \d+ |brought \d+ /, () => A.sfx('delivery')],
   [/expedition to .* returned/, () => A.sfx('fanfare')],
   [/are open!/, () => A.sfx('fanfare')],
   [/Migrants arrived/, () => A.sfx('bell')],
@@ -114,7 +118,7 @@ function soundsForLog(old, now) {
   const fresh = now.slice(i + 1).slice(-4);
   fresh.forEach((l, k) => {
     const hit = LOG_SOUNDS.find(([re]) => re.test(l.text));
-    if (hit) setTimeout(hit[1], k * 700);
+    if (hit) setTimeout(() => hit[1](l), k * 700);
   });
 }
 
@@ -401,7 +405,7 @@ function onPick(q, at) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
-  if (q.kind === 'tab') go(q.id, true);
+  if (q.kind === 'tab') { if (q.critter) A.critter(); go(q.id, true); }
 }
 
 // ------------------------------------------------------------------ toolbar over the hold

@@ -7,6 +7,7 @@ import * as Art from '../art/scene.js';
 import * as BD from '../art/backdrop.js';
 import * as R from '../art/rooms.js';
 import * as DW from '../art/dwarves.js';
+import * as A from '../core/audio.js';
 import { sun, daylight, skyColors, berlinHour } from '../core/sun.js';
 import { text, sign } from '../art/pixfont.js';
 
@@ -198,6 +199,14 @@ function doorFrame(w) {
   return dt < 70 ? 1 : dt < 140 ? 2 : dt < 760 ? 3 : dt < 880 ? 2 : 1;
 }
 
+/** Creak when a door on screen starts to open or falls shut; only when zoomed in enough to see it. */
+const doorWas = new Map();
+function doorSound(w, frame, onScreen) {
+  const k = wellKey(w), was = doorWas.get(k) || 0;
+  doorWas.set(k, frame);
+  if (!onScreen || view.w > 1400 || (was > 0) === (frame > 0)) return;
+  A.sfx(frame > 0 ? 'doorOpen' : 'doorClose');
+}
 
 function walkable(g, c, fl) {
   if (fl === -1) return c >= -VC && c < 0;
@@ -760,6 +769,7 @@ function drawUnderground(ctx, t, g, inRoom) {
   }
   for (const s of [...g.shafts, ...g.wells]) {
     const x0 = s.c * CELL, y0 = ftop(s.f), door = doorFrame(s);
+    doorSound(s, door, seen(x0, y0, 2 * CELL, RH));
     R.drawShell(ctx, s.tpl, x0, y0, 2 * CELL, x0);
     R.drawProps(ctx, s.tpl, x0, y0, t, { frameOf: (p) => (p.s.startsWith('stairdoor') ? door : null) });
   }
@@ -927,8 +937,15 @@ function drawCritters(ctx, t, g) {
     const k = (Math.sin(ph) + 1) / 2, face = Math.cos(ph) > 0 ? 1 : -1;
     const fr = Art.draw(ctx, cr.th.monster, Math.floor(t * 6), a * CELL + 24 + k * span, fy(cr.f), { flip: face < 0 });
     critterHits.push({ x: Math.round(a * CELL + 24 + k * span - fr.ax), y: Math.round(fy(cr.f) - fr.ay), w: fr.canvas.width, h: fr.canvas.height });
+    // now and then one of them chitters, if it is on screen
+    const nowMs = performance.now();
+    if (nowMs > nextCritter && seen(a * CELL, ftop(cr.f), (b - a + 1) * CELL, RH) && view.w < 2000) {
+      if (nextCritter) A.critter({ vol: 0.6 + Math.random() * 0.4 });
+      nextCritter = nowMs + 15000 + Math.random() * 30000;
+    }
   }
 }
+let nextCritter = 0;
 
 /** Lights of a room: its template's light spots; fires burn low while their machine stands still. */
 export function roomLights(r) {
@@ -1122,7 +1139,7 @@ export const holdScreen = {
       if (x >= d.sx && x < d.sx + d.spr.width && y >= d.sy && y < d.sy + d.spr.height && opaque(d.spr, x - d.sx, y - d.sy)) return { kind: 'dwarf', id: d.id, sprite: d.spr, sx: d.sx, sy: d.sy };
     }
     if (!G_) return null;
-    for (const c of critterHits) if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return { kind: 'tab', id: 'war', rect: [c.x, c.y, c.w, c.h], round: true };
+    for (const c of critterHits) if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return { kind: 'tab', id: 'war', critter: true, rect: [c.x, c.y, c.w, c.h], round: true };
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return machineHit(r, x, y) || { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
     const cell = cellAt(x, y);
     if (cell && cell.f < plan.floors) {
