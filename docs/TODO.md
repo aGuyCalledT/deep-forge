@@ -202,7 +202,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       gehauene Wand). Der Stil folgt der Eingangshalle (Stufe 1 Holz, 2 Stein, ab 3 prächtig, oder die gewählte Vorlage).
       Treppenhaus-Türen gehen auf, wenn jemand hinein- oder herauskommt.
 - [ ] Tor-Stufen haben noch kein eigenes Bild (nur Kohlebecken ab Stufe 3).
-- [ ] Stil der Gänge und Treppenhäuser einzeln wählbar machen (heute folgt er der Eingangshalle).
+- [x] Stil der Gänge und Treppenhäuser einzeln wählbar: Gang oder Treppenhaus anklicken, Look wählen (ein Gang ändert sich auf der ganzen Etage am Stück; „Like the hold“ folgt wieder der Eingangshalle). Aktion `wayLook`, `Layout.looks`.
 - [x] Minen-Screen neu im 48-px-Stil (`mine48.js`): eine Szene je Schicht, Erzwagen, Grubenhelm.
 - [ ] Login-Bild (`views.js`) noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
 - [ ] Mine: Wachen und Monster nur einfach gezeigt (Monster läuft hin und her, Bergleute warten am Wagen); Kampf nicht zu sehen.
@@ -302,3 +302,13 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Eigene Pixel-Knöpfe je Werkstatt (Ziegel, Schwarzeisen, Granit, Grünspan, Samt, Nachtblau, Bronze, Leinen).
 - [ ] Bedingungen auch für Stücke (z. B. „wenn 5 Spitzhacken im Lager“), bisher nur Erze, Barren und Rohwaren.
 - [ ] Bestehende Aufträge im Pergament bearbeiten statt löschen und neu anlegen.
+
+## Bauen
+
+- [x] Säule zwischen Räumen bleibt beim Öffnen der Tür ganz (nur die Türschwelle davor).
+- [x] Räume frei platzieren, auch auf Fels: Baumenü „Rooms“ (Bau-Modus und Hold-Tab) mit Bild jedes baubaren Raums,
+      nicht baubare ausgegraut, was fehlt steht auf dem Bild. Raum anklicken, Ort wählen: Fels darunter wird markiert,
+      die Bergarbeiter graben ihn aus, danach steht der Raum von selbst (`Layout.plans`, `Layouts.finishPlans`). Bezahlt
+      wird beim Platzieren, ein Plan lässt sich zurücknehmen (alles zurück).
+- [ ] Geplanten Raum verschieben, ohne ihn zurückzunehmen.
+- [ ] Beim Platzieren gleich einen Gang daneben mitplanen.

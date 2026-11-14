@@ -447,6 +447,72 @@ class SimTest {
         }
     }
 
+    @Test
+    void aRoomPlacedOnRockIsDugOutFirstAndThenStands() {
+        Fortress f = fresh(7);
+        Market m = Market.inMemory(7, T0);
+        f.coins = 1_000_000;
+        f.stock.put("stone", 500);
+        int w = Layouts.ROOM_CELLS.get("smelter");
+        int[] r = rock(f, w + 1);
+        int smelters = Rules.count(f, "smelter");
+        double coins = f.coins;
+        Rules.Cost c = Rules.buildCost(f, "smelter");
+        act(f, m, T0, "type", "build", "building", "smelter", "col", r[0], "floor", r[1]);
+        assertEquals(coins - c.coins(), f.coins, 1e-6, "paid when placed");
+        assertEquals(smelters, Rules.count(f, "smelter"), "not standing yet");
+        assertEquals(1, f.layout.plans.size());
+        for (int x = r[0]; x < r[0] + w; x++) assertTrue(f.layout.marks.contains(Layouts.key(x, r[1])), "rock is marked");
+        assertEquals(Rules.buildCost(f, "smelter").coins(), c.coins() * 2.2, 1, "a second plan costs like a second smelter");
+        // nothing else may go onto the planned ground
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "build", "building", "smelter", "col", r[0] + 1, "floor", r[1]));
+        Layouts.digAll(f, f.t);
+        Layouts.finishPlans(f, f.t);
+        assertTrue(f.layout.plans.isEmpty());
+        assertEquals(smelters + 1, Rules.count(f, "smelter"));
+        String id = f.layout.rooms.entrySet().stream().filter(e -> Arrays.equals(e.getValue(), new int[]{r[0], r[1]})).map(Map.Entry::getKey).findFirst().orElseThrow();
+        assertEquals("smelter", Rules.building(f, id).type);
+
+        // a room not built yet (level 0) can be planned too: it gets its level when it stands
+        Building vault = f.buildings.stream().filter(x -> x.type.equals("vault")).findFirst().orElseThrow();
+        assertEquals(0, vault.level);
+        int[] rv = rock(f, Layouts.ROOM_CELLS.get("vault") + 1);
+        act(f, m, T0, "type", "upgrade", "building", vault.id, "col", rv[0], "floor", rv[1]);
+        assertEquals(0, vault.level);
+        Layouts.digAll(f, f.t);
+        assertEquals(1, vault.level);
+        assertArrayEquals(new int[]{rv[0], rv[1]}, f.layout.rooms.get(vault.id));
+
+        // a plan taken back pays everything back
+        int[] r2 = rock(f, w + 1);
+        double before = f.coins;
+        int stone = f.stock.getOrDefault("stone", 0);
+        act(f, m, T0, "type", "build", "building", "smelter", "col", r2[0], "floor", r2[1]);
+        act(f, m, T0, "type", "cancelPlan", "plan", f.layout.plans.get(0).id);
+        assertEquals(before, f.coins, 1e-6);
+        assertEquals(stone, f.stock.getOrDefault("stone", 0));
+        assertFalse(f.layout.marks.contains(Layouts.key(r2[0], r2[1])));
+    }
+
+    @Test
+    void hallwaysAndStairwellsTakeALook() {
+        Fortress f = fresh(8);
+        Market m = Market.inMemory(8, T0);
+        f.coins = 1_000_000;
+        f.stock.put("stone", 500);
+        int[] r = rock(f, 6);
+        open(f, r[0], r[0] + 5, r[1]);
+        act(f, m, T0, "type", "hallMany", "cells", List.of(List.of(r[0], r[1]), List.of(r[0] + 1, r[1]), List.of(r[0] + 2, r[1])));
+        act(f, m, T0, "type", "stairwell", "col", r[0] + 3, "floor", r[1]);
+        act(f, m, T0, "type", "wayLook", "col", r[0] + 1, "floor", r[1], "look", "timber");
+        for (int x = r[0]; x < r[0] + 3; x++) assertEquals("timber", f.layout.looks.get(Layouts.key(x, r[1])), "the whole run");
+        act(f, m, T0, "type", "wayLook", "col", r[0] + 4, "floor", r[1], "look", "grand");
+        assertEquals("grand", f.layout.looks.get(Layouts.key(r[0] + 3, r[1])));
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "wayLook", "col", r[0] + 4, "floor", r[1], "look", "nope"));
+        act(f, m, T0, "type", "wayLook", "col", r[0], "floor", r[1], "look", "");
+        assertNull(f.layout.looks.get(Layouts.key(r[0] + 2, r[1])));
+    }
+
     /** Dig out every rock cell from column c0 to c1 on these floors, at once. */
     static void open(Fortress f, int c0, int c1, int... floors) {
         Layouts.ensure(f);

@@ -335,7 +335,7 @@ Masterwork 2, Artifact 3.
 
 - Aufwerten auf Stufe n: `Grundpreis × n² / 4` Jots und `Grundstein × n² / 4` Stein (`Rules.levelSquare`, Stufe 2 ×1,
   Stufe 5 ×6,25, Stufe 10 ×25; Stein nur zur Hälfte, `Rules.STONE_SHARE`), dazu `4 + 3 × Stufe` Barren (bis Stufe 3 Kupfer, 4–5 Bronze, 6–8 Eisen, ab 9 Stahl).
-- Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener Werkstatt dieser Art.
+- Weitere Werkstatt gleicher Art: Baupreis × 2,2 je vorhandener oder schon geplanter Werkstatt dieser Art (höchstens 6). Bezahlt wird beim Platzieren; ein zurückgenommener Plan zahlt alles zurück.
 - Schichten: Freischalten in Marks: Grey Veins 80 (+75 Stein), Silver Halls 400 (+150 Stein), Golden Deep 1 500 + Erkundung, Crystal Abyss 5 000 + Erkundung.
   Schicht ausbauen: `25 Marks × (Schicht + 1) × 1,6^(Stufe−1)`.
   Eine neue Schicht braucht nach dem Bezahlen Zeit, bis die Stollen offen sind (`Rules.LAYER_OPEN_HOURS`): Grey Veins 2 h,

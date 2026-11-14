@@ -218,6 +218,27 @@ public final class View {
         for (Content.BuildingType t : Content.BUILDINGS.values())
             if (t.multi()) build.put(t.id(), buildCost(f, t.id()));
         d.put("buildCosts", build);
+        // every room the player could put down now: new ones of a kind (multi) and rooms not built yet (level 0)
+        List<Map<String, Object>> toBuild = new ArrayList<>();
+        for (String type : Layouts.ROOM_CELLS.keySet()) {
+            Content.BuildingType t = Content.BUILDINGS.get(type);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("type", type);
+            m.put("name", t.name());
+            m.put("cells", Layouts.ROOM_CELLS.get(type));
+            if (t.multi()) {
+                m.put("cost", buildCost(f, type));
+                if (count(f, type) + planned(f, type) >= Actions.MAX_OF_A_KIND) m.put("why", "You have " + Actions.MAX_OF_A_KIND + " already");
+            } else {
+                Building b = f.buildings.stream().filter(x -> x.type.equals(type) && x.level == 0).findFirst().orElse(null);
+                if (b == null) continue;
+                m.put("building", b.id);
+                m.put("cost", upgradeCost(b));
+                if (f.layout.plans.stream().anyMatch(p -> b.id.equals(p.building))) m.put("why", "Planned already");
+            }
+            toBuild.add(m);
+        }
+        d.put("roomsToBuild", toBuild);
         d.put("layoutCosts", Map.of("hall", HALL_COST, "stairwell", STAIRWELL_COST, "move", MOVE_COST));
         List<Double> digTimes = new ArrayList<>();
         for (int fl = 0; fl < Layouts.FLOORS; fl++) digTimes.add(digSeconds(fl));

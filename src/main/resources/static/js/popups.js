@@ -1,5 +1,5 @@
 // Windows that open when you click something in the game: a room, a dwarf. Plus the cheat tools.
-import { G, F, D, byId, fmt, goodName, fullName, buildingName, jobLabel } from './data.js';
+import { G, F, D, byId, fmt, goodName, fullName, buildingName, jobLabel, moneyText } from './data.js';
 import { h, img, openSheet, refreshSheet, closeSheet, bus, ico, toast, info, frameDecor, slideIn, slideOut } from './ui.js';
 import * as S from './sprites.js';
 import { workCard } from './panels-work.js';
@@ -62,26 +62,80 @@ function lookRow(b) {
 
 /** Every look for the room's type with a picture of it: use one, change your own, copy any into the editor. */
 function openLooks(b0) {
+  const b = () => F().buildings.find((x) => x.id === b0.id) || b0;
+  lookList({
+    type: b0.type, title: () => 'Looks for ' + buildingName(b()), material: roomMaterial(b0.type), building: b0.id,
+    current: () => { const list = roomLooks(b0.type), l = b().look; return list.includes(l) ? l : list[0]; },
+    use: (n) => bus.act({ type: 'roomLook', building: b0.id, look: n }),
+  });
+}
+
+/** The look list of a room type: `o` = {type, title(), current(), use(name), material, building?, list?(), plain?}. */
+function lookList(o) {
   openSheet(() => {
-    const b = F().buildings.find((x) => x.id === b0.id) || b0;
-    const list = roomLooks(b.type), cur = list.includes(b.look) ? b.look : list[0];
+    const list = o.list ? o.list() : roomLooks(o.type), cur = o.current();
+    const target = { building: o.building, use: o.use };
     return h('div', null,
-      h('h2', null, 'Looks for ' + buildingName(b), info('Built-in looks come with the game; the others were made by players in the room editor, and everyone can use them. A look only changes the picture.')),
-      h('div', { class: 'looks' }, list.map((n) => {
-        const mine = (lookInfo(b.type, 'room', n) || {}).mine;
-        return h('div', { class: 'card sub look' + (n === cur ? ' on' : '') },
-          lookPreview(b.type, n),
+      h('h2', null, o.title(), info('Built-in looks come with the game; the others were made by players in the room editor, and everyone can use them. A look only changes the picture.')),
+      h('div', { class: 'looks' },
+        o.plain ? h('div', { class: 'card sub look' + (!cur ? ' on' : '') },
           h('div', { class: 'row wrap' },
-            h('span', { class: 'grow' }, h('b', null, lookName(n)), h('br'), h('span', { class: 'small muted' }, byWhom(b.type, n))),
-            editorFits() && mine ? h('button', { class: 'btn small', onclick: () => openEditor({ type: b.type, name: n, building: b.id }) }, 'Edit') : null,
-            !editorFits() ? null : h('button', { class: 'btn small', title: 'Open a copy in the room editor', onclick: () => openEditor({ type: b.type, name: n, copy: true, building: b.id }) }, 'Copy'),
-            n === cur ? h('span', { class: 'chip-in-use small' }, 'In use')
-              : h('button', { class: 'btn small primary', onclick: () => bus.act({ type: 'roomLook', building: b.id, look: n }) }, 'Use'))
-        );
-      })),
-      !editorFits() ? null : h('button', { class: 'btn primary wide', onclick: () => openEditor({ type: b.type, name: cur, copy: true, building: b.id }) }, ico('build'), 'Make a new look'));
-  }, null, roomMaterial(b0.type));
+            h('span', { class: 'grow' }, h('b', null, 'Like the hold'), h('br'), h('span', { class: 'small muted' }, o.plain)),
+            !cur ? h('span', { class: 'chip-in-use small' }, 'In use') : h('button', { class: 'btn small primary', onclick: () => o.use('') }, 'Use'))) : null,
+        list.map((n) => {
+          const mine = (lookInfo(o.type, 'room', n) || {}).mine;
+          return h('div', { class: 'card sub look' + (n === cur ? ' on' : '') },
+            lookPreview(o.type, n),
+            h('div', { class: 'row wrap' },
+              h('span', { class: 'grow' }, h('b', null, lookName(n)), h('br'), h('span', { class: 'small muted' }, byWhom(o.type, n))),
+              editorFits() && mine ? h('button', { class: 'btn small', onclick: () => openEditor({ type: o.type, name: n, ...target }) }, 'Edit') : null,
+              !editorFits() ? null : h('button', { class: 'btn small', title: 'Open a copy in the room editor', onclick: () => openEditor({ type: o.type, name: n, copy: true, ...target }) }, 'Copy'),
+              n === cur ? h('span', { class: 'chip-in-use small' }, 'In use')
+                : h('button', { class: 'btn small primary', onclick: () => o.use(n) }, 'Use'))
+          );
+        })),
+      !editorFits() ? null : h('button', { class: 'btn primary wide', onclick: () => openEditor({ type: o.type, name: cur || list[0], copy: true, ...target }) }, ico('build'), 'Make a new look'));
+  }, null, o.material);
   refreshLooks().then(refreshSheet).catch(() => {});          // others may have made new looks meanwhile
+}
+
+/**
+ * The looks of a hallway (the whole run on its floor) or a stairwell, from a click in the hold: {way, c, f}.
+ * Hallway looks with lamps (_lit) or decoration (_deco) are variants the hold mixes in by itself, so they are not listed.
+ */
+export function openWayLooks(q) {
+  const type = q.way, key = () => {
+    const L = F().layout || {};
+    if (type === 'stairwell') return (L.wells || []).includes(q.c + ',' + q.f) ? q.c + ',' + q.f : (q.c - 1) + ',' + q.f;
+    return q.c + ',' + q.f;
+  };
+  const list = () => { const all = roomLooks(type); return all.filter((n) => !/_(lit|deco)$/.test(n) || !all.includes(n.replace(/_(lit|deco)$/, ''))); };
+  lookList({
+    type, list, material: 'forge',
+    title: () => (type === 'hallway' ? 'Looks for this hallway' : 'Looks for this stairwell'),
+    plain: type === 'hallway' ? 'Follows the entrance hall. The whole hallway on this floor changes.' : 'Follows the entrance hall.',
+    current: () => ((F().layout || {}).looks || {})[key()] || '',
+    use: (n) => bus.act({ type: 'wayLook', col: q.c, floor: q.f, look: n }),
+  });
+}
+
+/** A room the player placed that waits for its ground: how much is left to dig, and taking it back. */
+export function openPlanSheet(id, at) {
+  const p0 = ((F().layout || {}).plans || []).find((x) => x.id === id);
+  openSheet(() => {
+    const L = F().layout || {}, p = (L.plans || []).find((x) => x.id === id);
+    if (!p) return h('div', null, h('h2', null, 'Planned room'), h('p', { class: 'small muted' }, 'It stands now, or the plan was taken back.'));
+    const t = byId.buildings[p.type], w = G.data.plan.rooms[p.type] || 5;
+    const marks = new Set(L.marks || []);
+    let rock = 0;
+    for (let x = p.col; x < p.col + w; x++) if (marks.has(x + ',' + p.floor)) rock++;
+    const miners = F().dwarves.filter((d) => d.job === 'miner').length;
+    return h('div', null,
+      h('h2', null, t.name + ' (planned)', info('You placed this room on rock. Your miners dig the rock out, then the room stands there by itself. It is paid already.')),
+      h('p', { class: 'small' }, rock ? `${rock} of ${w} cells are still rock. ` : 'The ground is dug out. ', rock && !miners ? h('b', null, 'Put a dwarf to work as a miner to dig it out.') : null),
+      h('p', { class: 'small muted' }, 'Paid: ' + [p.coins ? moneyText(p.coins) : null, ...Object.entries(p.goods || {}).map(([k, v]) => fmt(v) + ' ' + goodName(k).toLowerCase())].filter(Boolean).join(', ') + '.'),
+      h('button', { class: 'btn danger wide', onclick: async () => { await bus.act({ type: 'cancelPlan', plan: p.id }); closeSheet(); } }, 'Take the plan back (everything is paid back)'));
+  }, at, roomMaterial(p0 ? p0.type : 'tavern'));
 }
 
 /** A small picture of a look: wall, floor and furniture, a little dimmed like the inside of the mountain. */
@@ -89,15 +143,19 @@ function lookPreview(type, n) {
   const c = h('canvas', { class: 'look-pic', width: 1, height: R.RH, 'aria-hidden': 'true' });
   R.get(type, 'room', n).then((t) => {
     if (!t) return;
-    const w = (t.cells || 5) * R.CELL;
-    c.width = w;
+    const w = (t.cells || 5) * R.CELL, reps = type === 'hallway' ? 4 : 1;   // a hallway is shown as a short run
+    c.width = w * reps;
+    if (c.width < 240) c.classList.add('narrow');                            // a stairwell: no taller than a room picture
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
-    R.drawShell(g, t, 0, 0, w);
-    R.drawProps(g, t, 0, 0, 0, { layer: 'back' });
-    R.drawProps(g, t, 0, 0, 0, { layer: 'front' });
-    g.fillStyle = 'rgba(20,12,28,0.18)'; g.fillRect(0, 0, w, R.RH);
-    R.drawProps(g, t, 0, 0, 0, { glow: true });
+    for (let i = 0; i < reps; i++) {
+      const x = i * w;
+      R.drawShell(g, t, x, 0, w, x);
+      R.drawProps(g, t, x, 0, 0, { layer: 'back' });
+      R.drawProps(g, t, x, 0, 0, { layer: 'front' });
+    }
+    g.fillStyle = 'rgba(20,12,28,0.18)'; g.fillRect(0, 0, c.width, R.RH);
+    for (let i = 0; i < reps; i++) R.drawProps(g, t, i * w, 0, 0, { glow: true });
   }).catch(() => {});
   return c;
 }
@@ -126,7 +184,10 @@ export function openEditor(o = {}) {
     if (d.saved || d.deleted) {
       await refreshLooks(d.saved || d.deleted).catch(() => {});
       const b = o.building && F().buildings.find((x) => x.id === o.building);
-      if (d.saved && b && d.saved.type === b.type && (d.saved.part || 'room') === 'room') {
+      if (d.saved && o.use && !b && d.saved.type === o.type && (d.saved.part || 'room') === 'room') {
+        await o.use(d.saved.name);
+        toast(`${lookName(d.saved.name)} is in use now.`, 'good');
+      } else if (d.saved && b && d.saved.type === b.type && (d.saved.part || 'room') === 'room') {
         await bus.act({ type: 'roomLook', building: b.id, look: d.saved.name });
         toast(`${lookName(d.saved.name)} is now the look of ${buildingName(b)}.`, 'good');
       }

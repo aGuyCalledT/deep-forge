@@ -367,6 +367,7 @@ public final class Sim {
                 dug++;
             } else l.digs.put(k, work);
         }
+        if (dug > 0) Layouts.finishPlans(f, t + dt);
         if (dug > 0 && l.marks.isEmpty()) log(f, t, "good", "The miners have dug out everything you marked. They're back in the mine.");
     }
 

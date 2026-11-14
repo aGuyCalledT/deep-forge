@@ -98,7 +98,7 @@ public final class Layouts {
 
     /** Dug-out ground a room may stand on: an empty cave, a hallway (it gives way), or the room's own cells. */
     static boolean ground(Fortress f, String room, int c, int fl) {
-        if (!inside(c, fl)) return false;
+        if (!inside(c, fl) || planAt(f, c, fl) != null) return false;
         String o = at(f, c, fl, null);
         return "cave".equals(o) || "hall".equals(o) || (room != null && ("room:" + room).equals(o));
     }
@@ -127,7 +127,7 @@ public final class Layouts {
         if (!inside(c, fl) || c + w > COLS) return false;
         for (int x = c; x < c + w; x++) {
             String o = at(f, x, fl, room);
-            if (o != null && !o.equals("hall") && !o.equals("cave")) return false;
+            if (planAt(f, x, fl) != null || o != null && !o.equals("hall") && !o.equals("cave")) return false;
         }
         return true;
     }
@@ -263,6 +263,7 @@ public final class Layouts {
         }
         l.marks.removeIf(k -> { int[] c = cell(k); return !inside(c[0], c[1]) || at(f, c[0], c[1], null) != null; });
         l.digs.keySet().retainAll(l.marks);
+        l.looks.keySet().removeIf(k -> !l.halls.contains(k) && !l.wells.contains(k));
         return l;
     }
 
@@ -361,6 +362,111 @@ public final class Layouts {
                 + " with the Dig tool, then your miners dig " + (n == 1 ? "it" : "them") + " out and " + what + " can go there.";
     }
 
+    // ------------------------------------------------------------------ planned rooms
+
+    /** The plan covering a cell, or null. */
+    public static Plan planAt(Fortress f, int c, int fl) {
+        if (f.layout == null) return null;
+        for (Plan p : f.layout.plans)
+            if (p.floor == fl && c >= p.col && c < p.col + ROOM_CELLS.get(p.type)) return p;
+        return null;
+    }
+
+    /**
+     * Check that a room of this type can be planned at c, fl: inside the hold, on rock, empty caves or hallways, not on
+     * a room, stairwell or another plan.
+     */
+    static void checkPlan(Fortress f, String type, int c, int fl) {
+        ensure(f);
+        int w = ROOM_CELLS.get(type);
+        Actions.check(inside(c, fl) && c + w <= COLS, "The room doesn't fit there: it needs " + w + " cells in a row.");
+        for (int x = c; x < c + w; x++) {
+            Actions.check(planAt(f, x, fl) == null, "Another planned room stands there. Pick a free spot.");
+            String o = at(f, x, fl, null);
+            Actions.check(o == null || o.equals("cave") || o.equals("hall"), "Something is in the way there. Pick rock or empty dug-out ground.");
+        }
+    }
+
+    /** Put a plan down: rock under it gets marked for the miners. */
+    static Plan addPlan(Fortress f, String type, String building, int c, int fl, Rules.Cost paid) {
+        Plan p = new Plan();
+        int n = 1;
+        while (true) { String id = "plan-" + n; if (f.layout.plans.stream().noneMatch(x -> x.id.equals(id))) break; n++; }
+        p.id = "plan-" + n;
+        p.type = type;
+        p.building = building;
+        p.col = c;
+        p.floor = fl;
+        p.coins = paid.coins();
+        p.goods.putAll(paid.goods());
+        p.since = f.t;
+        f.layout.plans.add(p);
+        markPlan(f, p);
+        return p;
+    }
+
+    /** Rock under a plan that is not marked yet (also after the player filled a cell back in). */
+    static void markPlan(Fortress f, Plan p) {
+        for (int x = p.col; x < p.col + ROOM_CELLS.get(p.type); x++)
+            if (at(f, x, p.floor, null) == null && !f.layout.marks.contains(key(x, p.floor))) f.layout.marks.add(key(x, p.floor));
+    }
+
+    /** All cells of the plan are dug out (empty caves or hallways). */
+    static boolean planReady(Fortress f, Plan p) {
+        for (int x = p.col; x < p.col + ROOM_CELLS.get(p.type); x++) {
+            String o = at(f, x, p.floor, null);
+            if (!"cave".equals(o) && !"hall".equals(o)) return false;
+        }
+        return true;
+    }
+
+    /** Planned rooms whose ground is dug out now stand. Called after every bit of digging. */
+    public static void finishPlans(Fortress f, double t) {
+        if (f.layout == null || f.layout.plans.isEmpty()) return;
+        for (Plan p : new ArrayList<>(f.layout.plans)) {
+            if (!planReady(f, p)) { markPlan(f, p); continue; }
+            f.layout.plans.remove(p);
+            try {
+                Actions.standPlan(f, p, t);
+            } catch (Actions.GameException e) {   // should not happen; never let it stop the clock: pay back instead
+                f.coins += p.coins;
+                p.goods.forEach((k, v) -> Rules.add(f, k, v));
+                Rules.log(f, t, "warn", "The " + Content.BUILDINGS.get(p.type).name().toLowerCase() + " could not be built there, so you got everything back. Place it again.");
+            }
+        }
+    }
+
+    /** The player takes a plan back: everything paid comes back, marks still on rock go away. */
+    public static void cancelPlan(Fortress f, String id) {
+        ensure(f);
+        Plan p = f.layout.plans.stream().filter(x -> x.id.equals(id)).findFirst().orElse(null);
+        Actions.check(p != null, "That plan is gone already.");
+        f.layout.plans.remove(p);
+        f.coins += p.coins;
+        p.goods.forEach((k, v) -> Rules.add(f, k, v));
+        List<int[]> cells = new ArrayList<>();
+        for (int x = p.col; x < p.col + ROOM_CELLS.get(p.type); x++) if (f.layout.marks.contains(key(x, p.floor))) cells.add(new int[]{x, p.floor});
+        if (!cells.isEmpty()) unmark(f, cells);
+    }
+
+    /** Give a hallway (the whole run of hallway cells on that floor) or a stairwell another look. "" goes back to the hold's style. */
+    public static void wayLook(Fortress f, int c, int fl, String look) {
+        ensure(f);
+        String o = inside(c, fl) ? at(f, c, fl, null) : null;
+        Actions.check("hall".equals(o) || "well".equals(o), "There is no hallway or stairwell there.");
+        String type = "hall".equals(o) ? "hallway" : "stairwell";
+        Actions.check(look == null || look.isEmpty() || RoomLooks.exists(type, look), "That look does not exist. Pick one from the list.");
+        List<String> keys = new ArrayList<>();
+        if ("well".equals(o)) keys.add(f.layout.wells.contains(key(c, fl)) ? key(c, fl) : key(c - 1, fl));
+        else {
+            int a = c, b = c;
+            while (f.layout.halls.contains(key(a - 1, fl))) a--;
+            while (f.layout.halls.contains(key(b + 1, fl))) b++;
+            for (int x = a; x <= b; x++) keys.add(key(x, fl));
+        }
+        for (String k : keys) if (look == null || look.isEmpty()) f.layout.looks.remove(k); else f.layout.looks.put(k, look);
+    }
+
     // ------------------------------------------------------------------ the player builds
 
     /** The player moves a room (costs MOVE_COST). Without a hallway beside it, the room stands still. */
@@ -383,8 +489,10 @@ public final class Layouts {
         ensure(f);
         Actions.check(f.layout.halls.contains(key(c, fl)), "There is no hallway there.");
         if (inside(c2, fl2) && at(f, c2, fl2, null) == null) throw new Actions.GameException(rockMessage(1, "the hallway"));
-        Actions.check("cave".equals(at(f, c2, fl2, null)), "Hallways go into empty dug-out cells.");
+        Actions.check("cave".equals(at(f, c2, fl2, null)) && planAt(f, c2, fl2) == null, "Hallways go into empty dug-out cells.");
         f.layout.halls.remove(key(c, fl));
+        String look = f.layout.looks.remove(key(c, fl));
+        if (look != null) f.layout.looks.put(key(c2, fl2), look);
         f.layout.caves.put(key(c, fl), f.t);
         f.layout.caves.remove(key(c2, fl2));
         f.layout.halls.add(key(c2, fl2));
@@ -403,7 +511,7 @@ public final class Layouts {
             for (int x = c2; x < c2 + 2; x++) {
                 boolean own = fl2 == o[1] && (x == o[0] || x == o[0] + 1);
                 String at = at(f, x, fl2, null);
-                Actions.check(inside(x, fl2) && (own || "cave".equals(at) || "hall".equals(at)), "Something is in the way there.");
+                Actions.check(inside(x, fl2) && planAt(f, x, fl2) == null && (own || "cave".equals(at) || "hall".equals(at)), "Something is in the way there.");
             }
         } catch (Actions.GameException e) {
             f.layout.wells.add(from);
@@ -411,6 +519,8 @@ public final class Layouts {
         }
         for (int x = o[0]; x < o[0] + 2; x++) f.layout.caves.put(key(x, o[1]), f.t);
         addWell(f, c2, fl2);
+        String look = f.layout.looks.remove(from);
+        if (look != null) f.layout.looks.put(key(c2, fl2), look);
     }
 
     /** Mark rock for the miners to dig out. Free. Returns how many cells were marked. */
@@ -451,6 +561,7 @@ public final class Layouts {
         ensure(f);
         List<String> all = new ArrayList<>(f.layout.marks);
         for (String k : all) dugOut(f, k, t);
+        finishPlans(f, t);
         return all.size();
     }
 
@@ -462,7 +573,7 @@ public final class Layouts {
         for (int[] p : cells) {
             String o = inside(p[0], p[1]) ? at(f, p[0], p[1], null) : "x";
             if (o == null) { rock++; continue; }
-            if (!o.equals("cave")) continue;
+            if (!o.equals("cave") || planAt(f, p[0], p[1]) != null) continue;
             if (!Rules.canPay(f, Rules.HALL_COST)) break;
             Rules.pay(f, Rules.HALL_COST);
             f.layout.caves.remove(key(p[0], p[1]));
@@ -511,6 +622,7 @@ public final class Layouts {
         if (rock > 0) throw new Actions.GameException(rockMessage(rock, "the stairwell"));
         for (int x = c; x < c + 2; x++) {
             String o = at(f, x, fl, null);
+            Actions.check(planAt(f, x, fl) == null, "A planned room stands there. Pick another spot for the stairwell.");
             Actions.check("cave".equals(o) || "hall".equals(o), "Something is in the way of the stairwell.");
         }
         pay(f, Rules.STAIRWELL_COST, "build a stairwell");

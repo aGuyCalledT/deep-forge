@@ -110,15 +110,12 @@ export function renderFortress() {
       h('p', { class: 'small' }, EFFECT[b.type] ? EFFECT[b.type](b) : '', info(t.note)),
       upgradeBtn(b)));
   }
-  out.push(h('h2', null, 'Build workshops'));
-  out.push(h('div', { class: 'card' }, info('Every workshop needs a dwarf. More workshops of the same kind cost more. A new workshop is put in the first free spot of your hold; move it in build mode.'),
-    Object.entries(d.buildCosts).map(([type, c]) => {
-      const t = byId.buildings[type];
-      const have = f.buildings.filter((b) => b.type === type).length;
-      return h('div', { class: 'row', style: { margin: '6px 0' } },
-        h('span', { class: 'grow' }, h('b', null, t.name), have ? h('span', { class: 'muted' }, ` (you have ${have})`) : null, info(t.note)),
-        costBtn('Build', c, { type: 'build', building: type }));
-    })));
+  out.push(h('h2', null, 'Build rooms'));
+  const can = (d.roomsToBuild || []).filter((r) => !r.why && !missingText(r.cost)).length;
+  out.push(h('div', { class: 'card' },
+    h('p', { class: 'small' }, can ? `${can} room${can === 1 ? '' : 's'} you can build now.` : 'Nothing you can afford right now.',
+      info('Every room with a picture: pick one and click where it goes in the hold. Miners dig out the rock under it, then it stands. More workshops of the same kind cost more.')),
+    h('button', { class: 'btn primary wide', onclick: () => bus.buildMenu() }, ico('build'), 'All rooms')));
   return out;
 }
 

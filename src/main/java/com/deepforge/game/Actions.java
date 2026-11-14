@@ -74,7 +74,7 @@ public final class Actions {
         check(type != null, "Missing action.");
         switch (type) {
             case "assign" -> assign(f, a);
-            case "build" -> build(f, a);
+            case "build" -> build(f, a, t);
             case "upgrade" -> upgrade(f, a, t);
             case "upgradeLayer" -> upgradeLayer(f, a);
             case "cartRule" -> cartRule(f, a);
@@ -117,6 +117,8 @@ public final class Actions {
             case "deleteOrder" -> Depot.deleteOrder(f, a);
             case "rename" -> rename(f, a);
             case "roomLook" -> roomLook(f, a);
+            case "wayLook" -> Layouts.wayLook(f, num(a, "col", -1), num(a, "floor", -1), str(a, "look"));
+            case "cancelPlan" -> Layouts.cancelPlan(f, str(a, "plan"));
             case "moveRoom" -> Layouts.moveRoom(f, str(a, "building"), num(a, "col", -1), num(a, "floor", -1));
             case "moveHall" -> Layouts.moveHall(f, num(a, "col", -1), num(a, "floor", -1), num(a, "col2", -1), num(a, "floor2", -1));
             case "moveWell" -> Layouts.moveWell(f, num(a, "col", -1), num(a, "floor", -1), num(a, "col2", -1), num(a, "floor2", -1));
@@ -524,15 +526,31 @@ public final class Actions {
 
     // ------------------------------------------------------------ buildings
 
-    static void build(Fortress f, Map<String, Object> a) {
+    static void build(Fortress f, Map<String, Object> a, double t) {
         String type = str(a, "building");
         Content.BuildingType bt = Content.BUILDINGS.get(type);
         check(bt != null && bt.multi(), "You can't build that.");
-        check(count(f, type) < 6, "That's enough of those.");
+        check(count(f, type) + planned(f, type) < MAX_OF_A_KIND, "That's enough of those.");
         Cost c = buildCost(f, type);
         check(canPay(f, c), "Not enough money or materials.");
+        if (a.containsKey("col") && Layouts.ROOM_CELLS.containsKey(type)) {   // placed by the player: dig first, then build
+            int col = num(a, "col", -1), fl = num(a, "floor", -1);
+            Layouts.checkPlan(f, type, col, fl);
+            pay(f, c);
+            plan(f, Layouts.addPlan(f, type, null, col, fl, c), t);
+            return;
+        }
         int[] spot = Layouts.ROOM_CELLS.containsKey(type) ? Layouts.spotForNew(f, type) : null;
         pay(f, c);
+        Building b = newBuilding(f, type);
+        if (spot != null) Layouts.place(f, b, spot);
+        Layouts.ensure(f);
+        log(f, "info", "Built a new " + bt.name().toLowerCase() + ".");
+    }
+
+    public static final int MAX_OF_A_KIND = 6;
+
+    static Building newBuilding(Fortress f, String type) {
         int n = 1;
         while (building(f, type + "-" + n) != null) n++;
         Building b = new Building();
@@ -540,9 +558,38 @@ public final class Actions {
         b.type = type;
         b.level = 1;
         f.buildings.add(b);
-        if (spot != null) Layouts.place(f, b, spot);
-        Layouts.ensure(f);
-        log(f, "info", "Built a new " + bt.name().toLowerCase() + ".");
+        return b;
+    }
+
+    /** A plan is down: it stands at once if the ground is dug out already, else the miners dig first. */
+    static void plan(Fortress f, Plan p, double t) {
+        String name = Content.BUILDINGS.get(p.type).name().toLowerCase();
+        if (Layouts.planReady(f, p)) { Layouts.finishPlans(f, t); return; }
+        boolean miners = f.dwarves.stream().anyMatch(d -> d.job.equals("miner"));
+        log(f, t, miners ? "info" : "warn", miners
+                ? "Your miners dig out the ground first, then the builders put up the " + name + "."
+                : "The " + name + " waits for its ground to be dug out. Put a dwarf to work as a miner.");
+        Sim.digging(f, 0, t);
+    }
+
+    /** The ground of a plan is dug out: the room stands there now. */
+    static void standPlan(Fortress f, Plan p, double t) {
+        String name = Content.BUILDINGS.get(p.type).name();
+        int[] spot = {p.col, p.floor};
+        Building b = p.building == null ? null : building(f, p.building);
+        if (p.building != null && (b == null || b.level > 0)) {   // built some other way meanwhile: give everything back
+            f.coins += p.coins;
+            p.goods.forEach((k, v) -> add(f, k, v));
+            return;
+        }
+        if (b == null) {
+            b = newBuilding(f, p.type);
+            Layouts.place(f, b, spot);
+            Layouts.ensure(f);
+            fortressXp(f, 5);
+            log(f, t, "good", name + " built.");
+        } else raise(f, b, t, spot);
+        if (!active(f, b)) log(f, t, "warn", "The " + name.toLowerCase() + " stands still: build a hallway or stairwell beside it.");
     }
 
     static void upgrade(Fortress f, Map<String, Object> a, double t) {
@@ -560,6 +607,14 @@ public final class Actions {
         boolean grows = grows(f, b);
         check(!grows || Layouts.spaceToGrow(f, b) != null, "The " + name.toLowerCase() + " gets wider when upgraded, but there is no dug-out space for it. "
                 + "Mark rock beside it with the Dig tool, and your miners dig it out.");
+        if (b.level == 0 && a.containsKey("col") && Layouts.ROOM_CELLS.containsKey(b.type)) {   // placed by the player
+            check(f.layout.plans.stream().noneMatch(p -> b.id.equals(p.building)), "The " + name.toLowerCase() + " is planned already. Take that plan back first to move it.");
+            int col = num(a, "col", -1), fl = num(a, "floor", -1);
+            Layouts.checkPlan(f, b.type, col, fl);
+            pay(f, c);
+            plan(f, Layouts.addPlan(f, b.type, b.id, col, fl, c), t);
+            return;
+        }
         pay(f, c);
         if (b.level == 0) { raise(f, b, t); return; }   // a new room stands at once
         b.upUntil = t + buildTime(b.level + 1);
@@ -573,13 +628,18 @@ public final class Actions {
 
     /** The builders are done: the building gains its level (a workshop also grows by a machine where there is room). */
     public static void raise(Fortress f, Building b, double t) {
+        raise(f, b, t, null);
+    }
+
+    /** As raise; a new room goes to `at` ([col, floor], from a plan) instead of the first free spot. */
+    static void raise(Fortress f, Building b, double t, int[] at) {
         Layouts.ensure(f);
         String name = Content.BUILDINGS.get(b.type).name();
         boolean grows = grows(f, b);
         int[] spot = grows ? Layouts.spaceToGrow(f, b) : null;
         if (grows && spot == null) grows = false;
         boolean fresh = b.level == 0 && Layouts.ROOM_CELLS.containsKey(b.type) && !f.layout.rooms.containsKey(b.id);
-        if (fresh) Layouts.place(f, b, Layouts.spotForNew(f, b.type));
+        if (fresh) Layouts.place(f, b, at != null ? at : Layouts.spotForNew(f, b.type));
         boolean moved = false;
         if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
             int[] p = f.layout.rooms.get(b.id);

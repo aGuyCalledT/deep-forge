@@ -229,6 +229,14 @@ public final class Rules {
         return p != null && Layouts.connected(f, p[0], p[1], Layouts.width(b));
     }
 
+    /** New rooms of this type the player has placed but that are not dug out yet. */
+    public static int planned(Fortress f, String type) {
+        if (f.layout == null) return 0;
+        int n = 0;
+        for (Plan p : f.layout.plans) if (p.type.equals(type) && p.building == null) n++;
+        return n;
+    }
+
     public static int count(Fortress f, String type) {
         int n = 0;
         for (Building b : f.buildings) if (b.type.equals(type)) n++;
@@ -962,7 +970,7 @@ public final class Rules {
 
     public static Cost buildCost(Fortress f, String type) {
         Content.BuildingType t = Content.BUILDINGS.get(type);
-        int n = count(f, type);
+        int n = count(f, type) + planned(f, type);
         double g = Math.pow(2.2, n);
         Map<String, Integer> goods = new LinkedHashMap<>();
         for (Map.Entry<String, Integer> e : t.buildGoods().entrySet())

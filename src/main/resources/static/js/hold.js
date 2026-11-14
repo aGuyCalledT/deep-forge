@@ -135,14 +135,20 @@ function grid() {
     rooms.push(r);
     for (let x = c; x < c + w; x++) cells.set(x + ',' + fl, { kind: 'room', id });
   }
-  for (const k of L.halls) cells.set(k, { kind: 'hall', tpl: hallTpl(style, hallVariant(k)) });
+  const looks = L.looks || {};   // a hallway run or stairwell the player gave its own look
+  for (const k of L.halls) cells.set(k, { kind: 'hall', tpl: hallTpl(looks[k] || style, hallVariant(k)) });
   for (const [k, since] of Object.entries(L.caves || {})) cells.set(k, { kind: 'cave', since });
   const marks = new Map((L.marks || []).map((k) => [k, (L.digs || {})[k] || 0]));   // rock to dig: cell -> work done
   const critters = (f.threats || []).filter((th) => th.cell).map((th) => { const [c, fl] = th.cell.split(',').map(Number); return { th, c, f: fl }; });
   // stairwells: two cells wide, the way in is an arch in the middle of the back wall
   const wellTpl = tplOf('stairwell', 'room', wayLook('stairwell', style), 2);
-  const doorX = ((wellTpl.spots || []).find((s) => s.kind === 'door') || { x: CELL }).x;
-  const wells = (L.wells || []).map((k) => { const [c, fl] = k.split(',').map(Number); return { c, f: fl, x: c * CELL + doorX, tpl: wellTpl }; });
+  const doorOf = (tpl) => ((tpl.spots || []).find((s) => s.kind === 'door') || { x: CELL }).x;
+  const doorX = doorOf(wellTpl);
+  const wells = (L.wells || []).map((k) => {
+    const [c, fl] = k.split(',').map(Number);
+    const tpl = looks[k] ? tplOf('stairwell', 'room', wayLook('stairwell', looks[k]), 2) : wellTpl;
+    return { c, f: fl, x: c * CELL + doorOf(tpl), tpl };
+  });
   for (const w of wells) for (let dx = 0; dx < 2; dx++) cells.set((w.c + dx) + ',' + w.f, { kind: 'well', well: w });
   // the mine shaft: a stairwell on every floor (same look, a door in the back wall), and the way down to the mines
   const shafts = [];
@@ -152,7 +158,9 @@ function grid() {
     for (let c = 0; c < plan.shaft; c++) cells.set(c + ',' + fl, { kind: 'shaft', well: s });
   }
   const hall = levelOf('entrance_hall') ? tplOf('entrance_hall', 'room', style, FACE / CELL) : null;
-  const g = { cells, rooms, wells, shafts, marks, critters, hall };
+  // rooms the player placed that wait for their ground to be dug out
+  const plans = (L.plans || []).map((p) => ({ ...p, w: (plan.rooms || {})[p.type] || 5 }));
+  const g = { cells, rooms, wells, shafts, marks, critters, hall, plans };
   g.walls = wallsOf(g);
   return g;
 }
@@ -1116,6 +1124,19 @@ export const holdScreen = {
     if (!G_) return null;
     for (const c of critterHits) if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return { kind: 'tab', id: 'war', rect: [c.x, c.y, c.w, c.h], round: true };
     for (const r of G_.rooms) if (x >= r.x && x < r.x + r.pw && y >= r.y && y < r.y + RH) return machineHit(r, x, y) || { kind: 'room', id: r.b.id, rect: [r.x, r.y, r.pw, RH], round: true };
+    const cell = cellAt(x, y);
+    if (cell && cell.f < plan.floors) {
+      const p = G_.plans.find((q) => q.floor === cell.f && cell.c >= q.col && cell.c < q.col + q.w);
+      if (p) return { kind: 'plan', id: p.id, rect: [p.col * CELL, ftop(p.floor), p.w * CELL, RH] };
+      const v = G_.cells.get(cell.c + ',' + cell.f);
+      if (v && v.kind === 'well') return { kind: 'way', way: 'stairwell', c: v.well.c, f: cell.f, rect: [v.well.c * CELL, ftop(cell.f), 2 * CELL, RH] };
+      if (v && v.kind === 'hall') {
+        let a = cell.c, b = cell.c;
+        while (kindAt(a - 1, cell.f) === 'hall') a--;
+        while (kindAt(b + 1, cell.f) === 'hall') b++;
+        return { kind: 'way', way: 'hallway', c: cell.c, f: cell.f, rect: [a * CELL, ftop(cell.f), (b - a + 1) * CELL, RH] };
+      }
+    }
     for (const type of ['gate', 'entrance_hall']) {
       const b = F().buildings.find((q) => q.type === type), r = b && fixedRect(type);
       if (r && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return { kind: 'room', id: b.id, rect: [r.x, r.y, r.w, r.h], round: true };
@@ -1130,6 +1151,7 @@ export const holdScreen = {
     const f = F();
     const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
     drawFog(ctx, G_);
+    for (const p of G_.plans) drawPlan(ctx, t, p);
     if (G_.hall) R.drawProps(ctx, G_.hall, -FACE, ftop(ENTRY), t, { glow: true });
     for (const [k, v] of G_.cells) {
       if (v.kind !== 'hall') continue;
@@ -1334,11 +1356,29 @@ function ground(c, f, w, own) {
   for (let x = c; x < c + w; x++) {
     const v = G_.cells.get(x + ',' + f);
     if (own && own(x, f, v)) continue;
+    if (planAt(x, f)) return 'taken';
     if (!v) { rock = true; continue; }
     if (v.kind !== 'hall' && v.kind !== 'cave') return 'taken';
   }
   return rock ? 'rock' : 'ok';
 }
+
+/** A planned room: its look, faint, inside a dashed frame, with what it waits for. */
+function drawPlan(ctx, t, p) {
+  const x = p.col * CELL, y = ftop(p.floor), w = p.w * CELL;
+  if (!seen(x, y, w, RH, 40)) return;
+  const tpl = tplOf(p.type, 'room', R.looks(p.type, 'room')[0], p.w);
+  ctx.save(); ctx.globalAlpha = 0.3; R.drawShell(ctx, tpl, x, y, w, x); R.drawProps(ctx, tpl, x, y, t); ctx.restore();
+  ctx.fillStyle = '#e3c06e';
+  const dash = (x0, y0, len, horiz) => { for (let i = 0; i < len; i += 12) horiz ? ctx.fillRect(x0 + i, y0, Math.min(6, len - i), 2) : ctx.fillRect(x0, y0 + i, 2, Math.min(6, len - i)); };
+  dash(x, y + 2, w, true); dash(x, y + RH - 2, w, true); dash(x, y + 2, RH - 4, false); dash(x + w - 2, y + 2, RH - 4, false);
+  let rock = 0;
+  for (let c = p.col; c < p.col + p.w; c++) if (kindAt(c, p.floor) === 'rock') rock++;
+  say(ctx, (byId.buildings[p.type].name + (rock ? ' - TO DIG ' + rock : ' - BUILDING')).toUpperCase(), x + 6, y + 8, '#e3c06e');
+}
+
+/** The planned room covering a cell, if any. */
+const planAt = (c, f) => G_.plans.find((p) => p.floor === f && c >= p.col && c < p.col + p.w);
 
 /** A room there would touch a hallway, a stairwell or the shaft on its left or right (the server checks too). */
 function besideHall(c, f, w) {
@@ -1372,6 +1412,14 @@ function ghostFor(mouse) {
     const warn = hd.kind === 'room' && gr === 'ok' && !besideHall(c, cell.f, hd.w);
     return { c, f: cell.f, w: hd.w, h: 1, ok: okHall && !warn, warn, room: hd.room, why: gr === 'rock' ? 'DIG IT OUT FIRST' : !okHall ? 'IN THE WAY' : warn ? 'NO HALLWAY: IT WILL STAND STILL' : null };
   }
+  if (tool === 'place' && G.build.place) {
+    const p = G.build.place, w = p.cells, c = Math.round(mouse.x / CELL - w / 2);
+    const gr = ground(c, cell.f, w);
+    const ok = gr !== 'taken', warn = ok && !besideHall(c, cell.f, w);
+    const tpl = tplOf(p.type, 'room', R.looks(p.type, 'room')[0], w);
+    return { c, f: cell.f, w, h: 1, ok: ok && !warn, warn, tpl,
+      why: !ok ? 'IN THE WAY' : gr === 'rock' ? (warn ? 'MINERS DIG IT OUT - NO HALLWAY YET' : 'MINERS DIG IT OUT FIRST') : warn ? 'NO HALLWAY: IT WILL STAND STILL' : null };
+  }
   if (tool === 'dig') {
     const marked = G_.marks.has(cell.c + ',' + cell.f);
     return { c: cell.c, f: cell.f, w: 1, h: 1, ok: k === 'rock' && cell.c >= plan.shaft && !marked, warn: marked, why: marked ? 'CLICK TO TAKE THE MARK OFF' : k === 'rock' ? null : 'ALREADY OPEN' };
@@ -1402,6 +1450,7 @@ function buildOverlay(ctx, t, mouse) {
       for (const p of g.room.parts) { const px = x + p.x - g.room.x; R.drawShell(ctx, p.tpl, px, y, p.w, px); R.drawProps(ctx, p.tpl, px, y, t); }
       ctx.restore();
     }
+    if (g.tpl) { ctx.save(); ctx.globalAlpha = 0.5; R.drawShell(ctx, g.tpl, x, y, w, x); R.drawProps(ctx, g.tpl, x, y, t); ctx.restore(); }
     const col = g.ok ? [144, 224, 140] : g.warn ? [240, 168, 90] : [217, 112, 74];
     ctx.fillStyle = `rgba(${col},0.28)`;
     ctx.fillRect(x, y, w, h);
@@ -1482,6 +1531,17 @@ function buildClick(x, y, hit) {
     }
     b.held = null;
     if (G.onBuildChange) G.onBuildChange();
+    return true;
+  }
+  if (b.tool === 'place' && b.place) {
+    const g = ghostFor({ x, y }), p = b.place;
+    if (!g) return true;
+    // a wrong spot is sent as well: the server says what is in the way
+    G.act({ type: p.building ? 'upgrade' : 'build', building: p.building || p.type, col: g.c, floor: g.f }).then(() => {
+      const L = F().layout || {};
+      const placed = (L.plans || []).some((q) => q.col === g.c && q.floor === g.f) || Object.values(L.rooms || {}).some(([c, fl]) => c === g.c && fl === g.f);
+      if (placed && G.build) { G.build.place = null; G.build.tool = 'move'; if (G.onBuildChange) G.onBuildChange(); }
+    });
     return true;
   }
   if (b.tool === 'dig') G.act({ type: G_.marks.has(cell.c + ',' + cell.f) ? 'unmark' : 'mark', cells: [[cell.c, cell.f]] });   // only reached when dragging is off

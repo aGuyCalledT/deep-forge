@@ -132,6 +132,19 @@ public final class State {
         public Set<String> stairs = new TreeSet<>();        // old saves only: diagonal stairs, turned into stairwells
         public Set<String> doors = new TreeSet<>();         // old saves only: back doors, no longer used
         public int version;                                 // 2: rooms may stand without a hallway (they stand still)
+        public List<Plan> plans = new ArrayList<>();        // rooms the player placed: the miners dig the ground, then they stand
+        public Map<String, String> looks = new TreeMap<>(); // "col,floor" of a hallway cell or a stairwell's left cell -> look
+    }
+
+    /** A room the player placed on rock: once every cell is dug out, the builders put it up (already paid for). */
+    public static class Plan {
+        public String id;
+        public String type;
+        public String building;                             // a level-0 building to raise, or null: a new one
+        public int col, floor;
+        public double coins;
+        public Map<String, Integer> goods = new LinkedHashMap<>();
+        public double since;
     }
 
     public static class Stats {

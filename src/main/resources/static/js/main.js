@@ -11,7 +11,8 @@ import { mineScreen, mineLayer } from './mine48.js';
 import { openSmithy, smithyUpdate, nameArtifact, askForNames, smithyState } from './smithy.js';
 import { gameUpdate, gameState } from './minigame.js';
 import { openRoomGame, openVein } from './games.js';
-import { openRoomSheet, openDwarfSheet } from './popups.js';
+import { openRoomSheet, openDwarfSheet, openWayLooks, openPlanSheet } from './popups.js';
+import { openBuildMenu } from './buildmenu.js';
 import { berlinTime } from './sun.js';
 import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
 import { renderWork, animateWork, currentHeat } from './panels-work.js';
@@ -385,6 +386,8 @@ function onPick(q, at) {
     if (b) { A.sfx('open'); keepClear(q.id); openRoomSheet(b, at); }
     return;
   }
+  if (q.kind === 'way') { A.sfx('open'); return openWayLooks(q); }
+  if (q.kind === 'plan') { A.sfx('open'); return openPlanSheet(q.id, at); }
   if (q.kind === 'dwarf') {
     const d = F().dwarves.find((x) => x.id === q.id);
     if (d) openDwarfSheet(d, at);
@@ -407,7 +410,17 @@ const TOOLS = [['move', 'hand', 'Move', 'Click a room, hallway or stairwell, the
   ['dig', 'dig', 'Dig out', 'Drag over rock to mark it. Your miners dig it out with their picks, one cell each. Deeper rock takes longer. Drag over marks to take them off.', null],
   ['hall', 'hall', 'Hallway', 'Drag over dug-out cells to build a hallway. Rooms need one beside them.', 'hall'],
   ['stairwell', 'well', 'Stairwell', 'Two dug-out cells side by side. Dwarves walk in and come out of any stairwell on another floor.', 'stairwell'],
-  ['fill', 'fill', 'Fill in', 'Hallways and stairwells become empty caves, empty caves become rock. Empty caves overgrow, and critters move in.', null]];
+  ['fill', 'fill', 'Fill in', 'Hallways and stairwells become empty caves, empty caves become rock. Empty caves overgrow, and critters move in.', null],
+  ['place', 'fortress', 'Rooms', 'Click where the room should go, on rock or dug-out ground. Your miners dig out the rock first, then the room stands there by itself. Click the plan to take it back.', null]];
+
+/** Put a room down from the build menu: build mode with the room under the pointer. */
+bus.startPlace = (p) => {
+  closeDrawer();
+  if (G.screen !== 'hold') setScreen('hold');
+  G.build = { tool: 'place', held: null, place: p };
+  renderToolbar();
+};
+bus.buildMenu = (at) => openBuildMenu(at);
 
 function renderToolbar() {
   const bar = $('scene-tools');
@@ -434,7 +447,13 @@ function renderToolbar() {
       h('button', { class: 'tool', 'aria-label': 'Zoom out', onclick: () => zoomBy(-1) }, img(S.icon('zoom_out'), 'icon s')),
       h('button', { class: 'tool' + (b ? ' on' : ''), onclick: () => { G.build = b ? null : { tool: 'move', held: null }; renderToolbar(); } }, img(S.icon('build'), 'icon s'), b ? 'Done' : 'Build'),
       time),
-    b ? h('div', { class: 'tool-row' }, TOOLS.map(([id, icon, label]) => h('button', { class: 'tool' + (b.tool === id ? ' on' : ''), onclick: () => { b.tool = id; b.held = null; renderToolbar(); } }, img(S.icon(icon), 'icon s'), label))) : null,
+    b ? h('div', { class: 'tool-row' }, TOOLS.map(([id, icon, label]) => h('button', { class: 'tool' + (b.tool === id ? ' on' : ''), onclick: () => {
+      b.held = null;
+      if (id === 'place') { openBuildMenu(); if (!b.place) return; }
+      b.tool = id; renderToolbar();
+    } }, img(S.icon(icon), 'icon s'), label))) : null,
+    b && b.tool === 'place' && b.place ? h('div', { class: 'tool-cost' }, h('span', null, b.place.name), costChips(b.place.cost),
+      h('button', { class: 'tool', onclick: () => { b.place = null; b.tool = 'move'; renderToolbar(); } }, 'Cancel')) : null,
     b ? toolCost(b) : null,
     b && G.state.cheats && b.tool === 'dig' && ((F().layout || {}).marks || []).length
       ? h('div', { class: 'tool-row' }, h('button', { class: 'tool', onclick: () => G.act({ type: 'cheatDig' }) }, img(S.icon('cheat'), 'icon s'), 'Dig now (cheat)')) : null,
@@ -443,7 +462,7 @@ function renderToolbar() {
 
 /** What the chosen build tool costs per use (per cell for digging). */
 function toolCost(b) {
-  const key = TOOLS.find((x) => x[0] === b.tool)[4];
+  const key = (TOOLS.find((x) => x[0] === b.tool) || [])[4];
   const cost = key && (D().layoutCosts || {})[key];
   if (!cost) return null;
   return h('div', { class: 'tool-cost' }, h('span', null, b.tool === 'hall' ? 'Per cell' : 'Costs'), costChips(cost));
