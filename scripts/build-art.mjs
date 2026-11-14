@@ -28,3 +28,7 @@ const fig = readFileSync(join(src, "figure.js"), "utf8");
 writeFileSync(join(root, "src/main/resources/static/js/figure.js"),
   "// Generated from art-src/figure.js by scripts/build-art.mjs. Edit the source there.\n" + fig + "\nexport default Figure;\n");
 console.log("art written to", dest);
+// own pictures from art-src/png (tools/sprites) go back into the new atlas; a problem there never stops the build
+try {
+  execFileSync("python3", ["-c", "import sys; sys.path.insert(0, 'tools/sprites'); import spritelib; spritelib.after_build('atlas')"], { cwd: root, stdio: "inherit" });
+} catch (e) { console.warn("WARNING own sprites not applied:", e.message); }

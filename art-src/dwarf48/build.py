@@ -160,5 +160,10 @@ def export(S, out):
 
 if __name__ == '__main__':
     S = build_sheets()
-    export(S, sys.argv[1] if len(sys.argv) > 1 else 'out')
+    out = sys.argv[1] if len(sys.argv) > 1 else 'out'
+    export(S, out)
     print(len(S), 'sheets,', sum(len(v) for v in S.values()), 'frames')
+    # own pictures from art-src/png (tools/sprites) go back in when the game's set was written
+    if os.path.realpath(out).endswith(os.path.join('static', 'art', 'dwarf48')):
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools', 'sprites'))
+        import spritelib; spritelib.after_build('dwarf48')

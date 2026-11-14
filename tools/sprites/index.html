@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deep Forge sprites</title>
+<style>
+  :root { --bg: #1b1418; --panel: #261c21; --line: #3d2e35; --text: #eadfd0; --muted: #a8998c; --gold: #e3c06e; --good: #8fd9a8; --bad: #e57a62; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  h1 { font-size: 18px; margin: 0 12px 0 0; color: var(--gold); font-weight: 600; }
+  input[type=search], select, input[type=text], input[type=number] { background: #140f12; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: inherit; min-height: 40px; }
+  input[type=search] { flex: 1 1 200px; }
+  button, .btn { background: #3a2c33; color: var(--text); border: 1px solid #5a4550; border-radius: 6px; padding: 8px 12px; font: inherit; cursor: pointer; min-height: 40px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  button:hover, .btn:hover { border-color: var(--gold); }
+  button.primary { background: #6b5320; border-color: var(--gold); }
+  button.danger { border-color: var(--bad); color: var(--bad); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { min-height: 32px; padding: 4px 10px; border-radius: 16px; }
+  .chip.on { background: #6b5320; border-color: var(--gold); }
+  main { padding: 16px; }
+  .note { color: var(--muted); margin: 0 0 12px; max-width: 80ch; }
+  code { background: #140f12; padding: 1px 5px; border-radius: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .card:hover { border-color: var(--gold); }
+  .pic { height: 96px; display: flex; align-items: center; justify-content: center; background: repeating-conic-gradient(#2a2026 0 25%, #221a1f 0 50%) 0 0 / 16px 16px; border-radius: 4px; overflow: hidden; }
+  .pic img { image-rendering: pixelated; max-width: 100%; object-fit: contain; }
+  .name { font-size: 13px; overflow-wrap: anywhere; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .own { color: var(--good); font-size: 12px; }
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--gold); border-radius: 10px; padding: 16px; width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+  dialog::backdrop { background: rgba(0, 0, 0, .6); }
+  .frames { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+  .frame { background: #1f171b; border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+  .frame .pic { height: auto; min-height: 64px; padding: 6px; }
+  .frame .pic img { max-height: 320px; }
+  @media (max-width: 760px) { header { position: static; } h1 { font-size: 16px; } }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .grow { flex: 1; }
+  label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+  .form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin: 12px 0; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #140f12; border: 1px solid var(--gold); padding: 10px 14px; border-radius: 8px; display: none; max-width: calc(100vw - 32px); z-index: 9; }
+  #toast.bad { border-color: var(--bad); color: var(--bad); }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Deep Forge sprites</h1>
+  <input type="search" id="q" placeholder="Search, e.g. table, wall_, hair, ui_" aria-label="Search">
+  <div class="chips" id="sets"></div>
+  <label class="row" style="flex-direction:row;color:var(--text);font-size:14px"><input type="checkbox" id="onlyOwn"> only own</label>
+  <button class="primary" id="new">New sprite</button>
+  <button id="exportAll" title="Writes every sprite as PNG into the export folder">Export all</button>
+  <a class="btn" href="/zip" title="Every sprite as PNG, in folders, as one zip">Download all (zip)</a>
+</header>
+<main>
+  <p class="note" id="how"></p>
+  <div class="grid" id="grid"></div>
+</main>
+
+<dialog id="detail"></dialog>
+<dialog id="newdlg"></dialog>
+<div id="toast" role="status"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, '');
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+};
+let D = null, set = 'all', ver = Date.now();
+const SETS = { all: 'All', atlas: 'UI, goods (atlas)', props48: 'Rooms, walls, furniture (props48)', dwarf48: 'Dwarves (dwarf48)', dwarf: 'Old dwarf kit', backdrop: 'Backdrop' };
+// whole-number zoom so small pixel art is big enough to see and stays sharp
+const img = (file, w, h, box = 96) => {
+  const k = w && h ? Math.max(1, Math.floor(Math.min(box * 1.4 / w, box / h))) : 1;
+  return el('img', { src: '/img?f=' + encodeURIComponent(file) + '&v=' + ver, alt: file, loading: 'lazy', style: w ? `width:${w * k}px;height:${h * k}px` : null });
+};
+
+function toast(msg, bad) {
+  const t = $('toast'); t.textContent = msg; t.className = bad ? 'bad' : ''; t.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.style.display = 'none'; }, bad ? 9000 : 4000);
+}
+async function call(url, body) {
+  const r = await fetch(url, { method: 'POST', body });
+  const j = await r.json().catch(() => ({ error: 'No answer from the tool.' }));
+  if (!r.ok || j.error) throw new Error(j.error || 'Something went wrong.');
+  return j;
+}
+async function load() {
+  D = await fetch('/api/list').then((r) => r.json());
+  ver = Date.now();
+  $('how').innerHTML = `Click a sprite to download its pictures or replace them. Your own pictures go to <code>${D.inbox}/&lt;set&gt;/</code> and win over the drawn art; ` +
+    `you can also put a PNG there yourself, with the name shown here, and run <code>python3 tools/sprites/sprites.py apply</code>. Exports go to <code>${D.export}/</code>, ` +
+    `in the same folders and names, so a changed file goes straight back. Reload the game afterwards.`;
+  render();
+}
+function render() {
+  const q = $('q').value.trim().toLowerCase(), only = $('onlyOwn').checked;
+  $('sets').replaceChildren(...Object.entries(SETS).map(([k, v]) => el('button', { class: 'chip' + (set === k ? ' on' : ''), onclick: () => { set = k; render(); } }, v)));
+  const list = D.sprites.filter((e) => (set === 'all' || e.set === set) && (!q || e.id.includes(q)) && (!only || e.frames.some((f) => f.own || f.glowOwn)));
+  const shown = list.slice(0, 400);
+  $('grid').replaceChildren(...shown.map((e) => {
+    const f = e.frames[0], own = e.frames.filter((x) => x.own || x.glowOwn).length;
+    return el('div', { class: 'card', tabindex: 0, onclick: () => detail(e), onkeydown: (ev) => { if (ev.key === 'Enter') detail(e); } },
+      el('div', { class: 'pic' }, img(f.file, f.w, f.h)),
+      el('div', { class: 'name' }, e.id),
+      el('div', { class: 'meta' }, `${f.w} × ${f.h}` + (e.frames.length > 1 ? ` · ${e.frames.length} pictures` : '') + (e.set === 'props48' ? ` · ${e.kind}, ${e.group}` : '')),
+      own ? el('div', { class: 'own' }, own === 1 ? 'own picture' : own + ' own pictures') : null);
+  }), ...(list.length > shown.length ? [el('p', { class: 'note' }, `${list.length - shown.length} more: search more exactly.`)] : []));
+}
+
+function upload(file, meta) {
+  const inp = el('input', { type: 'file', accept: 'image/png' });
+  inp.onchange = async () => {
+    const f = inp.files[0];
+    if (!f) return;
+    try {
+      const url = '/api/upload?f=' + encodeURIComponent(file) + (meta ? '&meta=' + encodeURIComponent(JSON.stringify(meta)) : '');
+      const r = await call(url, await f.arrayBuffer());
+      toast('Saved as ' + r.saved + ' and put into the game. Reload the game to see it.');
+      await load();
+      const e = D.sprites.find((x) => x.frames.some((y) => y.file === file || y.glow === file));
+      if (e && $('detail').open) detail(e);
+    } catch (err) { toast(err.message, true); }
+  };
+  inp.click();
+}
+
+function detail(e) {
+  const dlg = $('detail');
+  const part = (file, label, own, isGlow, w, h) => el('div', { class: 'frame' },
+    el('div', { class: 'pic' }, img(file, w, h, 240)),
+    el('div', { class: 'meta' }, label),
+    el('div', { class: 'name' }, file),
+    own ? el('div', { class: 'own' }, 'own picture in ' + D.inbox + '/') : null,
+    el('div', { class: 'row' },
+      el('a', { class: 'btn', href: '/img?dl=1&f=' + encodeURIComponent(file), download: file.split('/').pop() }, 'Download'),
+      el('button', { onclick: () => upload(file) }, isGlow ? 'Replace glow' : 'Replace'),
+      own ? el('button', { class: 'danger', onclick: async () => {
+        try { await call('/api/remove?f=' + encodeURIComponent(file)); toast('Own picture taken away: the drawn one is back.'); await load(); detail(D.sprites.find((x) => x.id === e.id) || e); } catch (err) { toast(err.message, true); }
+      } }, 'Use drawn one') : null));
+  const frames = [];
+  e.frames.forEach((f, i) => {
+    const label = `${f.w} × ${f.h}` + (f.label ? ' · ' + f.label : e.frames.length > 1 ? ' · picture ' + i : '') + (f.anchor ? ` · anchor ${f.anchor[0]}, ${f.anchor[1]}` : '');
+    frames.push(part(f.file, label, f.own, false, f.w, f.h));
+    if (f.glow) frames.push(part(f.glow, 'what glows in the dark', f.glowOwn, true, f.w, f.h));
+  });
+  const all = e.frames.flatMap((f) => [f.file, f.glow].filter(Boolean));
+  const next = e.set === 'props48' ? `${e.set}/${e.name}@${e.frames.length}.png` : e.set === 'dwarf48' ? null : null;
+  dlg.replaceChildren(
+    el('div', { class: 'row' }, el('h2', { class: 'grow', style: 'margin:0;font-size:18px' }, e.id), el('button', { onclick: () => dlg.close() }, 'Close')),
+    el('p', { class: 'note' }, hint(e)),
+    el('div', { class: 'row' },
+      el('button', { onclick: async () => { try { const r = await call('/api/export?' + all.map((f) => 'f=' + encodeURIComponent(f)).join('&')); toast(`${r.count} file(s) in ${r.folder}/`); } catch (err) { toast(err.message, true); } } }, 'Export to folder'),
+      next ? el('button', { onclick: () => upload(next) }, 'Add a picture (animation)') : null,
+      e.set === 'dwarf48' ? el('button', { onclick: () => newDwarfFrame(e) }, 'Add a frame or style') : null),
+    el('div', { class: 'frames' }, frames));
+  if (!dlg.open) dlg.showModal();
+}
+function hint(e) {
+  if (e.set === 'atlas') return 'Symbols, buttons, goods and old art. Keep the size for icons and buttons (buttons are 9-slice plates).';
+  if (e.set === 'props48') return e.kind === 'tile' ? 'A tile: it repeats sideways (walls and rock every 96 px). Keep the height.' : 'A prop: it stands with its anchor on the floor line. A bigger picture keeps standing on the same spot.';
+  if (e.set === 'dwarf48') return `Every dwarf frame is ${D.cell[0]} × ${D.cell[1]}, feet at the bottom middle. Placeholder colours (skin, hair, tunic …) get each dwarf's colours in the game.`;
+  if (e.set === 'backdrop') return 'A layer of the valley behind the hold. It repeats sideways.';
+  return 'The old dwarf kit: strips of 32 × 44 pictures.';
+}
+function newDwarfFrame(e) {
+  const name = prompt(`New frame for ${e.name}: a new style name (hair, beards, hats, faces, things in the hand) or the next number (${e.frames.length})`, '');
+  if (!name) return;
+  upload(`dwarf48/${e.name}@${name.trim().toLowerCase()}.png`);
+}
+
+function newSprite() {
+  const dlg = $('newdlg');
+  const setSel = el('select', {}, ...['props48', 'atlas', 'dwarf48'].map((s) => el('option', { value: s }, SETS[s])));
+  const name = el('input', { type: 'text', placeholder: 'e.g. marble_table, wall_marble, ui_star' });
+  const kind = el('select', {}, el('option', { value: 'prop' }, 'prop (stands on the floor)'), el('option', { value: 'tile' }, 'tile (wall, floor: repeats)'));
+  const group = el('input', { type: 'text', value: 'custom', list: 'groups' });
+  const ax = el('input', { type: 'number', placeholder: 'middle' }), ay = el('input', { type: 'number', placeholder: 'bottom' });
+  const partSel = el('select', {}, ...D.parts.map((p) => el('option', { value: p }, p)));
+  const label = el('input', { type: 'text', placeholder: 'style name, e.g. mohawk' });
+  const pFields = el('div', { class: 'form' }, el('label', {}, 'Kind', kind), el('label', {}, 'Group (room editor palette)', group,
+    el('datalist', { id: 'groups' }, ...D.groups.map((g) => el('option', { value: g })))), el('label', {}, 'Anchor x (optional)', ax), el('label', {}, 'Anchor y (optional)', ay));
+  const dFields = el('div', { class: 'form hide' }, el('label', {}, 'Part', partSel), el('label', {}, 'Style name or frame number', label));
+  const nField = el('label', {}, 'Name (lower-case, _ and -)', name);
+  const sync = () => {
+    pFields.classList.toggle('hide', setSel.value !== 'props48');
+    dFields.classList.toggle('hide', setSel.value !== 'dwarf48');
+    nField.classList.toggle('hide', setSel.value === 'dwarf48');
+  };
+  setSel.onchange = sync;
+  const go = () => {
+    const s = setSel.value;
+    if (s === 'dwarf48') {
+      if (!label.value.trim()) return toast('Give the style a name.', true);
+      return upload(`dwarf48/${partSel.value}@${label.value.trim().toLowerCase()}.png`);
+    }
+    const n = name.value.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(n)) return toast('Use lower-case letters, digits, _ and - for the name.', true);
+    const meta = s === 'props48' ? { kind: kind.value, group: group.value.trim() || 'custom', anchor: ax.value !== '' && ay.value !== '' ? [+ax.value, +ay.value] : undefined } : null;
+    upload(`${s}/${n}.png`, meta);
+  };
+  dlg.replaceChildren(
+    el('div', { class: 'row' }, el('h2', { class: 'grow', style: 'margin:0;font-size:18px' }, 'New sprite'), el('button', { onclick: () => dlg.close() }, 'Close')),
+    el('p', { class: 'note' }, 'Pick where it belongs, give it a name, then choose the PNG. Walls start with wall_, floors with floor_ (they show up in the room editor). ' +
+      'A new prop appears in the room editor under its group. Things the game draws by name (icons, goods) need their name used in the code too.'),
+    el('div', { class: 'form' }, el('label', {}, 'Set', setSel), nField), pFields, dFields,
+    el('div', { class: 'row' }, el('button', { class: 'primary', onclick: go }, 'Choose PNG and add')));
+  sync();
+  dlg.showModal();
+}
+
+$('q').oninput = render;
+$('onlyOwn').onchange = render;
+$('new').onclick = newSprite;
+$('exportAll').onclick = async () => { try { const r = await call('/api/export?all=1'); toast(`${r.count} files in ${r.folder}/`); } catch (err) { toast(err.message, true); } };
+load();
+</script>
+</body>
+</html>

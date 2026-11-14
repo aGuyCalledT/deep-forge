@@ -2,6 +2,13 @@
 
 Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebaut. Offen ist, was nicht abgehakt ist.
 
+## Sprites als PNG
+
+- [x] Werkzeug `tools/sprites/`: jedes Sprite als PNG exportieren (einzeln, alle, ZIP), eigene Bilder aus `art-src/png/` einspielen, neue Sprites (Teile, Wände, Böden, Zwergstile, Symbole) im Browser anlegen
+- [ ] Neue Zwergstile aus dem Kit im Spiel wählbar machen (Aussehen-Cheat, Zuwanderung)
+- [ ] Neue Talebenen (`backdrop`) ohne Code hinzufügen
+- [ ] Server lädt neue props48-Namen ohne Neustart
+
 ## Grafik und Festung
 
 - [x] Parallax-Hintergrund im Tal (ferne Gipfel, Bergkette, Waldhügel, Waldrand, Massiv hinter der Festung), für Dämmerung und Nacht eingefärbt.

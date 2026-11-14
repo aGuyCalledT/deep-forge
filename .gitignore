@@ -9,3 +9,4 @@ sprites/**/*.png
 *.iml
 art-src/out/
 __pycache__/
+sprites-export/

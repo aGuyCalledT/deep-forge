@@ -148,3 +148,7 @@ for name, (kind, group, frames) in ITEMS.items():                 # a swap must 
 n_frames = sum(len(e['frames']) for e in index.values())
 print(f'{len(index)} sprites, {n_frames} frames, sheet {SHEET_W} x {H_SHEET}, '
       f'{os.path.getsize(f"{OUT}/sheet.png") // 1024} KB + glow {os.path.getsize(f"{OUT}/glow.png") // 1024} KB, check ok')
+
+# own pictures from art-src/png (tools/sprites) go back into the freshly built set
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools', 'sprites'))
+import spritelib; spritelib.after_build('props48')

@@ -243,3 +243,6 @@ if __name__ == '__main__':
         meta[name] = {'w': cv.w, 'h': cv.h, 'ax': ax, 'ay': cv.h, 'k': k, 'tile': tile}
         print(name, cv.w, cv.h)
     with open(f'{OUT}/backdrop.json', 'w') as fh: json.dump(meta, fh, indent=1)
+    # own pictures from art-src/png (tools/sprites) go back into the freshly built set
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools', 'sprites'))
+    import spritelib; spritelib.after_build('backdrop')

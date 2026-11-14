@@ -29,11 +29,48 @@ Einige Farben in der Grafik sind Platzhalter, die das Spiel ersetzt (`SWAP` in `
 
 Neue Grafik, die umgefärbt werden soll, nutzt genau diese Palettenschlüssel.
 
-## Eigene Bilder
+## Sprites als PNG (Werkzeug)
 
-Eine PNG-Datei im Ordner `sprites/` mit dem Namen eines Sprites ersetzt es, z. B. `sprites/room_forge.png` (ersetzt den Raum in allen Stufen, ohne Erweiterungen),
-`sprites/ore_galena.png`, `sprites/ui_war.png`. Ein `sprites/dwarf.png` ersetzt alle Zwerge (Füße unten in der Mitte).
-Alle Namen stehen in `static/art/atlas.json`. Neu laden reicht.
+Jedes Sprite des Spiels als PNG herausholen, ändern und wieder hineinlegen, oder neue hinzufügen.
+Braucht Python 3 mit Pillow und numpy.
+
+```
+python3 tools/sprites/sprites.py serve        # im Browser: http://localhost:8098
+python3 tools/sprites/sprites.py              # Menü im Terminal: suchen, Nummer wählen, exportieren
+python3 tools/sprites/sprites.py list wall_   # alle Dateinamen (mit Suchwort)
+python3 tools/sprites/sprites.py export props48/table atlas/ui_war
+python3 tools/sprites/sprites.py export --all
+python3 tools/sprites/sprites.py apply        # eigene Bilder ins Spiel (optional nur ein Satz: apply props48)
+```
+
+- **Export** schreibt nach `sprites-export/<Satz>/<Name>.png` (nicht in Git). Im Browser auch „Download“ je Bild
+  und „Download all (zip)“.
+- **Eigene Bilder** liegen in `art-src/png/<Satz>/` unter genau dem Namen aus dem Export. Sie gehen vor die
+  gezeichnete Grafik. `apply` (oder „Replace“ im Browser) packt sie in die Sheets in `static/art/`. Danach das
+  Spiel neu laden. Raumvorlagen mit neuen props48-Teilen speichert der Server erst nach einem Neustart
+  (`RoomTemplates` kennt die Namen aus `sheet.json`); läuft er aus dem jar, vorher neu bauen.
+- **Ein neuer Name** ist ein neues Sprite. Im Browser über „New sprite“.
+- **Zurück zur gezeichneten Grafik:** Datei aus `art-src/png/` löschen und `apply` laufen lassen, oder im Browser
+  „Use drawn one“. Die gezeichnete Fassung merkt sich das Werkzeug in `art-src/out/sprite-base/`. Auf einem
+  frischen Checkout erst den Generator laufen lassen.
+- Die Generatoren (`build-art.mjs`, `props48/export.py`, `props48/backdrop.py`, `dwarf48/build.py` nach
+  `static/art/dwarf48`) legen die eigenen Bilder am Ende wieder hinein. Ein Fehler darin bricht den Bau nicht ab,
+  er wird als Warnung gemeldet.
+
+| Satz | Datei | Was |
+|---|---|---|
+| `atlas` | `name.png` | Symbole, Knöpfe (`btn_*`, 9-Slice), Waren, alte Grafik. Größe bei Symbolen und Knöpfen halten |
+| `props48` | `name.png`, `name@1.png` (weitere Bilder einer Animation), `name.glow.png` (was nachts leuchtet), optional `name.json` | Räume, Möbel, Wände (`wall_*`), Böden (`floor_*`), Tal, Fels, Monster. `name.json` darf `kind` (`prop`/`tile`), `group` (Palette im Raum-Editor), `anchor` [x, y] und `recolour` setzen. Neue Teile ohne Angabe: `prop`, Gruppe `custom`, Anker unten Mitte. Ein Bild in anderer Größe behält seinen Standpunkt |
+| `dwarf48` | `<Streifen>@<Stil>.png`, z. B. `front_hair@mohawk.png`, oder `front_body_m@0.png` | Zwerge, jedes Bild 48 × 64, Füße unten Mitte, Platzhalterfarben werden je Zwerg umgefärbt. Ein neuer Stilname kommt in die Liste in `kit.json` (Frisuren, Bärte, Hüte, Gesichter, Requisiten) und bekommt in den anderen Ansichten erst ein leeres Bild |
+| `dwarf` | `name.png` | alter Zwerg-Satz, nur ersetzen |
+| `backdrop` | `name.png` | Ebenen des Tals, nur ersetzen |
+
+**Grenzen:** Ein neuer Zwergstil steht im Kit, aber das Spiel wählt ihn erst, wenn der Code ihn einem Zwerg
+gibt (`dwarf48.js`). Neue Symbole und Waren im `atlas` erscheinen erst, wenn der Code ihren Namen benutzt. Neue
+Wände und Böden erscheinen sofort im Raum-Editor, neue Möbel unter ihrer Gruppe.
+
+Der ältere Weg über den Ordner `sprites/` gilt nur für den `atlas` und ersetzt zur Laufzeit: eine PNG-Datei mit dem
+Namen eines Sprites, z. B. `sprites/ui_war.png`; `sprites/dwarf.png` ersetzt alle alten Zwerge. Neu laden reicht.
 
 ## Räume: Stufen, Varianten, Maschinen
 

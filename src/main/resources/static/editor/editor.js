@@ -9,7 +9,9 @@ import { UI, PROPS as PROP_INFO, GROUPS as GROUP_INFO } from './info.js';
 
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
-const GROUPS = ['furniture', 'living', 'workshop', 'storage', 'shell', 'rock', 'ambient', 'valley', 'monster'];
+const GROUPS0 = ['furniture', 'living', 'workshop', 'storage', 'shell', 'rock', 'ambient', 'valley', 'monster'];
+/** The known groups, then any group a new sprite brought along (tools/sprites, e.g. "custom"). */
+const groups = () => [...new Set([...GROUPS0, ...Art.names().map((n) => Art.info(n).group)])];
 const LOOKS = [{ sex: 'm', hair: 'short', beard: 'full' }, { sex: 'f', hair: 'bun' }, { sex: 'm', hair: 'bald', beard: 'fork', hat: 'cap' }];
 const STANDERS = ['worker', 'seat', 'bar', 'stand', 'door'];   // spots that stand on the floor
 
@@ -181,10 +183,10 @@ function buildPalette() {
       el('span', { class: 'dot', textContent: s.t, style: `background:${s.c}` }), el('span', { class: 'grow', textContent: k }), info(spotText(k))));
   }
   pal.append(sg);
-  for (const g of GROUPS) {
+  for (const g of groups()) {
     const list = Art.names(g).filter(n => Art.info(n).kind === 'prop');
     if (!list.length) continue;
-    pal.append(head(g, GROUP_INFO[g] + ' Hover a piece for what it is; once placed, its i shows it again.'));
+    pal.append(head(g, (GROUP_INFO[g] || 'Your own pieces.') + ' Hover a piece for what it is; once placed, its i shows it again.'));
     const grid = el('div', { class: 'grid' });
     for (const n of list) grid.append(el('div', { class: 'tool' + (tool && tool.prop === n ? ' on' : ''), title: propText(n), onclick: () => setTool({ prop: n }) }, thumb(n), n));
     pal.append(grid);
@@ -608,8 +610,10 @@ addEventListener('beforeunload', e => { if (dirty && !EMBED) e.preventDefault();
 (async () => {
   await Art.load('../art/props48/');
   D.load('../art/dwarf48/').catch(e => status('dwarf kit missing: ' + e));
-  for (const w of R.WALLS) $('wall').append(el('option', { value: w, textContent: w.replace('wall_', '') }));
-  for (const f of R.FLOORS) $('floor').append(el('option', { value: f, textContent: f.replace('floor_', '') }));
+  // built-in walls and floors first, then any wall_/floor_ tile added to the sheet (tools/sprites)
+  const tiles = (pre, list) => [...new Set([...list, ...Art.names().filter((n) => n.startsWith(pre) && Art.info(n).kind === 'tile')])];
+  for (const w of tiles('wall_', R.WALLS)) $('wall').append(el('option', { value: w, textContent: w.replace('wall_', '') }));
+  for (const f of tiles('floor_', R.FLOORS)) $('floor').append(el('option', { value: f, textContent: f.replace('floor_', '') }));
   const d = await api('/api/rooms');
   if (d.error) { status(d.error); return; }
   applyList(d);
