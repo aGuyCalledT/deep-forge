@@ -1,7 +1,9 @@
 package com.deepforge;
 
-import com.deepforge.game.Content;
-import com.deepforge.game.Recipes;
+import com.deepforge.game.content.*;
+
+import com.deepforge.game.content.Content;
+import com.deepforge.game.content.Recipes;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;

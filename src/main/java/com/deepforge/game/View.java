@@ -1,10 +1,14 @@
 package com.deepforge.game;
 
+import com.deepforge.game.content.*;
+import com.deepforge.game.rules.*;
+import com.deepforge.game.world.*;
+
 import com.deepforge.game.State.*;
 
 import java.util.*;
 
-import static com.deepforge.game.Rules.*;
+import static com.deepforge.game.rules.Rules.*;
 
 /** Builds the JSON the client sees: the fortress plus derived numbers, so the client never re-implements rules. */
 public final class View {

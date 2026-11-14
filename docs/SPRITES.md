@@ -1,33 +1,25 @@
 # Grafik
 
-Alle Grafik wird mit **pxl** gezeichnet (Skill `pxl-pixel-art`, liegt auch im Repo unter
-`.claude/skills/pixel-art/`). Quellen in `art-src/`, Ergebnis ist ein Sprite-Sheet:
+Die Grafik entsteht als Code und wird zu Bildern in `src/main/resources/static/art/` gebaut. Eigene PNGs gehen vor
+(Werkzeug unten).
 
-```bash
-node scripts/build-art.mjs            # schreibt static/art/atlas.png, atlas.json, meta.json
-node scripts/build-art.mjs --preview  # zusätzlich vergrößerte Vorschauen in art-src/out/_preview/
-```
+| Quelle | Ergebnis | Bauen | Inhalt |
+|---|---|---|---|
+| `art-src/icons/*.px.js` (pxl, Skill `pxl-pixel-art`) | `static/art/icons/` (`atlas.png`, `atlas.json`, `meta.json`) | `node scripts/build-art.mjs [--preview]` | Symbole, Knöpfe, Waren, Werkzeuge, Erze, Edelsteine |
+| `art-src/scene/*.py` (Python, numpy, Pillow) | `static/art/scene/` (`sheet.png`, `glow.png`, `sheet.json`) | `python3 art-src/scene/export.py` | Räume aus Teilen, Möbel, Wände, Böden, Tal, Fels, Mine, Monster, Effekte |
+| `art-src/scene/backdrop.py` | `static/art/backdrop/` | `python3 art-src/scene/backdrop.py` | Ebenen des Tal-Hintergrunds |
+| `art-src/dwarves/*.py` | `static/art/dwarves/<Teil>/<Ansicht>.png` + `kit.json` | `python3 art-src/dwarves/build.py src/main/resources/static/art/dwarves` | Zwerg-Teile 48 × 64 |
+| Raum-Editor | `static/art/rooms/<typ>/*.json` | `python3 tools/room-editor/serve.py` | eingebaute Raumvorlagen |
 
-| Datei | Inhalt |
-|---|---|
-| `art-src/shared.js` | Palette, Austauschfarben, Raum-Anker (Arbeitsplatz, Feuer, Licht, Sitzplätze, Betten), Zwergen-Posen, Erze, Minen-Schichten. Wird von pxl **und** vom Spiel gelesen (`meta.json`) |
-| `art-src/palette.px.js` | Palette und Farbtreppen |
-| `art-src/figure.js` | Figuren-Baukasten für Zwerge, Zwerginnen, NPCs und menschenähnliche Monster (Kobolde, Trolle, Oger) und die Tiere der Tiefe. Wird von pxl eingebunden **und** als `static/js/figure.js` ins Spiel kopiert, das die Zwerge zur Laufzeit mit ihrem Aussehen und ihrer Kleidung baut |
-| `art-src/rooms.px.js` | die 13 Räume (96 px hoch, Breite = Zellen × 24), Möbel in Zwergengröße, Feuer- und Rad-Animationen |
-| `art-src/world.px.js` | Gänge, Treppenhäuser, Schacht, Oberfläche, Wagen, Fackel, Pfeil, Minen-Teile |
-| `art-src/cave.px.js` | grauer Fels nach Tiefe, ausgegrabene Höhlen, Risse beim Graben, Bewuchs, runde Enden |
-| `art-src/goods.px.js` | Erze, Barren, Waren, Rohstoffe, Münze, Artefakt |
-| `art-src/monsters.px.js` | 9 Monster mit 2 Bildern |
-| `art-src/ui.px.js` | Symbole der Oberfläche |
+Vorschauen landen in `art-src/out/` (nicht in Git), z. B. `art-src/out/preview/`.
 
 ## Austauschfarben
 
-Einige Farben in der Grafik sind Platzhalter, die das Spiel ersetzt (`SWAP` in `shared.js`):
+Einige Farben sind Platzhalter, die das Spiel ersetzt: im Atlas `SWAP` in `art-src/icons/shared.js` (**Metall**
+`m M x X`: Barren, Waren, Werkzeuge bekommen die Farbe ihres Metalls), in der Szene `placeholders` (`ingot`, `rockd`),
+bei Zwergen `ramps` in `kit.json`. Neue Grafik, die umgefärbt werden soll, nutzt genau diese Farben.
 
-- **Metall** (`m M x X`): Barren, Waren, Werkzeuge bekommen die Farbe ihres Metalls.
-- Zwerge werden nicht mehr umgefärbt, sondern mit ihren Farben von `figure.js` gebaut.
-
-Neue Grafik, die umgefärbt werden soll, nutzt genau diese Palettenschlüssel.
+Kleidungs-Symbole (Hemd, Hose, Stiefel …) zeichnet `static/js/art/wearicons.js` zur Laufzeit in der Farbe des Stücks.
 
 ## Sprites als PNG (Werkzeug)
 
@@ -38,122 +30,46 @@ Braucht Python 3 mit Pillow und numpy.
 python3 tools/sprites/sprites.py serve        # im Browser: http://localhost:8098
 python3 tools/sprites/sprites.py              # Menü im Terminal: suchen, Nummer wählen, exportieren
 python3 tools/sprites/sprites.py list wall_   # alle Dateinamen (mit Suchwort)
-python3 tools/sprites/sprites.py export props48/table atlas/ui_war
+python3 tools/sprites/sprites.py export scene/furniture/table icons/ui/ui_war dwarves/hair/front
 python3 tools/sprites/sprites.py export --all
-python3 tools/sprites/sprites.py apply        # eigene Bilder ins Spiel (optional nur ein Satz: apply props48)
+python3 tools/sprites/sprites.py apply        # eigene Bilder ins Spiel (optional nur ein Satz: apply scene)
 ```
 
-- **Export** schreibt nach `sprites-export/<Satz>/<Name>.png` (nicht in Git). Im Browser auch „Download“ je Bild
-  und „Download all (zip)“.
-- **Eigene Bilder** liegen in `art-src/png/<Satz>/` unter genau dem Namen aus dem Export. Sie gehen vor die
-  gezeichnete Grafik. `apply` (oder „Replace“ im Browser) packt sie in die Sheets in `static/art/`. Danach das
-  Spiel neu laden. Raumvorlagen mit neuen props48-Teilen speichert der Server erst nach einem Neustart
+- **Export** schreibt nach `sprites-export/<Satz>/<Ordner>/<Name>.png` (nicht in Git). Im Browser auch „Download“ je
+  Bild und „Download all (zip)“.
+- **Eigene Bilder** liegen in `art-src/png/<Satz>/<Ordner>/` unter genau dem Pfad aus dem Export. Sie gehen vor die
+  gezeichnete Grafik. `apply` (oder „Replace“ im Browser) packt sie in die Bilder in `static/art/`. Danach das
+  Spiel neu laden. Raumvorlagen mit neuen Szenen-Teilen speichert der Server erst nach einem Neustart
   (`RoomTemplates` kennt die Namen aus `sheet.json`); läuft er aus dem jar, vorher neu bauen.
-- **Ein neuer Name** ist ein neues Sprite. Im Browser über „New sprite“.
+- **Ein neuer Name** ist ein neues Sprite. Im Browser über „New sprite“. Bei der Szene bestimmt der Ordner die Gruppe
+  im Raum-Editor.
 - **Zurück zur gezeichneten Grafik:** Datei aus `art-src/png/` löschen und `apply` laufen lassen, oder im Browser
   „Use drawn one“. Die gezeichnete Fassung merkt sich das Werkzeug in `art-src/out/sprite-base/`. Auf einem
   frischen Checkout erst den Generator laufen lassen.
-- Die Generatoren (`build-art.mjs`, `props48/export.py`, `props48/backdrop.py`, `dwarf48/build.py` nach
-  `static/art/dwarf48`) legen die eigenen Bilder am Ende wieder hinein. Ein Fehler darin bricht den Bau nicht ab,
-  er wird als Warnung gemeldet.
+- Die Generatoren legen die eigenen Bilder am Ende wieder hinein. Ein Fehler darin bricht den Bau nicht ab, er wird
+  als Warnung gemeldet.
 
-| Satz | Datei | Was |
+| Satz | Pfad | Was |
 |---|---|---|
-| `atlas` | `name.png` | Symbole, Knöpfe (`btn_*`, 9-Slice), Waren, alte Grafik. Größe bei Symbolen und Knöpfen halten |
-| `props48` | `name.png`, `name@1.png` (weitere Bilder einer Animation), `name.glow.png` (was nachts leuchtet), optional `name.json` | Räume, Möbel, Wände (`wall_*`), Böden (`floor_*`), Tal, Fels, Monster. `name.json` darf `kind` (`prop`/`tile`), `group` (Palette im Raum-Editor), `anchor` [x, y] und `recolour` setzen. Neue Teile ohne Angabe: `prop`, Gruppe `custom`, Anker unten Mitte. Ein Bild in anderer Größe behält seinen Standpunkt |
-| `dwarf48` | `<Streifen>@<Stil>.png`, z. B. `front_hair@mohawk.png`, oder `front_body_m@0.png` | Zwerge, jedes Bild 48 × 64, Füße unten Mitte, Platzhalterfarben werden je Zwerg umgefärbt. Ein neuer Stilname kommt in die Liste in `kit.json` (Frisuren, Bärte, Hüte, Gesichter, Requisiten) und bekommt in den anderen Ansichten erst ein leeres Bild |
-| `dwarf` | `name.png` | alter Zwerg-Satz, nur ersetzen |
-| `backdrop` | `name.png` | Ebenen des Tals, nur ersetzen |
+| `icons` | `icons/<Art>/<name>.png`, Art: `ui`, `buttons`, `items`, `ores`, `raws`, `gems`, `goods`, `markers` | Symbole, Knöpfe (`btn_*`, 9-Slice), Waren. Größe bei Symbolen und Knöpfen halten |
+| `scene` | `scene/<Gruppe>/<name>.png`, `name@1.png` (weitere Bilder einer Animation), `name.glow.png` (was nachts leuchtet), optional `name.json` | Räume, Möbel, Wände (`wall_*`), Böden (`floor_*`), Tal, Fels, Monster. `name.json` darf `kind` (`prop`/`tile`), `anchor` [x, y] und `recolour` setzen. Neue Teile ohne Angabe: `prop` (`wall_`/`floor_` = `tile`), Anker unten Mitte. Ein Bild in anderer Größe behält seinen Standpunkt |
+| `dwarves` | `dwarves/<Teil>/<Ansicht>@<Stil>.png`, z. B. `dwarves/hair/front@mohawk.png`, `dwarves/body/front_m@0.png` | Zwerge, jedes Bild 48 × 64, Füße unten Mitte, Platzhalterfarben werden je Zwerg umgefärbt. Ein neuer Stilname kommt in die Liste in `kit.json` (Frisuren, Bärte, Hüte, Gesichter, Requisiten) und bekommt in den anderen Ansichten erst ein leeres Bild |
+| `backdrop` | `backdrop/<name>.png` | Ebenen des Tals, nur ersetzen |
 
 **Grenzen:** Ein neuer Zwergstil steht im Kit, aber das Spiel wählt ihn erst, wenn der Code ihn einem Zwerg
-gibt (`dwarf48.js`). Neue Symbole und Waren im `atlas` erscheinen erst, wenn der Code ihren Namen benutzt. Neue
+gibt (`art/dwarves.js`). Neue Symbole und Waren erscheinen erst, wenn der Code ihren Namen benutzt. Neue
 Wände und Böden erscheinen sofort im Raum-Editor, neue Möbel unter ihrer Gruppe.
-
-Der ältere Weg über den Ordner `sprites/` gilt nur für den `atlas` und ersetzt zur Laufzeit: eine PNG-Datei mit dem
-Namen eines Sprites, z. B. `sprites/ui_war.png`; `sprites/dwarf.png` ersetzt alle alten Zwerge. Neu laden reicht.
-
-## Räume: Stufen, Varianten, Maschinen
-
-Jeden Raum gibt es viermal: `room_<typ>_<stufe>_<variante>`. Stufe 0 „ausgehöhlt“ (Fels, Fackeln, Fässer als Tisch) ab
-Gebäudestufe 1, Stufe 1 „eingerichtet“ (Bretter, Ziegel, Stein, Laternen) ab Stufe 2, Stufe 2 „prächtig“
-(Täfelung, Goldfries, Fliesen, Kronleuchter) ab Stufe 3, Stufe 3 „Königshalle“ (dunkler Stein, Goldfries, Runentafeln,
-Marmorboden, Kristall-Lampen; Möbel wie Stufe 2) ab Stufe 5 (`ROOM_TIERS` in `shared.js`). Je zwei Varianten pro Stufe,
-das Spiel wählt sie fest nach der Gebäude-ID, damit zwei Schmieden nicht gleich aussehen.
-
-Werkstätten bekommen pro zusätzlicher Maschine eine Erweiterung `bay_<typ>_<stufe>_<variante>`, die rechts angesetzt
-wird. Wand-, Boden- und Deckenmuster wiederholen sich alle 24 px, damit die Naht nicht auffällt.
-
-Die Quellen sind **nicht** ausgeschnitten: `sprites.js` (`roomImage`) setzt Raum und Erweiterungen zusammen, legt
-eine Spinnwebe (`deco_web_*`) in eine Ecke und schneidet dann Gewölbe und Ecken aus. Kleine Fehler (andersfarbige
-Steine und Ziegel, Risse, Wasserflecken, eingesunkene Bretter) entstehen in `rooms.px.js` beim Zeichnen der Wand,
-damit Möbel sie verdecken.
-
-## Größen
-
-| Was | Größe | Hinweis |
-|---|---|---|
-| Raster-Zelle | 24 × 96 | `CELL` in `shared.js` und `hold.js`; der Grundriss in `Layouts.java` zählt Zellen |
-| Raum | Zellen × 24 breit, 96 hoch; die letzte Zelle ist ein freier Streifen mit Haken und Umhang (Möbel werden mit `w - 24` gezeichnet, `doorStrip` in `rooms.px.js`) | Füße der Zwerge auf y = 90; Tisch ca. 13 px hoch, Sitz 7 px, Etagenbett 51 px |
-| Maschinen-Erweiterung | `BAYS[type].w` × 24 breit, 96 hoch | beginnt mit einem Pfeiler (x 0–5), eigene Anker in `BAYS` |
-| Zwerg | Leinwand 44 × 52, Figur ca. 33 px hoch | Anker unten Mitte (x 22, y 50); liegend 34 × 20 |
-| Gang | 24 × 96 | runde Enden `cap_l_<band>` / `cap_r_<band>` 8 × 96 in der Farbe des Gesteins |
-| Fels | `stone_<band>_<0..2>` 64 × 64 | Band 0 Kalkstein in dünnen Schichten, 1 Sandstein in dicken Bänken, 2 fleckiger Granit mit Quarzader, 3 Basaltsäulen. Kacheln laufen an allen Rändern weiter; jedes Band füllt genau seine zwei Etagen |
-| Höhle | `cave_<band>_<0..1>` 24 × 96 | ausgegraben und leer: unebene Decke (oben durchsichtig, damit der Fels übersteht), Hackenspuren, Geröll; beide Ränder 7 px hoch, damit Zellen aneinanderpassen |
-| Bewuchs | `grow_<1..3>_<0..1>` 24 × 96 | über der Höhle: 1 Moos, 2 dazu Wurzeln und Pilze, 3 Moosteppich, leuchtende Pilze, Spinnennetz |
-| Graben | `dig_crack_<0..2>` 24 × 96 | Risse, die mit dem Fortschritt wachsen; Kreide-Umriss und Balken zeichnet `hold.js` |
-| Treppenhaus | `well` / `well_lit` 48 × 96 | Gang zwei Zellen breit, in der Mitte der Rückwand ein Steinbogen ins Dunkle (Mitte bei x = 24), Schild mit Pfeilen, Laterne; `well_lit` leuchtet, wenn gerade jemand hinein- oder herausgeht. Keine Stufen zu sehen |
-| Schacht | 48 × 96 | zwei Spalten links, ein Treppenhaus mit gekreuzten Spitzhacken und Gleisen (`shaft`, `shaft_lit`) |
-| Tor | `gate_1..4`: 48 × 72, 54 × 78, 64 × 88, 76 × 100 | wächst mit der Tor-Stufe: Holztor, Steinbogen mit beschlagenen Flügeln, Fallgitter und Banner, Runenbogen mit Wappen; mittig auf der Bergwand (x = −FACE), ab Stufe 3 Feuerschalen (`brazier` 14 × 22 + `fire_place`) daneben |
-| Eingangshalle | `entrance_hall_0..2` 144 × 96 | der Tor-Tunnel: Holz, Stein mit Schilden, prächtig mit Bannern und Läufer; Mitte (x 48–100) frei für die Übungskämpfe der Wachen (Werkzeug `stick` in `figure.js`) |
-| Oberfläche | Bäume `tree_a`/`tree_b` 160 × 240 (4 Bilder Wind, die Krone neigt sich oben mehr), Marktstand `market_stall` 128 × 84 mit Vordach `stall_awning` 136 × 30 (4 Bilder, flattert) | stehen auf dem Gras (`onGrass` in `hold.js`), Lage in `SURFACE`. Die kleinen `tree_0/1`, `stall`, `tent` gibt es nur noch für das Login-Bild |
-| Status | `ui_stop` (rotes Achteck, steht still), `ui_warn` (gelbes Dreieck, braucht dich), `ui_idle` (graue Punkte, nichts zu tun) 16 × 16 | über Räumen (`roomStatus` in `hold.js`), über untätigen Zwergen und in den Hinweis-Chips |
-| Abzeichen | `ui_good` (Smaragd mit !, 14 × 14, im Spiel 28 px) | auf Tabs mit etwas Gutem zu tun (`.tab .dot`) |
-| Fenster-X | `ui_xbtn`, `ui_xbtn_down` (runde Eisenplatte, 20 × 20, im Spiel 40 px) | `.sheet-x` und `.icon-btn` |
-| Knopfplatten | `btn_iron`, `btn_gold`, `btn_green`, `btn_red` und je `_down` (24 × 21, Slice 7 4 7 4) | `.btn`/`.tool` als `border-image`, 2-fach; die Mitte ist einfarbig, damit sie sauber dehnt |
-| Waren, Symbole | 16 × 16 | im Spiel ×2 gezeigt |
-| Monster | je nach Art, Figuren wie Zwerge | `Figure.monster(id, frame)` |
-
-## Stil
-
-- Symbole und Knöpfe exakt symmetrisch: nur die linke Hälfte als Raster zeichnen und mit `mx` spiegeln
-  (`mx: "c"` bei ungerader Breite). `poly`/`line` geben schräge Kanten oft ungleich.
-
-Warm und freundlich: abgerundete Höhlenräume statt Kästen, Licht von oben links, weiche Laternen- und
-Feuerschein-Effekte über das Licht im Spiel, kleine liebevolle Details (Katze am Kamin, Pflanzen, Spinnweben).
-Kein Rauschen als Füller: jede Markierung auf einer Fläche braucht einen Grund (Fuge, Brett, Fleck).
 
 ## Zwerge
 
-Zwerge (und kleine Fremde im Tal) setzt `static/js/dwarfkit.js` aus **PNG-Teilen** in `static/art/dwarf/` zusammen.
-Gezeichnet wurden sie im Pixelwright-Projekt „Deep Forge Dwarves“ (ein Sprite pro Teil); die PNGs im Repo sind
-pixelgenau dieselben und ab jetzt die Quelle: zum Ändern die PNG in Aseprite, Krita o. ä. bearbeiten, neu laden.
+Alle Zwerge (Festung, Mine, Porträts, Login-Bild) kommen aus dem Satz in `static/art/dwarves/` (die Figuren sind etwa
+47 px hoch, Räume 144 px). Jedes Teil hat einen Ordner (`arms`, `beard`, `body`, `face`, `hair`, `hat`, `head`, `legs`,
+`props`, `quilt`, `vest`), darin ein Streifen je Ansicht (`front.png`, `side_m.png`, `side_far.png` …); `kit.json`
+nennt Streifen, Dateien (`files`), Posen und Farben.
 
-- Jede PNG ist ein Streifen aus Bildern à **32 × 44**, alle deckungsgleich (Füße auf Zeile 41, Anker 16/42).
-  Welche Datei wie viele Bilder hat und in welcher Reihenfolge, steht in `kit.json` (`sheets`, `styles`, `beards`, `hats`, `moods`, `props`).
-- Körpergröße ist immer gleich; Mann und Frau unterscheiden sich nur in der Form (`*_body_m`, `*_body_f`).
-- Ansichten: `front_*` (stehen, atmen, sitzen, essen, trinken, reden), `side_*` (gehen 0–3, arbeiten 4–7, stehen 8;
-  nach rechts schauend, das Spiel spiegelt), `back_*` (klettern). Schlafen = Seitenansicht mit Decke, gedreht.
-- **Platzhalterfarben** (`ramps` in `kit.json`): Haut, Haar, Tunika, Hose, Stiefel, Augen, Metall (Helm, Werkzeug) und
-  Stoff (Mütze, Kapuze, Decke, Sack). Wer diese Farben benutzt, bekommt sie im Spiel umgefärbt; alle anderen Farben
-  (Umriss, Gürtel, Gold, Holz) bleiben.
-- Zeichenreihenfolge vorn: Körper, Kopf, Gesicht, Bart, Haare, Hut, rechter Arm, Ding in der Hand. Mit Hut fallen Haare
-  oberhalb von Zeile 8 (`hatClip`) weg.
-- Alte Merkmale werden zugeordnet: 10 Frisuren auf 6, 8 Bärte auf 5, Hüte auf Helm/Mütze/Kapuze. Werkzeuge an der
-  Seite malt `dwarfkit.js` als Stiel und Kopf aus den Handpositionen (`sideHands`).
-- `art-src/dwarf-kit/*.py` sind die Entwurfs-Skripte (`python3 build_kit.py <ordner>` schreibt die Teile neu). Nur für
-  große Umbauten nutzen: es überschreibt Handarbeit an den PNGs.
-- Fehlt `kit.json`, malt `figure.js` die Zwerge wie früher. Große Reisende (`tall`), Monster und Kleidungs-Symbole
-  kommen weiter aus `figure.js`.
-- `sprites.js` (`dwarfSprite`, `npcSprite`, `placeDwarf`, `portrait`) speichert fertige Bilder zwischen.
-
-## Zwerge 48 × 64 (im Spiel)
-
-Die Festung zeichnet alle Zwerge mit dem Satz in `static/art/dwarf48/` (die Figuren sind etwa 47 px hoch, Räume 144 px).
-Porträts in den Panels und das Cheat-Fenster nutzen noch das alte Kit (`dwarfkit.js`).
-
-- **Vorlage:** das Basismodell (Mann, kurze Haare, Vollbart, grüne Tunika, Lederweste), `art-src/dwarf48/preview/base_walk.png`,
-  im Raster der Laufvorlage: Zellen 48 × 64, Reihen hinten, rechts, vorn, links (links = rechts gespiegelt), Spalten Schritt, Stand, Schritt.
-- **Quelle ist Code:** `art-src/dwarf48/parts.py` baut jedes Teil aus einfachen Formen, `engine.py` schattiert sie
+- **Vorlage:** das Basismodell (Mann, kurze Haare, Vollbart, grüne Tunika, Lederweste), Vorschau mit
+  `python3 art-src/dwarves/preview.py`, im Raster der Laufvorlage: Zellen 48 × 64, Reihen hinten, rechts, vorn, links (links = rechts gespiegelt), Spalten Schritt, Stand, Schritt.
+- **Quelle ist Code:** `art-src/dwarves/parts.py` baut jedes Teil aus einfachen Formen, `engine.py` schattiert sie
   (Licht von oben links, 5 Töne je Farbe, Umriss im dunkelsten Ton des Teils). `python3 build.py <ordner>` schreibt
   die Streifen und `kit.json`, `python3 preview.py <ordner>` die Vorschauen. Wer eine PNG von Hand verbessert, darf
   `build.py` danach nicht mehr über den Ordner laufen lassen.
@@ -162,38 +78,38 @@ Porträts in den Panels und das Cheat-Fenster nutzen noch das alte Kit (`dwarfki
   (`neutral happy angry open blink sleep`), 6 Frisuren, 5 Bärte, 3 Hüte, Dinge in der Hand, Decke zum Schlafen; je Ansicht.
 - **Posen** stehen mit Bildern und Reihenfolge in `kit.json` (`poses`, `order`): `idle talk hands sit sitTalk eat drink
   walkFront walkBack idleBack walk idleSide work sleep`, dazu sitzend und arbeitend in jeder Ansicht: `sitSide sitBack
-  workSit workBack workSitBack workSitFront` (Vorschau `preview/seated_work.png`). Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
+  workSit workBack workSitBack workSitFront` (Vorschau `seated_work.png`). Eine Zeile ist `[Beine, Arme, dy, Stimmung, Ding/Decke]`; `dy`
   schiebt alles außer den Beinen. Schlafen ist das Seitenbild, eine Vierteldrehung nach links.
-- **Augen** wie bei den CC0-Vorlagen in `art-src/bases/`: 3 px breit, Lid oben, zwei Reihen Weiß und Iris.
+- **Augen:** 3 px breit, Lid oben, zwei Reihen Weiß und Iris.
 - **Umfärben:** `ramps` in `kit.json` sind Platzhalter (Haut, Haar, Tunika, Weste, Hose, Stiefel, Metall, Stoff …);
-  Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `Figure.ramp(farbe, 5)`. `fixed` (Augen, Umriss) bleibt.
-- **Lader:** `static/js/dwarf48.js` (`load`, `frame(look, pose, f)`, `draw(ctx, look, pose, f, x, y, {flip})`, Umfärben
+  Ton 3 ist die Grundfarbe, die neue Reihe kommt aus `ramp(farbe)` in `art/dwarves.js`. `fixed` (Augen, Umriss) bleibt.
+- **Lader:** `static/js/art/dwarves.js` (`load`, `frame(look, pose, f)`, `draw(ctx, look, pose, f, x, y, {flip})`, Umfärben
   über `look.ramps`, `quilt: false` lässt die Decke weg). Der Raum-Editor zeigt seine Punkte damit. Im Spiel übersetzt
-  `look48(d)` in `hold.js` einen Zwerg (Frisur, Bart, Haut, Haar, Kleidung, Helm, Stimmung) in einen `look`.
+  `look48(d)` in `art/dwarves.js` einen Zwerg (Frisur, Bart, Haut, Haar, Kleidung, Helm, Stimmung) in einen `look`.
 - **Mine:** vierter Hut `miner` (Lederhelm mit Messinglampe), Pose `mine` (Seitenansicht, Spitzhacke oben/Mitte/unten,
   `side_prop` / `side_prop_back` in `kit.json`; oben liegt die Hacke hinter dem Kopf). `look48(d, {hat: 'miner'})`.
 
-## Grafik 48 px (im Spiel)
+## Szene 48 px
 
 Räume, Tal, Fels, Monster und Effekte im Maßstab der Zwerge 48 × 64: Zelle 48 px, Raum 144 px hoch, Boden bei y 135.
 Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetzt (Wand, Boden, Gewölbe, Möbel).
 
-- **Quelle ist Code** in `art-src/props48/` (Python mit numpy und Pillow): `engine.py` (Formen, Schattierung, Farbreihen),
+- **Quelle ist Code** in `art-src/scene/` (Python mit numpy und Pillow): `engine.py` (Formen, Schattierung, Farbreihen),
   `props.py` (Möbel), `shells.py` (Wände, Böden, Gewölbe, Gang, Treppenhaus, Schacht, Tunnel, Pfeiler), `living.py`,
   `workshop.py`, `storage.py`, `valley.py`, `rock.py`, `monsters.py`, `ambient.py`. Jede Datei mit
-  `python3 <datei> preview` baut Vorschaubilder nach `art-src/props48/preview/`.
+  `python3 <datei> preview` baut Vorschaubilder nach `art-src/out/preview/`.
 - **Stil:** 5 warme Töne je Material, Schatten ins Pflaumenfarbene, Licht von oben links, Holz flach nach Flächen,
   Rundes gewölbt, Umriss im dunkelsten Ton des Materials, Muster nur mit Grund. Mauerwerk und Bretter schattiert
   `blocks()` (Fuge, helle Kante oben links, dunkle unten rechts).
-- **Export:** `python3 art-src/props48/export.py` schreibt `static/art/props48/sheet.png`, `glow.png` (nur selbst
+- **Export:** `python3 art-src/scene/export.py` schreibt `static/art/scene/sheet.png`, `glow.png` (nur selbst
   leuchtende Pixel, gleiche Lage) und `sheet.json` und vergleicht danach jedes Pixel. Ein Eintrag:
   `{kind: prop|tile, group, frames: [[x, y, w, h, ankerX, ankerY], ...], recolour, glow}`. Möbel stehen mit dem Anker
   auf dem Boden, Wandteile hängen daran, Kacheln wiederholen sich ab ihrer linken Kante (Wände und Fels alle 96 px).
   Animierte Teile haben 4 Bilder.
 - **Umfärben:** Platzhalter-Reihen in `placeholders`: `ingot` (Barren, Erz; Ton 3 = Metallfarbe, neue Reihe aus
-  `Figure.ramp`) und `rockd` (Höhlen, Risse, Brocken; Reihen der Minenschichten in `depths`). Der Export prüft, dass
+  `ramp`) und `rockd` (Höhlen, Risse, Brocken; Reihen der Minenschichten in `depths`). Der Export prüft, dass
   kein anderes Material dieser Teile eine Platzhalterfarbe hat.
-- **Im Spiel:** `static/js/art48.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). `hold.js` lädt Sheet,
+- **Im Spiel:** `static/js/art/scene.js` (`load`, `draw`, `frame`, `tile`, `depthRamp`, `names`). `scene/hold.js` lädt Sheet,
   Zwerge und alle Raumvorlagen vor dem ersten Bild (`loadArt()`), zeichnet Himmel, Berge (`mountains_*` nach Tageszeit),
   Wiese, Bäume, Stand, Brunnen, Fels (`rock_0..4` nach Tiefe, nahtlos in beide Richtungen: `voronoi(..., wrap_y=True)`,
   `blocks(..., wrap_y=True)` in `rock.py`), Gänge (`hallway`), Schacht (auf jeder Etage die Treppenhaus-Vorlage mit
@@ -203,7 +119,7 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   `drawWalls`). Die Säule nimmt das Material der Rückwand des Raums (`PILLAR` in `hold.js`), oben trifft sie die
   Gewölbe-Ecken der Räume, Kapitell und Sockel sind Blöcke. Schmuck je Säule (`pillar_band`, `pillar_runes`,
   `pillar_banner`, zufällig aus der Lage). Die Tür steckt in der Säule und ist nur zu sehen, solange ein Zwerg auf seinem
-  Weg daneben ist (dann schwingt sie heraus). Die alten `walldoor*`-Bilder sind noch im Sheet, aber unbenutzt.
+  Weg daneben ist (dann schwingt sie heraus).
   Rückwände: `wall_rock`, `wall_hewn`, `wall_brick`, `wall_ashlar`, `wall_panel`, dazu `wall_plaster` (Fachwerk),
   `wall_slate` (Schiefer) und `wall_tile` (glasierte Fliesen mit Goldfries). Jeder Raum und jeder Abschnitt aus Gängen/Treppenhäusern hat an allen vier
   Innenkanten gestuften Schatten (`drawEdges`),
@@ -211,10 +127,10 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   und hintere Möbel, die Zwerge im Raum, vordere Möbel; die leuchtenden Pixel (`glow`) kommen nach der Lichtschicht.
   Lichter, Rauch, Funken, Dampf und Klickflächen kommen aus den Punkten der Vorlage. Alte Symbole (Status, Pfeile,
   Pixelschrift) werden doppelt groß gezeichnet.
-- **Mine** (`art-src/props48/mine.py`, Gruppe `mine`): gehauene Stützpfeiler `mine_pillar` und dunkler `mine_pillar_fg`
+- **Mine** (`art-src/scene/mine.py`, Gruppe `mine`): gehauene Stützpfeiler `mine_pillar` und dunkler `mine_pillar_fg`
   (40 × 230), Vordergrund-Felsen `mine_fg_rock_0..2`, große Tropfsteine `mine_fg_stal_0..1`, Felsnadeln `mine_spire_0..1`,
   Erzadern `ore_seam_0..2` (Platzhalter `ingot` = Erzfarbe), Tunnelloch `mine_hole`, Erzwagen `minecart` (5 Bilder:
-  leer bis voll, Haufen in `ingot`), Schiene `rail` (Kachel). Fels überall in `rockd`, gezeichnet in `mine48.js`.
+  leer bis voll, Haufen in `ingot`), Schiene `rail` (Kachel). Fels überall in `rockd`, gezeichnet in `scene/mine.js`.
 
 ### Raumvorlagen (Editor)
 
@@ -226,7 +142,7 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
 
 - **Im Spiel:** Raumfenster → „Change look“ zeigt alle Vorlagen des Raumtyps mit Bild (eingebaut und von Spielern).
   „Use“ wählt, „Copy“ öffnet eine Kopie im Editor, „Edit“ die eigene, „Make a new look“ eine Kopie der aktuellen. Der
-  Editor (`static/editor/`) läuft als Fenster über dem Spiel (`openEditor` in `popups.js`, `?embed=1&type=&part=&name=&copy=1`)
+  Editor (`static/editor/`) läuft als Fenster über dem Spiel (`openEditor` in `ui/popups.js`, `?embed=1&type=&part=&name=&copy=1`)
   und meldet `saved`, `deleted` und `close` per `postMessage`; nach dem Speichern bekommt der Raum die neue Vorlage.
   Am Handy (≤ 760 px) gibt es nur die Liste mit „Use“, Editor-Knöpfe fehlen dort.
 - **Spieler-Vorlagen** speichert der Server in der Tabelle `room_templates` (`RoomTemplates.java`): jeder Eingeloggte
@@ -238,7 +154,7 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
   Python 3, speichert als Dateien. Raumtypen und Breiten liest er aus `Layouts.java` (`ROOM_CELLS`, `MACHINE_CELLS`).
 - **Hilfe:** Jedes Bedienelement, jeder Punkt und jede Möbel-Gruppe hat einen Info-Knopf (i) und einen Tooltip mit
   einer kurzen englischen Erklärung. Texte: Bedienung und Möbel in `static/editor/info.js`, Punkte in
-  `rooms48.js` (`SPOTS[kind].about`, das Spiel nutzt sie mit).
+  `art/rooms.js` (`SPOTS[kind].about`, das Spiel nutzt sie mit).
 - **Raster:** „Snap“ (Standard 4 px) rastet Platzieren, Ziehen und Pfeiltasten ein, gezählt ab der Bodenlinie, die
   Decke (y 0) rastet auch. Alt platziert pixelgenau. Der Schalter „grid“ zeigt die Rasterpunkte, die 48-px-Zellen und
   die Raummitte.
@@ -249,7 +165,7 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
 - **Bedienen:** Links Möbel oder Punkt wählen und in den Raum klicken. Möbel rasten am Boden ein (Alt hält sie frei).
   Ziehen verschiebt. Tasten: Pfeile (mit Shift 8 px), F spiegeln, Bild auf/ab für die Ebene, Entf, Strg+D, Strg+S,
   Esc, L wechselt die Ebene. Bei einem Punkt dreht F die Blickrichtung weiter, S schaltet sitzen/stehen; rechts steht
-  die Pose, die daraus wird (`spotPose(spot)` in `rooms48.js`, z. B. Arbeiter `back` + `sit` = `workSitBack`). Links „New props go“ wählt, wohin neue Möbel kommen; der Schalter „front“ macht die
+  die Pose, die daraus wird (`spotPose(spot)` in `art/rooms.js`, z. B. Arbeiter `back` + `sit` = `workSitBack`). Links „New props go“ wählt, wohin neue Möbel kommen; der Schalter „front“ macht die
   vordere Ebene durchsichtig. „auto spots“ setzt die Punkte, die die Möbel mitbringen (Fackel gibt Licht, Bank zwei Sitze, Amboss Funken
   und Arbeitsplatz …). Rechts steht, welche Punkte der Raumtyp mindestens braucht. Schalter für Licht, Zwerge an den
   Punkten, Animation, Raster und Zoom.
@@ -257,30 +173,29 @@ Stärke, `fire`, `chimney`, `bellows`, `anvil`, `quench`, `wheel`, `work`, `kett
   Editor zusätzliche Typen (`WAYS` in `RoomTemplates.java` und `serve.py`). Vorlagen je Stil `timber`, `stone`, `grand`; Gänge dazu `<stil>_lit`
   (jede vierte Zelle, Fackel) und `<stil>_deco` (Banner, Fass, Waffen). Ein Treppenhaus braucht einen Punkt `door` (am Fuß
   der Tür `stairdoor*`, dort gehen Zwerge hinein); das Spiel setzt das Bild der Tür selbst (0 zu bis 3 offen). Teile in
-  `art-src/props48/ways.py`.
-- **Ablage:** `static/art/props48/rooms/<typ>/<room|bay>_<name>.json`, Liste in `rooms/index.json` (schreibt der
-  Editor). `bay` ist eine Maschinen-Erweiterung. Format und Pflichtpunkte stehen in `static/js/rooms48.js`
+  `art-src/scene/ways.py`.
+- **Ablage:** `static/art/rooms/<typ>/<room|bay>_<name>.json`, Liste in `rooms/index.json` (schreibt der
+  Editor). `bay` ist eine Maschinen-Erweiterung. Format und Pflichtpunkte stehen in `static/js/art/rooms.js`
   (`SPOTS`, `NEEDS`, `PROP_SPOTS`), zeichnen mit `drawRoom(ctx, tpl, x, y, t, {between})`: Hülle und hintere Ebene, dann `between` (die Zwerge),
   dann die vordere Ebene, jede Ebene für sich beleuchtet.
 - **Im Spiel:** `Building.look` (leer = erste Vorlage) und die Aktion `roomLook {building, look}`. Der Server prüft
   gegen `rooms/index.json` (`RoomLooks.java`) und die Spieler-Vorlagen. Ein Test verlangt für jeden Raumtyp und jede Erweiterung mindestens
-  eine Vorlage. Zu sehen ist das erst mit dem neuen Renderer.
+  eine Vorlage.
 
 ## Tiefe
 
-- Die Festung liegt in einem Berg: links das Tal (zwei große Bäume, Marktstand, Wegweiser, Reisende, Karawanen), ein Tor (`gate_<stufe>`) mit Tunnel (die Eingangshalle)
-  führt auf Etage `ENTRY` (2) zum Schacht, darüber zwei Etagen über dem Talboden. Die Bergform kommt aus `mtop(x)` in
-  `hold.js` (Steilwand am Tor, Hang, Gipfel mit Schnee, Gras und kleine Tannen am Rand).
-- Der Fels ist die vordere Ebene: grauer Naturstein in vier Gesteinsbändern (`stone_*`, je zwei Etagen, je drei
-  Varianten per Hash), oben die Bergkante mit Gras und Schnee, unter dem Tal Erde und Wurzeln.
-- Räume, Gänge, Treppenhäuser und Schacht sind hineingeschnitten: der Fels wirft einen weichen Schatten nach rechts unten
-  hinein, die untere und rechte Kante jeder Öffnung fängt Licht. Beide Ebenen werden je Grundriss einmal gezeichnet.
-- Am Himmel ziehen Berge (mit Schnee) und bewaldete Hügel beim Verschieben langsamer mit als die Welt (Parallaxe),
-  dazu Dunst über dem Horizont.
-- Zwerge werfen einen kleinen Schatten auf den Boden (`groundShadow` in `sprites.js`).
+- Die Festung liegt in einem Berg: links das Tal (Bäume, Marktstand, Reisende, Karawanen), ein Tor mit Tunnel (die
+  Eingangshalle) führt auf Etage `ENTRY` zum Schacht. Die Bergform kommt aus `mtop(x)` in `scene/hold.js`.
+- Räume, Gänge, Treppenhäuser und Schacht sind in den Fels geschnitten (`drawEdges`), ungenutzter Fels ist schwarz
+  (`drawFog`).
+- Der Hintergrund des Tals zieht beim Verschieben langsamer mit (Parallaxe, `art/backdrop.js`).
+- Zwerge werfen einen kleinen Schatten auf den Boden (`groundShadow` in `art/sprites.js`).
 
-## Vorlagen (CC0)
+## Stil
 
-`art-src/bases/human` und `art-src/bases/elf`: Figuren-Vorlagen im Raster 48 × 64 (Reihen und Richtungen im Dateinamen,
-z. B. `SWEN_` oder `NESW_`), von Svetlana Kushnariova (Cabbit) und Jordan Irwin (AntumDeluge), CC0, Namensnennung
-freiwillig (siehe `README.txt`). Maß für Größe, Proportionen und Augen; Menschen und Elfen im Tal könnten darauf aufbauen.
+- Symbole und Knöpfe exakt symmetrisch: nur die linke Hälfte als Raster zeichnen und mit `mx` spiegeln
+  (`mx: "c"` bei ungerader Breite). `poly`/`line` geben schräge Kanten oft ungleich.
+
+Warm und freundlich: abgerundete Höhlenräume statt Kästen, Licht von oben links, weiche Laternen- und
+Feuerschein-Effekte über das Licht im Spiel, kleine liebevolle Details (Katze am Kamin, Pflanzen, Spinnweben).
+Kein Rauschen als Füller: jede Markierung auf einer Fläche braucht einen Grund (Fuge, Brett, Fleck).

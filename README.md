@@ -4,7 +4,7 @@ An idle game about a dwarf fortress, for a few friends, in the browser and on th
 Dig ore, smelt bars, mix alloys, forge goods, send caravans to cities with shifting prices, send expeditions into
 the deep – and keep your dwarves fed, happy and alive.
 
-- **Konzept:** [docs/KONZEPT.md](docs/KONZEPT.md)
+- **Konzept:** [docs/konzept/spiel.md](docs/konzept/spiel.md)
 - **Balancing:** [docs/BALANCING.md](docs/BALANCING.md)
 - **Eigene Grafiken:** [docs/SPRITES.md](docs/SPRITES.md)
 - **Server einrichten:** [docs/DEPLOY.md](docs/DEPLOY.md)
@@ -30,7 +30,7 @@ Open `http://localhost:8080` and found a hold. Saves go to `./data` (H2). Change
 browser reload, Java changes need a restart. **Deep Forge tests** runs all tests.
 Alternative: create a Maven run configuration with the goal `spring-boot:run` (Run → Edit Configurations → + → Maven).
 
-Art: `node scripts/build-art.mjs` renders `art-src/*.px.js` with pxl into `static/art/` (see docs/SPRITES.md).
+Art: icons from `art-src/icons/*.px.js` (pxl, `node scripts/build-art.mjs`), scene and dwarves from Python in `art-src/scene/` and `art-src/dwarves/`, all into `static/art/` (see docs/SPRITES.md).
 
 Command line:
 

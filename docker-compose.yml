@@ -33,9 +33,6 @@ services:
       CHEATS: ${CHEATS:-false}
       DEMO_USER: ${DEMO_USER:-}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-}
-      SPRITES_DIR: /app/sprites
-    volumes:
-      - ./sprites:/app/sprites:ro
     ports:
       - "${APP_PORT:-8080}:8080"
 

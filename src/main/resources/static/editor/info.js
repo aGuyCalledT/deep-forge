@@ -1,5 +1,5 @@
 // Explanations for the room editor: every control and every prop (shown behind the "i" buttons and as tooltips).
-// Spot texts live in static/js/rooms48.js (SPOTS[kind].about), because the game shares them.
+// Spot texts live in static/js/art/rooms.js (SPOTS[kind].about), because the game shares them.
 
 export const UI = {
   type: 'The room type to make a look for. The number in brackets is how many templates it has; "needs one" means the game has no look for it yet.',
@@ -9,7 +9,7 @@ export const UI = {
   dup: 'Keep everything as it is and save it under a new name: the quickest way to make a variant.',
   del: 'Delete this template file. Rooms that used it fall back to the first look.',
   name: 'File name of the template: small letters, digits, _ and -. Saving under an existing name overwrites it.',
-  save: 'Write the template to static/art/props48/rooms/ (Ctrl+S). Commit the files to put them in the game.',
+  save: 'Write the template to static/art/rooms/ (Ctrl+S). Commit the files to put them in the game.',
   wall: 'The back wall, repeated across the room: rock, brick, cut stone or wood panels.',
   floor: 'The floor strip under the floor line (y 135).',
   vault: 'Rounded corners at the top of the room, like a vault cut into the rock.',

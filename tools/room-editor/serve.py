@@ -3,7 +3,7 @@
 #   python3 tools/room-editor/serve.py [port]        then open http://localhost:8099
 # The editor itself is part of the game (static/editor/, in the game it saves players' looks to the database). Here it
 # runs against the game's static files and saves built-in templates as JSON into
-#   src/main/resources/static/art/props48/rooms/<type>/<part>_<name>.json   (part = room | bay)
+#   src/main/resources/static/art/rooms/<type>/<part>_<name>.json   (part = room | bay)
 # plus rooms/index.json, which the game and the server read. Room types and widths come from Layouts.java.
 import json, os, re, sys
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -11,9 +11,9 @@ from urllib.parse import urlparse, parse_qs
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 STATIC = os.path.join(ROOT, 'src/main/resources/static')
-ROOMS = os.path.join(STATIC, 'art/props48/rooms')
+ROOMS = os.path.join(STATIC, 'art/rooms')
 EDITOR = os.path.join(STATIC, 'editor')
-DWARVES = os.path.join(ROOT, 'art-src/props48/dwarves')
+DWARVES = os.path.join(ROOT, 'art-src/scene/dwarves')
 LAYOUTS = os.path.join(ROOT, 'src/main/java/com/deepforge/game/Layouts.java')
 # ways: not rooms on the server's list, but drawn from templates too (the gate tunnel is the entrance hall)
 WAYS = [('entrance_hall', 6), ('stairwell', 2), ('hallway', 1)]

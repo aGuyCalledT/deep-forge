@@ -1,0 +1,844 @@
+{
+ "cell": [
+  48,
+  64
+ ],
+ "anchor": [
+  24,
+  62
+ ],
+ "hatClip": 19,
+ "styles": [
+  "short",
+  "bald",
+  "topknot",
+  "long",
+  "braids",
+  "bun"
+ ],
+ "beards": [
+  "full",
+  "wide",
+  "fork",
+  "long",
+  "short"
+ ],
+ "hats": [
+  "helm",
+  "cap",
+  "hood",
+  "miner"
+ ],
+ "moods": [
+  "neutral",
+  "happy",
+  "angry",
+  "open",
+  "blink",
+  "sleep"
+ ],
+ "props": [
+  "mug_down",
+  "mug_up",
+  "spoon_mid",
+  "spoon_up",
+  "axe",
+  "sack"
+ ],
+ "sideProps": [
+  "pick_up",
+  "pick_mid",
+  "pick_down"
+ ],
+ "sheets": {
+  "front_legs_m": 4,
+  "back_legs_m": 4,
+  "side_legs_m": 4,
+  "front_body_m": 1,
+  "front_vest_m": 1,
+  "back_body_m": 1,
+  "back_vest_m": 1,
+  "side_body_m": 1,
+  "side_vest_m": 1,
+  "front_arms_m": 6,
+  "back_arms_m": 6,
+  "front_face_m": 6,
+  "side_face_m": 6,
+  "front_legs_f": 4,
+  "back_legs_f": 4,
+  "side_legs_f": 4,
+  "front_body_f": 1,
+  "front_vest_f": 1,
+  "back_body_f": 1,
+  "back_vest_f": 1,
+  "side_body_f": 1,
+  "side_vest_f": 1,
+  "front_arms_f": 6,
+  "back_arms_f": 6,
+  "front_face_f": 6,
+  "side_face_f": 6,
+  "side_arm_far": 6,
+  "side_arm_near": 6,
+  "front_head": 1,
+  "front_hair": 6,
+  "front_beard": 5,
+  "front_hat": 4,
+  "back_head": 1,
+  "back_hair": 6,
+  "back_beard": 5,
+  "back_hat": 4,
+  "side_head": 1,
+  "side_hair": 6,
+  "side_beard": 5,
+  "side_hat": 4,
+  "front_prop": 6,
+  "side_prop": 3,
+  "side_quilt": 2
+ },
+ "files": {
+  "front_legs_m": "legs/front_m.png",
+  "back_legs_m": "legs/back_m.png",
+  "side_legs_m": "legs/side_m.png",
+  "front_body_m": "body/front_m.png",
+  "front_vest_m": "vest/front_m.png",
+  "back_body_m": "body/back_m.png",
+  "back_vest_m": "vest/back_m.png",
+  "side_body_m": "body/side_m.png",
+  "side_vest_m": "vest/side_m.png",
+  "front_arms_m": "arms/front_m.png",
+  "back_arms_m": "arms/back_m.png",
+  "front_face_m": "face/front_m.png",
+  "side_face_m": "face/side_m.png",
+  "front_legs_f": "legs/front_f.png",
+  "back_legs_f": "legs/back_f.png",
+  "side_legs_f": "legs/side_f.png",
+  "front_body_f": "body/front_f.png",
+  "front_vest_f": "vest/front_f.png",
+  "back_body_f": "body/back_f.png",
+  "back_vest_f": "vest/back_f.png",
+  "side_body_f": "body/side_f.png",
+  "side_vest_f": "vest/side_f.png",
+  "front_arms_f": "arms/front_f.png",
+  "back_arms_f": "arms/back_f.png",
+  "front_face_f": "face/front_f.png",
+  "side_face_f": "face/side_f.png",
+  "side_arm_far": "arms/side_far.png",
+  "side_arm_near": "arms/side_near.png",
+  "front_head": "head/front.png",
+  "front_hair": "hair/front.png",
+  "front_beard": "beard/front.png",
+  "front_hat": "hat/front.png",
+  "back_head": "head/back.png",
+  "back_hair": "hair/back.png",
+  "back_beard": "beard/back.png",
+  "back_hat": "hat/back.png",
+  "side_head": "head/side.png",
+  "side_hair": "hair/side.png",
+  "side_beard": "beard/side.png",
+  "side_hat": "hat/side.png",
+  "front_prop": "props/front.png",
+  "side_prop": "props/side.png",
+  "side_quilt": "quilt/side.png"
+ },
+ "poses": {
+  "idle": {
+   "view": "front",
+   "frames": [
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     1,
+     null,
+     null
+    ]
+   ]
+  },
+  "talk": {
+   "view": "front",
+   "frames": [
+    [
+     1,
+     1,
+     0,
+     "open",
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     "open",
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "hands": {
+   "view": "front",
+   "frames": [
+    [
+     1,
+     3,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     5,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "sit": {
+   "view": "front",
+   "frames": [
+    [
+     3,
+     1,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     1,
+     6,
+     null,
+     null
+    ]
+   ]
+  },
+  "sitTalk": {
+   "view": "front",
+   "frames": [
+    [
+     3,
+     1,
+     5,
+     "open",
+     null
+    ],
+    [
+     3,
+     1,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     1,
+     5,
+     "open",
+     null
+    ],
+    [
+     3,
+     1,
+     5,
+     null,
+     null
+    ]
+   ]
+  },
+  "eat": {
+   "view": "front",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     "spoon_mid"
+    ],
+    [
+     3,
+     5,
+     5,
+     null,
+     "spoon_up"
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     "spoon_mid"
+    ]
+   ]
+  },
+  "drink": {
+   "view": "front",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     "mug_down"
+    ],
+    [
+     3,
+     5,
+     5,
+     null,
+     "mug_up"
+    ]
+   ]
+  },
+  "walkFront": {
+   "view": "front",
+   "frames": [
+    [
+     0,
+     0,
+     1,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ],
+    [
+     2,
+     2,
+     1,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "walkBack": {
+   "view": "back",
+   "frames": [
+    [
+     0,
+     0,
+     1,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ],
+    [
+     2,
+     2,
+     1,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "idleBack": {
+   "view": "back",
+   "frames": [
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "walk": {
+   "view": "side",
+   "frames": [
+    [
+     0,
+     0,
+     1,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ],
+    [
+     2,
+     2,
+     1,
+     null,
+     null
+    ],
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "idleSide": {
+   "view": "side",
+   "frames": [
+    [
+     1,
+     1,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "work": {
+   "view": "side",
+   "frames": [
+    [
+     1,
+     3,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     5,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "sleep": {
+   "view": "side",
+   "frames": [
+    [
+     1,
+     1,
+     0,
+     "sleep",
+     0
+    ],
+    [
+     1,
+     1,
+     0,
+     "sleep",
+     1
+    ]
+   ]
+  },
+  "sitSide": {
+   "view": "side",
+   "frames": [
+    [
+     3,
+     1,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     1,
+     6,
+     null,
+     null
+    ]
+   ]
+  },
+  "sitBack": {
+   "view": "back",
+   "frames": [
+    [
+     3,
+     1,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     1,
+     6,
+     null,
+     null
+    ]
+   ]
+  },
+  "workSit": {
+   "view": "side",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     5,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ]
+   ]
+  },
+  "workBack": {
+   "view": "back",
+   "frames": [
+    [
+     1,
+     3,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     5,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "workSitBack": {
+   "view": "back",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     5,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ]
+   ]
+  },
+  "workSitFront": {
+   "view": "front",
+   "frames": [
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     3,
+     5,
+     null,
+     null
+    ],
+    [
+     3,
+     4,
+     5,
+     null,
+     null
+    ]
+   ]
+  },
+  "mine": {
+   "view": "side",
+   "frames": [
+    [
+     1,
+     5,
+     0,
+     null,
+     "pick_up"
+    ],
+    [
+     1,
+     4,
+     0,
+     null,
+     "pick_mid"
+    ],
+    [
+     1,
+     3,
+     0,
+     null,
+     "pick_down"
+    ],
+    [
+     1,
+     3,
+     0,
+     "angry",
+     "pick_down"
+    ]
+   ]
+  }
+ },
+ "order": {
+  "front": [
+   "legs",
+   "body",
+   "vest",
+   "head",
+   "face",
+   "hair",
+   "hat",
+   "beard",
+   "arms",
+   "prop"
+  ],
+  "back": [
+   "legs",
+   "body",
+   "vest",
+   "beard",
+   "head",
+   "hair",
+   "hat",
+   "arms"
+  ],
+  "side": [
+   "side_prop_back",
+   "arm_far",
+   "legs",
+   "body",
+   "vest",
+   "head",
+   "face",
+   "hair",
+   "hat",
+   "beard",
+   "side_prop",
+   "arm_near",
+   "quilt"
+  ]
+ },
+ "ramps": {
+  "skin": [
+   "#6a3430",
+   "#9a4f3c",
+   "#cf7f5c",
+   "#eeaa7f",
+   "#fbd2a8"
+  ],
+  "hair": [
+   "#3a1610",
+   "#62241a",
+   "#8e381e",
+   "#bb5729",
+   "#e0874a"
+  ],
+  "tunic": [
+   "#132420",
+   "#1f3e32",
+   "#2f6141",
+   "#4b8a4f",
+   "#7db466"
+  ],
+  "vest": [
+   "#24130f",
+   "#43241a",
+   "#6b3b25",
+   "#94593a",
+   "#b98057"
+  ],
+  "pants": [
+   "#1a1822",
+   "#2e2a3a",
+   "#433d52",
+   "#5d5470",
+   "#7d7290"
+  ],
+  "boots": [
+   "#1a0f0d",
+   "#33201a",
+   "#523425",
+   "#744c33",
+   "#94664a"
+  ],
+  "belt": [
+   "#1e110d",
+   "#3a2116",
+   "#5a3522",
+   "#7a4c31",
+   "#9a6644"
+  ],
+  "gold": [
+   "#4a2a0e",
+   "#8a5616",
+   "#c98d22",
+   "#ecbf44",
+   "#fbe68a"
+  ],
+  "metal": [
+   "#24232e",
+   "#4a4a5a",
+   "#7c7e8e",
+   "#b3b6c2",
+   "#e6e8ee"
+  ],
+  "cloth": [
+   "#2a1e36",
+   "#46345a",
+   "#6a5284",
+   "#9277ae",
+   "#bba2d0"
+  ],
+  "wood": [
+   "#2e1b10",
+   "#4e3019",
+   "#74482a",
+   "#9b6a3c",
+   "#c08d55"
+  ],
+  "cream": [
+   "#6a5e50",
+   "#988a78",
+   "#c4b8a4",
+   "#e2d8c6",
+   "#f6efe2"
+  ]
+ },
+ "fixed": {
+  "white": "#ece4d8",
+  "iris": "#3d6aa0",
+  "dark": "#1a1216",
+  "cheek": "#e08a70"
+ },
+ "note": "Tone 3 of each ramp is the base colour. A frame row: [legs, arms, dy, mood or null, prop name / quilt index or null]. Legs are not moved by dy. Side view faces right; mirror for left. Sleep is the side frame turned a quarter left."
+}

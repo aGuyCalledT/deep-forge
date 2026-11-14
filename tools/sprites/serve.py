@@ -21,10 +21,10 @@ def listing():
         for f in e['frames']:
             f['own'] = f['file'] in own
             if f.get('glow'): f['glowOwn'] = f['glow'] in own
-    kit = S.load_json(os.path.join(S.ART, 'dwarf48/kit.json'))
-    groups = sorted({e['group'] for e in cat if e['set'] == 'props48'})
+    kit = S.load_json(os.path.join(S.ART, 'dwarves/kit.json'))
+    groups = sorted({e['group'] for e in cat if e['set'] == 'scene'})
     return {'sprites': cat, 'own': sorted(own), 'inbox': os.path.relpath(S.INBOX, S.ROOT), 'export': os.path.relpath(S.EXPORT, S.ROOT),
-            'parts': list(kit['sheets']), 'cell': kit['cell'], 'groups': groups}
+            'parts': sorted(f[:-4] for f in kit['files'].values()), 'cell': kit['cell'], 'groups': groups, 'iconDirs': S.ICON_DIRS}
 
 
 class H(BaseHTTPRequestHandler):
@@ -72,16 +72,16 @@ class H(BaseHTTPRequestHandler):
         if n > 16 * 1024 * 1024: return self.send(413, {'error': 'That file is too big.'})
         body = self.rfile.read(n)
         try:
-            if u.path == '/api/upload':   # ?f=<set>/<file>.png[&meta=<json>], body: the PNG
+            if u.path == '/api/upload':   # ?f=<set>/<folder>/<file>.png[&meta=<json>], body: the PNG
                 f = q['f'][0]
                 meta = json.loads(q['meta'][0]) if 'meta' in q else None
                 S.add(f, body, meta)
-                S.apply([f.split('/')[0]], log=lambda *a: None)
+                S.apply([S.split(f)[0]], log=lambda *a: None)
                 return self.send(200, {'ok': True, 'saved': os.path.join(os.path.relpath(S.INBOX, S.ROOT), f)})
             if u.path == '/api/remove':
                 f = q['f'][0]
                 S.remove(f)
-                S.apply([f.split('/')[0]], log=lambda *a: None)
+                S.apply([S.split(f)[0]], log=lambda *a: None)
                 return self.send(200, {'ok': True})
             if u.path == '/api/export':   # ?f=a&f=b or ?all=1: write PNG files into sprites-export/
                 files = None if 'all' in q else q.get('f', [])

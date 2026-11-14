@@ -1,5 +1,10 @@
 package com.deepforge.game;
 
+import com.deepforge.game.content.*;
+import com.deepforge.game.rules.*;
+import com.deepforge.game.trade.*;
+import com.deepforge.game.dev.*;
+
 import com.deepforge.game.State.Fortress;
 import com.deepforge.store.Store;
 import com.fasterxml.jackson.databind.DeserializationFeature;

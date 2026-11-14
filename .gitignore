@@ -2,9 +2,6 @@ target/
 data/
 *.log
 .env
-sprites/*.png
-sprites/**/*.png
-!sprites/README.md
 .idea/
 *.iml
 art-src/out/

@@ -78,7 +78,8 @@ const el = (tag, attrs = {}, ...kids) => {
   return e;
 };
 let D = null, set = 'all', ver = Date.now();
-const SETS = { all: 'All', atlas: 'UI, goods (atlas)', props48: 'Rooms, walls, furniture (props48)', dwarf48: 'Dwarves (dwarf48)', dwarf: 'Old dwarf kit', backdrop: 'Backdrop' };
+const SETS = { all: 'All', icons: 'Icons, buttons, goods', scene: 'Rooms, walls, furniture, valley', dwarves: 'Dwarves', backdrop: 'Backdrop' };
+const iconDir = (n) => { const d = D.iconDirs.find(([p]) => n.startsWith(p)); return d ? d[1] : 'other'; };
 // whole-number zoom so small pixel art is big enough to see and stays sharp
 const img = (file, w, h, box = 96) => {
   const k = w && h ? Math.max(1, Math.floor(Math.min(box * 1.4 / w, box / h))) : 1;
@@ -98,7 +99,7 @@ async function call(url, body) {
 async function load() {
   D = await fetch('/api/list').then((r) => r.json());
   ver = Date.now();
-  $('how').innerHTML = `Click a sprite to download its pictures or replace them. Your own pictures go to <code>${D.inbox}/&lt;set&gt;/</code> and win over the drawn art; ` +
+  $('how').innerHTML = `Click a sprite to download its pictures or replace them. Your own pictures go to <code>${D.inbox}/&lt;set&gt;/&lt;folder&gt;/</code> and win over the drawn art; ` +
     `you can also put a PNG there yourself, with the name shown here, and run <code>python3 tools/sprites/sprites.py apply</code>. Exports go to <code>${D.export}/</code>, ` +
     `in the same folders and names, so a changed file goes straight back. Reload the game afterwards.`;
   render();
@@ -113,7 +114,7 @@ function render() {
     return el('div', { class: 'card', tabindex: 0, onclick: () => detail(e), onkeydown: (ev) => { if (ev.key === 'Enter') detail(e); } },
       el('div', { class: 'pic' }, img(f.file, f.w, f.h)),
       el('div', { class: 'name' }, e.id),
-      el('div', { class: 'meta' }, `${f.w} × ${f.h}` + (e.frames.length > 1 ? ` · ${e.frames.length} pictures` : '') + (e.set === 'props48' ? ` · ${e.kind}, ${e.group}` : '')),
+      el('div', { class: 'meta' }, `${f.w} × ${f.h}` + (e.frames.length > 1 ? ` · ${e.frames.length} pictures` : '') + (e.set === 'scene' ? ` · ${e.kind}, ${e.group}` : '')),
       own ? el('div', { class: 'own' }, own === 1 ? 'own picture' : own + ' own pictures') : null);
   }), ...(list.length > shown.length ? [el('p', { class: 'note' }, `${list.length - shown.length} more: search more exactly.`)] : []));
 }
@@ -155,59 +156,60 @@ function detail(e) {
     if (f.glow) frames.push(part(f.glow, 'what glows in the dark', f.glowOwn, true, f.w, f.h));
   });
   const all = e.frames.flatMap((f) => [f.file, f.glow].filter(Boolean));
-  const next = e.set === 'props48' ? `${e.set}/${e.name}@${e.frames.length}.png` : e.set === 'dwarf48' ? null : null;
+  const next = e.set === 'scene' ? `scene/${e.group}/${e.name}@${e.frames.length}.png` : null;
   dlg.replaceChildren(
     el('div', { class: 'row' }, el('h2', { class: 'grow', style: 'margin:0;font-size:18px' }, e.id), el('button', { onclick: () => dlg.close() }, 'Close')),
     el('p', { class: 'note' }, hint(e)),
     el('div', { class: 'row' },
       el('button', { onclick: async () => { try { const r = await call('/api/export?' + all.map((f) => 'f=' + encodeURIComponent(f)).join('&')); toast(`${r.count} file(s) in ${r.folder}/`); } catch (err) { toast(err.message, true); } } }, 'Export to folder'),
       next ? el('button', { onclick: () => upload(next) }, 'Add a picture (animation)') : null,
-      e.set === 'dwarf48' ? el('button', { onclick: () => newDwarfFrame(e) }, 'Add a frame or style') : null),
+      e.set === 'dwarves' ? el('button', { onclick: () => newDwarfFrame(e) }, 'Add a frame or style') : null),
     el('div', { class: 'frames' }, frames));
   if (!dlg.open) dlg.showModal();
 }
 function hint(e) {
-  if (e.set === 'atlas') return 'Symbols, buttons, goods and old art. Keep the size for icons and buttons (buttons are 9-slice plates).';
-  if (e.set === 'props48') return e.kind === 'tile' ? 'A tile: it repeats sideways (walls and rock every 96 px). Keep the height.' : 'A prop: it stands with its anchor on the floor line. A bigger picture keeps standing on the same spot.';
-  if (e.set === 'dwarf48') return `Every dwarf frame is ${D.cell[0]} × ${D.cell[1]}, feet at the bottom middle. Placeholder colours (skin, hair, tunic …) get each dwarf's colours in the game.`;
-  if (e.set === 'backdrop') return 'A layer of the valley behind the hold. It repeats sideways.';
-  return 'The old dwarf kit: strips of 32 × 44 pictures.';
+  if (e.set === 'icons') return 'Symbols, buttons, goods and gems. Keep the size for icons and buttons (buttons are 9-slice plates).';
+  if (e.set === 'scene') return e.kind === 'tile' ? 'A tile: it repeats sideways (walls and rock every 96 px). Keep the height.' : 'A prop: it stands with its anchor on the floor line. A bigger picture keeps standing on the same spot.';
+  if (e.set === 'dwarves') return `Every dwarf frame is ${D.cell[0]} × ${D.cell[1]}, feet at the bottom middle. Placeholder colours (skin, hair, tunic …) get each dwarf's colours in the game.`;
+  return 'A layer of the valley behind the hold. It repeats sideways.';
 }
 function newDwarfFrame(e) {
-  const name = prompt(`New frame for ${e.name}: a new style name (hair, beards, hats, faces, things in the hand) or the next number (${e.frames.length})`, '');
+  const name = prompt(`New frame for ${e.id}: a new style name (hair, beards, hats, faces, things in the hand) or the next number (${e.frames.length})`, '');
   if (!name) return;
-  upload(`dwarf48/${e.name}@${name.trim().toLowerCase()}.png`);
+  upload(`${e.id}@${name.trim().toLowerCase()}.png`);
 }
 
 function newSprite() {
   const dlg = $('newdlg');
-  const setSel = el('select', {}, ...['props48', 'atlas', 'dwarf48'].map((s) => el('option', { value: s }, SETS[s])));
+  const setSel = el('select', {}, ...['scene', 'icons', 'dwarves'].map((s) => el('option', { value: s }, SETS[s])));
   const name = el('input', { type: 'text', placeholder: 'e.g. marble_table, wall_marble, ui_star' });
   const kind = el('select', {}, el('option', { value: 'prop' }, 'prop (stands on the floor)'), el('option', { value: 'tile' }, 'tile (wall, floor: repeats)'));
-  const group = el('input', { type: 'text', value: 'custom', list: 'groups' });
+  const group = el('input', { type: 'text', value: 'furniture', list: 'groups' });
   const ax = el('input', { type: 'number', placeholder: 'middle' }), ay = el('input', { type: 'number', placeholder: 'bottom' });
   const partSel = el('select', {}, ...D.parts.map((p) => el('option', { value: p }, p)));
   const label = el('input', { type: 'text', placeholder: 'style name, e.g. mohawk' });
-  const pFields = el('div', { class: 'form' }, el('label', {}, 'Kind', kind), el('label', {}, 'Group (room editor palette)', group,
+  const pFields = el('div', { class: 'form' }, el('label', {}, 'Kind', kind), el('label', {}, 'Group = folder (room editor palette)', group,
     el('datalist', { id: 'groups' }, ...D.groups.map((g) => el('option', { value: g })))), el('label', {}, 'Anchor x (optional)', ax), el('label', {}, 'Anchor y (optional)', ay));
   const dFields = el('div', { class: 'form hide' }, el('label', {}, 'Part', partSel), el('label', {}, 'Style name or frame number', label));
   const nField = el('label', {}, 'Name (lower-case, _ and -)', name);
   const sync = () => {
-    pFields.classList.toggle('hide', setSel.value !== 'props48');
-    dFields.classList.toggle('hide', setSel.value !== 'dwarf48');
-    nField.classList.toggle('hide', setSel.value === 'dwarf48');
+    pFields.classList.toggle('hide', setSel.value !== 'scene');
+    dFields.classList.toggle('hide', setSel.value !== 'dwarves');
+    nField.classList.toggle('hide', setSel.value === 'dwarves');
   };
   setSel.onchange = sync;
   const go = () => {
     const s = setSel.value;
-    if (s === 'dwarf48') {
+    if (s === 'dwarves') {
       if (!label.value.trim()) return toast('Give the style a name.', true);
-      return upload(`dwarf48/${partSel.value}@${label.value.trim().toLowerCase()}.png`);
+      return upload(`dwarves/${partSel.value}@${label.value.trim().toLowerCase()}.png`);
     }
     const n = name.value.trim().toLowerCase();
     if (!/^[a-z0-9][a-z0-9_-]*$/.test(n)) return toast('Use lower-case letters, digits, _ and - for the name.', true);
-    const meta = s === 'props48' ? { kind: kind.value, group: group.value.trim() || 'custom', anchor: ax.value !== '' && ay.value !== '' ? [+ax.value, +ay.value] : undefined } : null;
-    upload(`${s}/${n}.png`, meta);
+    const g = (group.value.trim().toLowerCase() || 'custom');
+    if (s === 'scene' && !/^[a-z0-9][a-z0-9_-]*$/.test(g)) return toast('Use lower-case letters, digits, _ and - for the group.', true);
+    const meta = s === 'scene' ? { kind: kind.value, anchor: ax.value !== '' && ay.value !== '' ? [+ax.value, +ay.value] : undefined } : null;
+    upload(s === 'scene' ? `scene/${g}/${n}.png` : `icons/${iconDir(n)}/${n}.png`, meta);
   };
   dlg.replaceChildren(
     el('div', { class: 'row' }, el('h2', { class: 'grow', style: 'margin:0;font-size:18px' }, 'New sprite'), el('button', { onclick: () => dlg.close() }, 'Close')),

@@ -1,5 +1,11 @@
 package com.deepforge;
 
+import com.deepforge.game.content.*;
+import com.deepforge.game.rules.*;
+import com.deepforge.game.world.*;
+import com.deepforge.game.trade.*;
+import com.deepforge.game.dev.*;
+
 import com.deepforge.game.*;
 import com.deepforge.game.State.*;
 import org.junit.jupiter.api.Test;

@@ -1,10 +1,15 @@
 package com.deepforge.game;
 
+import com.deepforge.game.content.*;
+import com.deepforge.game.rules.*;
+import com.deepforge.game.world.*;
+import com.deepforge.game.trade.*;
+
 import com.deepforge.game.State.*;
 
 import java.util.*;
 
-import static com.deepforge.game.Rules.*;
+import static com.deepforge.game.rules.Rules.*;
 
 /** Everything a player can do. Each action validates and changes the fortress, or throws GameException. */
 public final class Actions {
@@ -16,26 +21,26 @@ public final class Actions {
         }
     }
 
-    static void check(boolean ok, String msg) {
+    public static void check(boolean ok, String msg) {
         if (!ok) throw new GameException(msg);
     }
 
-    static final int KEEP_LEVEL = 2;   // workshop level for "keep in stock" orders
-    static final double USED_PICK_HOURS = 0.25;   // a pick that worked longer than this is worn: taking it off scraps it
+    public static final int KEEP_LEVEL = 2;   // workshop level for "keep in stock" orders
+    public static final double USED_PICK_HOURS = 0.25;   // a pick that worked longer than this is worn: taking it off scraps it
 
-    static String str(Map<String, Object> a, String k) {
+    public static String str(Map<String, Object> a, String k) {
         Object v = a.get(k);
         return v == null ? null : String.valueOf(v);
     }
 
-    static int num(Map<String, Object> a, String k, int def) {
+    public static int num(Map<String, Object> a, String k, int def) {
         Object v = a.get(k);
         if (v instanceof Number n) return n.intValue();
         if (v instanceof String s && !s.isBlank()) return Integer.parseInt(s.trim());
         return def;
     }
 
-    static double dbl(Map<String, Object> a, String k, double def) {
+    public static double dbl(Map<String, Object> a, String k, double def) {
         Object v = a.get(k);
         if (v instanceof Number n) return n.doubleValue();
         if (v instanceof String s && !s.isBlank()) return Double.parseDouble(s.trim());
@@ -43,7 +48,7 @@ public final class Actions {
     }
 
     @SuppressWarnings("unchecked")
-    static List<Integer> ids(Map<String, Object> a, String k) {
+    public static List<Integer> ids(Map<String, Object> a, String k) {
         List<Integer> l = new ArrayList<>();
         Object v = a.get(k);
         if (v instanceof List<?> list) for (Object o : list) l.add(((Number) o).intValue());
@@ -51,7 +56,7 @@ public final class Actions {
     }
 
     @SuppressWarnings("unchecked")
-    static Map<String, Integer> goods(Map<String, Object> a, String k) {
+    public static Map<String, Integer> goods(Map<String, Object> a, String k) {
         Map<String, Integer> m = new LinkedHashMap<>();
         Object v = a.get(k);
         if (v instanceof Map<?, ?> map)
@@ -62,7 +67,7 @@ public final class Actions {
         return m;
     }
 
-    static Dwarf freeDwarf(Fortress f, int id) {
+    public static Dwarf freeDwarf(Fortress f, int id) {
         Dwarf d = dwarf(f, id);
         check(d != null, "No such dwarf.");
         check(d.busy == null, fullName(d) + " is away.");
@@ -142,7 +147,7 @@ public final class Actions {
     }
 
     /** A list of [col, floor] pairs from the client. */
-    static List<int[]> cells(Map<String, Object> a) {
+    public static List<int[]> cells(Map<String, Object> a) {
         check(a.get("cells") instanceof List<?>, "Choose some cells.");
         List<int[]> out = new ArrayList<>();
         for (Object o : (List<?>) a.get("cells")) {
@@ -155,7 +160,7 @@ public final class Actions {
 
     // ------------------------------------------------------------ dwarves
 
-    static void assign(Fortress f, Map<String, Object> a) {
+    public static void assign(Fortress f, Map<String, Object> a) {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
         String job = str(a, "job");
         check(job != null, "Choose a job.");
@@ -217,7 +222,7 @@ public final class Actions {
     }
 
     /** Take one machine out of a workshop: its dwarf rests, the room gets narrower, the space becomes hallway. */
-    static void removeMachine(Fortress f, Map<String, Object> a) {
+    public static void removeMachine(Fortress f, Map<String, Object> a) {
         Building b = building(f, str(a, "building"));
         check(b != null && isWorkshop(b), "No such workshop.");
         int i = num(a, "machine", -1);
@@ -243,7 +248,7 @@ public final class Actions {
     }
 
     /** Put a machine back that was taken out (up to one per level, at most 5). */
-    static void addMachine(Fortress f, Map<String, Object> a) {
+    public static void addMachine(Fortress f, Map<String, Object> a) {
         Building b = building(f, str(a, "building"));
         check(b != null && isWorkshop(b), "No such workshop.");
         check(machines(b) < maxMachines(b), "Upgrade the workshop for another machine.");
@@ -259,7 +264,7 @@ public final class Actions {
         log(f, "info", "A new machine stands in the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
     }
 
-    static void equip(Fortress f, Map<String, Object> a) {
+    public static void equip(Fortress f, Map<String, Object> a) {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
         int artId = num(a, "artifact", -1);
         if (artId >= 0) {                      // a legendary piece from the hall of treasures
@@ -283,7 +288,7 @@ public final class Actions {
         slotSet(d, slot, item);
     }
 
-    static Artifact artifact(Fortress f, int id) {
+    public static Artifact artifact(Fortress f, int id) {
         for (Artifact x : f.artifacts) if (x.id == id) return x;
         throw new GameException("No such treasure.");
     }
@@ -292,7 +297,7 @@ public final class Actions {
      * Take a piece off a dwarf. A piece that has done real work is worn and goes to the scrap heap, not back to the
      * warehouse; its gems come back. An artifact goes back to the hall of treasures.
      */
-    static void takeOff(Fortress f, Dwarf d, String slot) {
+    public static void takeOff(Fortress f, Dwarf d, String slot) {
         String old = slotGet(d, slot);
         if (old != null && isArtifact(old)) {
             for (Artifact x : f.artifacts) if (x.wornBy == d.id && old.equals(x.item)) x.wornBy = 0;
@@ -303,7 +308,7 @@ public final class Actions {
         else d.gearWear.remove(slot);
     }
 
-    static boolean worn(Dwarf d, String slot) {
+    public static boolean worn(Dwarf d, String slot) {
         if (slot.equals("trinket")) return false;
         return slot.equals("tool") ? d.toolWear > USED_PICK_HOURS : d.gearWear.getOrDefault(slot, 0.0) > 0;
     }
@@ -316,7 +321,7 @@ public final class Actions {
      */
     record Piece(String key, java.util.function.Consumer<String> set) {}
 
-    static Piece piece(Fortress f, Map<String, Object> a) {
+    public static Piece piece(Fortress f, Map<String, Object> a) {
         int artId = num(a, "artifact", -1);
         if (artId >= 0) {
             Artifact art = artifact(f, artId);
@@ -342,10 +347,10 @@ public final class Actions {
         return new Piece(item, nk -> { add(f, item, -1); add(f, nk, 1); });
     }
 
-    static final List<String> SLOTS = List.of("weapon", "helm", "armor", "tool", "trinket");
+    public static final List<String> SLOTS = List.of("weapon", "helm", "armor", "tool", "trinket");
 
     /** Set an enchanted gem into a free socket. Done at the wizard's tower, at once. */
-    static void socket(Fortress f, Map<String, Object> a, double t) {
+    public static void socket(Fortress f, Map<String, Object> a, double t) {
         check(level(f, "wizard") > 0, "Gems are set at the wizard's tower.");
         String gem = str(a, "gem");
         Magic.Gem g = Magic.parseGem(gem);
@@ -362,7 +367,7 @@ public final class Actions {
     }
 
     /** Take a gem out of its socket: free, but it cracks one time in four. */
-    static void unsocket(Fortress f, Map<String, Object> a, double t, Rng r) {
+    public static void unsocket(Fortress f, Map<String, Object> a, double t, Rng r) {
         check(level(f, "wizard") > 0, "Gems are taken out at the wizard's tower.");
         Piece p = piece(f, a);
         int i = num(a, "index", -1);
@@ -379,7 +384,7 @@ public final class Actions {
     }
 
     /** Sell goods at once to the trader at the gate, for a tenth of their base value. */
-    static void quickSell(Fortress f, Map<String, Object> a, double t) {
+    public static void quickSell(Fortress f, Map<String, Object> a, double t) {
         String key = str(a, "key");
         int n = num(a, "amount", 0);
         check(key != null && Content.baseValue(key) > 0, "That can't be sold.");
@@ -393,7 +398,7 @@ public final class Actions {
     }
 
     /** Sell to the caravan visiting from a city: its price, paid at once. */
-    static void sellVisitor(Fortress f, Map<String, Object> a, double t) {
+    public static void sellVisitor(Fortress f, Map<String, Object> a, double t) {
         Visitor v = f.visitor;
         check(v != null && t < v.leaves, "The caravan has moved on.");
         String key = str(a, "key");
@@ -412,7 +417,7 @@ public final class Actions {
     }
 
     /** Choose a specialisation: one at journeyman rank, a second at master rank. */
-    static void specialize(Fortress f, Map<String, Object> a, double t) {
+    public static void specialize(Fortress f, Map<String, Object> a, double t) {
         Dwarf d = dwarf(f, num(a, "dwarf", -1));
         check(d != null, "No such dwarf.");
         String s = str(a, "spec");
@@ -425,14 +430,14 @@ public final class Actions {
     }
 
     /** Practice mode for a workshop: half the output, three times the learning. */
-    static void practice(Fortress f, Map<String, Object> a) {
+    public static void practice(Fortress f, Map<String, Object> a) {
         Building b = building(f, str(a, "building"));
         check(b != null && !"passive".equals(Content.BUILDINGS.get(b.type).kind()), "Only workshops can practise.");
         b.practice = Boolean.TRUE.equals(a.get("on")) || "true".equals(str(a, "on"));
     }
 
     /** Hand a contract's pieces to the city's couriers: paid at once with the bonus, double reputation. */
-    static void fillContract(Fortress f, Map<String, Object> a, double t) {
+    public static void fillContract(Fortress f, Map<String, Object> a, double t) {
         int id = num(a, "id", -1);
         Contract c = f.contracts.stream().filter(x -> x.id == id).findFirst().orElse(null);
         check(c != null && t < c.until, "That contract is gone.");
@@ -455,7 +460,7 @@ public final class Actions {
     }
 
     /** Put bars into the vault's mint (amount > 0) or take waiting ones back (amount < 0). */
-    static void mint(Fortress f, Map<String, Object> a, double t) {
+    public static void mint(Fortress f, Map<String, Object> a, double t) {
         check(level(f, "vault") > 0, "Build the vault first. Its mint strikes coin.");
         String m = str(a, "metal");
         check(MINT_METALS.contains(m), "The mint only takes billon, electrum and gold.");
@@ -473,11 +478,11 @@ public final class Actions {
         }
     }
 
-    static void autoPicks(Fortress f, Map<String, Object> a) {
+    public static void autoPicks(Fortress f, Map<String, Object> a) {
         f.autoPicks = Boolean.TRUE.equals(a.get("on")) || "true".equals(str(a, "on"));
     }
 
-    static void wear(Fortress f, Map<String, Object> a) {
+    public static void wear(Fortress f, Map<String, Object> a) {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
         String item = str(a, "item");
         String[] w = Content.parseWear(item);
@@ -489,7 +494,7 @@ public final class Actions {
         d.wear.put(slot, item);
     }
 
-    static void unwear(Fortress f, Map<String, Object> a) {
+    public static void unwear(Fortress f, Map<String, Object> a) {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
         String slot = str(a, "slot");
         check(Content.WEAR_SLOTS.contains(slot), "Unknown slot.");
@@ -497,14 +502,14 @@ public final class Actions {
         if (old != null) add(f, old, 1);
     }
 
-    static void unequip(Fortress f, Map<String, Object> a) {
+    public static void unequip(Fortress f, Map<String, Object> a) {
         Dwarf d = freeDwarf(f, num(a, "dwarf", -1));
         String slot = str(a, "slot");
         check(SLOTS.contains(slot), "Unknown slot.");
         takeOff(f, d, slot);
     }
 
-    static String slotGet(Dwarf d, String slot) {
+    public static String slotGet(Dwarf d, String slot) {
         return switch (slot) {
             case "weapon" -> d.weapon;
             case "helm" -> d.helm;
@@ -514,7 +519,7 @@ public final class Actions {
         };
     }
 
-    static void slotSet(Dwarf d, String slot, String v) {
+    public static void slotSet(Dwarf d, String slot, String v) {
         switch (slot) {
             case "weapon" -> d.weapon = v;
             case "helm" -> d.helm = v;
@@ -526,7 +531,7 @@ public final class Actions {
 
     // ------------------------------------------------------------ buildings
 
-    static void build(Fortress f, Map<String, Object> a, double t) {
+    public static void build(Fortress f, Map<String, Object> a, double t) {
         String type = str(a, "building");
         Content.BuildingType bt = Content.BUILDINGS.get(type);
         check(bt != null && bt.multi(), "You can't build that.");
@@ -550,7 +555,7 @@ public final class Actions {
 
     public static final int MAX_OF_A_KIND = 6;
 
-    static Building newBuilding(Fortress f, String type) {
+    public static Building newBuilding(Fortress f, String type) {
         int n = 1;
         while (building(f, type + "-" + n) != null) n++;
         Building b = new Building();
@@ -562,7 +567,7 @@ public final class Actions {
     }
 
     /** A plan is down: it stands at once if the ground is dug out already, else the miners dig first. */
-    static void plan(Fortress f, Plan p, double t) {
+    public static void plan(Fortress f, Plan p, double t) {
         String name = Content.BUILDINGS.get(p.type).name().toLowerCase();
         if (Layouts.planReady(f, p)) { Layouts.finishPlans(f, t); return; }
         boolean miners = f.dwarves.stream().anyMatch(d -> d.job.equals("miner"));
@@ -573,7 +578,7 @@ public final class Actions {
     }
 
     /** The ground of a plan is dug out: the room stands there now. */
-    static void standPlan(Fortress f, Plan p, double t) {
+    public static void standPlan(Fortress f, Plan p, double t) {
         String name = Content.BUILDINGS.get(p.type).name();
         int[] spot = {p.col, p.floor};
         Building b = p.building == null ? null : building(f, p.building);
@@ -592,7 +597,7 @@ public final class Actions {
         if (!active(f, b)) log(f, t, "warn", "The " + name.toLowerCase() + " stands still: build a hallway or stairwell beside it.");
     }
 
-    static void upgrade(Fortress f, Map<String, Object> a, double t) {
+    public static void upgrade(Fortress f, Map<String, Object> a, double t) {
         Building b = building(f, str(a, "building"));
         check(b != null, "No such building.");
         check(b.level < 30, "Already at the highest level.");
@@ -622,7 +627,7 @@ public final class Actions {
                 + Rules.duration(b.upUntil - t) + ". It keeps working meanwhile.");
     }
 
-    static boolean grows(Fortress f, Building b) {
+    public static boolean grows(Fortress f, Building b) {
         return isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
     }
 
@@ -632,7 +637,7 @@ public final class Actions {
     }
 
     /** As raise; a new room goes to `at` ([col, floor], from a plan) instead of the first free spot. */
-    static void raise(Fortress f, Building b, double t, int[] at) {
+    public static void raise(Fortress f, Building b, double t, int[] at) {
         Layouts.ensure(f);
         String name = Content.BUILDINGS.get(b.type).name();
         boolean grows = grows(f, b);
@@ -657,7 +662,7 @@ public final class Actions {
     }
 
     /** When a layer's ore cart goes up the lift: this full (percent), or this many minutes after the first ore (0: off). */
-    static void cartRule(Fortress f, Map<String, Object> a) {
+    public static void cartRule(Fortress f, Map<String, Object> a) {
         int idx = num(a, "layer", -1);
         check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
         int fill = num(a, "fill", 100), minutes = num(a, "minutes", 0);
@@ -668,7 +673,7 @@ public final class Actions {
         l.cartMinutes = minutes;
     }
 
-    static void upgradeLayer(Fortress f, Map<String, Object> a) {
+    public static void upgradeLayer(Fortress f, Map<String, Object> a) {
         int idx = num(a, "layer", -1);
         check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
         LayerState l = f.layers.get(idx);
@@ -681,7 +686,7 @@ public final class Actions {
         log(f, "info", "The shafts in the " + Content.LAYERS.get(idx).name() + " were improved (level " + l.level + ").");
     }
 
-    static void unlockLayer(Fortress f, Map<String, Object> a, double t) {
+    public static void unlockLayer(Fortress f, Map<String, Object> a, double t) {
         int idx = num(a, "layer", -1);
         check(idx > 0 && idx < f.layers.size(), "No such layer.");
         LayerState l = f.layers.get(idx);
@@ -701,7 +706,7 @@ public final class Actions {
 
     // ------------------------------------------------------------ queues
 
-    static void queueAdd(Fortress f, Map<String, Object> a) {
+    public static void queueAdd(Fortress f, Map<String, Object> a) {
         Building b = building(f, str(a, "building"));
         check(b != null && b.level > 0, "No such building.");
         check(b.queue.size() < 10, "The queue is full (10 orders).");
@@ -739,14 +744,14 @@ public final class Actions {
         b.queue.add(e);
     }
 
-    static void queueRemove(Fortress f, Map<String, Object> a) {
+    public static void queueRemove(Fortress f, Map<String, Object> a) {
         Building b = building(f, str(a, "building"));
         check(b != null, "No such building.");
         int id = num(a, "entry", -1);
         b.queue.removeIf(e -> e.id == id);
     }
 
-    static void queueMove(Fortress f, Map<String, Object> a) {
+    public static void queueMove(Fortress f, Map<String, Object> a) {
         Building b = building(f, str(a, "building"));
         check(b != null, "No such building.");
         int id = num(a, "entry", -1), dir = num(a, "dir", -1);
@@ -760,7 +765,7 @@ public final class Actions {
 
     /** Minigames at the workshops (bellows, shaking barrels, grinding, ...): good taps heat the room up, so it works faster.
      *  The client counts the taps; the server never gives more than BOOST_TAPS_PER_SEC since the last call. */
-    static void boost(Fortress f, Map<String, Object> a, double t) {
+    public static void boost(Fortress f, Map<String, Object> a, double t) {
         Building b = building(f, str(a, "building"));
         check(b != null && BOOSTED.contains(b.type), "Nothing to speed up here.");
         double taps = Math.max(0, Math.min(12, dbl(a, "taps", 1)));
@@ -770,7 +775,7 @@ public final class Actions {
     }
 
     /** Fertilizer from the farm minigame: cover 0..1 is how much of the beds got some. Once per two hours. */
-    static void fertilize(Fortress f, Map<String, Object> a, double t) {
+    public static void fertilize(Fortress f, Map<String, Object> a, double t) {
         Building b = building(f, str(a, "building"));
         check(b != null && b.type.equals("farm"), "Only mushroom farms take fertilizer.");
         check(b.fertUntil <= t, "The beds are still fertilized. Come back in " + Rules.duration(b.fertUntil - t) + ".");
@@ -781,7 +786,7 @@ public final class Actions {
     }
 
     /** The player broke a vein out of the rock by hand (mine minigame): its ore goes into the cart. */
-    static void vein(Fortress f, Map<String, Object> a, double t, Rng r) {
+    public static void vein(Fortress f, Map<String, Object> a, double t, Rng r) {
         int idx = num(a, "layer", -1);
         check(idx >= 0 && idx < f.layers.size() && f.layers.get(idx).unlocked, "That layer is not open.");
         LayerState l = f.layers.get(idx);
@@ -796,7 +801,7 @@ public final class Actions {
     }
 
     /** The player hammered (forge 0..1, in time) and quenched (quench 0..1, at the golden mark) a piece at the anvil. */
-    static void smith(Fortress f, Map<String, Object> a, double t, Rng r) {
+    public static void smith(Fortress f, Map<String, Object> a, double t, Rng r) {
         int id = num(a, "id", -1);
         Forging g = f.anvil.stream().filter(x -> x.id == id).findFirst().orElse(null);
         check(g != null, "That piece is already done.");
@@ -806,7 +811,7 @@ public final class Actions {
         f.smithed = Sim.finishForging(f, g, 0.55 * forge + 0.45 * quench, r, t, true);
     }
 
-    static void nameArtifact(Fortress f, Map<String, Object> a) {
+    public static void nameArtifact(Fortress f, Map<String, Object> a) {
         int id = num(a, "id", -1);
         Artifact art = f.artifacts.stream().filter(x -> x.id == id).findFirst().orElse(null);
         check(art != null, "That artifact is gone.");
@@ -820,7 +825,7 @@ public final class Actions {
 
     // ------------------------------------------------------------ trade
 
-    static void caravan(Fortress f, Map<String, Object> a, double t) {
+    public static void caravan(Fortress f, Map<String, Object> a, double t) {
         String city = str(a, "city");
         check(city != null && f.cities.contains(city), "You don't know the way there.");
         check(f.caravans.size() < caravanSlots(f), "All caravan slots are in use. Upgrade the trade depot.");
@@ -862,7 +867,7 @@ public final class Actions {
 
     // ------------------------------------------------------------ expeditions
 
-    static void expedition(Fortress f, Map<String, Object> a, double t, Rng r) {
+    public static void expedition(Fortress f, Map<String, Object> a, double t, Rng r) {
         int oid = num(a, "offer", -1);
         Offer o = null;
         for (Offer x : f.offers) if (x.id == oid) o = x;
@@ -879,7 +884,7 @@ public final class Actions {
         Expeditions.start(f, o, party, food, ale, r, t);
     }
 
-    static void choice(Fortress f, Map<String, Object> a) {
+    public static void choice(Fortress f, Map<String, Object> a) {
         int id = num(a, "expedition", -1);
         String opt = str(a, "option");
         check("a".equals(opt) || "b".equals(opt), "Choose a or b.");
@@ -896,7 +901,7 @@ public final class Actions {
 
     // ------------------------------------------------------------ war
 
-    static List<Dwarf> fighters(Fortress f, Map<String, Object> a) {
+    public static List<Dwarf> fighters(Fortress f, Map<String, Object> a) {
         List<Dwarf> l = new ArrayList<>();
         for (int id : ids(a, "warriors")) {
             Dwarf d = freeDwarf(f, id);
@@ -907,7 +912,7 @@ public final class Actions {
         return l;
     }
 
-    static void fightThreat(Fortress f, Map<String, Object> a, double t, Rng r) {
+    public static void fightThreat(Fortress f, Map<String, Object> a, double t, Rng r) {
         int id = num(a, "threat", -1);
         Threat th = null;
         for (Threat x : f.threats) if (x.id == id) th = x;
@@ -915,12 +920,12 @@ public final class Actions {
         Sim.fightThreat(f, th, fighters(f, a), r, t);
     }
 
-    static void breakSiege(Fortress f, Map<String, Object> a, double t, Rng r) {
+    public static void breakSiege(Fortress f, Map<String, Object> a, double t, Rng r) {
         check(f.siege != null, "There is no siege.");
         Sim.breakSiege(f, fighters(f, a), r, t);
     }
 
-    static void tradition(Fortress f, Map<String, Object> a) {
+    public static void tradition(Fortress f, Map<String, Object> a) {
         String id = str(a, "id");
         Content.Tradition tr = Content.TRADITIONS.get(id);
         check(tr != null, "Unknown tradition.");
@@ -929,14 +934,14 @@ public final class Actions {
         f.traditions.merge(id, 1, Integer::sum);
     }
 
-    static void rename(Fortress f, Map<String, Object> a) {
+    public static void rename(Fortress f, Map<String, Object> a) {
         String n = str(a, "name");
         check(n != null && n.trim().matches("[A-Za-z0-9' \\-]{3,32}"), "3-32 letters, digits, spaces, ' or -.");
         f.name = n.trim();
     }
 
     /** Pick how a room is drawn (a template from the room editor); "" = the first one there is. */
-    static void roomLook(Fortress f, Map<String, Object> a) {
+    public static void roomLook(Fortress f, Map<String, Object> a) {
         Building b = f.buildings.stream().filter(x -> x.id.equals(str(a, "building"))).findFirst().orElse(null);
         check(b != null, "That room is gone. Pick another one.");
         String look = Objects.requireNonNullElse(str(a, "look"), "");

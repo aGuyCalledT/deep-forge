@@ -4,14 +4,14 @@ Sprites as PNG files: take any sprite out of the game, change it, put it back. O
 
   python3 tools/sprites/sprites.py                 menu: search a sprite, export it (or all)
   python3 tools/sprites/sprites.py list [word]     every sprite file name (only those containing the word)
-  python3 tools/sprites/sprites.py export NAME...  export these, e.g. props48/table  atlas/ui_war  dwarf48/front_hair
+  python3 tools/sprites/sprites.py export NAME...  export these, e.g. scene/table  icons/ui_war  dwarves/hair/front
   python3 tools/sprites/sprites.py export --all    export every sprite
-  python3 tools/sprites/sprites.py apply [set...]  put your own pictures (art-src/png/...) into the game's sheets
+  python3 tools/sprites/sprites.py apply [set...]  put your own pictures (art-src/png/...) into the game's sheets (optional: only these sets)
   python3 tools/sprites/sprites.py serve [port]    the same in the browser: http://localhost:8098
 
-Exports go to sprites-export/<set>/<name>.png (not in git). To change a sprite, edit the exported file and put it,
-under the same name, into art-src/png/<set>/, then run `apply` (the browser tool does that for you).
-A new sprite is a new name in art-src/png/<set>/. More in docs/SPRITES.md ("Sprites als PNG").
+Exports go to sprites-export/<set>/<folder>/<name>.png (not in git), e.g. sprites-export/dwarves/hair/front@braids.png. To change a sprite, edit the exported file and put it,
+under the same name, into art-src/png/<set>/<folder>/, then run `apply` (the browser tool does that for you).
+A new sprite is a new name in art-src/png/<set>/<folder>/. More in docs/SPRITES.md ("Sprites als PNG").
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

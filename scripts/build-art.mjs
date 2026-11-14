@@ -1,5 +1,5 @@
-// Builds the game art: renders art-src/atlas.px.js with pxl into one sprite sheet and writes
-// static/art/atlas.png, atlas.json and meta.json (shared data from art-src/shared.js).
+// Builds the game art: renders art-src/icons/atlas.px.js with pxl into one sprite sheet and writes
+// static/art/icons/atlas.png, atlas.json and meta.json (shared data from art-src/icons/shared.js).
 //   node scripts/build-art.mjs [--preview]
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -9,9 +9,9 @@ import vm from "node:vm";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pxl = join(root, ".claude/skills/pixel-art/bin/pxl.js");
-const src = join(root, "art-src");
-const out = join(src, "out");
-const dest = join(root, "src/main/resources/static/art");
+const src = join(root, "art-src/icons");
+const out = join(root, "art-src/out/icons");
+const dest = join(root, "src/main/resources/static/art/icons");
 const args = ["build", join(src, "atlas.px.js"), "--out", out];
 if (!process.argv.includes("--preview")) args.push("--no-preview");
 execFileSync(process.execPath, [pxl, ...args], { stdio: "inherit" });
@@ -21,14 +21,10 @@ copyFileSync(join(out, "atlas.json"), join(dest, "atlas.json"));
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(readFileSync(join(src, "shared.js"), "utf8"), ctx);
-const meta = { PAL: ctx.PAL, SWAP: ctx.SWAP, ROOMS: ctx.ROOMS, BAYS: ctx.BAYS, ROOM_TIERS: ctx.ROOM_TIERS, ROOM_VARIANTS: ctx.ROOM_VARIANTS, TIER_LIGHTS: ctx.TIER_LIGHTS, CELL: ctx.CELL, ROOM_H: ctx.ROOM_H, FLOOR_Y: ctx.FLOOR_Y, DWARF: ctx.DWARF, LAYERS: ctx.LAYERS };
+const meta = { PAL: ctx.PAL, SWAP: ctx.SWAP };
 writeFileSync(join(dest, "meta.json"), JSON.stringify(meta));
-// the character generator is shared with the game: copy it as an ES module
-const fig = readFileSync(join(src, "figure.js"), "utf8");
-writeFileSync(join(root, "src/main/resources/static/js/figure.js"),
-  "// Generated from art-src/figure.js by scripts/build-art.mjs. Edit the source there.\n" + fig + "\nexport default Figure;\n");
 console.log("art written to", dest);
 // own pictures from art-src/png (tools/sprites) go back into the new atlas; a problem there never stops the build
 try {
-  execFileSync("python3", ["-c", "import sys; sys.path.insert(0, 'tools/sprites'); import spritelib; spritelib.after_build('atlas')"], { cwd: root, stdio: "inherit" });
+  execFileSync("python3", ["-c", "import sys; sys.path.insert(0, 'tools/sprites'); import spritelib; spritelib.after_build('icons')"], { cwd: root, stdio: "inherit" });
 } catch (e) { console.warn("WARNING own sprites not applied:", e.message); }

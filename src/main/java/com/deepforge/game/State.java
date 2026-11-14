@@ -1,5 +1,7 @@
 package com.deepforge.game;
 
+import com.deepforge.game.rules.*;
+
 import java.util.*;
 
 /**
@@ -219,7 +221,7 @@ public final class State {
         public boolean practice;  // practice mode: half the output, three times the learning
         public boolean machinesByHand;   // the player took a machine out: the hold no longer adds them back on its own
         public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
-        public String look = "";  // room template (art/props48/rooms), "" = the first; bays use the same name if there is one
+        public String look = "";  // room template (art/rooms), "" = the first; bays use the same name if there is one
     }
 
     public static class QueueEntry {

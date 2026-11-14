@@ -1,11 +1,15 @@
 package com.deepforge.api;
 
+import com.deepforge.game.*;
+import com.deepforge.game.content.*;
+import com.deepforge.game.world.*;
+
 import com.deepforge.auth.AuthInterceptor;
 import com.deepforge.auth.AuthService;
 import com.deepforge.game.Actions;
-import com.deepforge.game.Content;
+import com.deepforge.game.content.Content;
 import com.deepforge.game.GameService;
-import com.deepforge.game.RoomTemplates;
+import com.deepforge.game.world.RoomTemplates;
 import com.deepforge.store.Store;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,19 +26,17 @@ import java.util.stream.Stream;
 public class ApiController {
     private final AuthService auth;
     private final GameService game;
-    private final String spritesDir;
     private final String staticLocations;
     private final boolean cheatsForAll;
     private final RoomTemplates looks;
 
-    public ApiController(AuthService auth, GameService game, RoomTemplates looks, @Value("${deepforge.sprites-dir:./sprites}") String spritesDir,
+    public ApiController(AuthService auth, GameService game, RoomTemplates looks,
                          @Value("${spring.web.resources.static-locations:}") String staticLocations,
                          @Value("${deepforge.cheats:false}") boolean cheatsForAll) {
         this.cheatsForAll = cheatsForAll;
         this.looks = looks;
         this.auth = auth;
         this.game = game;
-        this.spritesDir = spritesDir;
         this.staticLocations = staticLocations;
     }
 
@@ -77,20 +79,6 @@ public class ApiController {
     @GetMapping("/data")
     public Map<String, Object> data() {
         return Content.asData();
-    }
-
-    /** Ids of custom sprites found in the sprites folder (file name without .png). */
-    @GetMapping("/sprites")
-    public List<String> sprites() throws IOException {
-        Path dir = Path.of(spritesDir);
-        if (!Files.isDirectory(dir)) return List.of();
-        List<String> ids = new ArrayList<>();
-        try (Stream<Path> s = Files.walk(dir, 3)) {
-            s.filter(p -> p.toString().endsWith(".png")).forEach(p ->
-                    ids.add(dir.relativize(p).toString().replace('\\', '/').replaceAll("\\.png$", "")));
-        }
-        Collections.sort(ids);
-        return ids;
     }
 
     /**

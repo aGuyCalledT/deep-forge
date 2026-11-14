@@ -1,6 +1,6 @@
 # Musik und Sounds
 
-Alles Hörbare steckt in `src/main/resources/static/js/audio.js`. Dateien liegen in
+Alles Hörbare steckt in `src/main/resources/static/js/core/audio.js`. Dateien liegen in
 `src/main/resources/static/sounds/` und `src/main/resources/static/music/`. Erlaubt sind `mp3`, `ogg`, `m4a` und
 `wav`. Gibt es eine Datei in mehreren Formaten, nimmt das Spiel `mp3`, dann `ogg`, `m4a`, `wav`.
 

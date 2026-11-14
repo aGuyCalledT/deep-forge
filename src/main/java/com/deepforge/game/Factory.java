@@ -1,5 +1,9 @@
 package com.deepforge.game;
 
+import com.deepforge.game.content.*;
+import com.deepforge.game.rules.*;
+import com.deepforge.game.world.*;
+
 import com.deepforge.game.State.*;
 
 import java.util.*;
@@ -8,7 +12,7 @@ import java.util.*;
 public final class Factory {
     private Factory() {}
 
-    // look counts; the names and drawings live in art-src/figure.js (Figure.HAIR_STYLES etc.)
+    // look counts; how they are drawn: art-src/dwarves (hair and beard names mapped in static/js/art/dwarves.js)
     public static final int BEARD_STYLES = 8, HAIR_STYLES = 10, BODIES = 5, NOSES = 9, BROWS = 7, MOUTHS = 5, EYES = 7;
     // hair styles: 0 short, 1 fringe, 2 bald, 3 topknot, 4 long, 5 wavy, 6 braids, 7 bun, 8 pigtails, 9 mohawk
     static final int[] MEN_HAIR = {0, 0, 1, 2, 2, 3, 4, 9};

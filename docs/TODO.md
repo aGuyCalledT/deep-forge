@@ -2,12 +2,20 @@
 
 Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebaut. Offen ist, was nicht abgehakt ist.
 
+## Aufräumen
+
+- [x] Projekt sortiert: alte 24-px-Grafik (Räume, Welt, Höhlen, Figuren, altes Zwerg-Kit), Vorschaubilder, fremde
+      Vorlagen und der Ordner `sprites/` gelöscht; JS in `core/ art/ scene/ ui/ panels/ games/`, Grafik in
+      `art/icons|scene|rooms|dwarves/<Teil>|backdrop`, Quellen in `art-src/icons|scene|dwarves`, Java in
+      `game/content|rules|world|trade|dev`, Konzepte in `docs/konzept/`.
+- [ ] Tests in Pakete passend zum Code sortieren.
+
 ## Sprites als PNG
 
 - [x] Werkzeug `tools/sprites/`: jedes Sprite als PNG exportieren (einzeln, alle, ZIP), eigene Bilder aus `art-src/png/` einspielen, neue Sprites (Teile, Wände, Böden, Zwergstile, Symbole) im Browser anlegen
 - [ ] Neue Zwergstile aus dem Kit im Spiel wählbar machen (Aussehen-Cheat, Zuwanderung)
 - [ ] Neue Talebenen (`backdrop`) ohne Code hinzufügen
-- [ ] Server lädt neue props48-Namen ohne Neustart
+- [ ] Server lädt neue Szenen-Namen (`scene`) ohne Neustart
 
 ## Grafik und Festung
 
@@ -164,26 +172,26 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       (jetzt nur Tunika in Metallfarbe), Kleidungs-Muster (Strick, Weste, Flicken), Nasen-, Brauen- und Mundformen.
 - [ ] Mehr Frisuren und Bärte zeichnen, damit die 10 alten Frisuren und 8 Bärte wieder eigene Bilder haben.
 - [ ] Werkzeuge als gezeichnete Teile statt Linien aus dem Code.
-- [x] Übrige Grafik im neuen Stil: statt Pixelwright als Code in `art-src/props48/` (siehe „Grafik 48 px“).
+- [x] Übrige Grafik im neuen Stil: statt Pixelwright als Code in `art-src/scene/` (siehe „Grafik 48 px“).
 
 ## Zwerge 48 × 64
 
-- [x] **Alle Zwerg-Teile im Stil des Basismodells** (`static/art/dwarf48/`, Quelle `art-src/dwarf48/`): Mann und Frau,
+- [x] **Alle Zwerg-Teile im Stil des Basismodells** (`static/art/dwarves/`, Quelle `art-src/dwarves/`): Mann und Frau,
       drei Ansichten, gehen, stehen, reden, sitzen, essen, trinken, Hände, arbeiten (Seite), schlafen, 6 Stimmungen,
       6 Frisuren, 5 Bärte, Helm/Mütze/Kapuze, Krug, Löffel, Axt, Sack, umfärbbar. Reisende im Tal als Zwerge.
-- [x] Eingebaut: die Festung zeichnet alle Zwerge, Wachen und Reisenden mit `dwarf48.js` (`look48()` in `hold.js`
+- [x] Eingebaut: die Festung zeichnet alle Zwerge, Wachen und Reisenden mit `art/dwarves.js` (`look48()` in `hold.js`
       übersetzt Frisur, Bart, Haut-, Haar- und Kleiderfarben in Farbreihen).
-- [ ] Porträts in den Panels und das Cheat-Fenster „Change looks“ noch mit dem alten Kit (`dwarfkit.js`).
+- [x] Porträts in den Panels und das Cheat-Fenster „Change looks“ mit dem 48-px-Satz; altes Kit entfernt.
 - [ ] Werkzeug in der Hand bei der Arbeit (Hammer, Spitzhacke, Axt) in der Seitenansicht; heute arbeiten sie mit leeren Händen.
 - [ ] Gesichter in der Seitenansicht deutlicher (Stimmungen kaum zu sehen).
 
 ## Grafik 48 px (Räume aus Teilen)
 
-- [x] Blöcke 0–8 gezeichnet (`art-src/props48/`): Möbel, Raumhüllen und Wege, Wohnen, Werkstätten, Lager/Handel/Wache,
+- [x] Blöcke 0–8 gezeichnet (`art-src/scene/`): Möbel, Raumhüllen und Wege, Wohnen, Werkstätten, Lager/Handel/Wache,
       Tal (Tag, Abend, Nacht), Fels je Minenschicht und Höhlen, 9 Monster, Kleintiere, Deko und Effekte.
-- [x] Export: `python3 art-src/props48/export.py` schreibt `static/art/props48/sheet.png`, `glow.png`, `sheet.json`
-      (prüft die Pixel danach); Lader `static/js/art48.js` (Bilder, Anker, Umfärben, Spiegeln, Kacheln).
-- [x] Raumvorlagen-Editor (`tools/room-editor/serve.py`), Format und Zeichnen in `static/js/rooms48.js`, Vorlage
+- [x] Export: `python3 art-src/scene/export.py` schreibt `static/art/scene/sheet.png`, `glow.png`, `sheet.json`
+      (prüft die Pixel danach); Lader `static/js/art/scene.js` (Bilder, Anker, Umfärben, Spiegeln, Kacheln).
+- [x] Raumvorlagen-Editor (`tools/room-editor/serve.py`), Format und Zeichnen in `static/js/art/rooms.js`, Vorlage
       „starter“ für alle 15 Raumtypen und 8 Erweiterungen, `Building.look` + Aktion `roomLook` (Server prüft).
 - [x] Renderer: `hold.js` zeichnet Räume aus der Vorlage (`look`), Sitze, Betten, Arbeitsplätze, Lichter, Rauch und
       Klickflächen (Blasebalg, Abschreckfass) aus den Punkten; Auswahl der Vorlage im Raumfenster (`popups.js`).
@@ -194,7 +202,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Steinfarben gut gemischt).
 - [x] Tiefe: Schatten an allen vier Innenkanten jedes Raums; Säule mit Tür im Vordergrund zwischen Räumen, die Tür
       öffnet sich, wenn ein Zwerg hindurchgeht.
-- [x] Porträts in Fenstern und Listen aus demselben 48-px-Zwergensatz wie in der Festung (`look48` in `dwarf48.js`).
+- [x] Porträts in Fenstern und Listen aus demselben 48-px-Zwergensatz wie in der Festung (`look48` in `art/dwarves.js`).
 - [ ] Mehr Vorlagen je Raum (z. B. nach Stufe), Stufe 2/3 mit mehr Möbeln.
 - [x] Raum-Editor im Spiel (Raumfenster → „Change look“): Liste aller Vorlagen mit Bild, Spieler-Vorlagen auf dem
       Server (`room_templates`), für alle sichtbar, nur vom Ersteller änderbar.
@@ -205,13 +213,13 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       Monster aus `props48`; Zoomstufen 0,5 (nur bei 2 Gerätepixeln) bis 4, Start bei 1.
 - [ ] Feuer, Räder und Kessel laufen in der Vorlage immer; besser nur, wenn die Maschine arbeitet (Bild 0 = kalt).
 - [x] Wege aus Vorlagen: Eingangshalle, Gänge und Treppenhäuser je in drei Stilen (`timber`, `stone`, `grand`), neue
-      Teile in `art-src/props48/ways.py` (Treppenhaus-Türen mit 4 Bildern, Stützrahmen, Bögen, Statue, Runenschild,
+      Teile in `art-src/scene/ways.py` (Treppenhaus-Türen mit 4 Bildern, Stützrahmen, Bögen, Statue, Runenschild,
       gehauene Wand). Der Stil folgt der Eingangshalle (Stufe 1 Holz, 2 Stein, ab 3 prächtig, oder die gewählte Vorlage).
       Treppenhaus-Türen gehen auf, wenn jemand hinein- oder herauskommt.
 - [ ] Tor-Stufen haben noch kein eigenes Bild (nur Kohlebecken ab Stufe 3).
 - [x] Stil der Gänge und Treppenhäuser einzeln wählbar: Gang oder Treppenhaus anklicken, Look wählen (ein Gang ändert sich auf der ganzen Etage am Stück; „Like the hold“ folgt wieder der Eingangshalle). Aktion `wayLook`, `Layout.looks`.
-- [x] Minen-Screen neu im 48-px-Stil (`mine48.js`): eine Szene je Schicht, Erzwagen, Grubenhelm.
-- [ ] Login-Bild (`views.js`) noch im alten 24-px-Stil; alte Raumgrafik (`rooms.px.js`, `shared.js`) danach entfernen.
+- [x] Minen-Screen neu im 48-px-Stil (`scene/mine.js`): eine Szene je Schicht, Erzwagen, Grubenhelm.
+- [x] Login-Bild (`scene/login.js`) aus der Tavernen-Vorlage mit Gästen; alte 24-px-Grafik entfernt.
 - [ ] Mine: Wachen und Monster nur einfach gezeigt (Monster läuft hin und her, Bergleute warten am Wagen); Kampf nicht zu sehen.
 - [ ] Mine: Wagen hat noch keinen Sound (Rollen, Erz fällt hinein).
 - [ ] Lichtschicht im Browser (Lichtkarte multipliziert, `glow.png` bleibt hell), ersetzt den Licht-Durchgang der Vorschauen.
@@ -266,7 +274,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [ ] Werkstätten außer der Schmelze in der Festung direkt anklicken (heute über den Knopf im Raumfenster).
 - [ ] Nahaufnahmen als Sprites (Edelstein, Runenplatte, Kettfäden sind im Screen gezeichnet).
 
-## Balance und Fortschritt (Konzept in `docs/KONZEPT-BALANCE.md`)
+## Balance und Fortschritt (Konzept in `docs/konzept/balance.md`)
 
 - [x] Entscheidungen aus Abschnitt 14 klären (Abnutzung, Bremse beim Liegenlassen, Tempo der Kurve, alte Spielstände).
 - [x] Einheitliche Warenwerte: Metall-Faktor, Qualitätsschritt je Skill-Level der Ware (1–5), schwere Waren schwerer gut.
@@ -285,7 +293,7 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
 - [x] Leichter gemacht (Pilze 3/h, erster Überfall nach 5 Tagen und mit den Tagen statt der Festungsstufe stärker,
       halber Diebstahl, mehr Stein, halber Stein beim Ausbau, Rohedelstein ab Schicht 1). Feste Leitkurve gestrichen;
       der Bot prüft stetiges Wachstum.
-- [x] Magie, Edelsteine, Fassungen, Werkzeuge je Beruf, legendäre Wirkungen (`docs/KONZEPT-MAGIE.md`).
+- [x] Magie, Edelsteine, Fassungen, Werkzeuge je Beruf, legendäre Wirkungen (`docs/konzept/magie.md`).
 - [x] Bot: Monster in der Mine jagen, Spitzhacken behalten, Earth-Steine verzaubern und einsetzen.
 - [x] Alle 127 Edelsteine aus Dwarf Fortress (Wert, Farbe), 22 Schliffformen, tiefere Schichten wertvollere Steine,
       fester Steinpreis mit Mode-Aufschlag für die Form (`Gems.java`).

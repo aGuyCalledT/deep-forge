@@ -1,10 +1,10 @@
 // Room template editor: place props, mark spots, save looks. Runs inside the game (/editor/, looks go to the server's
 // database and everyone can pick them) and locally with tools/room-editor/serve.py (built-in looks, written as files).
 // In the game it may sit in a frame (?embed=1): Close and Save tell the game through postMessage.
-import * as Art from '../js/art48.js';
-import * as R from '../js/rooms48.js';
-import * as D from '../js/dwarf48.js';
-import { token } from '../js/api.js';
+import * as Art from '../js/art/scene.js';
+import * as R from '../js/art/rooms.js';
+import * as D from '../js/art/dwarves.js';
+import { token } from '../js/core/api.js';
 import { UI, PROPS as PROP_INFO, GROUPS as GROUP_INFO } from './info.js';
 
 const $ = id => document.getElementById(id);
@@ -608,8 +608,8 @@ addEventListener('beforeunload', e => { if (dirty && !EMBED) e.preventDefault();
 
 // ------------------------------------------------------------------ start
 (async () => {
-  await Art.load('../art/props48/');
-  D.load('../art/dwarf48/').catch(e => status('dwarf kit missing: ' + e));
+  await Art.load('../art/scene/');
+  D.load('../art/dwarves/').catch(e => status('dwarf kit missing: ' + e));
   // built-in walls and floors first, then any wall_/floor_ tile added to the sheet (tools/sprites)
   const tiles = (pre, list) => [...new Set([...list, ...Art.names().filter((n) => n.startsWith(pre) && Art.info(n).kind === 'tile')])];
   for (const w of tiles('wall_', R.WALLS)) $('wall').append(el('option', { value: w, textContent: w.replace('wall_', '') }));

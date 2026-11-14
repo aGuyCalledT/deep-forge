@@ -1,25 +1,25 @@
 // Boot, login, tabs, polling and the global animation loop.
-import { api, token, setToken } from './api.js';
-import { G, F, D, indexData, byId, fmt, dur, now, ago } from './data.js';
-import { loadNotes, unseenNotes } from './notes.js';
-import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money, statusIco } from './ui.js';
-import * as S from './sprites.js';
-import { initCanvas, zoomBy, lookAt, camera, toScreen, homeCamera } from './canvas.js';
-import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt as loadArt48 } from './hold.js';
-import { drawLoginArt } from './views.js';
-import { mineScreen, mineLayer } from './mine48.js';
-import { openSmithy, smithyUpdate, nameArtifact, askForNames, smithyState } from './smithy.js';
-import { gameUpdate, gameState } from './minigame.js';
-import { openRoomGame, openVein } from './games.js';
-import { openRoomSheet, openDwarfSheet, openWayLooks, openPlanSheet } from './popups.js';
-import { openBuildMenu } from './buildmenu.js';
-import { berlinTime } from './sun.js';
-import { renderFortress, renderDwarves, renderWar, renderMore } from './panels-base.js';
-import { renderWork, animateWork, currentHeat } from './panels-work.js';
-import { renderMines } from './panels-mines.js';
-import { renderTrade, renderExplore, loadMarket } from './panels-trade.js';
-import * as A from './audio.js';
-import { openAudioSheet } from './panels-audio.js';
+import { api, token, setToken } from './core/api.js';
+import { G, F, D, indexData, byId, fmt, dur, now, ago } from './core/data.js';
+import { loadNotes, unseenNotes } from './ui/notes.js';
+import { h, img, bus, toast, storesView, ico, closeSheet, popOpen, helpOn, costChips, frameDecor, setMaterial, MATERIAL, slideIn, slideOut, setSand, money, statusIco } from './ui/ui.js';
+import * as S from './art/sprites.js';
+import { initCanvas, zoomBy, lookAt, camera, toScreen, homeCamera } from './scene/canvas.js';
+import { holdScreen, roomCenter, roomAt, roomRect, agents, roomStatus, loadArt as loadSceneArt } from './scene/hold.js';
+import { drawLoginArt } from './scene/login.js';
+import { mineScreen, mineLayer } from './scene/mine.js';
+import { openSmithy, smithyUpdate, nameArtifact, askForNames, smithyState } from './games/smithy.js';
+import { gameUpdate, gameState } from './games/minigame.js';
+import { openRoomGame, openVein } from './games/games.js';
+import { openRoomSheet, openDwarfSheet, openWayLooks, openPlanSheet } from './ui/popups.js';
+import { openBuildMenu } from './ui/buildmenu.js';
+import { berlinTime } from './core/sun.js';
+import { renderFortress, renderDwarves, renderWar, renderMore } from './panels/base.js';
+import { renderWork, animateWork, currentHeat } from './panels/work.js';
+import { renderMines } from './panels/mines.js';
+import { renderTrade, renderExplore, loadMarket } from './panels/trade.js';
+import * as A from './core/audio.js';
+import { openAudioSheet } from './panels/audio.js';
 
 const TABS = [
   ['fortress', 'Hold', renderFortress],
@@ -542,13 +542,12 @@ function artToCss() {
 
 async function boot() {
   try { await Promise.all(['16px "Alagard"', '16px "Pixelify Sans"', '16px "Fantastic Boogaloo"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
-  await Promise.all([S.loadArt(), loadArt48(), loadNotes()]);
+  await Promise.all([S.loadArt(), loadSceneArt(), loadNotes()]);
   artToCss();
-  const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);
+  const [data, audio] = await Promise.all([api.get('/data'), api.get('/audio').catch(() => ({}))]);
   A.initAudio(audio);
   G.data = data;
   indexData(data);
-  await S.loadOverrides(sprites);
   buildTabs();
   if (!token()) return showLogin();
   try { await start(); } catch (e) {

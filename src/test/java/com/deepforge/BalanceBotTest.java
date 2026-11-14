@@ -1,5 +1,10 @@
 package com.deepforge;
 
+import com.deepforge.game.content.*;
+import com.deepforge.game.rules.*;
+import com.deepforge.game.world.*;
+import com.deepforge.game.trade.*;
+
 import com.deepforge.game.*;
 import com.deepforge.game.State.*;
 import org.junit.jupiter.api.Test;
@@ -9,7 +14,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * The balance bot (docs/KONZEPT-BALANCE.md, section 12): plays a new hold for 120 days with a fixed, sensible
+ * The balance bot (docs/konzept/balance.md, section 12): plays a new hold for 120 days with a fixed, sensible
  * strategy and prints the income per day next to the guide curve. Each visit it collects, sells, keeps the
  * workshops busy and invests in the cheapest useful upgrade.
  */
