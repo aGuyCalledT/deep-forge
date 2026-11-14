@@ -1,4 +1,4 @@
-// Quests, expeditions and reports come on paper. Every sheet gets its own torn corners, stains, folds and tilt,
+// Quests, expeditions and reports come on paper. Every sheet gets its own torn corners, stains, and folds,
 // worked out from its id, so the same note looks the same every time and no two notes look alike.
 import { h, tickBox, seal } from './ui.js';
 
@@ -67,7 +67,6 @@ function stains(r) {
 export function paper(seed, opts, ...kids) {
   const r = rng(seed);
   const style = {
-    '--seed-rot': ((r() - 0.5) * 3.2).toFixed(2) + 'deg',
     '--fold': Math.round(160 + r() * 30) + 'deg',
     '--fold2': Math.round(70 + r() * 35) + 'deg',
     '--tear': tear(r),

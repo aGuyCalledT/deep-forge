@@ -1,3 +1,0 @@
-DotGothic16 - Copyright 2020 The DotGothic16 Project Authors (https://github.com/fontworks-fonts/DotGothic16)
-Licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org).
-The file here is a subset (Latin and a few symbols) of the original font.

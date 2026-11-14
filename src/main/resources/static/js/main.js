@@ -522,7 +522,7 @@ function artToCss() {
 }
 
 async function boot() {
-  try { await Promise.all(['16px "Alagard"', '16px "DotGothic16"', '16px "Cavalhatriz"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
+  try { await Promise.all(['16px "Alagard"', '16px "Pixelify Sans"', '16px "Fantastic Boogaloo"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
   await Promise.all([S.loadArt(), loadArt48(), loadNotes()]);
   artToCss();
   const [data, sprites, audio] = await Promise.all([api.get('/data'), api.get('/sprites').catch(() => []), api.get('/audio').catch(() => ({}))]);

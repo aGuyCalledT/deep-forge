@@ -1,8 +1,8 @@
 /* Deep Forge: a dwarven interface. Riveted iron sheets, forged windows with trim, gems and runes, buttons that press
    in, quests and expeditions on paper, hourglasses for time. The metal and the gem say what a window is about. */
 @font-face { font-family: "Alagard"; src: url("../fonts/alagard.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "DotGothic16"; src: url("../fonts/dotgothic16.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Cavalhatriz"; src: url("../fonts/cavalhatriz.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Pixelify Sans"; src: url("../fonts/pixelify-sans.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Fantastic Boogaloo"; src: url("../fonts/fantastic-boogaloo.ttf") format("truetype"); font-display: swap; }
 
 :root {
   /* iron and steel */
@@ -31,11 +31,11 @@
   --blue: #9cc0ff;
   --rose: #e9a0aa;
 
-  /* pixel fonts: one weight each, DotGothic16 is drawn on a 16 px grid; emphasis is colour, never bold */
-  --f-title: "Alagard", "DotGothic16", monospace;
-  --f-body: "DotGothic16", monospace;
-  --f-sc: "DotGothic16", monospace;
-  --f-hand: "Cavalhatriz", "DotGothic16", monospace;
+  /* pixel fonts: one weight each; emphasis is colour, never bold */
+  --f-title: "Alagard", "Pixelify Sans", monospace;
+  --f-body: "Pixelify Sans", monospace;
+  --f-sc: "Pixelify Sans", monospace;
+  --f-hand: "Fantastic Boogaloo", "Pixelify Sans", monospace;
   --hl: var(--gold);            /* emphasised words on dark metal */
 
   --r: 10px;
@@ -254,7 +254,6 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
    paper.js gives every sheet its own tear (--tear), stains (--stain), folds and tilt from its id. */
 .paper-wrap { position: relative; margin: 14px 4px 18px; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.45)) drop-shadow(0 12px 16px rgba(0, 0, 0, 0.45)); }
 .paper {
-  --seed-rot: -1deg;
   position: relative; color: var(--paper-ink); padding: 26px 22px 22px;
   font: 400 16px/1.35 var(--f-hand);
   background:
@@ -263,7 +262,6 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
     radial-gradient(ellipse at 50% 45%, #f1e2bd, var(--paper) 55%, var(--paper-dark));
   background-blend-mode: multiply, multiply, normal;
   clip-path: var(--tear, none);
-  rotate: var(--seed-rot);
 }
 .paper::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -659,7 +657,7 @@ label.color { display: inline-flex; flex-direction: column; align-items: flex-st
 .btn.collect.pop { animation: collect-pop 0.35s var(--ease-clunk); }
 @keyframes collect-pop { 0% { transform: scale(1); } 40% { transform: scale(1.05); } 100% { transform: scale(1); } }
 .report.collected { animation: report-out 0.6s 0.25s ease-in forwards; }
-@keyframes report-out { to { opacity: 0; transform: translateY(-10px) rotate(-2deg) scale(0.97); } }
+@keyframes report-out { to { opacity: 0; transform: translateY(-10px) scale(0.97); } }
 .fly { position: fixed; z-index: 100; pointer-events: none; image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(255, 217, 142, 0.9)); }
 #res.gain { animation: res-gain 0.4s ease-out; }
 @keyframes res-gain { 40% { filter: brightness(1.6) drop-shadow(0 0 6px rgba(255, 217, 142, 0.8)); } }
@@ -890,7 +888,7 @@ label.inline input { display: inline-block; margin: 0; }
   animation: rc-drop 0.26s var(--ease-clunk, cubic-bezier(.3, 1.4, .5, 1)); }
 .rc-modal.out .rc-box { animation: rc-up 0.18s ease-in forwards; }
 .rc-modal.out .rc-back { animation: rc-fade 0.18s ease-in reverse forwards; }
-@keyframes rc-drop { from { transform: translateY(-40px) rotate(-1.5deg); opacity: 0; } }
+@keyframes rc-drop { from { transform: translateY(-40px); opacity: 0; } }
 @keyframes rc-up { to { transform: translateY(-30px); opacity: 0; } }
 @keyframes rc-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .rc-box, .rc-back, .rc-modal.out .rc-box, .rc-modal.out .rc-back { animation: none; } }

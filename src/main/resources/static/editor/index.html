@@ -6,10 +6,10 @@
 <title>Deep Forge room editor</title>
 <link rel="icon" href="data:,">
 <style>
-  @font-face { font-family: "DotGothic16"; src: url("../fonts/dotgothic16.ttf") format("truetype"); }
+  @font-face { font-family: "Pixelify Sans"; src: url("../fonts/pixelify-sans.ttf") format("truetype"); }
   :root { --bg: #1b1418; --panel: #261c22; --line: #3d2e36; --text: #eadbc8; --dim: #a8968a; --gold: #f0c060; --bad: #ff7a6a; --good: #7fd07f; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 12px/1.4 "DotGothic16", monospace; font-synthesis: none; height: 100vh; display: grid;
+  body { margin: 0; background: var(--bg); color: var(--text); font: 12px/1.4 "Pixelify Sans", monospace; font-synthesis: none; height: 100vh; display: grid;
          grid-template-rows: auto 1fr; grid-template-columns: 230px 1fr 270px; grid-template-areas: "top top top" "pal stage side"; }
   header { grid-area: top; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
   header .grow { flex: 1; }
@@ -42,7 +42,7 @@
   .layers div:hover { background: #33262d; } .layers div.on { background: #4a3a20; }
   .help { color: var(--dim); font-size: 12px; margin-top: 14px; }
   .help kbd { background: #33262d; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; font-size: 12px; }
-  .info { width: 16px; height: 16px; padding: 0; border-radius: 50%; font: 12px/14px "DotGothic16", monospace; color: var(--dim);
+  .info { width: 16px; height: 16px; padding: 0; border-radius: 50%; font: 12px/14px "Pixelify Sans", monospace; color: var(--dim);
           background: #2e2228; border: 1px solid var(--line); flex: none; vertical-align: middle; margin-left: 4px; }
   .info:hover { color: var(--gold); border-color: var(--gold); }
   header .info { margin-left: -4px; }

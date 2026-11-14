@@ -1,0 +1,3 @@
+Pixelify Sans: Copyright 2021 The Pixelify Sans Project Authors (https://github.com/eifetx/Pixelify-Sans).
+Licensed under the SIL Open Font License, Version 1.1 (https://scripts.sil.org/OFL).
+Static instance at weight 400, with arrows added by tools/fonts/add_glyphs.py.

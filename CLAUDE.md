@@ -125,16 +125,16 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   Abzeichen auf Tabs `ui_good` (`.tab .dot`). Symbole immer als linke Hälfte zeichnen und spiegeln (`mx`).
   Innen eingravierte Felder (`.card`) statt erhabener Karten.
 - **Papier** für Expeditionen, Gerüchte und Berichte: `paper(seed, opts, ...)` aus `paper.js` (Risse, Flecken, Falten,
-  Neigung je id verschieden, Nagel oder Wachssiegel), Handschrift Kalam, Abhakliste `todo()`.
+  je id verschieden, Nagel oder Wachssiegel; nie schräg gestellt, das flimmert bei Pixeln), Handschrift Fantastic Boogaloo, Abhakliste `todo()`.
 - **Sanduhr** statt Balken für ablaufende Zeit: `hourglass({job, machine} | {from, to} | {p})`, echter Fortschritt.
   Balken (`bar`) nur für Mengen (Lager, Gesundheit, Stimmung, Hitze).
 - **Bewegung mechanisch:** Fenster fahren aus dem Bildschirmrand ein und wieder hinaus (`slideIn`/`slideOut`).
   Raumfenster docken am Desktop rechts an (beim Hovern erscheint nur der grüne Umriss). Bei `prefers-reduced-motion` bewegt sich nichts.
-- Schriften (selbst gehostet in `static/fonts/`, Pixelschriften): Alagard für Überschriften, Cavalhatriz für Handschrift
-  auf Papier, DotGothic16 für alles andere (Text, Knöpfe, Tabs; auf Latein und Symbole zugeschnitten, OFL). Es gibt nur einen Schnitt: nichts fett, Hervorhebung
+- Schriften (selbst gehostet in `static/fonts/`, Pixelschriften): Alagard für Überschriften, Fantastic Boogaloo für Handschrift
+  auf Papier, Pixelify Sans (OFL, fester Schnitt 400) für alles andere (Text, Knöpfe, Tabs). Es gibt nur einen Schnitt: nichts fett, Hervorhebung
   über Farbe (`b`/`strong` in `--hl`, auf Papier rot). Größen in Vielfachen von 4 px (8, 12, 16, 20, 24), sonst
-  verschwimmen die Pixel; kein `letter-spacing`. Fehlende Zeichen (· × → ↑ ↓ – — ∞ ’ …) in Alagard und Cavalhatriz
-  ergänzt `tools/fonts/add_glyphs.py`. Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
+  verschwimmen die Pixel; kein `letter-spacing`. Fehlende Zeichen (· × → ↑ ↓ – — ∞ ’ …) in den Schriften
+  ergänzt `tools/fonts/add_glyphs.py` (Alagard, Fantastic Boogaloo mit Pixel 131, Pixelify Sans mit Pixel 92). Im Canvas die 3×5-Pixelschrift aus `pixfont.js`.
 - Im Spiel klicken statt Menüs: Räume und Zwerge öffnen ihr Fenster direkt (`popups.js`), Hover zeigt einen
   grünen Umriss, stillstehende Werkstätten mit Material bekommen einen grünen Pfeil.
 - Farben aus den CSS-Variablen in `style.css`.
