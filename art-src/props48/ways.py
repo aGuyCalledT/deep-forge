@@ -437,8 +437,8 @@ def wall_tile():
 
 # ------------------------------------------------------------------ slim pillar between two spaces (16 wide)
 # The wall seen end-on, half as wide as before, in the material of the room's back wall. The door in it cannot be
-# seen while it is shut: it shows only when it swings open towards you (frames 1-3), the wall's foot opens up and the
-# leaf turns out to the right. Grid 40 x 144, the pillar in x 0..15, anchor (8, 144): its middle on the cell edge.
+# seen while it is shut: it shows only when it swings open towards you (frames 1-3); the pillar stays whole and the
+# leaf turns out to the right of it. Grid 40 x 144, the pillar in x 0..15, anchor (8, 144): its middle on the cell edge.
 DW, DTOP, LEAF = 40, 62, 22
 DOPEN = [0.0, 0.4, 0.75, 1.0]
 def leaf_out(g, frac, leaf='oak'):
@@ -458,11 +458,9 @@ def leaf_out(g, frac, leaf='oak'):
     for y in range(DTOP + 3 - int(round(3 * frac)), FLOOR): g[y, 16 + L - 1] = (leaf, 0)   # the free edge
     if L > 6: g[(DTOP + FLOOR) // 2, 16 + L - 4] = ('iron', 4)                                  # the ring
 def doorway(g, frac):
-    """While the door is open the foot of the pillar is a gap: a lintel above it, a worn sill below."""
+    """The pillar stays whole while the door is open: only a worn sill shows in front of it, where the leaf swings."""
     if not frac: return
-    for y in range(DTOP, FLOOR - 1):
-        for x in range(16): g[y, x] = None
-    for x in range(16): g[FLOOR - 1, x] = ('stone', 2)
+    for x in range(16, 16 + int(round(LEAF * frac))): g[FLOOR - 1, x] = g[FLOOR - 1, x] or ('stone', 2)
 def divider_stone(ramp, course=14, split=False):
     def make(frame=0):
         g = grid(DW, RH)
