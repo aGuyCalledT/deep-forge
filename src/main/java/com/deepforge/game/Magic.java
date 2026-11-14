@@ -9,8 +9,10 @@ import java.util.*;
  * The gem brings the kind of effect and a word for its strength; the socket turns it into a number.
  * See docs/KONZEPT-MAGIE.md and docs/BALANCING.md.
  *
- * Keys: a cut gem is "gem:<cut>", an enchanted one "gem:<cut>:<effect>:<word>". A piece with gems carries them in its
- * item key: "item:<type>:<metal>:<quality>:<mods>:<effect>.<word>.<cut>,...:<legend>".
+ * Keys: a cut gem is "gem:<cut>:<kind>:<shape>", an enchanted one "gem:<cut>:<kind>:<shape>:<effect>:<word>" (cut is the
+ * quality of the cut, 0 crude .. 4 flawless; kind and shape see {@link Gems}). A piece with gems carries them in its
+ * item key: "item:<type>:<metal>:<quality>:<mods>:<effect>.<word>.<cut>.<kind>.<shape>,...:<legend>".
+ * Keys from before the kinds ("gem:<cut>", "gem:<cut>:<effect>:<word>", "<effect>.<word>.<cut>") still read, as rock crystal.
  */
 public final class Magic {
     private Magic() {}
@@ -26,9 +28,9 @@ public final class Magic {
     public static final Map<String, Effect> EFFECTS = new LinkedHashMap<>();
     public static final Map<String, Legend> LEGENDS = new LinkedHashMap<>();
 
-    public static final List<String> CUTS = List.of("Rough cut", "Fair cut", "Fine cut", "Brilliant", "Flawless");
-    public static final double[] CUT_VALUE = {4000, 6000, 9000, 14000, 22000};
-    /** Chances for "greatly" and "a lot" by cut; "better" next, the rest "slightly". */
+    /** The quality of a cut, from the jeweler's skill. */
+    public static final List<String> CUTS = List.of("Crude", "Fair", "Fine", "Brilliant", "Flawless");
+    /** Chances for "greatly" and "a lot" by grade (0..4, see {@link #grade}); "better" next, the rest "slightly". */
     static final double[] GREATLY = {0, 0.03, 0.08, 0.15, 0.25};
     static final double[] A_LOT = {0.05, 0.15, 0.25, 0.35, 0.40};
     static final double[] BETTER = {0.35, 0.40, 0.40, 0.35, 0.30};
@@ -109,29 +111,40 @@ public final class Magic {
 
     public static boolean isGem(String key) { return key != null && key.startsWith("gem:"); }
 
-    public static String gemKey(int cut) { return "gem:" + cut; }
+    public static String gemKey(int cut, String kind, String shape) { return "gem:" + cut + ":" + kind + ":" + shape; }
 
-    public static String gemKey(int cut, String effect, int word) { return "gem:" + cut + ":" + effect + ":" + word; }
+    public static String gemKey(int cut, String kind, String shape, String effect, int word) {
+        return gemKey(cut, kind, shape) + ":" + effect + ":" + word;
+    }
 
-    /** "gem:2:smithq:3" -> {cut, word} and the effect (null for a plain cut gem); null if it is no valid gem. */
+    /** "gem:2:ruby:rose:smithq:3" -> the gem (effect null for a plain cut gem); null if it is no valid gem. */
     public static Gem parseGem(String key) {
         if (!isGem(key)) return null;
         String[] p = key.split(":");
         try {
             int cut = Integer.parseInt(p[1]);
             if (cut < 0 || cut >= CUTS.size()) return null;
-            if (p.length == 2) return new Gem(cut, null, 0);
-            if (p.length != 4 || !EFFECTS.containsKey(p[2])) return null;
-            int w = Integer.parseInt(p[3]);
-            return w < 1 || w > 4 ? null : new Gem(cut, p[2], w);
+            if (p.length == 2) return new Gem(cut, Gems.OLD_KIND, Gems.OLD_SHAPE, null, 0);
+            if (p.length == 4 && EFFECTS.containsKey(p[2])) return gem(cut, Gems.OLD_KIND, Gems.OLD_SHAPE, p[2], Integer.parseInt(p[3]));
+            if (!Gems.KINDS.containsKey(p[2]) || !Gems.SHAPES.containsKey(p[3])) return null;
+            if (p.length == 4) return new Gem(cut, p[2], p[3], null, 0);
+            if (p.length != 6 || !EFFECTS.containsKey(p[4])) return null;
+            return gem(cut, p[2], p[3], p[4], Integer.parseInt(p[5]));
         } catch (NumberFormatException e) {
             return null;
         }
     }
 
-    public record Gem(int cut, String effect, int word) {
+    private static Gem gem(int cut, String kind, String shape, String effect, int w) {
+        return w < 1 || w > 4 ? null : new Gem(cut, kind, shape, effect, w);
+    }
+
+    /** cut: the quality of the cut; kind and shape: see {@link Gems}; effect and word once it is enchanted. */
+    public record Gem(int cut, String kind, String shape, String effect, int word) {
         public boolean enchanted() { return effect != null; }
-        public String key() { return effect == null ? gemKey(cut) : gemKey(cut, effect, word); }
+        public String key() { return effect == null ? gemKey(cut, kind, shape) : gemKey(cut, kind, shape, effect, word); }
+        public Gems.Kind kindOf() { return Gems.KINDS.get(kind); }
+        public Gem enchant(String fx, int w) { return new Gem(cut, kind, shape, fx, w); }
     }
 
     public static boolean isPlainGem(String key) {
@@ -141,8 +154,12 @@ public final class Magic {
 
     public static double gemValue(String key) {
         Gem g = parseGem(key);
-        if (g == null) return 0;
-        return CUT_VALUE[g.cut] * (g.enchanted() ? 1 + 0.4 * g.word : 1);
+        return g == null ? 0 : gemValue(g);
+    }
+
+    /** The rough gem's value × the cut's quality, and more once enchanted. */
+    public static double gemValue(Gem g) {
+        return g.kindOf().value() * Gems.CUT_MULT[g.cut] * (g.enchanted() ? 1 + 0.4 * g.word : 1);
     }
 
     public static String word(Effect e, int word) {
@@ -158,8 +175,10 @@ public final class Magic {
     public static String gemName(String key) {
         Gem g = parseGem(key);
         if (g == null) return key;
-        if (!g.enchanted()) return CUTS.get(g.cut) + " gem";
-        return SCHOOLS.get(EFFECTS.get(g.effect).school()).name() + " gem (" + CUTS.get(g.cut).toLowerCase() + "): " + gemEffectText(g);
+        String kind = g.kindOf().name(), shape = Gems.SHAPES.get(g.shape).name();
+        if (!g.enchanted()) return CUTS.get(g.cut) + " " + kind.toLowerCase() + ", " + shape;
+        return SCHOOLS.get(EFFECTS.get(g.effect).school()).name() + " " + kind.toLowerCase() + " (" + CUTS.get(g.cut).toLowerCase() + ", "
+                + shape + "): " + gemEffectText(g);
     }
 
     // ------------------------------------------------------------ sockets
@@ -182,9 +201,12 @@ public final class Magic {
         if (s.isEmpty()) return out;
         for (String part : s.split(",")) {
             String[] x = part.split("\\.");
-            if (x.length != 3 || !EFFECTS.containsKey(x[0])) continue;
+            if ((x.length != 3 && x.length != 5) || !EFFECTS.containsKey(x[0])) continue;
+            String kind = x.length == 5 && Gems.KINDS.containsKey(x[3]) ? x[3] : Gems.OLD_KIND;
+            String shape = x.length == 5 && Gems.SHAPES.containsKey(x[4]) ? x[4] : Gems.OLD_SHAPE;
             try {
-                out.add(new Gem(Math.max(0, Math.min(CUTS.size() - 1, Integer.parseInt(x[2]))), x[0], Math.max(1, Math.min(4, Integer.parseInt(x[1])))));
+                out.add(new Gem(Math.max(0, Math.min(CUTS.size() - 1, Integer.parseInt(x[2]))), kind, shape, x[0],
+                        Math.max(1, Math.min(4, Integer.parseInt(x[1])))));
             } catch (NumberFormatException ignored) {
             }
         }
@@ -195,7 +217,7 @@ public final class Magic {
         StringBuilder sb = new StringBuilder();
         for (Gem g : gems) {
             if (sb.length() > 0) sb.append(',');
-            sb.append(g.effect).append('.').append(g.word).append('.').append(g.cut);
+            sb.append(g.effect).append('.').append(g.word).append('.').append(g.cut).append('.').append(g.kind).append('.').append(g.shape);
         }
         return sb.toString();
     }
@@ -273,23 +295,40 @@ public final class Magic {
         return (int) Math.max(0, Math.min(CUTS.size() - 1, Math.round(mean + r.gauss() * 0.8)));
     }
 
-    /** Strength 1..4 by the cut; arcana (skill 0..20) moves it up one step by chance, a tower of level 3+ rolls twice. */
-    public static int rollWord(Rng r, int cut, int arcana, int towerLevel) {
-        int w = rollWordOnce(r, cut, arcana);
-        if (towerLevel >= 3) w = Math.max(w, rollWordOnce(r, cut, arcana));
+    /** How well a gem takes magic, 0..4: its kind's tier counts 0.6 a step, the quality of the cut 0.5. */
+    public static final double GRADE_TIER = 0.6, GRADE_CUT = 0.5;
+
+    public static double grade(int tier, int cut) {
+        return Math.max(0, Math.min(4, GRADE_TIER * tier + GRADE_CUT * cut));
+    }
+
+    public static double grade(Gem g) { return grade(g.kindOf().tier(), g.cut); }
+
+    /** Strength 1..4 by the gem's grade; arcana (skill 0..20) moves it up one step by chance, a tower of level 3+ rolls twice. */
+    public static int rollWord(Rng r, double grade, int arcana, int towerLevel) {
+        int w = rollWordOnce(r, grade, arcana);
+        if (towerLevel >= 3) w = Math.max(w, rollWordOnce(r, grade, arcana));
         return w;
     }
 
-    static int rollWordOnce(Rng r, int cut, int arcana) {
+    static int rollWordOnce(Rng r, double grade, int arcana) {
+        double[] ch = wordChances(grade);
         double x = r.next();
-        int w = x < GREATLY[cut] ? 4 : x < GREATLY[cut] + A_LOT[cut] ? 3 : x < GREATLY[cut] + A_LOT[cut] + BETTER[cut] ? 2 : 1;
+        int w = x < ch[3] ? 4 : x < ch[3] + ch[2] ? 3 : x < ch[3] + ch[2] + ch[1] ? 2 : 1;
         if (w < 4 && r.chance(Math.min(1, arcana / 20.0) * 0.5)) w++;
         return w;
     }
 
-    /** Chances of the four words for a cut (no arcana, one roll), for the client. */
-    public static double[] wordChances(int cut) {
-        double g = GREATLY[cut], a = A_LOT[cut], b = BETTER[cut];
+    private static double lerp(double[] t, double grade) {
+        int i = (int) Math.floor(grade);
+        if (i >= t.length - 1) return t[t.length - 1];
+        double f = grade - i;
+        return t[i] * (1 - f) + t[i + 1] * f;
+    }
+
+    /** Chances of the four words (slightly .. greatly) for a grade (no arcana, one roll), between the table's steps. */
+    public static double[] wordChances(double grade) {
+        double g = lerp(GREATLY, grade), a = lerp(A_LOT, grade), b = lerp(BETTER, grade);
         return new double[]{1 - g - a - b, b, a, g};
     }
 
@@ -386,10 +425,11 @@ public final class Magic {
         d.put("effects", EFFECTS.values());
         d.put("legends", LEGENDS.values());
         d.put("cuts", CUTS);
-        d.put("cutValue", CUT_VALUE);
-        List<double[]> ch = new ArrayList<>();
-        for (int c = 0; c < CUTS.size(); c++) ch.add(wordChances(c));
-        d.put("wordChances", ch);
+        d.put("greatly", GREATLY);
+        d.put("aLot", A_LOT);
+        d.put("better", BETTER);
+        d.put("gradeTier", GRADE_TIER);
+        d.put("gradeCut", GRADE_CUT);
         d.put("words", WORDS);
         d.put("lessWords", LESS_WORDS);
         d.put("sockets", SOCKETS);

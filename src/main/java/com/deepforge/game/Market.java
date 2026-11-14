@@ -210,8 +210,20 @@ public class Market {
         return m == null ? 1.0 : m.getOrDefault(category, 1.0);
     }
 
+    /** Gems keep their value everywhere; only the cut in fashion sells dearer (see {@link Gems#fashion}). */
+    public static boolean fixed(String marketKey) {
+        return marketKey.equals("cut_gem") || marketKey.equals("rough_gem");
+    }
+
+    /** The fashion factor of a cut gem now (1 for everything else). */
+    public synchronized double fashion(String key) {
+        Magic.Gem g = Magic.parseGem(key);
+        return g == null ? 1 : Gems.fashion(g.shape(), w.t);
+    }
+
     /** Price multiplier of a market key in a city (1 = base price). */
     public synchronized double mult(String city, String marketKey) {
+        if (fixed(marketKey)) return 1;
         double g = w.g.getOrDefault(marketKey, 0.0);
         Map<String, Double> cm = w.c.get(city);
         double c = cm == null ? 0 : cm.getOrDefault(marketKey, 0.0);
@@ -230,7 +242,7 @@ public class Market {
 
     /** Price one unit sells for (no volume impact). */
     public synchronized double sellPrice(String city, String key, double bonus) {
-        return Content.baseValue(key) * mult(city, Content.marketKey(key)) * bonus;
+        return Content.baseValue(key) * mult(city, Content.marketKey(key)) * fashion(key) * bonus;
     }
 
     public synchronized double buyPrice(String city, String key, double bonus) {
@@ -239,11 +251,13 @@ public class Market {
 
     /** How far q units move the price (log), for a trader with the given power (1 = a small player). */
     static double impact(String marketKey, int q, double power) {
+        if (fixed(marketKey)) return 1e-9;     // gems do not move the price
         return q / Content.liquidity(marketKey) * Math.max(0.1, power);
     }
 
     /** Move a city's price (and the world's, by the city's share) by dx in log space. */
     private void move(String city, String mk, double dx) {
+        if (fixed(mk)) return;
         double share = Content.CITIES.get(city).share();
         double g = Math.max(LMIN, Math.min(LMAX, w.g.getOrDefault(mk, 0.0) + dx * share));
         w.g.put(mk, g);
@@ -284,7 +298,7 @@ public class Market {
         double p = buyPrice(city, key, bonus);
         if (q <= 0 || p > maxUnit) return 0;
         double perUnit = impact(mk, 1, power);
-        if (maxUnit < Double.MAX_VALUE) q = Math.min(q, (int) Math.floor(Math.log(maxUnit / p) / perUnit) + 1);
+        if (maxUnit < Double.MAX_VALUE) q = (int) Math.min(q, Math.floor(Math.log(maxUnit / p) / perUnit) + 1);
         int lo = 0, hi = q;
         while (lo < hi) {
             int mid = (lo + hi + 1) / 2;
@@ -334,6 +348,9 @@ public class Market {
         out.put("max", MAX);
         out.put("histEvery", HIST_EVERY);
         out.put("nextDemandChange", (w.demandEpoch + 1) * DEMAND_EPOCH);
+        out.put("fashion", Gems.fashionOf(Gems.epoch(w.t)));
+        out.put("nextFashion", Gems.fashionOf(Gems.epoch(w.t) + 1));
+        out.put("fashionChange", (Gems.epoch(w.t) + 1) * Gems.FASHION_EPOCH);
         return out;
     }
 

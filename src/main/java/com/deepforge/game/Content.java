@@ -244,7 +244,7 @@ public final class Content {
         raw("coal", "Coal", "#2b2b2e", 50, "materials", "Fuel. Every smelt and every forging burns one.");
         raw("limestone", "Limestone", "#d8d2bd", 60, "materials", "Flux for pig iron and steel.");
         raw("stone", "Stone", "#7d7a73", 30, "materials", "For building and upgrades.");
-        raw("rough_gem", "Rough gem", "#5fb7a6", 2500, "gems", "Cut it at the jeweler.");
+        raw("rough_gem", "Rough gem", "#5fb7a6", 2500, "gems", "Cut it at the jeweler. Deeper layers give finer kinds.");
         raw("cut_gem", "Cut gem", "#6fe0c8", 6000, "gems", "Enchant it at the wizard's tower, then set it into a socket.");
         raw("gears", "Gears", "#b9a052", 4500, "materials", "Brass clockwork from the fine mechanic. Goes into locks, compasses and music boxes.");
         raw("cloth", "Cloth", "#c9b28a", 400, "materials", "Woven from mushroom fibre at the tailor. Sew it into clothes.");
@@ -493,7 +493,7 @@ public final class Content {
 
     public static String category(String key) {
         if (isWear(key)) return "clothing";
-        if (Magic.isGem(key)) return "gems";
+        if (Magic.isGem(key) || Gems.isRough(key)) return "gems";
         if (isItem(key)) return ITEMS.get(parseItem(key)[0]).category();
         if (isBar(key)) return "bars";
         if (ORES.containsKey(key)) return "ore";
@@ -505,6 +505,7 @@ public final class Content {
     public static String marketKey(String key) {
         if (isWear(key)) return "cat:clothing";
         if (Magic.isGem(key)) return "cut_gem";
+        if (Gems.isRough(key)) return "rough_gem";
         if (isItem(key)) return "type:" + parseItem(key)[0];
         return key;
     }
@@ -530,7 +531,7 @@ public final class Content {
 
     /** Does this stock key belong to the market key (for rules like "all battle axes")? */
     public static boolean inMarket(String key, String marketKey) {
-        return (isItem(key) || isWear(key) || Magic.isGem(key) || ORES.containsKey(key) || RAWS.containsKey(key) || isBar(key)) && marketKey(key).equals(marketKey);
+        return (isItem(key) || isWear(key) || Magic.isGem(key) || Gems.isRough(key) || ORES.containsKey(key) || RAWS.containsKey(key) || isBar(key)) && marketKey(key).equals(marketKey);
     }
 
     public static String marketName(String marketKey) {
@@ -555,6 +556,7 @@ public final class Content {
             return v;
         }
         if (Magic.isGem(key)) return Magic.gemValue(key);
+        if (Gems.isRough(key)) return Gems.kindOf(key).value();
         if (isBar(key)) return METALS.get(key.substring(4)).value();
         if (ORES.containsKey(key)) return ORES.get(key).value();
         Raw r = RAWS.get(key);
@@ -578,6 +580,7 @@ public final class Content {
             return sb.toString();
         }
         if (Magic.isGem(key)) return Magic.gemName(key);
+        if (Gems.isRough(key)) return Gems.roughName(key);
         if (isBar(key)) return METALS.get(key.substring(4)).name() + " bar";
         if (ORES.containsKey(key)) return ORES.get(key).name();
         Raw r = RAWS.get(key);
@@ -586,7 +589,7 @@ public final class Content {
 
     /** Goods that can be bought at a city. */
     public static boolean buyable(String key) {
-        if (isItem(key) || Magic.isGem(key)) return false;
+        if (isItem(key) || Magic.isGem(key) || Gems.isRough(key)) return false;
         if (key.equals("cut_gem")) return false;
         return isBar(key) ? METALS.containsKey(key.substring(4)) : (ORES.containsKey(key) || RAWS.containsKey(key));
     }
@@ -715,6 +718,7 @@ public final class Content {
         d.put("dyes", DYES);
         d.put("wearSlots", WEAR_SLOTS);
         d.put("magic", Magic.asData());
+        d.put("gems", Gems.asData());
         return d;
     }
 }

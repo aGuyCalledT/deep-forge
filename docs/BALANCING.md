@@ -276,15 +276,29 @@ Masterwork 2, Artifact 3.
 
 ## Magie (`Magic.java`)
 
-- **Schliff** beim Juwelier (`cutgem`, Rohedelstein → `gem:<Schliff>`): Mittel `−0,2 + 0,14 × crafting + 0,25 × (Stufe − 1)`,
-  Streuung 0,8 (gauß), gerundet auf 0–4 = Rough cut, Fair cut, Fine cut, Brilliant, Flawless. Wert 4 000 / 6 000 / 9 000 /
-  14 000 / 22 000 Jots; verzaubert × `(1 + 0,4 × Wort)`. Steine handeln unter „cut_gem“, kaufen kann man sie nicht.
-  Juwelier: Bau 50 Marks + 30 Stein + 10 Bronze.
+- **Steinarten** (`Gems.java`): alle 127 Edelsteine aus Dwarf Fortress mit ihrem Wert dort (2 … 60) und ihrer Farbe
+  (Raws `inorganic_stone_gem.txt`, Farben aus `descriptor_color_standard.txt`; „clear“ und „black“ aufgehellt).
+  Fünf Stufen nach DF-Wert: Ornamental 2–3, Semi-precious 10–15, Choice 20–25, Precious 30–40, Rare 60.
+  Rohstein `rough:<Art>` ist `1 200 × DF-Wert^0,7` Jots wert (Achat 19,50 Marks, Rubin 158,60, Diamant 210,90).
+  Innerhalb einer Stufe zählt die Häufigkeit aus DF (Opale seltener als Achate).
+- **Fundorte** (`Gems.LAYER_TIERS`, Gewichte der Stufen je Schicht): Shallow Caves 85/15/0/0/0, Grey Veins 60/30/10/0/0,
+  Silver Halls 30/30/35/5/0, Golden Deep 10/20/45/20/5, Crystal Abyss 0/10/40/35/15. Expeditionen in Höhlen von Bestien
+  geben Steine wie die Schicht ihrer Gefahr. Gekaufte und alte Rohsteine sind aus der obersten Schicht.
+- **Schliff** beim Juwelier (`cutgem`, `rough:<Art>` → `gem:<Güte>:<Art>:<Form>`, der wertvollste Rohstein zuerst oder der
+  bestellte): Güte mit Mittel `−0,2 + 0,14 × crafting + 0,25 × (Stufe − 1)`, Streuung 0,8 (gauß), gerundet auf 0–4 =
+  Crude, Fair, Fine, Brilliant, Flawless; Wert = Rohstein × 1,6 / 2,4 / 3,6 / 5,6 / 8,8; verzaubert × `(1 + 0,4 × Wort)`.
+  Die **Form** ist Zufall, eine der 22 aus Dwarf Fortress (Baguette … Trillion, vier davon Cabochons).
+  Steine handeln unter „rough_gem“ und „cut_gem“, kaufen kann man nur Rohsteine. Juwelier: Bau 50 Marks + 30 Stein + 10 Bronze.
+- **Markt und Mode** (`Market.fixed`, `Gems.fashion`): Edelsteine haben überall ihren festen Wert, Verkäufe drücken den Preis
+  nicht. Alle 12 h ist eine Form in Mode (×2) und zwei weitere gefragt (×1,4), für alle Festungen gleich; die nächste
+  Mode steht 12 h vorher im Markt-Fenster, und die Form in Mode wechselt jedes Mal.
 - **Verzaubern** im Turm des Zauberers (`enchant`, 30 min, Fertigkeit arcana, steht ab Stufe 1 ohne Arbeiter): Schule
-  wählen, Wirkung der Schule gleich verteilt. Wort-Chancen je Schliff (Rough → Flawless):
+  wählen, Wirkung der Schule gleich verteilt. Die Wort-Chancen hängen an der **Güte des Steins** `0,6 × Stufe der Art +
+  0,5 × Güte des Schliffs` (0–4, zwischen den Stufen gemittelt), die Tabelle je Güte 0 → 4:
   greatly 0 / 3 / 8 / 15 / 25 %, a lot 5 / 15 / 25 / 35 / 40 %, better 35 / 40 / 40 / 35 / 30 %, Rest slightly.
+  Ein Achat im Fair-Schliff hat Güte 0,5, ein Diamant im Flawless-Schliff 4.
   Arcana gibt bis zu 50 % Chance auf eine Stufe mehr (`arcana / 20 × 0,5`); ab Turmstufe 3 zwei Würfe, der bessere zählt.
-  Ohne geschliffenen Stein nimmt der Zauberer einen Rohedelstein als Rough cut.
+  Ohne geschliffenen Stein nimmt der Zauberer einen Rohstein als Crude-Schliff in zufälliger Form.
 - **Wirkungen** (Grundwert je Wortstufe, Obergrenze je Zwerg):
 
 | Schule | Wirkung | Grundwert | Grenze |

@@ -1,6 +1,6 @@
 // Magic in the client: the window of a piece with its sockets and effects, and gem lists. Display only; the server
 // decides (Magic.java). Green lines: what the gems do; orange: the legendary effect only artifacts have.
-import { G, F, D, byId, goodName, isItem, parseItem, isGem, parseGem, gemEffectText, itemGems, itemLegend, sockets, socketFactor,
+import { G, F, D, byId, goodName, isItem, parseItem, isGem, parseGem, gemKeyOf, gemKind, gemEffectText, itemGems, itemLegend, sockets, socketFactor,
   gemAmount, effectLine, pieceEffects, fmt, moneyText, baseValue } from './data.js';
 import { h, img, goodIcon, openSheet, refreshSheet, closeSheet, bus, info } from './ui.js';
 import * as S from './sprites.js';
@@ -40,7 +40,7 @@ function socketIcons(key) {
   const gems = itemGems(key), n = sockets(key), out = [];
   for (let i = 0; i < n; i++) {
     const g = gems[i];
-    out.push(g ? img(S.good(`gem:${g.cut}:${g.effect}:${g.word}`), 'sock', gemEffectText(g)) : img(S.sprite('socket'), 'sock', 'Free socket'));
+    out.push(g ? img(S.good(gemKeyOf(g)), 'sock', goodName(gemKeyOf(g))) : img(S.sprite('socket'), 'sock', 'Free socket'));
   }
   return h('div', { class: 'sockets' }, out.length ? out : h('span', { class: 'small muted' }, 'No sockets: crude pieces have none.'));
 }
@@ -73,15 +73,15 @@ export function pieceSheet(ref, anchor) {
       h('p', { class: 'small muted' }, `Sockets ×${+socketFactor(key).toFixed(2)} for its metal${p.q >= 5 ? ' and legend' : ''} `,
         info('A gem brings the kind of effect, the socket makes the number: better quality gives more sockets, more precious metal stronger ones. A gem counts twice in a piece made for it (mining in a pickaxe, smithing in a hammer, combat in a weapon, defence in armor, trade in scales); jewelry fits everything at ×1.5. Legendary pieces never break.')),
       gems.length ? h('div', { class: 'card sub' }, h('b', null, 'In the sockets'),
-        gems.map((g, i) => h('div', { class: 'row' }, img(S.good(`gem:${g.cut}:${g.effect}:${g.word}`), 'icon s'),
-          h('span', { class: 'grow small' }, h('span', { class: 'fx' }, effectLine(g.effect, gemAmount(key, g))), h('span', { class: 'muted' }, ` · ${G.data.magic.cuts[g.cut].toLowerCase()}`)),
+        gems.map((g, i) => h('div', { class: 'row' }, img(S.good(gemKeyOf(g)), 'icon s'),
+          h('span', { class: 'grow small' }, h('span', { class: 'fx' }, effectLine(g.effect, gemAmount(key, g))), h('span', { class: 'muted' }, ` · ${gemKind(gemKeyOf(g)).name.toLowerCase()}, ${G.data.magic.cuts[g.cut].toLowerCase()}`)),
           tower ? h('button', { class: 'btn small', title: 'Free, but 1 in 4 gems cracks', onclick: () => act({ type: 'unsocket', index: i }) }, 'Take out') : null))) : null,
       free > 0 ? h('div', { class: 'card sub' }, h('b', null, `Set a gem (${free} free)`),
         !tower ? h('p', { class: 'small muted' }, 'Gems are set at the wizard\'s tower.') : null,
         enchantedGems().length ? enchantedGems().sort((a, b) => gemAmount(key, parseGem(b[0])) - gemAmount(key, parseGem(a[0]))).slice(0, 10).map(([gk, n]) => {
           const g = parseGem(gk);
           return h('div', { class: 'row' }, goodIcon(gk, 'icon s'),
-            h('span', { class: 'grow small' }, h('span', { class: 'fx' }, effectLine(g.effect, gemAmount(key, g))), h('span', { class: 'muted' }, ` · ${G.data.magic.cuts[g.cut].toLowerCase()} · ${n}`)),
+            h('span', { class: 'grow small' }, h('span', { class: 'fx' }, effectLine(g.effect, gemAmount(key, g))), h('span', { class: 'muted' }, ` · ${gemKind(gk).name.toLowerCase()}, ${G.data.magic.cuts[g.cut].toLowerCase()} · ${n}`)),
             tower ? h('button', { class: 'btn small good', onclick: () => act({ type: 'socket', gem: gk }) }, 'Set') : null);
         }) : h('p', { class: 'small muted' }, 'No enchanted gems. The wizard enchants cut or rough gems.')) : null);
   }, anchor, 'lore');

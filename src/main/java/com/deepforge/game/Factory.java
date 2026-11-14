@@ -159,7 +159,16 @@ public final class Factory {
         }
         // magic: cut gems got a cut (old ones are fair cuts), forged artifacts a legendary effect, gem setting moved to sockets
         int oldGems = f.stock.getOrDefault("cut_gem", 0);
-        if (oldGems > 0) { f.stock.remove("cut_gem"); Rules.add(f, Magic.gemKey(1), oldGems); }
+        if (oldGems > 0) { f.stock.remove("cut_gem"); Rules.addGems(f, "cut_gem", oldGems, 0); }
+        // gem kinds: bare rough gems get a kind, cut gems from before the kinds become rock crystal
+        int oldRough = f.stock.getOrDefault("rough_gem", 0);
+        if (oldRough > 0) { f.stock.remove("rough_gem"); Rules.addGems(f, "rough_gem", oldRough, 0); }
+        for (String k : new ArrayList<>(f.stock.keySet())) {
+            Magic.Gem g = Magic.parseGem(k);
+            if (g == null || g.key().equals(k)) continue;
+            int n = f.stock.remove(k);
+            Rules.add(f, g.key(), n);
+        }
         for (Artifact a : f.artifacts)
             if (a.item != null && Magic.legend(a.item) == null)
                 a.item = Magic.withLegend(a.item, Magic.rollLegend(new Rng(a.id * 7919L + 5), Content.parseItem(a.item)[0]));

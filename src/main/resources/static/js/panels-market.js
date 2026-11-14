@@ -1,6 +1,6 @@
 // The market: every good with its price and a trend line, and per good which city pays what.
 // Prices come from the server (/api/market); the client only draws them.
-import { G, F, D, byId, fmt, goodName, refGood, cityMult, marketPower, moneyText, isBar } from './data.js';
+import { G, F, D, byId, fmt, goodName, refGood, cityMult, marketPower, moneyText, isBar, shapeName, now } from './data.js';
 import { h, goodIcon, openSheet, refreshSheet, bus, ico, money, info } from './ui.js';
 import { api } from './api.js';
 
@@ -89,6 +89,12 @@ function marketRow(mk, have) {
 function refNote(mk) {
   if (mk.startsWith('type:')) return `Prices for a common ${goodName(refGood(mk)).toLowerCase().replace(/^common /, '')}. Better metal, quality and finish sell for more, at the same rate.`;
   if (mk === 'cat:clothing') return 'Prices for a linen shirt. Finer clothes sell for more, at the same rate.';
+  if (mk === 'rough_gem') return 'Gems keep their price: every kind has its own, from agates to diamonds. Deeper layers give finer kinds.';
+  if (mk === 'cut_gem' && G.market.fashion) {
+    const f = G.market.fashion, d = G.data.gems, hrs = Math.max(1, Math.round((G.market.fashionChange - now()) / 3600));
+    return `Gems keep their price, but the cut is a matter of fashion. Now ${shapeName(f[0])}s sell ×${d.rage}, ${shapeName(f[1])}s and ${shapeName(f[2])}s ×${d.wanted}. `
+      + `In ${hrs}h the jewelers want ${shapeName(G.market.nextFashion[0])}s.`;
+  }
   return null;
 }
 

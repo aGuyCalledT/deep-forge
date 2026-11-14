@@ -23,7 +23,9 @@ Wachstum und Spaß.
 
 1. **Rohedelstein** kommt aus der Mine (neu auch Schicht 1, 2 %) und aus Schichtberichten.
 2. **Schleifen** beim Juwelier: der Stein bekommt einen **Schliff** (wie Qualität beim Schmieden, gewürfelt nach
-   Fertigkeit „crafting“ und Raumstufe): Rough cut, Fair cut, Fine cut, Brilliant, Flawless.
+   Fertigkeit „crafting“ und Raumstufe): Crude, Fair, Fine, Brilliant, Flawless. Dazu eine zufällige **Form** aus
+   Dwarf Fortress (Rose, Table, Pear …), die nur auf dem Markt zählt (Mode). Die **Art** des Steins (127 aus Dwarf
+   Fortress, von Achat bis Diamant) kommt aus der Mine: tiefere Schichten geben wertvollere. Siehe `Gems.java`.
 3. **Verzaubern** beim Zauberer: der Spieler wählt eine von fünf **Schulen**. Gewürfelt werden die Wirkung innerhalb
    der Schule und ihre **Stärke** (ein Wort, keine Zahl). Ein besserer Schliff und mehr „Arcana“ würfeln höher.
    Jeder Stein wird nur **einmal** verzaubert.
@@ -41,7 +43,7 @@ Wachstum und Spaß.
 | Gold | trade prices, learning, crafting speed |
 
 Stärke-Wörter (gewürfelt): **slightly** ×1, **better** ×2, **a lot** ×3, **greatly** ×4.
-Chancen je Schliff (Rough → Flawless): greatly 0 / 3 / 8 / 15 / 25 %, a lot 5 / 15 / 25 / 35 / 40 %, Rest verteilt
+Chancen je Güte des Steins (0,6 × Stufe der Art + 0,5 × Schliff, 0 → 4): greatly 0 / 3 / 8 / 15 / 25 %, a lot 5 / 15 / 25 / 35 / 40 %, Rest verteilt
 auf better und slightly. Arcana verschiebt bis zu einer Stufe nach oben (Meister).
 
 Name des Steins: „Fire gem: a lot better smithing quality“.

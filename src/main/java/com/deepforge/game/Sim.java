@@ -211,6 +211,7 @@ public final class Sim {
                     used += sendCart(f, l, t);
                 }
                 String ore = mix.get(l.index).isEmpty() ? r.weighted(layer.weights()) : r.weightedD(mix.get(l.index));
+                if (ore.equals("rough_gem")) ore = Gems.roughKey(Gems.rollKind(r, l.index));   // its kind by the layer
                 if (l.cart.isEmpty()) l.cartStart = t;
                 l.cart.merge(ore, r.chance(sniffChance) ? 2 : 1, Integer::sum);
                 l.pending -= 1;
@@ -291,7 +292,7 @@ public final class Sim {
             rep.goods.put(ore, n);
             rep.lines.add(name + " found a pocket of " + Content.goodName(ore).toLowerCase() + " behind old timbering.");
         } else if (roll < 0.6) {
-            rep.goods.put("rough_gem", 1 + deep / 2);
+            for (int i = 0; i <= deep / 2; i++) rep.goods.merge(Gems.roughKey(Gems.rollKind(r, layer.index())), 1, Integer::sum);
             rep.lines.add(name + " spotted a glint in the spoil heap.");
         } else if (roll < 0.8) {
             rep.coins = Math.round((3 + 2 * f.level) * JOTS_PER_MARK * r.range(0.8, 1.4));
@@ -303,7 +304,11 @@ public final class Sim {
         } else {
             List<String> missing = new ArrayList<>(Content.BLUEPRINTS);
             missing.removeAll(f.blueprints);
-            if (missing.isEmpty()) { rep.goods.put("cut_gem", 1); rep.lines.add(name + " found a cut gem in a dusty pouch."); }
+            if (missing.isEmpty()) {
+                String g = Magic.gemKey(1, Gems.rollKind(r, layer.index()), Gems.rollShape(r));
+                rep.goods.put(g, 1);
+                rep.lines.add(name + " found a cut gem in a dusty pouch: " + Content.goodName(g).toLowerCase() + ".");
+            }
             else {
                 String bp = r.pick(missing);
                 f.blueprints.add(bp);
@@ -595,7 +600,7 @@ public final class Sim {
                     + Content.ITEMS.get(j.itype).name().toLowerCase();
             case "gears" -> "cutting gears";
             case "inlay" -> "inlaying " + (j.inItem == null ? "" : Content.goodName(j.inItem).toLowerCase());
-            case "cutgem" -> "cutting a gem";
+            case "cutgem" -> "cutting " + (j.inItem == null ? "a gem" : Content.goodName(j.inItem).toLowerCase());
             case "enchant" -> "enchanting a gem (" + Magic.SCHOOLS.get(j.mat).name().toLowerCase() + ")";
             case "weave" -> "weaving cloth";
             case "sew" -> "sewing a " + Content.goodName(Content.wearKey(j.itype, j.mat)).toLowerCase();
@@ -646,20 +651,26 @@ public final class Sim {
             if (s.key != null && s.quality >= 3) log(f, at, "good", "The fine mechanic made a " + Content.goodName(s.key).toLowerCase() + ".");
             return;
         }
-        if (j.recipe.equals("cutgem")) {        // the cut is rolled now: crafting skill and the jeweler's level
+        if (j.recipe.equals("cutgem")) {        // the quality is rolled now (crafting skill, the jeweler's level), the shape is chance
             int cut = Magic.rollCut(r, w == null ? 0 : skill(w, "crafting"), b.level);
-            add(f, Magic.gemKey(cut), 1);
-            if (cut >= 3) log(f, at, "good", "The jeweler cut a gem: " + Magic.CUTS.get(cut).toLowerCase() + "!");
+            Gems.Kind kind = Gems.kindOf(j.inItem);
+            String key = Magic.gemKey(cut, kind == null ? Gems.rollKind(r, 0) : kind.id(), Gems.rollShape(r));
+            add(f, key, 1);
+            if (cut >= 3 || (kind != null && kind.tier() >= 3)) log(f, at, "good", "The jeweler cut a gem: " + Content.goodName(key).toLowerCase() + "!");
             fortressXp(f, 3);
             b.job = null;
             return;
         }
         if (j.recipe.equals("enchant")) {       // school chosen, effect and strength rolled
+            // a rough gem goes in as a crude cut of a random shape
             Magic.Gem in = Magic.parseGem(j.inItem);
-            int cut = in == null ? 0 : in.cut();
+            if (in == null) {
+                Gems.Kind kind = Gems.kindOf(j.inItem);
+                in = new Magic.Gem(0, kind == null ? Gems.rollKind(r, 0) : kind.id(), Gems.rollShape(r), null, 0);
+            }
             String fx = Magic.rollEffect(r, j.mat);
-            int word = Magic.rollWord(r, cut, w == null ? 0 : skill(w, "arcana"), b.level);
-            String key = Magic.gemKey(cut, fx, word);
+            int word = Magic.rollWord(r, Magic.grade(in), w == null ? 0 : skill(w, "arcana"), b.level);
+            String key = in.enchant(fx, word).key();
             add(f, key, 1);
             log(f, at, word >= 3 ? "good" : "info", "The wizard enchanted a gem: " + Magic.gemEffectText(Magic.parseGem(key)) + ".");
             fortressXp(f, 2 + 2 * word);

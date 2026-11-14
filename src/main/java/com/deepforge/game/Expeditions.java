@@ -404,7 +404,7 @@ public final class Expeditions {
             }
             case "lair" -> {
                 int g = 1 + r.nextInt(2 + e.danger);
-                e.loot.merge("rough_gem", g, Integer::sum);
+                gems(e, r, g);
                 e.log.add("Bones and " + g + " rough gems.");
             }
             default -> {
@@ -462,7 +462,7 @@ public final class Expeditions {
             case "lair" -> {
                 if (combat(f, e, r, t, e.danger + 1, "the beast in its lair")) {
                     int g = 2 + r.nextInt(3 + e.danger);
-                    e.loot.merge("rough_gem", g, Integer::sum);
+                    gems(e, r, g);
                     e.coins += Math.round(r.range(8000, 16000) * e.danger);
                     if (r.chance(0.3)) artifact(f, e, r);
                     e.log.add("The beast is dead. Its hoard: " + g + " gems, coins and more.");
@@ -563,5 +563,10 @@ public final class Expeditions {
         if (before == 0 && rep.extras.isEmpty()) rep.lines.add("They brought nothing back.");
         log(f, t, "good", "The expedition to " + e.name + " returned with " + p.size() + " of " + e.size
                 + " dwarves. " + (got.isEmpty() ? "No loot." : "Loot: " + String.join(", ", got) + "."));
+    }
+
+    /** Rough gems for the loot: a more dangerous place has finer kinds, like a deeper layer. */
+    static void gems(Expedition e, Rng r, int n) {
+        for (int i = 0; i < n; i++) e.loot.merge(Gems.roughKey(Gems.rollKind(r, Math.min(4, e.danger))), 1, Integer::sum);
     }
 }

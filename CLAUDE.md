@@ -32,6 +32,7 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
 | `game/Rules.java` | Formeln: Tempo, Kraft, Kapazitäten, Kosten, Kampf, Tod, Spitzhacken (Härte, Tempo, Abnutzung) |
 | `game/Sim.java` | Zeitschritt: Bedürfnisse, Stimmung, Mine, Werkstätten, Monster, Überfälle, Karawanen, Zuwanderung |
 | `game/Recipes.java` | was jede Werkstatt kann und braucht |
+| `game/Gems.java` | Edelsteine nach Dwarf Fortress: 127 Arten (Wert, Farbe, Häufigkeit, Stufe), 22 Schliffformen, Fundorte je Schicht, Mode auf dem Markt (`fashion`) |
 | `game/Magic.java` | Edelsteine (Schliff, Schulen, Wirkungen, Wörter), Fassungen (Zahl aus Qualität, Metall, Passung), Werkzeug je Beruf, legendäre Wirkungen, Summen je Zwerg mit Obergrenzen |
 | `game/Expeditions.java` | Gerüchte, Etappen, Entscheidungen, Beute |
 | `game/Market.java` | Weltkurs und Stadtkurse je Sorte (`type:`/`cat:`), Verlauf 7 Tage, Kauf und Verkauf mit Preiseinfluss nach Marktanteil |
@@ -98,6 +99,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   `Sim.happinessTarget` oder `Expeditions`.
 - **Neues Expeditions-Ereignis:** in `Expeditions.choice()` (Text + Optionen) und `applyChoice()` (Wirkung).
 - **Neue Aktion:** `Actions.apply` + eigene Methode mit `check(...)`, Aufruf im Client mit `bus.act({type: ...})`.
+- **Neuer Edelstein:** `kind(...)` in `Gems.java` (Name, Wert wie in Dwarf Fortress, Farbe, Häufigkeit); Grafik ist
+  nicht nötig, `sprites.js gem()` färbt die Schliffformen aus `art-src/gems.px.js` nach der Farbe ein.
 - **Neue Magie-Wirkung:** `effect(...)` in `Magic.java` (Schule, Grundwert, Grenze, Passung in `FITS`), Wirkung über
   `Magic.bonus(d, id)` in `Rules`/`Sim`; der Client liest die Tabellen aus `G.data.magic` (`Magic.asData`). Legendäre Wirkung: `LEGENDS` und `Magic.active`.
 - **Neue Schicht:** `LAYERS` in `Content.java` (Erze, Rate, Monster, Kosten), Erkundungs-Expedition in

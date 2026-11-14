@@ -1,5 +1,5 @@
 // Fortress overview, dwarves, war and "more" panels.
-import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue, moneyText } from './data.js';
+import { G, F, D, byId, fmt, dur, ago, goodName, costText, canPay, jobLabel, fullName, buildingName, building, now, isItem, isBar, parseItem, baseValue, moneyText, category } from './data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, section, dwarfPicker, toast, costChips, missingText, ico, info, helpOn, setHelp, hourglass, statusIco } from './ui.js';
 import { reportCards } from './collect.js';
 import * as S from './sprites.js';
@@ -81,10 +81,10 @@ export function renderFortress() {
 
   // stockpile
   out.push(h('h2', null, 'Stockpile'));
-  const groups = { Ores: [], Bars: [], Goods: [], Other: [] };
+  const groups = { Ores: [], Bars: [], Gems: [], Goods: [], Other: [] };
   for (const [k, v] of Object.entries(f.stock)) {
     if (v <= 0) continue;
-    (isItem(k) ? groups.Goods : isBar(k) ? groups.Bars : byId.ores[k] ? groups.Ores : groups.Other).push([k, v]);
+    (isItem(k) ? groups.Goods : isBar(k) ? groups.Bars : byId.ores[k] ? groups.Ores : category(k) === 'gems' ? groups.Gems : groups.Other).push([k, v]);
   }
   for (const [g, list] of Object.entries(groups)) {
     if (!list.length) continue;

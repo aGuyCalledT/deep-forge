@@ -28,8 +28,11 @@ public final class Showcase {
         for (String c : Content.CLOTHES.keySet())
             for (String dye : Content.DYES.keySet()) Rules.add(f, Content.wearKey(c, dye), 1);
         // gems: plain cuts and one enchanted gem of every effect, and three legendary pieces
-        for (int c = 0; c < Magic.CUTS.size(); c++) Rules.add(f, Magic.gemKey(c), 3);
-        for (Magic.Effect e : Magic.EFFECTS.values()) Rules.add(f, Magic.gemKey(2 + r.nextInt(3), e.id(), 2 + r.nextInt(3)), 1);
+        Rng g = new Rng(f.userId * 17L + 3);
+        for (int c = 0; c < Magic.CUTS.size(); c++) Rules.add(f, Magic.gemKey(c, Gems.rollKind(g, c), Gems.rollShape(g)), 3);
+        for (int l = 0; l < 5; l++) Rules.add(f, Gems.roughKey(Gems.rollKind(g, l)), 2);
+        for (Magic.Effect e : Magic.EFFECTS.values())
+            Rules.add(f, Magic.gemKey(2 + r.nextInt(3), Gems.rollKind(g, 2 + r.nextInt(3)), Gems.rollShape(g), e.id(), 2 + r.nextInt(3)), 1);
         String[][] legends = {{"axe", "star_steel", "Grudgebearer"}, {"crown", "gold", "Crown of the Deep King"}, {"hammer", "steel", "Emberfall"}};
         for (String[] l : legends) {
             State.Artifact a = new State.Artifact();

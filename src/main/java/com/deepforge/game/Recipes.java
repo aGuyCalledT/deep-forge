@@ -64,7 +64,8 @@ public final class Recipes {
             }
             case "enchant" -> {
                 if (!Magic.SCHOOLS.containsKey(e.mat)) return "Choose a school of magic.";
-                if (e.itype != null && !e.itype.equals("rough_gem") && !Magic.isPlainGem(e.itype)) return "Choose a gem that is not enchanted yet.";
+                if (e.itype != null && !e.itype.equals("rough_gem") && !Gems.isRough(e.itype) && !Magic.isPlainGem(e.itype))
+                    return "Choose a gem that is not enchanted yet.";
             }
             case "sharpen", "engrave", "inlay" -> {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
@@ -72,7 +73,10 @@ public final class Recipes {
                 if (!t.mods().contains(MOD_OF.get(e.recipe))) return t.name() + " cannot be " + e.recipe + "ed.";
                 if (e.mat != null && !Content.METALS.containsKey(e.mat)) return "Unknown metal.";
             }
-            case "cutgem", "weave" -> {
+            case "cutgem" -> {
+                if (e.itype != null && !Gems.isRough(e.itype)) return "Choose a rough gem.";
+            }
+            case "weave" -> {
             }
             case "sew" -> {
                 Content.Cloth c = Content.CLOTHES.get(e.itype);
@@ -112,7 +116,10 @@ public final class Recipes {
             }
             case "gears" -> in.put("bar:brass", GEAR_BRASS);
             case "inlay" -> in.put("bar:" + Content.INLAY_METAL, Content.INLAY_BARS);
-            case "cutgem" -> in.put("rough_gem", 1);
+            case "cutgem" -> {
+                String g = findRough(f, e);
+                in.put(g != null ? g : e.itype != null ? e.itype : "rough_gem", 1);
+            }
             case "enchant" -> {
                 String g = findGem(f, e);
                 in.put(g != null ? g : e.itype != null ? e.itype : "cut_gem", 1);
@@ -125,12 +132,28 @@ public final class Recipes {
         return in;
     }
 
-    /** The gem an enchanting order uses: the one asked for, else the best plain cut gem, else a rough gem. */
+    /** The gem an enchanting order uses: the one asked for, else the plain cut gem that takes magic best, else a rough gem. */
     public static String findGem(Fortress f, QueueEntry e) {
         if (e.itype != null) return stock(f, e.itype) > 0 ? e.itype : null;
-        for (int c = Magic.CUTS.size() - 1; c >= 0; c--) if (stock(f, Magic.gemKey(c)) > 0) return Magic.gemKey(c);
+        String best = null;
+        double bg = -1;
+        for (Map.Entry<String, Integer> s : f.stock.entrySet()) {
+            if (s.getValue() <= 0 || !Magic.isPlainGem(s.getKey())) continue;
+            Magic.Gem g = Magic.parseGem(s.getKey());
+            double v = Magic.grade(g) * 1e6 + Magic.gemValue(g);
+            if (v > bg) { bg = v; best = s.getKey(); }
+        }
+        if (best != null) return best;
         if (f.stock.getOrDefault("cut_gem", 0) > 0) return "cut_gem";
-        return stock(f, "rough_gem") > 0 ? "rough_gem" : null;
+        return findRough(f, null);
+    }
+
+    /** The rough gem a cutting order uses: the one asked for, else the most valuable. */
+    public static String findRough(Fortress f, QueueEntry e) {
+        if (e != null && e.itype != null) return stock(f, e.itype) > 0 ? e.itype : null;
+        List<String> l = Gems.roughInStock(f);
+        if (!l.isEmpty()) return l.get(0);
+        return f.stock.getOrDefault("rough_gem", 0) > 0 ? "rough_gem" : null;
     }
 
     /** Find the best item in stock for a workshop entry: highest quality, matching, without the mod yet. */
@@ -230,11 +253,14 @@ public final class Recipes {
                 Content.ItemType t = Content.ITEMS.get(e.itype);
                 j.time = FORGE_SECONDS * t.bars() * Math.sqrt(Content.METALS.get(e.mat).heat());
             }
-            case "cutgem" -> j.time = CUT_SECONDS;      // the cut is rolled when it is done (Sim.complete)
+            case "cutgem" -> {                          // the cut is rolled when it is done (Sim.complete)
+                j.time = CUT_SECONDS;
+                j.inItem = in.keySet().iterator().next();
+            }
             case "enchant" -> {
                 j.time = Magic.ENCHANT_SECONDS;
                 j.inItem = in.keySet().iterator().next();
-                if (j.inItem.equals("cut_gem")) j.inItem = Magic.gemKey(1);
+                if (j.inItem.equals("cut_gem")) j.inItem = Magic.gemKey(1, Gems.OLD_KIND, Gems.OLD_SHAPE);
             }
             case "gears" -> {
                 j.time = 120;

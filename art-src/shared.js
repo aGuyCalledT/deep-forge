@@ -38,6 +38,7 @@ var SWAP = {
   beard: ["#7f4326", "#b8663b", "#e3965a"],
   hair: ["#653f27", "#93623b", "#c08a5c"],
   tunic: ["#3e5e8e", "#5f84bb", "#8fb0dd"],
+  gem: ["#40404a", "#70707a", "#a8a8b2", "#e6e6ee"],   // gems.px.js, coloured by the kind (Gems.java)
 };
 
 // Rooms: width in cells (24 px), height 96 px. Anchors in room pixels (feet / centres).

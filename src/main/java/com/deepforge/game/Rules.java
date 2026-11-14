@@ -464,29 +464,47 @@ public final class Rules {
         return Content.METALS.get(p[1]).hardness() * 10 + qualityPower(key) * (p[3].contains("s") ? 1.15 : 1);
     }
 
-    /** "cut_gem" (what chalices and regalia need) counts every plain cut gem, whatever its cut. */
+    /** "cut_gem" (what chalices and regalia need) counts every plain cut gem, "rough_gem" every rough gem, of any kind. */
     public static int stock(Fortress f, String key) {
-        if (key.equals("cut_gem")) {
-            int n = f.stock.getOrDefault(key, 0);
-            for (int c = 0; c < Magic.CUTS.size(); c++) n += f.stock.getOrDefault(Magic.gemKey(c), 0);
+        if (key.equals("cut_gem") || key.equals("rough_gem")) {
+            int n = 0;
+            for (Map.Entry<String, Integer> e : f.stock.entrySet()) if (anyGem(key, e.getKey())) n += e.getValue();
             return n;
         }
         return f.stock.getOrDefault(key, 0);
     }
 
+    /** Is this stock key one of the gems "cut_gem" or "rough_gem" stands for? (The bare keys are from old saves.) */
+    static boolean anyGem(String any, String key) {
+        return key.equals(any) || (any.equals("cut_gem") ? Magic.isPlainGem(key) : Gems.isRough(key));
+    }
+
     public static void add(Fortress f, String key, int q) {
         if (q == 0) return;
-        if (key.equals("cut_gem")) {          // takes the plainest cut gems first; a found one is a fair cut
-            if (q > 0) { add(f, Magic.gemKey(1), q); return; }
+        if (key.equals("cut_gem") || key.equals("rough_gem")) {
+            if (q > 0) { addGems(f, key, q, 0); return; }
+            // takes the cheapest gems first
+            List<String> ks = new ArrayList<>();
+            for (String k : f.stock.keySet()) if (anyGem(key, k)) ks.add(k);
+            ks.sort(Comparator.comparingDouble(Content::baseValue));
             int need = -q;
-            for (int c = -1; c < Magic.CUTS.size() && need > 0; c++) {
-                String k = c < 0 ? "cut_gem" : Magic.gemKey(c);
+            for (String k : ks) {
+                if (need <= 0) break;
                 int n = Math.min(need, f.stock.getOrDefault(k, 0));
                 if (n > 0) { addRaw(f, k, -n); need -= n; }
             }
             return;
         }
         addRaw(f, key, q);
+    }
+
+    /** n gems of kinds as the miners of a layer find them: rough ones, or fair cuts of a random shape for "cut_gem". */
+    public static void addGems(Fortress f, String any, int n, int layer) {
+        Rng r = new Rng(f.userId * 31L + f.nextId++ * 7919L + 13);
+        for (int i = 0; i < n; i++) {
+            String kind = Gems.rollKind(r, layer);
+            addRaw(f, any.equals("cut_gem") ? Magic.gemKey(1, kind, Gems.rollShape(r)) : Gems.roughKey(kind), 1);
+        }
     }
 
     static void addRaw(Fortress f, String key, int q) {

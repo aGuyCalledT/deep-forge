@@ -82,7 +82,8 @@ function ceilAt(ceil, x) { return ceil[Math.max(0, Math.min(ceil.length - 1, Mat
 
 // ------------------------------------------------------------------ drawing helpers
 const rd = (i) => Art.depthRamp(i);
-const colourOf = (k) => ((byId.ores && byId.ores[k]) || (byId.raws && byId.raws[k]) || {}).color || '#90bf98';
+const colourOf = (k) => (k.startsWith('rough:') && byId.gemKinds && byId.gemKinds[k.slice(6)]
+  || (byId.ores && byId.ores[k]) || (byId.raws && byId.raws[k]) || {}).color || '#90bf98';
 const oreRamp = (k) => ramp(colourOf(k));
 const patterns = new Map();
 function rockFill(ctx, i) {

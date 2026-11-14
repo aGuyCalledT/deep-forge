@@ -3,7 +3,7 @@
 // Some colours in the art are placeholders that are swapped at runtime: metal (per metal), skin, beard,
 // hair and tunic (per dwarf). A PNG in the sprites folder with a sheet name (e.g. sprites/room_forge.png)
 // replaces that sprite. See docs/SPRITES.md.
-import { byId, G } from './data.js';
+import { byId, G, parseGem, gemKind, schoolOf } from './data.js';
 import Figure from './figure.js';
 import * as Kit from './dwarfkit.js';
 import * as DW from './dwarf48.js';
@@ -186,18 +186,31 @@ export function item(type, metal, q = 1, mods = '', gems = 0) {
   return c;
 }
 
+/** A gem in its cut and the colour of its kind (Gems.java); an enchanted one gets an outline in its school's colour. */
+export function gem(key) {
+  if (cache.has(key)) return cache.get(key);
+  // "rough_gem" and "cut_gem" stand for any gem: drawn in the colour of their raw good
+  const any = key === 'rough_gem' || key === 'cut_gem';
+  const rough = key.startsWith('rough:') || key === 'rough_gem';
+  const g = rough || any ? null : parseGem(key);
+  const color = any ? byId.raws[key].color : gemKind(key).color;
+  const name = rough ? 'gem_rough' : 'gemcut_' + (g && byId.gemShapes[g.shape] ? g.shape : 'round_brilliant');
+  const c = recolor(copy(name), swapMap('gem', color));
+  if (g && g.effect) {
+    const sc = G.data.magic.schools.find((x) => x.id === schoolOf(g.effect));
+    if (sc) recolor(c, { [META.PAL ? META.PAL.k : '#1d1b2c']: sc.color });
+  }
+  cache.set(key, c);
+  return c;
+}
+
 export function good(key) {
   if (key.startsWith('wear:')) return wearIcon(key);
   if (key.startsWith('item:')) {
     const p = key.split(':');
     return item(p[1], p[2], +p[3], p[4] || '', p[5] ? p[5].split(',').length : 0);
   }
-  if (key.startsWith('gem:')) {
-    const p = key.split(':');
-    if (!p[2]) return raw('cut_gem');
-    const fx = G.data.magic.effects.find((e) => e.id === p[2]);
-    return sprite('gem_' + (fx ? fx.school : 'earth'));
-  }
+  if (key.startsWith('gem:') || key.startsWith('rough:') || key === 'rough_gem' || key === 'cut_gem') return gem(key);
   if (key.startsWith('bar:')) return bar(key.slice(4));
   if (byId.ores[key]) return ore(key);
   return raw(key);

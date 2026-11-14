@@ -280,6 +280,10 @@ Siehe die fett gedruckten Namen in `docs/AUDIO.md`: `collect`, `build`, `level-u
       der Bot prüft stetiges Wachstum.
 - [x] Magie, Edelsteine, Fassungen, Werkzeuge je Beruf, legendäre Wirkungen (`docs/KONZEPT-MAGIE.md`).
 - [x] Bot: Monster in der Mine jagen, Spitzhacken behalten, Earth-Steine verzaubern und einsetzen.
+- [x] Alle 127 Edelsteine aus Dwarf Fortress (Wert, Farbe), 22 Schliffformen, tiefere Schichten wertvollere Steine,
+      fester Steinpreis mit Mode-Aufschlag für die Form (`Gems.java`).
+- [ ] Edelsteine: Liste im Lager wird lang (Art × Form × Güte); im Lager nach Art zusammenfassen und aufklappbar machen.
+- [ ] Mode: Hinweis-Chip, wenn ein Stein im Lager in der Form ist, die gerade gefragt ist.
 - [ ] Magie: Steine im Lager zeigen, was sie im gewählten Stück bringen würden; Steine auch im Karawanen- und Amboss-Fenster.
 - [ ] Zauberer-Raum: Werkzeug „staff“ in der Hand der Zwerge zeichnen (`dwarf48`), bisher Meißel.
 - [ ] Ein Monster sperrt eine Schicht, bis man es jagt: Hinweis-Chip, damit Spieler es nicht übersehen.
