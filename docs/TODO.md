@@ -22,7 +22,10 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [x] Fels aus einer durchgehenden Textur, zackige Kanten, Pflanzen und Tropfwasser
 - [x] Gegner schauen in Laufrichtung, Hacken direkt nach oben
 - [ ] Mehr Raum-Vorlagen statt nur zufälliger Simsen (Spelunky-artige Raumtypen)
-- [ ] Schatztruhen, Schlüssel, Geheimräume; Gegner, die Erz fallen lassen
+- [x] Beute nur für den Run: Cave Coins, Truhen, stapelbare Funde, Spruchrollen; Laden in Münzen (Erz zahlt den Rest)
+- [x] Startzelle zum Freihacken und Steuerung als Kreide an der Wand; Deko und Stacheln zerbrechen mit ihrem Block
+- [ ] Schlüssel, Geheimräume; Gegner, die Erz fallen lassen
+- [ ] Mehr Funde mit Nachteil (Isaac-artig), Flüche, Altäre
 - [ ] Eigene Sounds für Sprung, Bombe, Pfeil, Stalaktit (bis dahin vorhandene)
 - [ ] Bestenliste je Schicht
 

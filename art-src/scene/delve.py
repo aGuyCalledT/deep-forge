@@ -13,6 +13,8 @@
 #   delve_stal         a loose stalactite (anchor top middle)
 #   delve_vine_0..2    vines from the ceiling, delve_glowworms_0/1 glowing threads (anchor top middle)
 #   delve_fern_0/1, delve_shrooms_0/1, delve_tuft_0/1, delve_bones   on the floor (anchor bottom middle)
+#   delve_coin (4 frames), delve_chest_0/1, delve_scroll_<light|quake|mend|stone|blink>, delve_boots, delve_spring,
+#   delve_heartgem, delve_whetstone, delve_feather   loot of a run (anchor bottom middle)
 #   delve_mosstop      moss over the top of a block (48 wide), delve_puddle 4 frames, delve_drop one falling drop
 #   python3 delve.py <out dir>     a preview (delve_x3.png)
 import sys, os, math
@@ -173,20 +175,28 @@ def boom(frame=0):
 
 # ------------------------------------------------------------------ traps
 def spikes():
-    w, h = T, 20
+    """Iron spikes on a plate, the plate set into a mound of rubble that reaches down into the floor below
+    (the floor's top edge is jagged, so the mound hides the gap). Anchor: the plate's underside, at the floor line."""
+    w, top, h = T, 20, 34
     g = grid(w, h)
+    for x in range(w):                                  # the rubble mound under the plate, ragged at the bottom
+        d = 9 + hsh(x // 3, 21) % 5
+        for y in range(top, min(h, top + d)):
+            k = y - top
+            g[y, x] = ('rockd', 0 if k == d - 1 else 3 if k == 0 else 2 if (x // 6 + k // 4) % 3 else 1)
+        if x % 7 == 3: g[top + 2 + hsh(x, 22) % 4, x] = ('rockd', 0)      # joints between the stones
     for x in range(w):                                  # the base plate
-        for y in (h - 3, h - 2, h - 1): g[y, x] = ('steel', (2, 1, 0)[y - (h - 3)])
+        for y in (top - 3, top - 2, top - 1): g[y, x] = ('steel', (2, 1, 0)[y - (top - 3)])
     for k in range(5):
         cx = 5 + k * 9.5
-        for y in range(2, h - 3):
+        for y in range(2, top - 3):
             half = (y - 2) * 0.24
             for x in range(int(cx - half - 1), int(cx + half + 2)):
                 if abs(x + 0.5 - cx) <= half + 0.6:
                     t = 4 if y < 5 else 3 if x + 0.5 < cx else 1
                     g[y, x] = ('steel', t)
         g[2, int(cx)] = ('steel', 4)
-    return {'grid': g, 'anchor': (0, h - 1)}
+    return {'grid': g, 'anchor': (0, top - 1)}
 
 def arrowtrap():
     """A stern face carved into the rock (laid over the rock texture); its mouth is the slot the arrow flies from (right side)."""
@@ -344,6 +354,138 @@ def drop():
     for (x, y, t) in ((1, 0, 2), (1, 1, 3), (0, 2, 2), (1, 2, 4), (2, 2, 3), (0, 3, 2), (1, 3, 3), (2, 3, 2), (1, 4, 1)): g[y, x] = ('water', t)
     return {'grid': g, 'anchor': (1, 4)}
 
+# ------------------------------------------------------------------ loot of a run (found in the cave, lost at the end)
+R['bronze'] = ['#3a2410', '#6a4420', '#a06c30', '#d0a050', '#f0d890']
+R['parch'] = ['#5a4430', '#8e7456', '#c4a982', '#e6d3ac', '#fbf0d6']
+R['ruby'] = ['#3a0a14', '#7a1626', '#c02a3a', '#f0606a', '#ffc0c0']
+R['sky'] = ['#10204a', '#1e3e80', '#3a6ec0', '#76a8e8', '#d0e8ff']
+R['honey'] = ['#4a2a08', '#8a5410', '#d0901e', '#f0c040', '#fff0a0']
+SEALS = {'light': 'honey', 'quake': 'clay', 'mend': 'ruby', 'stone': 'steel', 'blink': 'sky'}
+
+def coin(frame=0):
+    """A cave coin turning: old bronze with a hole in the middle (10 x 10, 4 frames)."""
+    g = grid(10, 10)
+    half = (4.5, 3.2, 1.2, 3.2)[frame % 4]
+    for y in range(10):
+        for x in range(10):
+            dx, dy = (x + 0.5 - 5) / half, (y + 0.5 - 5) / 4.6
+            if dx * dx + dy * dy <= 1:
+                t = 0 if dx * dx + dy * dy > 0.7 else 4 if dx < -0.3 and dy < 0 else 3 if dy < 0.3 else 2
+                g[y, x] = ('bronze', t)
+    if frame % 4 != 2: g[4, 5] = ('bronze', 0); g[5, 5] = ('bronze', 0)
+    return {'grid': g, 'anchor': (5, 9)}
+
+def chest(frame=0):
+    """A wooden chest with iron bands; frame 1 open, gold light from inside (30 x 26, anchor bottom middle)."""
+    w, h = 30, 26
+    g = grid(w, h)
+    body = 14
+    for y in range(h - body, h):                        # the box
+        for x in range(1, w - 1):
+            t = 0 if x in (1, w - 2) or y == h - 1 else 3 if y == h - body else 2 if (y - (h - body)) % 4 else 1
+            g[y, x] = ('wood', t)
+    for x0 in (5, w - 7):                               # iron bands
+        for y in range(h - body, h):
+            g[y, x0] = ('steel', 3); g[y, x0 + 1] = ('steel', 1)
+    if frame == 0:
+        for y in range(h - body - 7, h - body):         # the lid, rounded
+            for x in range(1, w - 1):
+                if (y - (h - body - 7)) * 6 + 1 >= abs(x + 0.5 - w / 2) ** 2 / 40:
+                    g[y, x] = ('wood', 4 if y == h - body - 7 + 1 else 3)
+        for x in range(1, w - 1): g[h - body - 1, x] = ('wood', 0)
+        for x0 in (5, w - 7):
+            for y in range(h - body - 6, h - body): g[y, x0] = ('steel', 4); g[y, x0 + 1] = ('steel', 2)
+        for y in range(h - body - 2, h - body + 3):    # the lock
+            for x in range(13, 17): g[y, x] = ('gold', 3 if y < h - body + 1 else 1)
+        g[h - body + 1, 14] = ('steel', 0)
+    else:
+        for y in range(0, h - body - 3):                # the lid thrown back, standing behind the box
+            for x in range(2, w - 2):
+                g[y, x] = ('wood', 0 if x in (2, w - 3) or y == 0 else 1 if y % 4 else 2)
+        for y in range(h - body - 4, h - body + 2):     # gold light spilling out
+            for x in range(3, w - 3):
+                g[y, x] = ('gold', 4 if y < h - body - 1 else 3)
+    return {'grid': g, 'anchor': (w // 2, h - 1)}
+
+def scroll(kind):
+    """A rolled scroll tied with a cord, the wax seal shows what it does (16 x 18)."""
+    g = grid(16, 18)
+    for y in range(2, 16):
+        for x in range(3, 13):
+            g[y, x] = ('parch', 4 if x < 6 else 3 if x < 10 else 2)
+    for y in (1, 16):                                   # the rolled ends
+        for x in range(2, 14): g[y, x] = ('parch', 1)
+    for x in range(2, 14): g[0, x] = ('parch', 2); g[17, x] = ('parch', 0)
+    for y in range(7, 11):
+        for x in range(3, 13): g[y, x] = ('bark', 2 if y in (7, 10) else 3)   # the cord
+    seal = SEALS[kind]
+    for y in range(6, 13):
+        for x in range(5, 12):
+            if (x - 8) ** 2 + (y - 9) ** 2 <= 9: g[y, x] = (seal, 4 if x < 8 and y < 9 else 3 if (x - 8) ** 2 + (y - 9) ** 2 <= 4 else 1)
+    return {'grid': g, 'anchor': (8, 17)}
+
+def boots():
+    """Swift boots: soft leather, a little wing on the cuff (18 x 16)."""
+    g = grid(18, 16)
+    for y in range(2, 16):
+        for x in range(3, 10):
+            g[y, x] = ('clay', 0 if x == 3 or y == 15 else 3 if x < 6 else 2)
+    for y in range(11, 16):
+        for x in range(9, 17):
+            g[y, x] = ('clay', 0 if y == 15 or x == 16 else 3 if y == 11 else 2)
+    for x in range(3, 10): g[2, x] = ('cream', 3); g[3, x] = ('cream', 2)
+    for k, (x, y) in enumerate(((1, 3), (0, 2), (1, 4), (0, 4), (2, 5))): g[y, x] = ('cream', 4 if k < 2 else 3)
+    return {'grid': g, 'anchor': (9, 15)}
+
+def spring():
+    """Spring heels: a steel coil under a boot heel (12 x 16)."""
+    g = grid(12, 16)
+    for y in range(0, 5):
+        for x in range(1, 11): g[y, x] = ('clay', 0 if y == 4 or x in (1, 10) else 3 if y == 0 else 2)
+    for k in range(5):
+        y = 6 + k * 2
+        for x in range(2, 10): g[y, x] = ('steel', 4 if x < 5 else 3 if x < 8 else 1)
+        g[y + 1, 9 if k % 2 else 2] = ('steel', 2)
+    for x in range(1, 11): g[15, x] = ('steel', 1)
+    return {'grid': g, 'anchor': (6, 15)}
+
+def heartgem():
+    """A heart crystal: a red crystal in the shape of a heart, it glows (16 x 15)."""
+    g = grid(16, 15)
+    for y in range(15):
+        for x in range(16):
+            px, py = x + 0.5, y + 0.5
+            lobe = (px - 4.6) ** 2 + (py - 4.6) ** 2 <= 14.5 or (px - 11.4) ** 2 + (py - 4.6) ** 2 <= 14.5
+            tip = py >= 4.6 and abs(px - 8) <= 7.6 * (1 - (py - 4.6) / 10)
+            if lobe or tip:
+                t = 4 if px < 6 and py < 6 else 3 if px < 8 else 2 if py < 10 else 1
+                g[y, x] = ('ruby', t)
+    for y in range(15):                                  # facet line down the middle
+        if g[y, 8] is not None and y > 3: g[y, 8] = ('ruby', 1)
+    g[3, 4] = ('cream', 4)
+    return {'grid': g, 'anchor': (8, 14)}
+
+def whetstone():
+    """A whetstone, grey, oiled on top (18 x 10)."""
+    g = grid(18, 10)
+    for y in range(2, 10):
+        for x in range(1, 17):
+            g[y, x] = ('steel', 0 if y == 9 or x in (1, 16) else 4 if y == 2 else 3 if y < 5 else 2)
+    for x in (5, 6, 11): g[3, x] = ('sky', 3)
+    return {'grid': g, 'anchor': (9, 9)}
+
+def feather():
+    """A feather charm on a cord (10 x 18)."""
+    g = grid(10, 18)
+    for y in range(1, 16):
+        cx = 5 + (y - 8) * 0.15
+        half = 3.4 * math.sin(math.pi * y / 17)
+        for x in range(10):
+            if abs(x + 0.5 - cx) <= half: g[y, x] = ('cream', 4 if x + 0.5 < cx else 3)
+        g[y, round(cx)] = ('cream', 1)
+    for y in range(15, 18): g[y, 5] = ('bark', 3)
+    return {'grid': g, 'anchor': (5, 17)}
+
 R.setdefault('smoke', ['#1e1a20', '#3a3238', '#5e5458', '#8a7e7e', '#b4a8a2'])
 
 DELVE = {'delve_rocktex': rocktex, 'delve_wall': wall, 'delve_ladder': ladder,
@@ -355,7 +497,10 @@ DELVE = {'delve_rocktex': rocktex, 'delve_wall': wall, 'delve_ladder': ladder,
          'delve_shrooms_0': lambda: shrooms(0), 'delve_shrooms_1': lambda: shrooms(1),
          'delve_tuft_0': lambda: tuft(0), 'delve_tuft_1': lambda: tuft(1), 'delve_mosstop': mosstop, 'delve_bones': bones,
          'delve_puddle': puddle, 'delve_glowworms_0': lambda: glowworms(0), 'delve_glowworms_1': lambda: glowworms(1),
-         'delve_drop': drop}
+         'delve_drop': drop, 'delve_coin': coin, 'delve_chest_0': lambda: chest(0), 'delve_chest_1': lambda: chest(1),
+         'delve_scroll_light': lambda: scroll('light'), 'delve_scroll_quake': lambda: scroll('quake'), 'delve_scroll_mend': lambda: scroll('mend'),
+         'delve_scroll_stone': lambda: scroll('stone'), 'delve_scroll_blink': lambda: scroll('blink'),
+         'delve_boots': boots, 'delve_spring': spring, 'delve_heartgem': heartgem, 'delve_whetstone': whetstone, 'delve_feather': feather}
 
 if __name__ == '__main__':
     from PIL import Image

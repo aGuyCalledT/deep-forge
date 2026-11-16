@@ -138,8 +138,11 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   (4 Bilder), Tropfen `delve_drop`. Schichtwand
   `delve_wall` (Bänder mit Eisenspangen, Riss), Leiter `delve_ladder`, Seil `delve_rope`/`delve_rope_end` mit Haken
   `delve_hook`, Seilrolle `delve_ropes`, Bombe `delve_bomb` (4 Bilder, Lunte brennt ab), Explosion `delve_boom` (4 Bilder,
-  leuchtet), Stacheln `delve_spikes`, Pfeilfalle `delve_arrowtrap` (Gesicht im Fels, Mund nach rechts), Pfeil `delve_arrow`,
-  loser Stalaktit `delve_stal`. Fels in `rockd`. Zwerg-Posen dafür: `jump`, `fall`, `hang` (Seitenarme 6: Hände über dem
+  leuchtet), Stacheln `delve_spikes` (48 × 34, Platte auf einem Schutthügel, der in den Boden darunter reicht; Anker an der
+  Unterkante der Platte), Pfeilfalle `delve_arrowtrap` (Gesicht im Fels, Mund nach rechts), Pfeil `delve_arrow`,
+  loser Stalaktit `delve_stal`. Beute des Runs: Münze `delve_coin` (4 Bilder, dreht sich), Truhe `delve_chest_0/1` (zu/offen),
+  Spruchrollen `delve_scroll_<light|quake|mend|stone|blink>` (Siegelfarbe je Wirkung), Funde `delve_boots`, `delve_spring`,
+  `delve_heartgem`, `delve_whetstone`, `delve_feather` (die übrigen Funde nutzen Waren-Symbole). Fels in `rockd`. Zwerg-Posen dafür: `jump`, `fall`, `hang` (Seitenarme 6: Hände über dem
   Kopf), `climb` (Rückenarme 6/7: abwechselnd eine Hand oben).
 
 ### Raumvorlagen (Editor)

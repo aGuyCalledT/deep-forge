@@ -6,14 +6,15 @@ import * as Art from '../art/scene.js';
 import * as S from '../art/sprites.js';
 import * as A from '../core/audio.js';
 import { createGame } from './game.js';
+import { ITEMS, SCROLLS, lootIcon } from './loot.js';
 
 const KEYS = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
-  Space: 'jump', KeyE: 'pick', KeyQ: 'bomb', KeyR: 'rope', Enter: 'up',
+  Space: 'jump', KeyE: 'pick', KeyQ: 'bomb', KeyR: 'rope', KeyF: 'scroll', Enter: 'up',
 };
 export const HELP = [
   ['Move, climb', 'Arrows or WASD'], ['Jump', 'Space'], ['Swing the pick', 'E (hold Down or Up to dig there)'],
-  ['Bomb', 'Q (Down: drop it)'], ['Rope', 'R'], ['Buy, go down, ride the lift', 'Up or W'], ['Pause', 'Esc'],
+  ['Bomb', 'Q (Down: drop it)'], ['Rope', 'R'], ['Read a scroll', 'F'], ['Buy, open, go down, ride the lift', 'Up or W'], ['Pause', 'Esc'],
 ];
 
 const url = new Map();
@@ -48,7 +49,7 @@ export function openDelve(o) {
   el.className = 'delve';
   el.innerHTML = `
     <canvas class="dv-canvas"></canvas>
-    <div class="dv-hud"><div class="dv-hearts"></div><div class="dv-kit"></div><div class="dv-bag"></div><div class="dv-where"></div>
+    <div class="dv-hud"><div class="dv-hearts"></div><div class="dv-kit"></div><div class="dv-bag"></div><div class="dv-finds"></div><div class="dv-where"></div>
       <button class="btn small dv-pause" aria-label="Pause">Pause</button></div>
     <div class="dv-pad">
       <div class="dv-move">
@@ -56,7 +57,7 @@ export function openDelve(o) {
         <button class="btn dv-b dv-up" data-k="up" aria-label="Up"></button><button class="btn dv-b dv-down" data-k="down" aria-label="Down"></button>
       </div>
       <div class="dv-act">
-        <button class="btn dv-b" data-k="rope" aria-label="Rope"></button><button class="btn dv-b" data-k="bomb" aria-label="Bomb"></button>
+        <button class="btn dv-b" data-k="scroll" aria-label="Read a scroll"></button><button class="btn dv-b" data-k="rope" aria-label="Rope"></button><button class="btn dv-b" data-k="bomb" aria-label="Bomb"></button>
         <button class="btn dv-b" data-k="pick" aria-label="Pick"></button><button class="btn dv-b primary dv-jump" data-k="jump">Jump</button>
       </div>
     </div>
@@ -68,11 +69,13 @@ export function openDelve(o) {
   el.querySelector('[data-k=rope]').appendChild(pic(Art.frame('delve_ropes', 0).canvas, 'ropes', 'dv-bico'));
   el.querySelector('[data-k=bomb]').appendChild(pic(Art.frame('delve_bomb', 0).canvas, 'bomb', 'dv-bico'));
   el.querySelector('[data-k=pick]').appendChild(pic(S.item('pickaxe', 'iron'), 'pick', 'dv-bico'));
+  el.querySelector('[data-k=scroll]').appendChild(pic(lootIcon('scroll', 'light'), 'scrollbtn', 'dv-bico'));
+  const touch = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 760;
 
   let report = null;
   const game = createGame(canvas, {
     seed: o.run.seed, hearts: o.run.hearts, pick: o.run.pick, damage: o.run.damage, look: o.look, data: o.data,
-    startLayer: o.startLayer || 0, god: o.god, bright: o.bright, training: o.training, bombs: o.bombs, ropes: o.ropes,
+    startLayer: o.startLayer || 0, god: o.god, bright: o.bright, training: o.training, bombs: o.bombs, ropes: o.ropes, touch,
     onHud: hud,
     onEnd: async (r) => {
       showEnd(r, null);
@@ -88,7 +91,22 @@ export function openDelve(o) {
     for (let i = 0; i < Math.max(h.hearts, 0); i++) hearts.appendChild(pic(S.icon('heart'), 'heart'));
     if (h.hearts <= 0) hearts.appendChild(pic(S.icon('skull'), 'skull'));
     const kit = $('.dv-kit');
-    kit.replaceChildren(pic(Art.frame('delve_bomb', 0).canvas, 'bomb'), num(h.bombs), pic(Art.frame('delve_ropes', 0).canvas, 'ropes'), num(h.ropes));
+    kit.replaceChildren(pic(Art.frame('delve_bomb', 0).canvas, 'bomb'), num(h.bombs), pic(Art.frame('delve_ropes', 0).canvas, 'ropes'), num(h.ropes),
+      pic(lootIcon('coin', 0), 'coin'), num(h.coins));
+    // finds of this run (copies as a number) and the scrolls, the next one to read first
+    const finds = $('.dv-finds');
+    finds.replaceChildren();
+    for (const [id, n] of Object.entries(h.items)) {
+      const p = pic(lootIcon('item', id), 'find' + id); p.title = `${ITEMS[id].name}: ${ITEMS[id].text}`;
+      finds.appendChild(p); if (n > 1) finds.appendChild(num(n));
+    }
+    h.scrolls.forEach((id, i) => {
+      const p = pic(lootIcon('scroll', id), 'scroll' + id, i ? 'dv-ico dv-later' : 'dv-ico dv-next'); p.title = `${SCROLLS[id].name}: ${SCROLLS[id].text}`;
+      finds.appendChild(p);
+    });
+    const sb = el.querySelector('[data-k=scroll]');
+    sb.disabled = !h.scrolls.length;
+    sb.querySelector('img').src = src(lootIcon('scroll', h.scrolls[0] || 'light'), 'scrollbtn' + (h.scrolls[0] || 'light'));
     const bag = $('.dv-bag');
     bag.replaceChildren();
     const ores = Object.entries(h.bag);
@@ -137,7 +155,7 @@ export function openDelve(o) {
     if (!on) return;
     menu.innerHTML = `<div class="dv-card"><h2>Paused</h2>
       <table class="dv-keys">${HELP.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>
-      <p class="dv-dim">Find ore in the veins and climb out by the lift at the end of a layer. If you fall, everything you found is lost.</p>
+      <p class="dv-dim">Find ore in the veins and climb out by the lift at the end of a layer. If you fall, everything you found is lost. Coins, finds and scrolls stay in the cave. In the shop one ore counts as 5 coins.</p>
       <div class="dv-row"><button class="btn primary" data-a="resume">Resume</button><button class="btn danger" data-a="quit">Give up</button></div></div>`;
     menu.querySelector('[data-a=resume]').onclick = () => togglePause();
     menu.querySelector('[data-a=quit]').onclick = () => { menu.hidden = true; game.pause(false); game.giveUp(); };
@@ -146,7 +164,7 @@ export function openDelve(o) {
     menu.hidden = false;
     const found = Object.entries(r.result === 'exit' ? r.ore : r.found);
     const title = o.training ? 'Training over' : r.result === 'exit' ? 'Back in the light' : r.result === 'dead' ? 'Carried out of the mine' : 'Turned back';
-    const line = o.training ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'}. Nothing is kept.` : r.result === 'exit' ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'} deep.`
+    const line = o.training ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'}. Nothing is kept.` : r.result === 'exit' ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'} deep. Coins and finds stay in the cave.`
       : r.result === 'dead' ? 'Badly hurt. Everything found is lost.' : 'Nothing found is kept.';
     menu.innerHTML = `<div class="dv-card"><h2>${title}</h2><p>${line}</p><div class="dv-loot"></div>
       <p class="dv-dim dv-rep">${rep === null ? 'Reporting to the hold…' : rep && rep.error ? rep.error : rep && rep.text ? rep.text : ''}</p>

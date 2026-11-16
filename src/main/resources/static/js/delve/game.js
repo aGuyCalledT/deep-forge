@@ -8,6 +8,7 @@ import * as DW from '../art/dwarves.js';
 import * as S from '../art/sprites.js';
 import * as A from '../core/audio.js';
 import { text } from '../art/pixfont.js';
+import { ITEMS, SCROLLS, MAX_SCROLLS, ORE_COINS, lootIcon } from './loot.js';
 import { makeLevel, veinAt, T, W, H, AIR, ROCK, BEDROCK, ORE, WALL, LADDER, SPIKES, TRAP, SOLID } from './level.js';
 
 // ------------------------------------------------------------------ feel
@@ -15,11 +16,13 @@ const GRAV = 1500, MAXFALL = 820, SPEED = 200, ACC = 1900, AIRACC = 1300, JUMP =
 const PW = 22, PH = 40;                       // the dwarf's box (feet at y)
 const HURT_FALL = 7 * T, BAD_FALL = 11 * T;   // falls longer than this hurt (1 or 2 hearts)
 const FUSE = 2.4, BLAST = 1.6 * T, BOMB_DMG = 3, ROPE_LEN = 7;
+// the shop sells for cave coins; ore pays the rest (one ore = ORE_COINS coins). Prices rise by 3 every 2 layers.
 export const WARES = [
-  { id: 'bombs', name: 'Bombs ×3', price: 1, icon: 'delve_bomb' },
-  { id: 'ropes', name: 'Ropes ×3', price: 1, icon: 'delve_ropes' },
-  { id: 'ale', name: 'Ale: +1 heart', price: 2, icon: 'raw_ale' },
-  { id: 'pick', name: 'Better pick', price: 3, icon: 'item_pickaxe' },
+  { id: 'bombs', name: 'Bombs ×3', price: 6, icon: 'delve_bomb' },
+  { id: 'ropes', name: 'Ropes ×3', price: 6, icon: 'delve_ropes' },
+  { id: 'ale', name: 'Ale: +1 heart', price: 12, icon: 'raw_ale' },
+  { id: 'pick', name: 'Better pick', price: 20, icon: 'item_pickaxe' },
+  { id: 'find', name: 'A find', price: 25, icon: 'find' },
 ];
 // monsters of the layers: how they move, how tough they are
 const MON = {
@@ -42,7 +45,7 @@ export function createGame(canvas, opts) {
   const layers = data.layers, hardness = data.rockHardness || {};
   const oreName = {};
   for (const o of data.ores || []) oreName[o.id] = o.name;
-  const input = { left: false, right: false, up: false, down: false, jump: false, pick: false, bomb: false, rope: false };
+  const input = { left: false, right: false, up: false, down: false, jump: false, pick: false, bomb: false, rope: false, scroll: false };
   const prev = { ...input };
   const pressed = (k) => input[k] && !prev[k];
   // a tap shorter than one step still counts: a key let go before the game saw it is released after the next step
@@ -56,8 +59,14 @@ export function createGame(canvas, opts) {
     hearts: opts.hearts, maxHearts: opts.hearts, pick: opts.pick, damage: opts.damage || 1,
     bombs: opts.bombs ?? 2, ropes: opts.ropes ?? 2, bag: {}, god: !!opts.god, wanted: false, boughtPick: false,
     L: null, shake: 0, flash: 0, banner: null, prompt: null, time: 0,
+    // what the cave gives for this run only: coins, finds (id -> copies), scrolls, the timers of scrolls in use
+    coins: 0, items: {}, scrolls: [], stoneT: 0, lightT: 0, introDone: false, introFree: true,
   };
-  let drips = [], P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
+  const has = (id) => G.items[id] || 0;
+  const speed = () => SPEED * (1 + 0.15 * has('boots'));
+  const jump = () => JUMP * (1 + 0.1 * has('spring'));
+  const fallHurts = () => HURT_FALL + 4 * T * has('feather'), fallBad = () => BAD_FALL + 4 * T * has('feather');
+  let drips = [], coins = [], chests = [], finds = [], chalkC = null, P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
   look = opts.look || { sex: 'm', hair: 'short', beard: 'full', hat: 'miner', vest: true, mood: 'neutral', ramps: {} };
   if (!look.hat) look = { ...look, hat: 'miner' };
 
@@ -66,9 +75,13 @@ export function createGame(canvas, opts) {
   function enter() {
     const lay = layers[G.layer];
     const last = G.depth === D.levelsPerLayer - 1, deepest = G.layer >= layers.length - 1;
-    G.L = makeLevel({ seed: levelSeed(), layer: G.layer, depth: G.depth, last, deepest, shop: G.depth === 1,
+    G.L = makeLevel({ seed: levelSeed(), layer: G.layer, depth: G.depth, last, deepest, shop: G.depth === 1, intro: !G.introDone,
       data: { weights: lay.weights, noOre: D.noOre, orePerLevel: D.orePerLevel[G.layer], monsters: lay.monsters } });
     const L = G.L;
+    G.introFree = !L.intro; G.introDone = true; chalkC = null;
+    coins = (L.coins || []).map((c) => coin((c.x + 0.5) * T + c.dx, (c.y + 1) * T - 1, c.n, 0, 0));
+    chests = (L.chests || []).map((c) => ({ x: (c.x + 0.5) * T, y: (c.y + 1) * T - 1, w: 28, h: 20, vx: 0, vy: 0, open: false, loot: c.loot }));
+    finds = [];
     ramps = { rockd: Art.depthRamp(G.layer), wall: Art.depthRamp(Math.min(4, G.layer + 1)) };
     tiles.clear(); seams.clear(); terrain = null; dirty = null;
     drips = (L.drips || []).map((d) => ({ ...d, t: d.off / 10, drop: null }));
@@ -81,11 +94,13 @@ export function createGame(canvas, opts) {
       const k = monster('keeper', (back + 0.5) * T, (Y + 7) * T);
       k.calm = !G.wanted; k.face = L.shop.door < 0 ? -1 : 1;
       mons.push(k);
-      const extra = Math.floor(G.layer / 2);
+      const extra = 3 * Math.floor(G.layer / 2), r = S.rand(levelSeed() + 7), ids = Object.keys(ITEMS);
       WARES.forEach((w, i) => {
         if (w.id === 'pick' && G.boughtPick) return;
-        const tx = L.shop.door < 0 ? X + 2 + i : X + 4 + i;
-        wares.push({ ...w, price: w.price + extra, x: (tx + 0.5) * T, y: (Y + 7) * T, tx, arm: 0 });
+        const tx = L.shop.door < 0 ? X + 1 + i : X + 4 + i;
+        const ware = { ...w, price: w.price + extra, x: (tx + 0.5) * T, y: (Y + 7) * T, tx, arm: 0 };
+        if (w.id === 'find') { ware.item = ids[Math.floor(r() * ids.length)]; ware.name = ITEMS[ware.item].name; }
+        wares.push(ware);
       });
       L.shopBox = { x0: X * T, x1: (X + 10) * T, y0: Y * T, y1: (Y + 8) * T };
     }
@@ -146,6 +161,13 @@ export function createGame(canvas, opts) {
   // ---------------------------------------------------------------- the dwarf
   function hurt(n, from) {
     if (P.dead || P.inv > 0 || G.over) return;
+    if (G.stoneT > 0 && n < 99) { P.inv = 0.4; spark(P.x, P.y - PH / 2, '#d8d4e0', 4); A.sfx('parry', { vol: 0.5 }); return; }
+    if (has('cap') && n < 99) {
+      if (!--G.items.cap) delete G.items.cap;
+      P.inv = 1.2; P.hurtFlash = 0.15; spark(P.x, P.y - PH, '#c8c6d6', 8);
+      float(P.x, P.y - PH - 8, G.items.cap ? 'Your cap took the blow!' : 'Your cap took the blow and broke!', '#ffe9a8', 1.8);
+      A.sfx('parry'); hud(); return;
+    }
     if (G.god) { P.inv = 0.6; float(P.x, P.y - PH - 6, 'God mode', '#9fd0ff'); return; }
     G.hearts -= n;
     P.inv = 1.3; P.hurtFlash = 0.25; G.shake = Math.max(G.shake, 0.18);
@@ -183,19 +205,19 @@ export function createGame(canvas, opts) {
         else P.state = 'walk';
       }
       if (P.ground && dir > 0) P.state = 'walk';
-      if (pressed('jump')) { P.state = 'walk'; P.vy = -JUMP * 0.85; P.vx = ax * SPEED; P.climbCD = 0.3; P.apex = P.y; }
-      else if (ax && !input.up && !input.down) { P.state = 'walk'; P.vx = ax * SPEED * 0.6; P.climbCD = 0.3; P.face = ax; }
+      if (pressed('jump')) { P.state = 'walk'; P.vy = -jump() * 0.85; P.vx = ax * speed(); P.climbCD = 0.3; P.apex = P.y; }
+      else if (ax && !input.up && !input.down) { P.state = 'walk'; P.vx = ax * speed() * 0.6; P.climbCD = 0.3; P.face = ax; }
       P.apex = P.y;
     } else if (P.state === 'hang') {
       P.vx = 0; P.vy = 0; P.apex = P.y;
-      if (pressed('jump') || pressed('up')) { P.state = 'walk'; P.vy = -JUMP * 0.92; P.hangCD = 0.2; }
+      if (pressed('jump') || pressed('up')) { P.state = 'walk'; P.vy = -jump() * 0.92; P.hangCD = 0.2; }
       else if (pressed('down') || (ax && ax === -P.face)) { P.state = 'walk'; P.hangCD = 0.35; }
     } else {
       if (ax && !P.stun) P.face = ax;
-      const target = P.stun ? 0 : ax * SPEED, acc = P.ground ? ACC : AIRACC;
+      const target = P.stun ? 0 : ax * speed(), acc = P.ground ? ACC : AIRACC;
       if (P.vx < target) P.vx = Math.min(target, P.vx + acc * dt); else if (P.vx > target) P.vx = Math.max(target, P.vx - acc * dt);
       P.coyote = P.ground ? 0.09 : Math.max(0, P.coyote - dt);
-      if (pressed('jump') && P.coyote > 0 && !P.stun) { P.vy = -JUMP; P.coyote = 0; P.ground = false; }
+      if (pressed('jump') && P.coyote > 0 && !P.stun) { P.vy = -jump(); P.coyote = 0; P.ground = false; }
       if (!input.jump && prev.jump && P.vy < 0) P.vy *= 0.45;
       P.vy = Math.min(MAXFALL, P.vy + GRAV * dt);
       if (P.ground || P.apex == null || P.y < P.apex) P.apex = P.y;
@@ -205,8 +227,8 @@ export function createGame(canvas, opts) {
       if (P.landed) {
         const fall = P.y - P.apex;
         if (G.L.at(Math.floor(P.x / T), Math.floor((P.y - 1) / T)) === SPIKES && P.landV > 200) { hurt(2); spark(P.x, P.y, '#c8c6d6', 6); }
-        else if (fall > BAD_FALL) { hurt(2); P.stun = 0.8; }
-        else if (fall > HURT_FALL) { hurt(1); P.stun = 0.5; }
+        else if (fall > fallBad()) { hurt(2); P.stun = 0.8; }
+        else if (fall > fallHurts()) { hurt(1); P.stun = 0.5; }
         if (fall > 2 * T) dust(P.x, P.y, 5);
         P.apex = P.y;
       }
@@ -227,11 +249,12 @@ export function createGame(canvas, opts) {
     if (pressed('pick') && P.swingCD <= 0 && P.state !== 'climb') swing();
     if (pressed('bomb') && G.bombs > 0) throwBomb();
     if (pressed('rope') && G.ropes > 0) throwRope();
+    if (pressed('scroll')) readScroll();
     if (P.y > H * T) hurt(99);
   }
 
   function swing() {
-    P.swing = 0.3; P.swingCD = 0.38;
+    P.swing = 0.3; P.swingCD = 0.38 * Math.pow(0.7, has('grip'));
     // monsters in front of the dwarf first
     const box = { x: P.x + P.face * 26, y: P.y - 4, w: 40, h: PH - 2 };
     for (const m of mons) if (!m.dead && overlap(box, m)) {
@@ -271,7 +294,10 @@ export function createGame(canvas, opts) {
       if (G.pick < h) { clink(cx, cy, 'This wall needs a harder pick. Take the lift home.'); return; }
       need = 4;
     } else need = Math.max(1, Math.min(5, 4 + (G.layer + 1) - G.pick));
-    const k = ty * W + tx, hp = (tileHp.get(k) || 0) + 1;
+    const k = ty * W + tx;
+    if (G.L.soft.has(k)) need = 2;                    // the start cell: soft rock, two blows
+    need = Math.max(1, need - has('grip'));
+    const hp = (tileHp.get(k) || 0) + 1;
     A.sfx('pickaxe', { rate: 0.9 + Math.random() * 0.25 });
     chips(cx - P.face * 16, cy, t === ORE ? oreColour(veinAt(G.L, tx, ty).ore) : null);
     if (hp < need) { tileHp.set(k, hp); return; }
@@ -296,6 +322,51 @@ export function createGame(canvas, opts) {
     G.L.set(tx, ty, AIR); tileHp.delete(k); touch(tx, ty);
     dust((tx + 0.5) * T, (ty + 0.8) * T, 8, true);
     for (const s of stals) if (s.state === 'hang' && s.tx === tx && s.ty === ty) s.state = 'fall';
+    loosen(tx, ty);
+    if (G.L.soft.delete(k) && !G.introFree) {
+      G.introFree = true; A.sfx('anvilGood', { vol: 0.6 });
+      float(P.x, P.y - PH - 20, 'Out you go! Find ore, then the way down.', '#9fe08a', 3);
+    }
+  }
+  // what grew on, hung from or stood on a block falls apart with it
+  function loosen(tx, ty) {
+    const L0 = G.L;
+    L0.decor = L0.decor.filter((d) => {
+      const on = d.top ? d.x === tx && d.y - 1 === ty : d.x === tx && d.y + 1 === ty;
+      if (on) crumble(d);
+      return !on;
+    });
+    if (L0.at(tx, ty - 1) === SPIKES) { L0.set(tx, ty - 1, AIR); shatter(Art.frame('delve_spikes', 0, { recolour: { rockd: ramps.rockd } }), tx * T, (ty - 1) * T + T - 1); A.sfx('parry2', { rate: 0.7, vol: 0.5 }); }
+    drips = drips.filter((d) => !(d.x === tx && d.y - 1 === ty));
+    for (const d of drips) if (d.x === tx && d.floor + 1 === ty) { let f = ty; while (f < H - 1 && !solid(tx, f + 1)) f++; d.floor = f; }
+  }
+  function decorAt(d) {                              // where a decoration is drawn: [frame, x, y]
+    const cx = (d.x + 0.5) * T + (d.dx || 0), o = { recolour: { rockd: ramps.rockd }, flip: d.flip };
+    const fr = Art.frame(d.kind, 0, o);
+    if (d.cover) return [fr, d.x * T, (d.y + 1) * T + 6];
+    if (d.top) return [fr, cx, d.y * T - 4];
+    return [fr, cx, (d.y + 1) * T + (d.kind === 'delve_puddle' ? 4 : 6)];
+  }
+  function crumble(d) {
+    if (d.kind === 'delve_puddle') { for (let i = 0; i < 8; i++) parts.push({ x: (d.x + 0.5) * T + (Math.random() - 0.5) * 30, y: (d.y + 1) * T, vx: (Math.random() - 0.5) * 120, vy: -60 - Math.random() * 120, t: 0, life: 0.5, c: i % 2 ? '#a8e0dc' : '#5a9aa0', s: 2 }); return; }
+    const [fr, x, y] = decorAt(d);
+    shatter(fr, x, y);
+  }
+  // a sprite falls apart into its own pixels (every second pixel, at most 90 bits), which tumble down
+  function shatter(fr, x, y) {
+    const c = fr.canvas, w = c.width, h = c.height;
+    if (!w || !h) return;
+    const px = c.getContext('2d').getImageData(0, 0, w, h).data, bits = [];
+    for (let j = 0; j < h; j += 2) for (let i = 0; i < w; i += 2) {
+      const o = (j * w + i) * 4;
+      if (px[o + 3] > 100) bits.push([i, j, `rgb(${px[o]},${px[o + 1]},${px[o + 2]})`]);
+    }
+    const step = Math.max(1, bits.length / 90), X0 = x - fr.ax, Y0 = y - fr.ay;
+    for (let k = 0; k < bits.length; k += step) {
+      const [i, j, col] = bits[Math.floor(k)];
+      parts.push({ x: X0 + i, y: Y0 + j, vx: (i - w / 2) * 4 + (Math.random() - 0.5) * 90, vy: -40 - Math.random() * 140, t: 0, life: 0.5 + Math.random() * 0.5, c: col, s: 2 });
+    }
+    A.sfx('slash3', { rate: 1.7, vol: 0.3 });
   }
 
   // ---------------------------------------------------------------- bombs and ropes
@@ -312,7 +383,8 @@ export function createGame(canvas, opts) {
       if (Math.hypot((tx + 0.5) * T - cx, (ty + 0.5) * T - cy) > BLAST + 6) continue;
       const t = G.L.at(tx, ty);
       if (t === ROCK || t === ORE || t === TRAP) breakTile(tx, ty, true);
-      else if (t === LADDER || t === SPIKES) G.L.set(tx, ty, AIR);
+      else if (t === SPIKES) { G.L.set(tx, ty, AIR); shatter(Art.frame('delve_spikes', 0, { recolour: { rockd: ramps.rockd } }), tx * T, ty * T + T - 1); }
+      else if (t === LADDER) G.L.set(tx, ty, AIR);
       if (ropes.has(ty * W + tx)) { ropes.delete(ty * W + tx); }
     }
     ropeList = ropeList.filter((r) => { for (let y = r.y0; y <= r.y1; y++) if (ropes.has(y * W + r.x)) return true; return false; });
@@ -350,6 +422,8 @@ export function createGame(canvas, opts) {
     spark(m.x, m.y - m.h / 2, '#e05050', 5);
     if (m.hp <= 0) {
       m.dead = true;
+      if (m.kind !== 'keeper') for (let i = 0, n = 1 + Math.floor(m.hpMax / 2); i < n; i++) coins.push(coin(m.x, m.y - m.h / 2, 1, (Math.random() - 0.5) * 220, -200 - Math.random() * 160));
+      else for (let i = 0; i < 8; i++) coins.push(coin(m.x, m.y - m.h / 2, 1, (Math.random() - 0.5) * 300, -250 - Math.random() * 200));
       if (m.kind === 'bat' || m.kind === 'giant_rat' || m.kind === 'cave_crawler') A.critter(); else A.sfx('monster', { vol: 0.6 });
       dust(m.x, m.y, 6);
     }
@@ -480,6 +554,31 @@ export function createGame(canvas, opts) {
       }
     }
     nuggets = nuggets.filter((n) => !n.got && n.y < H * T);
+    // cave coins, chests and the finds that jumped out of them
+    const reachBox = { x: P.x, y: P.y, w: PW + 10, h: PH };
+    for (const c of coins) {
+      c.t += dt; c.vy = Math.min(MAXFALL, c.vy + GRAV * dt);
+      move(c, dt, { bounce: 0.4 });
+      if (c.ground) c.vx *= 0.8;
+      if (c.t > 0.3 && !P.dead && overlap(c, reachBox)) {
+        const n = c.n * (1 + has('ring'));
+        c.got = true; G.coins += n;
+        A.sfx('coinsLittle', { vol: 0.7, rate: 1 + Math.random() * 0.2 });
+        float(c.x, c.y - 16, `+${n} ${n === 1 ? 'coin' : 'coins'}`, '#ffd27a', 1.2);
+        hud();
+      }
+    }
+    coins = coins.filter((c) => !c.got && c.y < H * T);
+    for (const c of chests) { c.vy = Math.min(MAXFALL, c.vy + GRAV * dt); move(c, dt); }
+    for (const f of finds) {
+      f.t += dt; f.vy = Math.min(MAXFALL, f.vy + GRAV * dt);
+      move(f, dt, { bounce: 0.3 });
+      if (f.ground) f.vx *= 0.8;
+      if (f.t > 0.5 && !P.dead && overlap(f, reachBox)) collect(f);
+      f.full = Math.max(0, (f.full || 0) - dt);
+    }
+    finds = finds.filter((f) => !f.got && f.y < H * T);
+    G.stoneT = Math.max(0, G.stoneT - dt); G.lightT = Math.max(0, G.lightT - dt);
     // water dripping from the ceiling
     for (const d of drips) {
       if (!d.drop) { d.t -= dt; if (d.t <= 0) d.drop = { y: (d.y) * T + 2, vy: 0 }; continue; }
@@ -499,15 +598,27 @@ export function createGame(canvas, opts) {
     G.prompt = null;
     if (P.dead || !P.ground) return;
     const tx = Math.floor(P.x / T), ty = Math.floor((P.y - 1) / T);
+    if (!G.introFree && G.L.intro && (Math.floor(P.x / T) !== G.L.intro.x || ty !== G.L.intro.y)) G.introFree = true;   // out some other way
+    if (!G.introFree && G.L.intro) {
+      G.prompt = opts.touch ? 'Pick: swing at the rock to dig out' : 'E: swing the pick at the rock to dig out';
+      return;
+    }
+    const chest = chests.find((c) => !c.open && Math.abs(c.x - P.x) < 30 && Math.abs(c.y - P.y) < 12);
+    if (chest) {
+      G.prompt = 'Up: open the chest';
+      if (pressed('up')) openChest(chest);
+      return;
+    }
     const wa = wares.find((w) => Math.abs(w.x - P.x) < 22 && Math.abs(w.y - P.y) < 10);
     if (wa) {
       const keeper = mons.find((m) => m.kind === 'keeper' && !m.dead);
-      const free = !keeper, can = free || bagTotal() >= wa.price;
+      const bill = billFor(wa.price), free = !keeper, can = free || bill;
       wa.arm = Math.max(0, wa.arm - dt);
-      G.prompt = free ? `Up: take ${wa.name}` : can ? `Up: buy ${wa.name} for ${wa.price} ore` : wa.arm ? `Up again: steal ${wa.name}` : `${wa.name}: ${wa.price} ore. You have ${bagTotal()}.`;
+      G.prompt = free ? `Up: take ${wa.name}` : can ? `Up: buy ${wa.name} for ${bill.ore ? `${bill.coins} coins and ${bill.ore} ore` : `${wa.price} coins`}`
+        : wa.arm ? `Up again: steal ${wa.name}` : `${wa.name}: ${wa.price} coins. You have ${G.coins} and ${bagTotal()} ore.`;
       if (pressed('up')) {
         if (free) take(wa);
-        else if (can) { pay(wa.price); take(wa); A.sfx('coinsLittle'); float(P.x, P.y - PH - 8, 'Thank you, friend.', '#ffe9a8', 1.6); }
+        else if (can) { pay(bill); take(wa); A.sfx('coinsLittle'); float(P.x, P.y - PH - 8, 'Thank you, friend.', '#ffe9a8', 1.6); }
         else if (wa.arm) { take(wa); anger(keeper); }
         else { wa.arm = 1.5; A.sfx('error'); }
       }
@@ -537,7 +648,14 @@ export function createGame(canvas, opts) {
   }
   const inBox = (b, x, y) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1;
   const bagTotal = () => Object.values(G.bag).reduce((s, n) => s + n, 0);
-  function pay(n) {
+  // coins first; ore pays the rest, one ore for every ORE_COINS coins (rounded up). null: not enough.
+  function billFor(price) {
+    const c = Math.min(G.coins, price), ore = Math.ceil((price - c) / ORE_COINS);
+    return ore <= bagTotal() ? { coins: c, ore } : null;
+  }
+  function pay(bill) {
+    G.coins -= bill.coins;
+    let n = bill.ore;
     while (n > 0) {
       const [k] = Object.entries(G.bag).sort((a, b) => b[1] - a[1])[0];
       G.bag[k]--; if (!G.bag[k]) delete G.bag[k]; n--;
@@ -549,6 +667,74 @@ export function createGame(canvas, opts) {
     else if (w.id === 'ropes') G.ropes += 3;
     else if (w.id === 'ale') { G.hearts++; G.maxHearts = Math.max(G.maxHearts, G.hearts); A.sfx('slosh'); }
     else if (w.id === 'pick') { G.pick++; G.boughtPick = true; A.sfx('anvilGood'); float(P.x, P.y - PH - 20, 'A better pick! Harder rock gives way now.', '#9fe08a', 2.4); }
+    else if (w.id === 'find') gain(w.item);
+    hud();
+  }
+  // ---------------------------------------------------------------- loot of the run
+  function coin(x, y, n, vx, vy) { return { x, y, w: 10, h: 10, vx, vy, n, t: 0, spin: Math.random() * 4 }; }
+  function openChest(c) {
+    c.open = true;
+    A.sfx('doorOpen', { rate: 1.3 }); A.sfx('coinsLittle');
+    for (let i = 0; i < c.loot.coins; i++) coins.push(coin(c.x, c.y - 14, 1, (Math.random() - 0.5) * 240, -260 - Math.random() * 180));
+    const kind = c.loot.item ? 'item' : 'scroll', id = c.loot.item || c.loot.scroll;
+    finds.push({ kind, id, x: c.x, y: c.y - 16, w: 22, h: 20, vx: (Math.random() < 0.5 ? -1 : 1) * 60, vy: -380, t: 0 });
+    spark(c.x, c.y - 18, '#ffe9a8', 10);
+  }
+  function collect(f) {
+    if (f.kind === 'scroll') {
+      if (G.scrolls.length >= MAX_SCROLLS) {
+        if (!f.full) { float(f.x, f.y - 24, `You carry ${MAX_SCROLLS} scrolls. Read one first (${opts.touch ? 'Scroll' : 'F'}).`, '#ffcf6a', 2); f.full = 2.5; }
+        return;
+      }
+      f.got = true; G.scrolls.push(f.id);
+      A.sfx('collect', { vol: 0.8 }); A.sfx('coinsLittle', { vol: 0.4, rate: 1.5 });
+      const s0 = SCROLLS[f.id];
+      float(P.x, P.y - PH - 22, s0.name, '#c8b0ff', 2.2); float(P.x, P.y - PH - 12, `${s0.text}. ${opts.touch ? 'Scroll button' : 'F'} reads it.`, '#fbf4e6', 2.4);
+      hud();
+      return;
+    }
+    f.got = true; gain(f.id);
+  }
+  function gain(id) {
+    const it = ITEMS[id];
+    G.items[id] = (G.items[id] || 0) + 1;
+    if (id === 'whetstone') G.pick++;
+    else if (id === 'heart') { G.maxHearts++; G.hearts++; }
+    else if (id === 'hammer') G.damage++;
+    A.sfx('anvilGood', { vol: 0.7 });
+    float(P.x, P.y - PH - 22, it.name, '#9fe08a', 2.4); float(P.x, P.y - PH - 12, it.text, '#fbf4e6', 2.4);
+    spark(P.x, P.y - PH / 2, '#ffe9a8', 10);
+    hud();
+  }
+  function readScroll() {
+    if (!G.scrolls.length || P.dead) return;
+    const id = G.scrolls[0], cx = Math.floor(P.x / T);
+    if (id === 'mend' && G.hearts >= G.maxHearts) { float(P.x, P.y - PH - 8, 'You are not hurt.', '#ffcf6a', 1.4); return; }
+    if (id === 'blink') {
+      const foot = Math.floor((P.y - 1) / T);
+      let to = null;
+      for (let y = foot - 2; y >= Math.max(1, foot - 8); y--) if (!solid(cx, y) && !solid(cx, y - 1) && solid(cx, y + 1)) { to = y; break; }
+      if (to == null) { float(P.x, P.y - PH - 8, 'No room up there to blink to.', '#ffcf6a', 1.6); return; }
+      spark(P.x, P.y - PH / 2, '#9fd0ff', 12);
+      P.x = (cx + 0.5) * T; P.y = (to + 1) * T - 0.5; P.vx = 0; P.vy = 0; P.apex = P.y; P.state = 'walk';
+      cam.y = P.y - PH;
+      spark(P.x, P.y - PH / 2, '#9fd0ff', 12);
+    } else if (id === 'light') G.lightT = 20;
+    else if (id === 'stone') G.stoneT = 8;
+    else if (id === 'mend') G.hearts++;
+    else if (id === 'quake') {
+      const px = P.x, py = P.y - PH / 2, R = 2.5 * T;
+      for (let ty = Math.floor((py - R) / T); ty <= Math.floor((py + R) / T); ty++) for (let tx = Math.floor((px - R) / T); tx <= Math.floor((px + R) / T); tx++) {
+        if (Math.hypot((tx + 0.5) * T - px, (ty + 0.5) * T - py) > R) continue;
+        const t = G.L.at(tx, ty);
+        if (t === ROCK || t === ORE || t === TRAP) breakTile(tx, ty, true);
+      }
+      for (const m of mons) if (!m.dead && m.kind !== 'keeper' && Math.hypot(m.x - px, m.y - m.h / 2 - py) < R + 20) damage(m, 2, px);
+      G.shake = 0.6; A.sfx('hit2', { rate: 0.45, vol: 1.2 });
+    }
+    G.scrolls.shift();
+    A.sfx('rune', { vol: 0.8 });
+    float(P.x, P.y - PH - 8, SCROLLS[id].name, '#c8b0ff', 1.8);
     hud();
   }
   function nextLevel() {
@@ -581,6 +767,7 @@ export function createGame(canvas, opts) {
   let lastHud = '';
   function hud() {
     const h = { hearts: G.hearts, maxHearts: G.maxHearts, bombs: G.bombs, ropes: G.ropes, bag: { ...G.bag }, pick: G.pick,
+      coins: G.coins, items: { ...G.items }, scrolls: [...G.scrolls], stone: G.stoneT > 0, light: G.lightT > 0,
       layer: G.layer, layerName: layers[G.layer].name, depth: G.depth, levels: D.levelsPerLayer, prompt: G.prompt, over: G.over };
     const s = JSON.stringify(h);
     if (s !== lastHud) { lastHud = s; opts.onHud && opts.onHud(h); }
@@ -743,15 +930,16 @@ export function createGame(canvas, opts) {
       Art.draw(ctx, 'lantern', 0, X + 5 * T, Y + 3 * T);
       Art.draw(ctx, 'scales', 0, back + (L0.shop.door < 0 ? -40 : 40), Y + 7 * T);
     }
+    if (L0.chalk) ctx.drawImage(chalkBoard(), L0.chalk.x * T, L0.chalk.y * T);
     for (const q of L0.torches) if (q.x >= c0 - 1 && q.x <= c1 + 1) Art.draw(ctx, 'torch', Math.floor(t * 8 + q.x) % 4, (q.x + 0.5) * T, (q.y + 1) * T - 8);
     // the rock (one canvas for the whole level), then what grows on it and hangs from it
     ctx.drawImage(terrainCanvas(), x0, y0, Math.ceil(vw) + 1, Math.ceil(vh) + 1, x0, y0, Math.ceil(vw) + 1, Math.ceil(vh) + 1);
     for (const d of L0.decor) if (d.x >= c0 - 1 && d.x <= c1 + 1 && d.y >= r0 - 2 && d.y <= r1 + 1) {
-      const cx = (d.x + 0.5) * T + (d.dx || 0), o = { recolour: { rockd: ramps.rockd }, flip: d.flip };
-      if (d.cover) Art.draw(ctx, d.kind, 0, d.x * T, (d.y + 1) * T + 6, o);
-      else if (d.top) Art.draw(ctx, d.kind, d.kind === 'delve_puddle' ? Math.floor(t * 3) % 4 : 0, cx, d.y * T - 4, o);
-      else Art.draw(ctx, d.kind, d.kind === 'delve_puddle' ? Math.floor(t * 3 + d.x) % 4 : 0, cx, (d.y + 1) * T + (d.kind === 'delve_puddle' ? 4 : 6), o);
+      const [fr0, x, y] = decorAt(d);
+      if (d.kind === 'delve_puddle') Art.draw(ctx, d.kind, Math.floor(t * 3 + d.x) % 4, x, y, { recolour: { rockd: ramps.rockd }, flip: d.flip });
+      else ctx.drawImage(fr0.canvas, Math.round(x - fr0.ax), Math.round(y - fr0.ay));
     }
+    if (L0.intro && !G.introFree) chalkX((L0.intro.x + L0.intro.dir) * T, L0.intro.y * T, t);
     for (const d of drips) {
       if (d.drop) Art.draw(ctx, 'delve_drop', 0, (d.x + 0.5) * T, Math.round(d.drop.y));
       else if (d.t < 0.6) { ctx.fillStyle = '#a8e0dc'; ctx.fillRect((d.x + 0.5) * T - 1, d.y * T - 2, 2, 1 + Math.round((0.6 - d.t) * 4)); }
@@ -764,7 +952,7 @@ export function createGame(canvas, opts) {
           ctx.fillStyle = `rgba(255,248,220,${a})`; ctx.fillRect(gx, gy - 2, 1, 5); ctx.fillRect(gx - 2, gy, 5, 1); }
       }
       else if (tt === LADDER) ctx.drawImage(Art.frame('delve_ladder', 0).canvas, X, Y);
-      else if (tt === SPIKES) Art.draw(ctx, 'delve_spikes', 0, X, Y + T - 1);
+      else if (tt === SPIKES) Art.draw(ctx, 'delve_spikes', 0, X, Y + T - 1, { recolour: { rockd: ramps.rockd } });
       const hp = tileHp.get(ty * W + tx);
       if (hp) cracks(X, Y, hp, tx * 31 + ty);
     }
@@ -775,9 +963,18 @@ export function createGame(canvas, opts) {
     }
     // the shop's wares
     for (const w of wares) {
-      const img = w.icon.startsWith('delve_') ? Art.frame(w.icon, 0).canvas : w.id === 'pick' ? S.item('pickaxe', 'iron') : S.sprite(w.icon);
+      const img = w.id === 'find' ? lootIcon('item', w.item) : w.icon.startsWith('delve_') ? Art.frame(w.icon, 0).canvas : w.id === 'pick' ? S.item('pickaxe', 'iron') : S.sprite(w.icon);
       ctx.drawImage(img, Math.round(w.x - img.width / 2), Math.round(w.y - img.height - 2));
-      text(ctx, `${w.price}`, w.x, w.y - img.height - 12, '#ffe9a8', 'center');
+      const lbl = `${w.price}`, lw = lbl.length * 4 + 12, lx = Math.round(w.x - lw / 2), ly = Math.round(w.y - img.height - 12);
+      Art.draw(ctx, 'delve_coin', 0, lx + 4, ly + 6);
+      text(ctx, lbl, lx + 11, ly, '#ffe9a8');
+    }
+    for (const c of chests) Art.draw(ctx, c.open ? 'delve_chest_1' : 'delve_chest_0', 0, c.x, c.y + 1);
+    for (const c of coins) Art.draw(ctx, 'delve_coin', Math.floor(t * 8 + c.spin) % 4, c.x, c.y + 1);
+    for (const f of finds) {
+      const img = lootIcon(f.kind, f.id), bob = f.ground ? Math.round(Math.sin(t * 3 + f.x) * 2) : 0;
+      ctx.drawImage(img, Math.round(f.x - img.width / 2), Math.round(f.y - img.height + bob));
+      if (Math.floor(t * 2 + f.x) % 3 === 0) { ctx.fillStyle = 'rgba(255,248,220,0.9)'; ctx.fillRect(Math.round(f.x + img.width / 2 - 3), Math.round(f.y - img.height + bob), 1, 3); }
     }
     for (const n of nuggets) { const img = S.ore(n.ore); ctx.drawImage(img, Math.round(n.x - img.width / 2), Math.round(n.y - img.height)); }
     // stalactites, monsters, the dwarf
@@ -826,6 +1023,7 @@ export function createGame(canvas, opts) {
       ctx.save(); ctx.translate(Math.round(P.x), Math.round(P.y)); ctx.rotate(-Math.PI / 2 * Math.min(1, P.dead * 4)); ctx.drawImage(c, -24, -62); ctx.restore();
     }
     else DW.draw(ctx, look, pose, f, P.x, P.y + 1, { flip: P.face < 0 && pose !== 'climb' });
+    if (G.stoneT > 0 && (G.stoneT > 2 || Math.floor(t * 8) % 2)) { ctx.fillStyle = 'rgba(200,200,215,0.35)'; ctx.fillRect(P.x - 16, P.y - 46, 32, 46); }
     if (P.hurtFlash > 0) { ctx.fillStyle = 'rgba(255,60,40,0.25)'; ctx.fillRect(P.x - 18, P.y - 46, 36, 46); }
   }
   function drawMonster(m, t) {
@@ -846,6 +1044,61 @@ export function createGame(canvas, opts) {
     ctx.drawImage(fr.canvas, Math.round(m.x - fr.ax), Math.round(m.y + 1 - fr.ay));
     if (m.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(m.x - m.w / 2, m.y - m.h, m.w, m.h); }
   }
+  // ---------------------------------------------------------------- the chalk marks of the first level
+  // How to play, scratched on the back wall: wobbly key boxes and words in the pixel font, chalk that skips.
+  const CHALK = '#e8e4d6';
+  function chalkLines() {
+    if (opts.touch) return [
+      [['k', 'LEFT'], ['k', 'RIGHT'], ['t', 'WALK'], ['k', 'JUMP']],
+      [['k', 'UP'], ['k', 'DOWN'], ['t', 'CLIMB / GO IN']],
+      [['k', 'PICK'], ['t', 'DIG + HOLD UP/DOWN']],
+      [['k', 'BOMB'], ['k', 'ROPE'], ['k', 'SCROLL']],
+      [['k', 'UP'], ['t', 'BUY / OPEN CHESTS']],
+    ];
+    return [
+      [['k', 'A'], ['k', 'D'], ['t', 'WALK'], ['k', 'W'], ['k', 'S'], ['t', 'CLIMB']],
+      [['k', 'SPACE'], ['t', 'JUMP']],
+      [['k', 'E'], ['t', 'DIG +'], ['k', 'W'], ['t', 'OR'], ['k', 'S'], ['t', 'UP/DOWN']],
+      [['k', 'Q'], ['t', 'BOMB'], ['k', 'R'], ['t', 'ROPE'], ['k', 'F'], ['t', 'SCROLL']],
+      [['k', 'W'], ['t', 'GO IN / BUY / OPEN']],
+    ];
+  }
+  function chalkBoard() {
+    if (chalkC) return chalkC;
+    const BW = 5 * T, BH = 2 * T, small = S.mk(BW / 2, BH / 2), g = small.getContext('2d');
+    const r = S.rand(levelSeed() + 99);
+    let y = 2;
+    for (const line of chalkLines()) {
+      let x = 4 + Math.floor(r() * 3);
+      for (const [kind, word] of line) {
+        const tw = word.length * 4 - 1;
+        if (kind === 'k') {                           // a key: a box drawn by hand, a little crooked
+          g.fillStyle = CHALK;
+          const bx = x - 3, by = y - 2, bw = tw + 6, bh = 9;
+          const tilt = r() < 0.5 ? 1 : 0;
+          for (let i = 0; i < bw; i++) { if (r() > 0.08) g.fillRect(bx + i, by + (tilt && i > bw * 0.6 ? 1 : 0), 1, 1); if (r() > 0.08) g.fillRect(bx + i, by + bh - 1, 1, 1); }
+          for (let j = 1; j < bh - 1; j++) { if (r() > 0.1) g.fillRect(bx, by + j, 1, 1); if (r() > 0.08) g.fillRect(bx + bw - 1, by + j, 1, 1); }
+          text(g, word, x, y, CHALK, 'left', null);
+          x += tw + 9;
+        } else { text(g, word, x, y, CHALK, 'left', null); x += tw + 5; }
+      }
+      y += 10;
+      if (y + 6 > BH / 2) break;
+    }
+    // the chalk skips: some pixels missing, the rest uneven
+    const id = g.getImageData(0, 0, small.width, small.height), d = id.data;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3]) d[i + 3] = r() < 0.04 ? 60 : 170 + Math.floor(r() * 80);
+    g.putImageData(id, 0, 0);
+    chalkC = S.mk(BW, BH);
+    const cg = chalkC.getContext('2d'); cg.imageSmoothingEnabled = false;
+    cg.drawImage(small, 0, 0, BW, BH);
+    return chalkC;
+  }
+  function chalkX(X, Y, t) {                          // a big X scratched on the block to dig through
+    const a = 0.55 + 0.25 * Math.sin(t * 4);
+    ctx.fillStyle = `rgba(232,228,214,${a})`;
+    for (let i = 10; i < T - 10; i += 2) { ctx.fillRect(X + i, Y + i + ((i >> 2) & 1), 3, 2); ctx.fillRect(X + T - i - 3, Y + i, 3, 2); }
+  }
   let kLook = null;
   function keeperLook() {
     if (!kLook) kLook = { sex: 'm', hair: 'long', beard: 'fork', hat: null, vest: true, mood: 'happy',
@@ -862,7 +1115,8 @@ export function createGame(canvas, opts) {
     const g = lightC.getContext('2d');
     g.globalCompositeOperation = 'source-over';
     g.clearRect(0, 0, w, h);
-    g.fillStyle = `rgba(3,1,6,${0.94 + Math.min(0.04, G.layer * 0.01)})`; g.fillRect(0, 0, w, h);
+    const lit = Math.min(1, G.lightT / 2);           // the scroll of light lifts most of the dark
+    g.fillStyle = `rgba(3,1,6,${(0.94 + Math.min(0.04, G.layer * 0.01)) * (1 - 0.8 * lit)})`; g.fillRect(0, 0, w, h);
     g.globalCompositeOperation = 'destination-out';
     const hole = (x, y, r, a = 1) => {
       const X = (x - x0) / k, Y = (y - y0) / k, R = r / k;
@@ -872,7 +1126,7 @@ export function createGame(canvas, opts) {
       g.fillStyle = gr; g.fillRect(X - R, Y - R, R * 2, R * 2);
     };
     const flick = 1 + Math.sin(t * 9) * 0.02 + Math.sin(t * 23) * 0.015;
-    hole(P.x + P.face * 6, P.y - PH + 4, 200 * flick, 1);
+    hole(P.x + P.face * 6, P.y - PH + 4, 200 * (1 + 0.4 * has('lamp')) * flick, 1);
     for (const q of G.L.torches) hole((q.x + 0.5) * T, (q.y + 1) * T - 30, 130 * (1 + Math.sin(t * 7 + q.x) * 0.04), 0.95);
     if (G.L.shop) hole((G.L.shop.x + 5) * T, (G.L.shop.y + 4) * T, 230, 1);
     hole((G.L.entrance.x + 0.5) * T, (G.L.entrance.y + 0.5) * T, 110, 0.6);
@@ -881,6 +1135,8 @@ export function createGame(canvas, opts) {
     for (const b of booms) hole(b.x, b.y, 300 * (1 - b.t / 0.5), 1);
     for (const m of mons) if (!m.dead && m.glow) hole(m.x, m.y - m.h / 2, 80, 0.7);
     for (const [k] of G.L.veins) hole((k % W + 0.5) * T, (Math.floor(k / W) + 0.5) * T, 46, 0.45 + 0.15 * Math.sin(t * 3 + k));
+    for (const f of finds) hole(f.x, f.y - 10, 44, 0.55);
+    for (const c of chests) if (c.open) hole(c.x, c.y - 16, 50, 0.5);
     for (const d of G.L.decor) if (d.kind === 'glowshrooms' || d.kind === 'crystals') hole((d.x + 0.5) * T, (d.y + 0.8) * T, 60, 0.5);
     else if (d.kind.startsWith('delve_glowworms')) hole((d.x + 0.5) * T, d.y * T + 24, 70, 0.45 + 0.1 * Math.sin(t * 2 + d.x));
     ctx.save();
@@ -926,7 +1182,8 @@ export function createGame(canvas, opts) {
   }
   return {
     G, input, press, release,
-    debug: () => ({ P, mons, wares, nuggets, stals, bombs }),
+    debug: () => ({ P, mons, wares, nuggets, stals, bombs, coins, chests, finds }),
+    debugBreak: (tx, ty) => breakTile(tx, ty),
     start() { enter(); last = 0; raf = requestAnimationFrame(frame); },
     stop() { cancelAnimationFrame(raf); },
     pause(on) { G.paused = on; },

@@ -384,8 +384,13 @@ Masterwork 2, Artifact 3.
 | Obergrenze | der Server behält je Level höchstens `⌈Rate/4 × 1,6⌉` (`ORE_SLACK`), nur Erze der erreichten Schichten, die die Spitzhacke (+1 für die Laden-Spitzhacke) bricht; kein Stein, Kalk, Rohstein (`NO_DELVE_ORE`) |
 | Zeit | höchstens ein Level je 15 s (`MIN_LEVEL_SECONDS`); ein Run, der länger als 3 h offen ist, verfällt (`RUN_HOURS`) |
 | Tod | alles Gefundene ist weg, Gesundheit höchstens 25, 3 h Ruhe (`REST_HOURS`) |
-| Laden | Bomben ×3: 1 Erz, Seile ×3: 1 Erz, Ale: 2 Erz, bessere Spitzhacke (+1 Härte für den Run): 3 Erz, je 2 Schichten +1. Bezahlt wird mit Erz aus dem Beutel. Diebstahl macht den Händler wütend (auch in späteren Läden des Runs) |
+| Laden | in Cave Coins (`WARES` in `game.js`): Bomben ×3: 6, Seile ×3: 6, Ale: 12, bessere Spitzhacke (+1 Härte für den Run): 20, ein Fund: 25; je 2 Schichten +3. Erst Münzen, den Rest zahlt Erz aus dem Beutel (1 Erz = 5 Münzen, `ORE_COINS`, aufgerundet). Diebstahl macht den Händler wütend (auch in späteren Läden des Runs) |
+| Cave Coins | nur für den Run (`loot.js`): je Level `6 + 0–4 + Schicht` Häufchen à 1 (30 % 2), Gegner lassen `1 + ⌊Leben/2⌋` fallen, der Händler 8, Truhen 2–6 |
+| Truhen | 1 je Level, 45 % eine zweite; 60 % ein Fund + 2–5 Münzen, sonst eine Spruchrolle + 3–6 Münzen |
+| Funde (stapelbar) | Iron Cap: fängt einen Treffer ab (dann weg); Whetstone: Spitzhacke +1; Swift Boots: Tempo ×(1 + 0,15 n); Spring Heels: Sprung ×(1 + 0,1 n); Heart Crystal: +1 Herz und +1 Höchstwert; Heavy Hammer: Schaden +1; Quick Grip: Schlagpause ×0,7ⁿ, je Stück ein Schlag weniger (min. 1); Bright Lamp: Lichtradius ×(1 + 0,4 n); Lucky Ring: Münzen ×(1 + n); Feather Charm: Sturzgrenzen +4 Kacheln je Stück |
+| Spruchrollen | höchstens 3 (`MAX_SCROLLS`), Taste F: Light (20 s fast hell), Quake (Fels im Umkreis 2,5 Kacheln bricht, Gegner 2 Schaden), Mending (+1 Herz bis zum Höchstwert), Stone Skin (8 s kein Schaden außer Absturz ins Bodenlose), Blink (bis 8 Kacheln nach oben auf den nächsten Boden) |
+| Start | erster Level jedes Runs: Zelle aus weichem Fels (2 Schläge), Steuerung als Kreide an der Wand |
 | Start-Ausrüstung | 2 Bomben, 2 Seile |
 | Graben | Fels braucht `4 + (Schicht+1) − Härte` Schläge (1–5), Erzader 2, Wand 4 |
-| Schaden | Gegner, Pfeil 1; Sturz über 7 Kacheln 1, über 11 Kacheln 2; Stacheln beim Hineinfallen 2; Stalaktit 2; Bombe 3 |
+| Schaden | Gegner, Pfeil 1; Sturz über 7 Kacheln 1, über 11 Kacheln 2 (Feather Charm verschiebt beides); Stacheln beim Hineinfallen 2; Stalaktit 2; Bombe 3 |
 | Gegner | je Level `2 + Schicht + ⌊Level/2⌋` (+0–1) aus den Monstern der Schicht, dazu Fledermäuse; Leben 1 (Ratte) bis 6 (Wyrm) |

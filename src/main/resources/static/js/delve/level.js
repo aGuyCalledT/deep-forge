@@ -4,6 +4,8 @@
 // shop. On the last level of a layer the exit is closed by the layer wall, and a lift goes back up to the hold.
 //   const L = makeLevel({seed, layer, depth, data})   L.tiles, L.at(x, y), L.set(x, y, t), L.ore, L.spawns ...
 
+import { chestLoot } from './loot.js';
+
 export const T = 48, RW = 10, RH = 8, ROOMS_X = 4, ROOMS_Y = 4;
 export const W = ROOMS_X * RW + 2, H = ROOMS_Y * RH + 2;          // plus a frame of bedrock
 export const AIR = 0, ROCK = 1, BEDROCK = 2, ORE = 3, WALL = 4, LADDER = 5, SPIKES = 6, TRAP = 7;
@@ -165,6 +167,22 @@ export function makeLevel(opts) {
   const sp = floorIn(start.rx, start.ry);
   const entrance = sp.length ? r.pick(sp) : { x: ox(start.rx) + 4, y: oy(start.ry) + 6 };
   for (let j = 1; j <= 2; j++) set(entrance.x, entrance.y - j, AIR);
+  // the first level of a run: the dwarf starts in a small cell of soft rock and digs out (learning the pick).
+  // The side with open floor beyond gets the chalk marks.
+  const soft = new Set();
+  let intro = null;
+  if (opts.intro) {
+    const ex0 = entrance.x, ey0 = entrance.y;
+    const open = (d) => at(ex0 + 2 * d, ey0) === AIR && SOLID.has(at(ex0 + 2 * d, ey0 + 1));
+    const dir = open(1) ? 1 : open(-1) ? -1 : 1;
+    for (const [dx, dy] of [[-1, 0], [1, 0], [-1, -1], [1, -1], [-1, -2], [0, -2], [1, -2]]) {
+      const x = ex0 + dx, y = ey0 + dy;
+      if (at(x, y) === BEDROCK) continue;
+      set(x, y, ROCK); soft.add(y * W + x);
+    }
+    if (!SOLID.has(at(ex0 + dir, ey0 + 1))) set(ex0 + dir, ey0 + 1, ROCK);
+    intro = { x: ex0, y: ey0, dir };
+  }
   const room0 = room[exit.ry][exit.rx], X0 = ox(exit.rx), Y0 = oy(exit.ry);
   // the exit room gets a flat floor on its bottom row so exit, wall and lift have room
   for (let i = 1; i <= 8; i++) { set(X0 + i, Y0 + 6, AIR); set(X0 + i, Y0 + 5, AIR); if (at(X0 + i, Y0 + 7) === AIR) set(X0 + i, Y0 + 7, ROCK); }
@@ -248,6 +266,36 @@ export function makeLevel(opts) {
     spawns.push({ kind: 'bat', x, y });
     k++;
   }
+  // cave coins on floors, chests with a find or a scroll
+  const coins = [], chests = [];
+  const nChest = 1 + (r() < 0.45 ? 1 : 0);
+  for (let k = 0, guard = 0; k < nChest && guard < 200 && floors.length; guard++) {
+    const f = r.pick(floors);
+    if (busy.has(key(f.x, f.y)) || at(f.x, f.y) !== AIR || near(f.x, f.y, entrance, 4)) continue;
+    chests.push({ x: f.x, y: f.y, loot: chestLoot(r) }); busy.add(key(f.x, f.y));
+    k++;
+  }
+  const nCoins = 6 + r.int(5) + opts.layer;
+  for (let k = 0, guard = 0; k < nCoins && guard < 300 && floors.length; guard++) {
+    const f = r.pick(floors);
+    if (busy.has(key(f.x, f.y)) || at(f.x, f.y) !== AIR) continue;
+    coins.push({ x: f.x, y: f.y, n: 1 + (r() < 0.3 ? 1 : 0), dx: r.int(24) - 12 }); busy.add(key(f.x, f.y));
+    k++;
+  }
+  // the chalk marks of the first level: a free stretch of back wall near the start, 5 x 2 tiles
+  let chalk = null;
+  if (intro) {
+    let best = null;
+    for (let by = intro.y - 4; by <= intro.y - 1; by++) for (let bx = intro.x - 9; bx <= intro.x + 5; bx++) {
+      let ok = true;
+      for (let j = 0; j < 2 && ok; j++) for (let i = 0; i < 5 && ok; i++) if (at(bx + i, by + j) !== AIR) ok = false;
+      if (!ok) continue;
+      const d = Math.abs(bx + 2 - intro.x - 3 * intro.dir) + Math.abs(by - intro.y + 2) * 2;
+      if (!best || d < best.d) best = { x: bx, y: by, d };
+    }
+    if (best) chalk = { x: best.x, y: best.y };
+  }
+
   // torches on the back wall of each path room
   const torches = [];
   for (let y = 0; y < ROOMS_Y; y++) for (let x = 0; x < ROOMS_X; x++) {
@@ -272,7 +320,7 @@ export function makeLevel(opts) {
   const weigh = (list) => { const sum = list.reduce((s, x) => s + x[1], 0); let v = r() * sum; for (const [k, w] of list) if ((v -= w) < 0) return k; return list[0][0]; };
   for (let k = 0; k < 280; k++) {
     const x = 1 + r.int(W - 2), y = 1 + r.int(H - 2), id = y * W + x;
-    if (at(x, y) !== AIR || used.has(id)) continue;
+    if (at(x, y) !== AIR || used.has(id) || busy.has(id)) continue;
     if (SOLID.has(at(x, y - 1)) && at(x, y - 1) !== TRAP && !stals.some((s) => s.x === x && s.y === y - 1)) {
       used.add(id); decor.push({ x, y, kind: weigh(ceil), top: true, flip: r() < 0.5 });
     } else if (at(x, y + 1) === ROCK) {
@@ -298,7 +346,7 @@ export function makeLevel(opts) {
   }
 
   return { seed: opts.seed, layer: opts.layer, depth: opts.depth, last: !!opts.last, tiles, at, set, veins, entrance, ...out,
-    shop: shop && { ...shop, x: ox(shop.rx), y: oy(shop.ry) }, traps, stals, spawns, torches, decor, drips, ladders, room };
+    shop: shop && { ...shop, x: ox(shop.rx), y: oy(shop.ry) }, traps, stals, spawns, torches, decor, drips, ladders, room, soft, intro, chalk, coins, chests };
 
   function carveShop(X, Y, door) {
     for (let j = 3; j <= 6; j++) for (let i = 1; i <= 8; i++) set(X + i, Y + j, AIR);
