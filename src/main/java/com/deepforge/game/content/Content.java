@@ -723,6 +723,7 @@ public final class Content {
         d.put("dyes", DYES);
         d.put("wearSlots", WEAR_SLOTS);
         d.put("magic", Magic.asData());
+        d.put("delve", com.deepforge.game.rules.Delve.asData());
         d.put("gems", Gems.asData());
         return d;
     }

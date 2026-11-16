@@ -98,6 +98,8 @@ public final class Actions {
             case "bellows", "boost" -> boost(f, a, t);
             case "fertilize" -> fertilize(f, a, t);
             case "vein" -> vein(f, a, t, r);
+            case "delveStart" -> com.deepforge.game.rules.Delve.start(f, a, t, r);
+            case "delveEnd" -> com.deepforge.game.rules.Delve.end(f, a, t);
             case "smith" -> smith(f, a, t, r);
             case "nameArtifact" -> nameArtifact(f, a);
             case "equip" -> equip(f, a);
@@ -165,7 +167,7 @@ public final class Actions {
         String job = str(a, "job");
         check(job != null, "Choose a job.");
         switch (job) {
-            case "idle", "merchant" -> d.job = job;
+            case "idle", "merchant", "adventurer" -> d.job = job;
             case "foreman" -> {
                 check(f.level >= FOREMAN_LEVEL, "Reach hold level " + FOREMAN_LEVEL + " to name a foreman.");
                 for (Dwarf o : f.dwarves) if (o != d && o.job.equals("foreman")) o.job = "idle";

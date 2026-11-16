@@ -99,8 +99,14 @@ def back_reach(sh, elbow, toward):
     (the hand is hidden by the back)."""
     return Part().fill(cap(sh, elbow, 2.4) | cap(elbow, toward, 2.2), 'tunic')
 def back_arms(sex, frame):
-    """frame: 0 walk A, 1 stand, 2 walk B, 3 both hands at the bench, 4 right hand raised (hammer up), 5 striking."""
+    """frame: 0 walk A, 1 stand, 2 walk B, 3 both hands at the bench, 4 right hand raised (hammer up), 5 striking,
+    6 climbing: left hand up, 7 climbing: right hand up."""
     (lx, ly), (rx, ry) = SHOULDER[(sex, 'front')]
+    if frame in (6, 7):
+        up_l = frame == 6
+        left = arm((lx, ly), (lx + 1.5, 16.0), elbow=(lx - 1.5, 27.0)) if up_l else arm((lx, ly), (lx + 0.5, 30.0), elbow=(lx - 2.5, 39.0))
+        right = arm((rx, ry), (rx - 0.5, 30.0), elbow=(rx + 2.5, 39.0)) if up_l else arm((rx, ry), (rx - 1.5, 16.0), elbow=(rx + 1.5, 27.0))
+        return compose_parts([left, right])
     if frame >= 3:
         left = back_reach((lx, ly), (lx - 2.0, 43.0), (lx + 2.0, 46.0))
         if frame == 3: right = back_reach((rx, ry), (rx + 2.0, 43.0), (rx - 2.0, 46.0))
@@ -114,6 +120,7 @@ SIDE_HANDS = {  # frame: (near hand, far hand, near elbow, far elbow)
     0: ((17.5, 46), (26.5, 46), None, None), 1: ((21.5, 47.5), (23.5, 47), None, None), 2: ((25.5, 46), (19.5, 46), None, None),
     3: ((29.5, 44.5), (31.0, 44.0), (23.0, 43.5), (26.0, 43.0)), 4: ((31.0, 41.0), (32.5, 40.5), (24.0, 43.5), (27.0, 43.0)),
     5: ((30.5, 37.5), (32.0, 37.0), (25.0, 43.0), (28.0, 42.5)),
+    6: ((32.0, 15.0), (33.5, 15.5), (28.0, 27.0), (29.5, 27.0)),   # both hands up over the head: hanging, falling
 }
 def side_arm(sex, frame, far):
     near_sh, far_sh = SHOULDER[(sex, 'side')]

@@ -53,7 +53,7 @@ public class ApiController {
 
     @GetMapping("/auth/info")
     public Map<String, Object> info() {
-        return Map.of("inviteRequired", auth.inviteRequired());
+        return Map.of("inviteRequired", auth.inviteRequired(), "delveTest", cheatsForAll);   // delveTest: /delve.html may play without login
     }
 
     @PostMapping("/auth/register")

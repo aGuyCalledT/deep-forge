@@ -16,6 +16,7 @@ import valley as V
 import shells as SH
 from ways import WAYS, WAY_SPRITES, WAY_TILES
 from mine import MINE, minecart, rail
+from delve import DELVE
 from PIL import Image
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '../../src/main/resources/static/art/scene')
@@ -47,6 +48,7 @@ for k, f in WAY_TILES.items(): ITEMS[k] = ('tile', 'shell', [as_sprite(f())])
 add('rock', 'prop', ROCK)
 ITEMS['drip'] = ('prop', 'rock', frames_of(drip))
 add('mine', 'prop', MINE)
+add('delve', 'prop', DELVE)
 ITEMS['minecart'] = ('prop', 'mine', [minecart(i) for i in range(5)])   # empty .. heaped
 ITEMS['rail'] = ('tile', 'mine', [as_sprite(rail())])
 add('monster', 'prop', MONSTERS)

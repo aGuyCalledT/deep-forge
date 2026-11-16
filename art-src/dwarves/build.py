@@ -16,11 +16,11 @@ def build_sheets():
             S[f'{v}_body_{sex}'] = [body(sex, v)]
             S[f'{v}_vest_{sex}'] = [vest(sex, v)]
         S[f'front_arms_{sex}'] = [front_arms(sex, f) for f in range(6)]
-        S[f'back_arms_{sex}'] = [back_arms(sex, f) for f in range(6)]
+        S[f'back_arms_{sex}'] = [back_arms(sex, f) for f in range(8)]
         S[f'front_face_{sex}'] = [face('front', m, sex) for m in MOODS]
         S[f'side_face_{sex}'] = [face('side', m, sex) for m in MOODS]
-    S['side_arm_far'] = [side_arm('m', f, True) for f in range(6)]
-    S['side_arm_near'] = [side_arm('m', f, False) for f in range(6)]
+    S['side_arm_far'] = [side_arm('m', f, True) for f in range(7)]
+    S['side_arm_near'] = [side_arm('m', f, False) for f in range(7)]
     for v in VIEWS:
         S[f'{v}_head'] = [head(v)]
         S[f'{v}_hair'] = [hair(v, s) for s in STYLES]
@@ -56,6 +56,11 @@ POSES = {
  'workSitBack': ('back', [(3, 3, 5, None, None), (3, 4, 5, None, None), (3, 5, 5, None, None), (3, 4, 5, None, None)]),
  'workSitFront': ('front', [(3, 3, 5, None, None), (3, 4, 5, None, None), (3, 3, 5, None, None), (3, 4, 5, None, None)]),
  # mining: the pick raised, swung, striking (twice as long on the strike)
+ # the delve (static/js/delve): jumping, falling with the arms up, hanging from a ledge, climbing a ladder or rope
+ 'jump':    ('side', [(0, 5, 0, None, None)]),
+ 'fall':    ('side', [(2, 6, 0, 'open', None)]),
+ 'hang':    ('side', [(1, 6, 0, None, None)]),
+ 'climb':   ('back', [(0, 6, 0, None, None), (1, 6, 0, None, None), (2, 7, 0, None, None), (1, 7, 0, None, None)]),
  'mine':    ('side', [(1, 5, 0, None, 'pick_up'), (1, 4, 0, None, 'pick_mid'), (1, 3, 0, None, 'pick_down'), (1, 3, 0, 'angry', 'pick_down')]),
 }
 

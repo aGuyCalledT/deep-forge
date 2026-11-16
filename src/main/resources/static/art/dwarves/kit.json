@@ -61,7 +61,7 @@
   "side_body_m": 1,
   "side_vest_m": 1,
   "front_arms_m": 6,
-  "back_arms_m": 6,
+  "back_arms_m": 8,
   "front_face_m": 6,
   "side_face_m": 6,
   "front_legs_f": 4,
@@ -74,11 +74,11 @@
   "side_body_f": 1,
   "side_vest_f": 1,
   "front_arms_f": 6,
-  "back_arms_f": 6,
+  "back_arms_f": 8,
   "front_face_f": 6,
   "side_face_f": 6,
-  "side_arm_far": 6,
-  "side_arm_near": 6,
+  "side_arm_far": 7,
+  "side_arm_near": 7,
   "front_head": 1,
   "front_hair": 6,
   "front_beard": 5,
@@ -670,6 +670,75 @@
      3,
      4,
      5,
+     null,
+     null
+    ]
+   ]
+  },
+  "jump": {
+   "view": "side",
+   "frames": [
+    [
+     0,
+     5,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "fall": {
+   "view": "side",
+   "frames": [
+    [
+     2,
+     6,
+     0,
+     "open",
+     null
+    ]
+   ]
+  },
+  "hang": {
+   "view": "side",
+   "frames": [
+    [
+     1,
+     6,
+     0,
+     null,
+     null
+    ]
+   ]
+  },
+  "climb": {
+   "view": "back",
+   "frames": [
+    [
+     0,
+     6,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     6,
+     0,
+     null,
+     null
+    ],
+    [
+     2,
+     7,
+     0,
+     null,
+     null
+    ],
+    [
+     1,
+     7,
+     0,
      null,
      null
     ]

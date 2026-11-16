@@ -37,6 +37,8 @@ public final class State {
         public Map<String, Integer> mint = new TreeMap<>();  // bars waiting in the vault's mint: metal -> count
         public double minted;            // progress on the next coin bar (0..1)
         public List<Expedition> expeditions = new ArrayList<>();
+        public Run delve;                 // the adventurer's open run in the delve, or null (rules/Delve.java)
+        public int nextDelve;
         public List<Report> reports = new ArrayList<>();   // returned caravans and expeditions whose loot waits to be collected
         public List<Offer> offers = new ArrayList<>();
         public double offersAt;
@@ -187,7 +189,7 @@ public final class State {
         public double happiness = 60;
         public double lowMoodHours;
         public double hungerHours;
-        public String job = "idle";   // idle | miner | worker | warrior | merchant
+        public String job = "idle";   // idle | miner | worker | warrior | merchant | foreman | adventurer
         public int layer;             // miner: layer index
         public String building;       // worker: building id
         public int machine = -1;      // worker: which machine (0-based); -1 = the first free one
@@ -204,6 +206,7 @@ public final class State {
         public Map<String, Double> gearWear = new TreeMap<>();   // weapon, helm, armor: share of their life used up (breaks at 1)
         public double arrived;
         public double fellAt;         // when an Undying artifact last saved them
+        public double delveRest;      // fell in the delve: no new run before this time
     }
 
     public static class Building {
@@ -387,6 +390,17 @@ public final class State {
     }
 
     /** What a caravan or expedition brought home. The goods, coins and artifacts are added when the player collects. */
+    /** An open run in the delve: the seed the browser builds the levels from and what the dwarf brought. */
+    public static class Run {
+        public int id;
+        public int dwarf;
+        public long seed;
+        public double started;
+        public int hearts;
+        public int pick;              // hardness the pick breaks
+        public int damage;
+    }
+
     public static class Report {
         public int id;
         public String kind;                 // caravan | expedition

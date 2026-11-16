@@ -64,6 +64,7 @@ public final class Sim {
         migrants(f, r, t + dt);
         Expeditions.refreshOffers(f, r, t + dt);
         income(f, dt);
+        Delve.step(f, t + dt);
     }
 
     /** Average income per hour over about a day; the client picks a small, medium or big coin sound by it. */
