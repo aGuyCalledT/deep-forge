@@ -9,11 +9,11 @@ import { createGame } from './game.js';
 
 const KEYS = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
-  Space: 'jump', KeyZ: 'jump', KeyK: 'jump', KeyX: 'pick', KeyJ: 'pick', KeyC: 'bomb', KeyB: 'bomb', KeyV: 'rope', KeyR: 'rope', KeyE: 'up', Enter: 'up',
+  Space: 'jump', KeyE: 'pick', KeyQ: 'bomb', KeyR: 'rope', Enter: 'up',
 };
 export const HELP = [
-  ['Move, climb', 'Arrows or WASD'], ['Jump', 'Space, Z or K'], ['Swing the pick', 'X or J (hold Down or Up to dig there)'],
-  ['Bomb', 'C or B (Down: drop it)'], ['Rope', 'V or R'], ['Buy, go down, ride the lift', 'Up'], ['Pause', 'Esc'],
+  ['Move, climb', 'Arrows or WASD'], ['Jump', 'Space'], ['Swing the pick', 'E (hold Down or Up to dig there)'],
+  ['Bomb', 'Q (Down: drop it)'], ['Rope', 'R'], ['Buy, go down, ride the lift', 'Up or W'], ['Pause', 'Esc'],
 ];
 
 const url = new Map();
