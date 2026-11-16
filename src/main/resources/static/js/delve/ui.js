@@ -72,7 +72,7 @@ export function openDelve(o) {
   let report = null;
   const game = createGame(canvas, {
     seed: o.run.seed, hearts: o.run.hearts, pick: o.run.pick, damage: o.run.damage, look: o.look, data: o.data,
-    startLayer: o.startLayer || 0, god: o.god, bombs: o.bombs, ropes: o.ropes,
+    startLayer: o.startLayer || 0, god: o.god, bright: o.bright, training: o.training, bombs: o.bombs, ropes: o.ropes,
     onHud: hud,
     onEnd: async (r) => {
       showEnd(r, null);
@@ -94,7 +94,7 @@ export function openDelve(o) {
     const ores = Object.entries(h.bag);
     if (!ores.length) bag.appendChild(Object.assign(document.createElement('span'), { className: 'dv-dim', textContent: 'No ore yet' }));
     for (const [k, n] of ores) { bag.appendChild(pic(S.ore(k), 'ore' + k)); bag.appendChild(num(n)); }
-    $('.dv-where').textContent = `${h.layerName} ${h.depth + 1}-${h.levels}`;
+    $('.dv-where').textContent = `${o.training ? 'Training: ' : ''}${h.layerName} ${h.depth + 1}-${h.levels}`;
   }
   const num = (n) => Object.assign(document.createElement('span'), { className: 'dv-n', textContent: n });
 
@@ -145,14 +145,14 @@ export function openDelve(o) {
   function showEnd(r, rep) {
     menu.hidden = false;
     const found = Object.entries(r.result === 'exit' ? r.ore : r.found);
-    const title = r.result === 'exit' ? 'Back in the light' : r.result === 'dead' ? 'Carried out of the mine' : 'Turned back';
-    const line = r.result === 'exit' ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'} deep.`
+    const title = o.training ? 'Training over' : r.result === 'exit' ? 'Back in the light' : r.result === 'dead' ? 'Carried out of the mine' : 'Turned back';
+    const line = o.training ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'}. Nothing is kept.` : r.result === 'exit' ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'} deep.`
       : r.result === 'dead' ? 'Badly hurt. Everything found is lost.' : 'Nothing found is kept.';
     menu.innerHTML = `<div class="dv-card"><h2>${title}</h2><p>${line}</p><div class="dv-loot"></div>
       <p class="dv-dim dv-rep">${rep === null ? 'Reporting to the hold…' : rep && rep.error ? rep.error : rep && rep.text ? rep.text : ''}</p>
       <div class="dv-row">${o.again ? '<button class="btn" data-a="again">Again</button>' : ''}<button class="btn primary" data-a="close">${o.closeLabel || 'Back to the mine'}</button></div></div>`;
     const loot = menu.querySelector('.dv-loot');
-    for (const [k, n] of found) { const s = document.createElement('span'); s.className = r.result === 'exit' ? 'dv-got' : 'dv-lost'; s.append(pic(S.ore(k), 'ore' + k), num(n)); loot.appendChild(s); }
+    for (const [k, n] of found) { const s = document.createElement('span'); s.className = r.result === 'exit' && !o.training ? 'dv-got' : 'dv-lost'; s.append(pic(S.ore(k), 'ore' + k), num(n)); loot.appendChild(s); }
     menu.querySelector('[data-a=close]').onclick = () => close();
     const again = menu.querySelector('[data-a=again]');
     if (again) again.onclick = () => { close(); o.again(); };

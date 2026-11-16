@@ -17,7 +17,10 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 
 - [x] Beruf Adventurer, Run vom Server (Seed, Herzen, Spitzhacke), Beute gedeckelt, Ruhe nach Sturz
 - [x] Level aus dem Seed, Laufen, Springen, Kanten greifen, Leitern, Seile, Bomben, Graben nach Härte, Fallen, Gegner, Laden
-- [x] Testseite `delve.html` ohne Konto
+- [x] Testseite `delve.html` ohne Konto (mit „Lights on“ zum Ansehen der Grafik)
+- [x] Training ohne Beute und ohne Folgen
+- [x] Fels aus einer durchgehenden Textur, zackige Kanten, Pflanzen und Tropfwasser
+- [x] Gegner schauen in Laufrichtung, Hacken direkt nach oben
 - [ ] Mehr Raum-Vorlagen statt nur zufälliger Simsen (Spelunky-artige Raumtypen)
 - [ ] Schatztruhen, Schlüssel, Geheimräume; Gegner, die Erz fallen lassen
 - [ ] Eigene Sounds für Sprung, Bombe, Pfeil, Stalaktit (bis dahin vorhandene)

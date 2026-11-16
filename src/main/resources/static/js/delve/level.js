@@ -257,17 +257,48 @@ export function makeLevel(opts) {
       if (at(tx, ty) === AIR && at(tx, ty + 1) === AIR) { torches.push({ x: tx, y: ty }); break; }
     }
   }
-  // a few still things for the look: stalactites, mushrooms, crystals, cobwebs
-  const decor = [];
-  for (let k = 0; k < 40; k++) {
+  // still things for the look. Ceiling: stalactites, cobwebs, vines, roots, glow-worms, dripping water.
+  // Floor: stalagmites, mushrooms, ferns, crystals, bones, puddles; on top of blocks: grass and moss (drawn in front).
+  const decor = [], drips = [], used = new Set();
+  const L = opts.layer, green = L <= 1 ? 1 : L === 2 ? 0.5 : 0.15;   // plants thin out with depth
+  const ceil = [
+    ['stalactites', 3], ['cobweb', 1], ['delve_vine_0', 3 * green], ['delve_vine_1', 2 * green], ['delve_vine_2', 3 * green],
+    ['roots', 2 * green], ['delve_glowworms_0', L >= 1 ? 1.5 : 0.4], ['delve_glowworms_1', L >= 1 ? 1.5 : 0.4],
+  ];
+  const floor = [
+    ['stalagmites', 3], ['delve_shrooms_0', 2 * green + 0.5], ['delve_shrooms_1', green + 0.3], ['delve_fern_0', 3 * green], ['delve_fern_1', 2 * green],
+    ['glowshrooms', L <= 1 ? 1.5 : 0.6], ['crystals', L >= 3 ? 3 : L === 2 ? 0.8 : 0], ['delve_bones', 0.7], ['boulder', 0.6],
+  ];
+  const weigh = (list) => { const sum = list.reduce((s, x) => s + x[1], 0); let v = r() * sum; for (const [k, w] of list) if ((v -= w) < 0) return k; return list[0][0]; };
+  for (let k = 0; k < 280; k++) {
+    const x = 1 + r.int(W - 2), y = 1 + r.int(H - 2), id = y * W + x;
+    if (at(x, y) !== AIR || used.has(id)) continue;
+    if (SOLID.has(at(x, y - 1)) && at(x, y - 1) !== TRAP && !stals.some((s) => s.x === x && s.y === y - 1)) {
+      used.add(id); decor.push({ x, y, kind: weigh(ceil), top: true, flip: r() < 0.5 });
+    } else if (at(x, y + 1) === ROCK) {
+      used.add(id); decor.push({ x, y, kind: weigh(floor), flip: r() < 0.5 });
+    }
+  }
+  // water drips from a few ceilings; a puddle where it lands
+  for (let k = 0, guard = 0; k < 5 + r.int(5) && guard < 200; guard++) {
     const x = 1 + r.int(W - 2), y = 1 + r.int(H - 2);
-    if (at(x, y) !== AIR) continue;
-    if (SOLID.has(at(x, y - 1)) && at(x, y - 1) !== TRAP && !stals.some((s) => s.x === x && s.y === y - 1)) decor.push({ x, y, kind: r() < 0.15 ? 'cobweb' : 'stalactites', top: true, flip: r() < 0.5 });
-    else if (at(x, y + 1) === ROCK && at(x, y) === AIR) decor.push({ x, y, kind: opts.layer >= 3 ? 'crystals' : opts.layer === 0 ? (r() < 0.5 ? 'glowshrooms' : 'stalagmites') : 'stalagmites', flip: r() < 0.5 });
+    if (at(x, y) !== AIR || !SOLID.has(at(x, y - 1)) || at(x, y - 1) === TRAP) continue;
+    let fy = y; while (fy < H - 1 && !SOLID.has(at(x, fy + 1)) && at(x, fy) !== SPIKES) fy++;
+    if (fy - y > 14) continue;
+    drips.push({ x, y, floor: fy, off: 4 + r.int(40), every: 1.6 + r() * 2.4 });
+    if (at(x, fy + 1) === ROCK && at(x, fy) === AIR) decor.push({ x, y: fy, kind: 'delve_puddle', front: true });
+    k++;
+  }
+  // grass and moss on top of blocks
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    if (at(x, y) !== ROCK || at(x, y - 1) !== AIR) continue;
+    const v = r();
+    if (v < 0.22 * green) decor.push({ x, y: y - 1, kind: 'delve_mosstop', front: true, cover: true });
+    else if (v < 0.6 * green) decor.push({ x, y: y - 1, kind: r() < 0.5 ? 'delve_tuft_0' : 'delve_tuft_1', front: true, dx: r.int(24) - 12, flip: r() < 0.5 });
   }
 
   return { seed: opts.seed, layer: opts.layer, depth: opts.depth, last: !!opts.last, tiles, at, set, veins, entrance, ...out,
-    shop: shop && { ...shop, x: ox(shop.rx), y: oy(shop.ry) }, traps, stals, spawns, torches, decor, ladders, room };
+    shop: shop && { ...shop, x: ox(shop.rx), y: oy(shop.ry) }, traps, stals, spawns, torches, decor, drips, ladders, room };
 
   function carveShop(X, Y, door) {
     for (let j = 3; j <= 6; j++) for (let i = 1; i <= 8; i++) set(X + i, Y + j, AIR);

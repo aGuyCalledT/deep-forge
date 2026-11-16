@@ -57,7 +57,7 @@ export function createGame(canvas, opts) {
     bombs: opts.bombs ?? 2, ropes: opts.ropes ?? 2, bag: {}, god: !!opts.god, wanted: false, boughtPick: false,
     L: null, shake: 0, flash: 0, banner: null, prompt: null, time: 0,
   };
-  let P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
+  let drips = [], P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
   look = opts.look || { sex: 'm', hair: 'short', beard: 'full', hat: 'miner', vest: true, mood: 'neutral', ramps: {} };
   if (!look.hat) look = { ...look, hat: 'miner' };
 
@@ -70,7 +70,8 @@ export function createGame(canvas, opts) {
       data: { weights: lay.weights, noOre: D.noOre, orePerLevel: D.orePerLevel[G.layer], monsters: lay.monsters } });
     const L = G.L;
     ramps = { rockd: Art.depthRamp(G.layer), wall: Art.depthRamp(Math.min(4, G.layer + 1)) };
-    tiles.clear(); oreImg.clear();
+    tiles.clear(); seams.clear(); terrain = null; dirty = null;
+    drips = (L.drips || []).map((d) => ({ ...d, t: d.off / 10, drop: null }));
     mons = []; bombs = []; booms = []; arrows = []; nuggets = []; parts = []; floats = []; wares = [];
     ropes = new Set(); ropeList = []; tileHp = new Map(); noise = null;
     stals = L.stals.map((s) => ({ tx: s.x, ty: s.y, x: (s.x + 0.5) * T, y: (s.y + 1) * T, state: 'hang', t: 0, vy: 0 }));
@@ -91,7 +92,7 @@ export function createGame(canvas, opts) {
     P = { x: (L.entrance.x + 0.5) * T, y: (L.entrance.y + 1) * T, vx: 0, vy: 0, w: PW, h: PH, face: 1, ground: false, state: 'walk',
       inv: 1.2, stun: 0, apex: null, swing: 0, swingCD: 0, climbCD: 0, hangCD: 0, coyote: 0, anim: 0, hurtFlash: 0, dead: 0 };
     cam.x = P.x; cam.y = P.y - PH;
-    G.banner = { text: `${lay.name} ${G.depth + 1}-${D.levelsPerLayer}`, t: 2.6 };
+    G.banner = { text: `${opts.training ? 'Training: ' : ''}${lay.name} ${G.depth + 1}-${D.levelsPerLayer}`, t: 2.6 };
     A.sfx('doorOpen');
     hud();
   }
@@ -243,7 +244,11 @@ export function createGame(canvas, opts) {
     const edge = (x) => (P.face > 0 ? x * T - front : front - (x + 1) * T);
     const row = (y) => { for (let x = tx, k = 0; k < 2; k++, x += P.face) if (edge(x) <= REACH && solid(x, y)) return x; return null; };
     if (input.down && P.ground) { tx = Math.floor(P.x / T); ty = Math.floor((P.y + 4) / T); }
-    else if (input.up) { tx = Math.floor(P.x / T); ty = Math.floor((P.y - PH - 6) / T); }
+    else if (input.up) {                            // the block above the head: under the middle first, else under either shoulder
+      ty = Math.floor((P.y - PH - 12) / T);
+      const cols = [Math.floor(P.x / T), Math.floor((P.x + P.face * (PW / 2 - 1)) / T), Math.floor((P.x - P.face * (PW / 2 - 1)) / T)];
+      tx = cols.find((x) => solid(x, ty)) ?? cols[0];
+    }
     else {
       const feet = Math.floor((P.y - 6) / T);
       const a = row(ty), b2 = a == null ? row(feet) : null;
@@ -288,7 +293,7 @@ export function createGame(canvas, opts) {
     }
     if (t === TRAP) G.L.traps = G.L.traps.filter((q) => q.x !== tx || q.y !== ty);
     if (t === WALL) { A.sfx('cart'); G.shake = 0.3; float((tx + 0.5) * T, ty * T, 'The wall breaks!', '#9fe08a', 2); }
-    G.L.set(tx, ty, AIR); tileHp.delete(k);
+    G.L.set(tx, ty, AIR); tileHp.delete(k); touch(tx, ty);
     dust((tx + 0.5) * T, (ty + 0.8) * T, 8, true);
     for (const s of stals) if (s.state === 'hang' && s.tx === tx && s.ty === ty) s.state = 'fall';
   }
@@ -397,6 +402,7 @@ export function createGame(canvas, opts) {
           if (m.inv > 0.1) target = m.vx;
           m.vx += Math.sign(target - m.vx) * Math.min(Math.abs(target - m.vx), 900 * dt);
         }
+        if (Math.abs(m.vx) > 12 && m.inv <= 0.1 && (m.ai !== 'keeper' || !m.calm)) m.face = Math.sign(m.vx);   // look where it goes
         m.vy = Math.min(MAXFALL, m.vy + GRAV * dt);
         move(m, dt);
         if (m.ground && m.landV > 300 && G.L.at(Math.floor(m.x / T), Math.floor((m.y - 1) / T)) === SPIKES) damage(m, 3, m.x);
@@ -474,6 +480,16 @@ export function createGame(canvas, opts) {
       }
     }
     nuggets = nuggets.filter((n) => !n.got && n.y < H * T);
+    // water dripping from the ceiling
+    for (const d of drips) {
+      if (!d.drop) { d.t -= dt; if (d.t <= 0) d.drop = { y: (d.y) * T + 2, vy: 0 }; continue; }
+      d.drop.vy = Math.min(MAXFALL, d.drop.vy + GRAV * 0.8 * dt); d.drop.y += d.drop.vy * dt;
+      if (d.drop.y >= (d.floor + 1) * T - 2 || solid(d.x, Math.floor(d.drop.y / T))) {
+        const y = Math.min(d.drop.y, (d.floor + 1) * T - 2);
+        for (let i = 0; i < 4; i++) parts.push({ x: (d.x + 0.5) * T, y: y - 1, vx: (Math.random() - 0.5) * 90, vy: -60 - Math.random() * 70, t: 0, life: 0.3, c: i % 2 ? '#a8e0dc' : '#5a9aa0', s: 1 });
+        d.drop = null; d.t = d.every;
+      }
+    }
     // particles and words
     for (const p of parts) { p.t += dt; p.vy += GRAV * 0.6 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
     parts = parts.filter((p) => p.t < p.life);
@@ -503,7 +519,7 @@ export function createGame(canvas, opts) {
       G.prompt = next ? `Up: break through into ${next.name}` : 'Up: go deeper';
       if (pressed('up')) nextLevel();
     } else if (L0.lift && Math.abs(tx - L0.lift.x) <= 0 && ty === L0.lift.y) {
-      G.prompt = `Up: ride the lift home with ${bagTotal()} ore`;
+      G.prompt = opts.training ? 'Up: ride the lift up, the training is over' : `Up: ride the lift home with ${bagTotal()} ore`;
       if (pressed('up')) { A.sfx('cart'); finish('exit'); }
     } else if (L0.wall && Math.abs(tx - L0.wall.x) <= 1 && ty === L0.wall.y1 && L0.at(L0.wall.x, L0.wall.y1) === WALL) {
       const h = D.walls[G.layer + 1];
@@ -578,21 +594,120 @@ export function createGame(canvas, opts) {
     if (!tiles.has(k)) tiles.set(k, Art.frame(name, f, { recolour: { rockd: ramps[ramp] } }).canvas);
     return tiles.get(k);
   }
-  const oreImg = new Map();
-  function veinImg(ore, v) {
+  // ---------------------------------------------------------------- the rock: blocks cut from one texture
+  // All solid blocks are cut from one seamless texture of the layer's rock (delve_rocktex), so neighbouring blocks
+  // run on without a line between them. Faces open to the air get a jagged edge (teeth from world coordinates, so
+  // they run on from block to block), a dark outline, a lit lip on top and a shaded underside. Drawn once per level
+  // into one canvas; a broken block redraws only its neighbourhood.
+  let terrain = null, dirty = null, tex = null, texLayer = -1;
+  const TEX = 192, JAG = 10;
+  const rgbOf = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const hash3 = (a, b, c) => { let v = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177); v = Math.imul(v ^ (v >>> 13), 1103515245); return (v ^ (v >>> 16)) >>> 0; };
+  // how deep the edge bites into the block at this point along an open face: 0 .. JAG pixels, a tooth every 5-6 px
+  function bite(along, line, side) {
+    const i = Math.floor(along / 6), f = along / 6 - i;
+    const at = (k) => { const h = hash3(k, line, side); return k & 1 ? h % 3 : 3 + h % (JAG - 2); };   // teeth: shallow, deep, shallow
+    return Math.round(at(i) + (at(i + 1) - at(i)) * f);
+  }
+  function touch(tx, ty) {
+    const d = dirty || (dirty = { x0: tx, y0: ty, x1: tx, y1: ty });
+    d.x0 = Math.min(d.x0, tx - 1); d.y0 = Math.min(d.y0, ty - 1); d.x1 = Math.max(d.x1, tx + 1); d.y1 = Math.max(d.y1, ty + 1);
+  }
+  function texture() {
+    if (tex && texLayer === G.layer) return tex;
+    const c = Art.frame('delve_rocktex', 0, { recolour: { rockd: ramps.rockd } }).canvas;
+    tex = c.getContext('2d').getImageData(0, 0, TEX, TEX).data; texLayer = G.layer;
+    return tex;
+  }
+  const isRock = (t) => SOLID.has(t);
+  function terrainPaint(tx0, ty0, tx1, ty1) {
+    const L0 = G.L;
+    tx0 = Math.max(0, tx0); ty0 = Math.max(0, ty0); tx1 = Math.min(W - 1, tx1); ty1 = Math.min(H - 1, ty1);
+    const PAD = 3, px0 = tx0 * T - PAD, py0 = ty0 * T - PAD, pw = (tx1 - tx0 + 1) * T + 2 * PAD, ph = (ty1 - ty0 + 1) * T + 2 * PAD;
+    // 1. the cut-out: which pixels are rock
+    const mask = new Uint8Array(pw * ph);
+    const mtx0 = Math.max(0, Math.floor(px0 / T)), mtx1 = Math.min(W - 1, Math.floor((px0 + pw - 1) / T));
+    const mty0 = Math.max(0, Math.floor(py0 / T)), mty1 = Math.min(H - 1, Math.floor((py0 + ph - 1) / T));
+    for (let ty = mty0; ty <= mty1; ty++) for (let tx = mtx0; tx <= mtx1; tx++) {
+      if (!isRock(L0.at(tx, ty))) continue;
+      const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H && !isRock(L0.at(x, y));
+      const up = open(tx, ty - 1), dn = open(tx, ty + 1), lf = open(tx - 1, ty), rt = open(tx + 1, ty);
+      const X0 = tx * T, Y0 = ty * T;
+      const ys = Math.max(Y0, py0), ye = Math.min(Y0 + T, py0 + ph), xs = Math.max(X0, px0), xe = Math.min(X0 + T, px0 + pw);
+      const corner = (k) => 7 + hash3(tx, ty, k) % 6;
+      const cUL = up && lf ? corner(1) : 0, cUR = up && rt ? corner(2) : 0, cDL = dn && lf ? corner(3) : 0, cDR = dn && rt ? corner(4) : 0;
+      for (let Y = ys; Y < ye; Y++) {
+        const ly = Y - Y0, bl = lf ? bite(Y, tx, 3) : -1, br = rt ? bite(Y, tx + 1, 4) : -1;
+        let row = (Y - py0) * pw;
+        for (let X = xs; X < xe; X++) {
+          const lx = X - X0;
+          if (up && ly < bite(X, ty, 1)) continue;
+          if (dn && T - 1 - ly < bite(X, ty + 1, 2)) continue;
+          if (lf && lx < bl) continue;
+          if (rt && T - 1 - lx < br) continue;
+          if (cUL && lx + ly < cUL) continue;
+          if (cUR && (T - 1 - lx) + ly < cUR) continue;
+          if (cDL && lx + (T - 1 - ly) < cDL) continue;
+          if (cDR && (T - 1 - lx) + (T - 1 - ly) < cDR) continue;
+          mask[row + X - px0] = 1;
+        }
+      }
+    }
+    // 2. colour: the texture, outlined where the rock meets air, lit on top, shaded below
+    const tx_ = texture(), ramp = ramps.rockd.map(rgbOf), dark = ramp[0], lit = ramp[4];
+    const ox = tx0 * T, oy = ty0 * T, w = (tx1 - tx0 + 1) * T, h = (ty1 - ty0 + 1) * T;
+    const img = new ImageData(w, h), out = img.data;
+    const m = (x, y) => mask[(y - py0) * pw + (x - px0)];
+    for (let Y = oy; Y < oy + h; Y++) {
+      const bed = L0.at(Math.floor(ox / T), Math.floor(Y / T));
+      for (let X = ox; X < ox + w; X++) {
+        if (!m(X, Y)) continue;
+        const o = ((Y - oy) * w + (X - ox)) * 4, ti = (((Y % TEX) * TEX) + (X % TEX)) * 4;
+        let r = tx_[ti], g = tx_[ti + 1], b = tx_[ti + 2];
+        if (!m(X, Y - 1) || !m(X, Y + 1) || !m(X - 1, Y) || !m(X + 1, Y)) { r = dark[0]; g = dark[1]; b = dark[2]; }
+        else if (!m(X, Y - 2) || !m(X, Y - 3)) { const k = !m(X, Y - 2) ? 0.55 : 0.3; r += (lit[0] - r) * k; g += (lit[1] - g) * k; b += (lit[2] - b) * k; }
+        else if (!m(X, Y + 2) || !m(X, Y + 3) || !m(X, Y + 4)) { const k = !m(X, Y + 2) ? 0.55 : !m(X, Y + 3) ? 0.68 : 0.8; r *= k; g *= k; b *= k; }
+        else if (!m(X - 2, Y)) { r += (lit[0] - r) * 0.2; g += (lit[1] - g) * 0.2; b += (lit[2] - b) * 0.2; }
+        else if (!m(X + 2, Y) || !m(X + 3, Y)) { r *= 0.75; g *= 0.75; b *= 0.75; }
+        void bed;
+        out[o] = r; out[o + 1] = g; out[o + 2] = b; out[o + 3] = 255;
+      }
+    }
+    const tg = terrain.getContext('2d');
+    tg.putImageData(img, ox, oy);
+    // 3. what sits in the rock, cut to the same edge: ore seams, the layer wall, arrow traps; bedrock darker
+    tg.save(); tg.globalCompositeOperation = 'source-atop'; tg.imageSmoothingEnabled = false;
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      const t = L0.at(tx, ty), X = tx * T, Y = ty * T, v = (tx * 7 + ty * 13) & 3;
+      if (t === ORE) tg.drawImage(seamImg(veinAt(L0, tx, ty).ore, v), X, Y);
+      else if (t === WALL) tg.drawImage(tileImg('delve_wall', 0, 'wall'), X, Y);
+      else if (t === TRAP) {
+        const q = L0.traps.find((a) => a.x === tx && a.y === ty);
+        const fr = Art.frame('delve_arrowtrap', 0, { recolour: { rockd: ramps.rockd }, flip: q && q.dir < 0 });
+        tg.drawImage(fr.canvas, X, Y);
+      } else if (t === BEDROCK) { tg.fillStyle = 'rgba(4,2,8,0.5)'; tg.fillRect(X, Y, T, T); }
+    }
+    tg.restore();
+  }
+  function terrainCanvas() {
+    if (!terrain) { terrain = S.mk(W * T, H * T); terrainPaint(0, 0, W - 1, H - 1); dirty = null; }
+    if (dirty) { const d = dirty; dirty = null; terrainPaint(d.x0, d.y0, d.x1, d.y1); }
+    return terrain;
+  }
+  const seams = new Map();
+  function seamImg(ore, v) {                          // ore seams on a clear tile, laid over the rock texture
     const k = ore + v;
-    if (!oreImg.has(k)) {
+    if (!seams.has(k)) {
       const c = S.mk(T, T), g = c.getContext('2d');
-      g.drawImage(tileImg('delve_block', v % 4, 'rockd'), 0, 0);
       const ramp = DW.ramp(oreColour(ore));
       const fr = Art.frame('ore_seam_' + (v % 3), 0, { recolour: { rockd: ramps.rockd, ingot: ramp } });
       g.drawImage(fr.canvas, Math.round(T / 2 - fr.ax), Math.round(T / 2 - fr.ay));
       const fr2 = Art.frame('ore_seam_' + ((v + 1) % 3), 0, { recolour: { rockd: ramps.rockd, ingot: ramp } });
-      g.save(); g.beginPath(); g.rect(4, 4, T - 8, T - 8); g.clip();
+      g.save(); g.beginPath(); g.rect(6, 6, T - 12, T - 12); g.clip();
       g.drawImage(fr2.canvas, Math.round(T / 2 - fr2.ax + 6), Math.round(T / 2 - fr2.ay - 8)); g.restore();
-      oreImg.set(k, c);
+      seams.set(k, c);
     }
-    return oreImg.get(k);
+    return seams.get(k);
   }
   let bgPat = null, bgLayer = -1, lightC = null;
   function draw(t) {
@@ -616,10 +731,6 @@ export function createGame(canvas, opts) {
     ctx.fillStyle = 'rgba(8,5,12,0.8)'; ctx.fillRect(x0, y0, vw + 1, vh + 1);
     const c0 = Math.max(0, Math.floor(x0 / T)), c1 = Math.min(W - 1, Math.floor((x0 + vw) / T)), r0 = Math.max(0, Math.floor(y0 / T)), r1 = Math.min(H - 1, Math.floor((y0 + vh) / T));
     // things on the back wall
-    for (const d of L0.decor) if (d.x >= c0 - 1 && d.x <= c1 + 1 && d.y >= r0 - 1 && d.y <= r1 + 1) {
-      if (d.top) Art.draw(ctx, d.kind, 0, (d.x + 0.5) * T, d.y * T, d.kind === 'cobweb' ? { flip: d.flip } : { recolour: { rockd: ramps.rockd }, flip: d.flip });
-      else Art.draw(ctx, d.kind, 0, (d.x + 0.5) * T, (d.y + 1) * T, { recolour: { rockd: ramps.rockd }, flip: d.flip });
-    }
     Art.draw(ctx, 'mine_hole', 0, (L0.entrance.x + 0.5) * T, (L0.entrance.y + 1) * T, { recolour: { rockd: ramps.rockd } });
     if (L0.exit) Art.draw(ctx, 'mine_hole', 0, (L0.exit.x + 0.5) * T, (L0.exit.y + 1) * T, { recolour: { rockd: ramps.wall } });
     if (L0.lift) {
@@ -633,24 +744,27 @@ export function createGame(canvas, opts) {
       Art.draw(ctx, 'scales', 0, back + (L0.shop.door < 0 ? -40 : 40), Y + 7 * T);
     }
     for (const q of L0.torches) if (q.x >= c0 - 1 && q.x <= c1 + 1) Art.draw(ctx, 'torch', Math.floor(t * 8 + q.x) % 4, (q.x + 0.5) * T, (q.y + 1) * T - 8);
-    // the rock
+    // the rock (one canvas for the whole level), then what grows on it and hangs from it
+    ctx.drawImage(terrainCanvas(), x0, y0, Math.ceil(vw) + 1, Math.ceil(vh) + 1, x0, y0, Math.ceil(vw) + 1, Math.ceil(vh) + 1);
+    for (const d of L0.decor) if (d.x >= c0 - 1 && d.x <= c1 + 1 && d.y >= r0 - 2 && d.y <= r1 + 1) {
+      const cx = (d.x + 0.5) * T + (d.dx || 0), o = { recolour: { rockd: ramps.rockd }, flip: d.flip };
+      if (d.cover) Art.draw(ctx, d.kind, 0, d.x * T, (d.y + 1) * T + 6, o);
+      else if (d.top) Art.draw(ctx, d.kind, d.kind === 'delve_puddle' ? Math.floor(t * 3) % 4 : 0, cx, d.y * T - 4, o);
+      else Art.draw(ctx, d.kind, d.kind === 'delve_puddle' ? Math.floor(t * 3 + d.x) % 4 : 0, cx, (d.y + 1) * T + (d.kind === 'delve_puddle' ? 4 : 6), o);
+    }
+    for (const d of drips) {
+      if (d.drop) Art.draw(ctx, 'delve_drop', 0, (d.x + 0.5) * T, Math.round(d.drop.y));
+      else if (d.t < 0.6) { ctx.fillStyle = '#a8e0dc'; ctx.fillRect((d.x + 0.5) * T - 1, d.y * T - 2, 2, 1 + Math.round((0.6 - d.t) * 4)); }
+    }
     for (let ty = r0; ty <= r1; ty++) for (let tx = c0; tx <= c1; tx++) {
-      const tt = L0.at(tx, ty), X = tx * T, Y = ty * T, v = (tx * 7 + ty * 13) & 3;
-      if (tt === ROCK || tt === BEDROCK) ctx.drawImage(tileImg('delve_block', v, 'rockd'), X, Y);
-      else if (tt === ORE) {
-        ctx.drawImage(veinImg(veinAt(L0, tx, ty).ore, v), X, Y);
+      const tt = L0.at(tx, ty), X = tx * T, Y = ty * T;
+      if (tt === ORE) {
         const tw = (t * 1.3 + tx * 0.37 + ty * 0.61) % 3;                     // a glint wanders over the ore
         if (tw < 0.5) { const gx = X + 10 + ((tx * 13 + ty * 7) % 28), gy = Y + 12 + ((tx * 5 + ty * 11) % 22), a = 1 - Math.abs(tw - 0.25) * 4;
           ctx.fillStyle = `rgba(255,248,220,${a})`; ctx.fillRect(gx, gy - 2, 1, 5); ctx.fillRect(gx - 2, gy, 5, 1); }
       }
-      else if (tt === WALL) ctx.drawImage(tileImg('delve_wall', 0, 'wall'), X, Y);
-      else if (tt === TRAP) {
-        const q = L0.traps.find((a) => a.x === tx && a.y === ty);
-        Art.draw(ctx, 'delve_arrowtrap', 0, q && q.dir < 0 ? X + T - 1 : X, Y, { recolour: { rockd: ramps.rockd }, flip: q && q.dir < 0 });
-      } else if (tt === LADDER) ctx.drawImage(Art.frame('delve_ladder', 0).canvas, X, Y);
+      else if (tt === LADDER) ctx.drawImage(Art.frame('delve_ladder', 0).canvas, X, Y);
       else if (tt === SPIKES) Art.draw(ctx, 'delve_spikes', 0, X, Y + T - 1);
-      if (tt === BEDROCK) { ctx.fillStyle = 'rgba(4,2,8,0.55)'; ctx.fillRect(X, Y, T, T); }
-      if (SOLID.has(tt)) edges(tx, ty, X, Y);
       const hp = tileHp.get(ty * W + tx);
       if (hp) cracks(X, Y, hp, tx * 31 + ty);
     }
@@ -688,13 +802,6 @@ export function createGame(canvas, opts) {
       text(ctx, G.banner.text, x0 + vw / 2, y0 + 30, '#ffe9a8', 'center');
       ctx.globalAlpha = 1;
     }
-  }
-  function edges(tx, ty, X, Y) {
-    const L0 = G.L, open = (a, b) => !SOLID.has(L0.at(a, b));
-    if (open(tx, ty - 1)) { ctx.fillStyle = 'rgba(232,212,180,0.32)'; ctx.fillRect(X, Y, T, 2); ctx.fillStyle = 'rgba(232,212,180,0.12)'; ctx.fillRect(X, Y + 2, T, 2); }
-    if (open(tx, ty + 1)) { ctx.fillStyle = 'rgba(6,3,10,0.55)'; ctx.fillRect(X, Y + T - 5, T, 5); }
-    if (open(tx - 1, ty)) { ctx.fillStyle = 'rgba(232,212,180,0.12)'; ctx.fillRect(X, Y, 2, T); }
-    if (open(tx + 1, ty)) { ctx.fillStyle = 'rgba(6,3,10,0.4)'; ctx.fillRect(X + T - 3, Y, 3, T); }
   }
   function cracks(X, Y, hp, seed) {
     const r = S.rand(seed * 977 + 1);
@@ -735,7 +842,7 @@ export function createGame(canvas, opts) {
       else Art.draw(ctx, 'bat', Math.floor(t * 12) % 4, m.x, m.y - m.h / 2, { flip: m.face > 0 });
       return;
     }
-    const fr = Art.frame(m.kind, Math.floor(t * (m.state === 'rush' ? 10 : 6)) % 4, { flip: m.face > 0 });
+    const fr = Art.frame(m.kind, Math.floor(t * (m.state === 'rush' ? 10 : 6)) % 4, { flip: m.face < 0 });   // drawn facing right
     ctx.drawImage(fr.canvas, Math.round(m.x - fr.ax), Math.round(m.y + 1 - fr.ay));
     if (m.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(m.x - m.w / 2, m.y - m.h, m.w, m.h); }
   }
@@ -747,6 +854,7 @@ export function createGame(canvas, opts) {
     return angry ? { ...kLook, mood: 'angry' } : kLook;
   }
   function light(t, x0, y0, vw, vh) {
+    if (opts.bright) return;                        // test page: lights on, to look at the art
     const k = 2;                                    // the light map at half resolution, smoothed when drawn
     const w = Math.ceil(vw / k), h = Math.ceil(vh / k);
     if (!lightC) lightC = S.mk(w, h);
@@ -774,6 +882,7 @@ export function createGame(canvas, opts) {
     for (const m of mons) if (!m.dead && m.glow) hole(m.x, m.y - m.h / 2, 80, 0.7);
     for (const [k] of G.L.veins) hole((k % W + 0.5) * T, (Math.floor(k / W) + 0.5) * T, 46, 0.45 + 0.15 * Math.sin(t * 3 + k));
     for (const d of G.L.decor) if (d.kind === 'glowshrooms' || d.kind === 'crystals') hole((d.x + 0.5) * T, (d.y + 0.8) * T, 60, 0.5);
+    else if (d.kind.startsWith('delve_glowworms')) hole((d.x + 0.5) * T, d.y * T + 24, 70, 0.45 + 0.1 * Math.sin(t * 2 + d.x));
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(lightC, x0, y0, w * k, h * k);

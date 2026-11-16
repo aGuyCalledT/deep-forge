@@ -32,7 +32,7 @@ async function boot() {
 function setup() {
   const D = G.data.delve, layers = G.data.layers;
   const v = { seed: saved.seed || 1 + Math.floor(Math.random() * 99999), layer: saved.layer || 0, pick: saved.pick || 1, hearts: saved.hearts || D.baseHearts,
-    god: !!saved.god, kit: saved.kit ?? 2, random: saved.random ?? true };
+    god: !!saved.god, bright: !!saved.bright, kit: saved.kit ?? 2, random: saved.random ?? true };
   box.innerHTML = `<h2>Test delve</h2>
     <p class="dv-dim">Nothing here is saved. A fall only ends the test.</p>
     <form>
@@ -42,6 +42,7 @@ function setup() {
       <label for="hearts">Hearts</label><input id="hearts" type="number" min="1" max="20" value="${v.hearts}">
       <label for="kit">Bombs and ropes</label><input id="kit" type="number" min="0" max="99" value="${v.kit}">
       <label for="god">God mode</label><div><input id="god" type="checkbox" ${v.god ? 'checked' : ''}></div>
+      <label for="bright">Lights on</label><div><input id="bright" type="checkbox" ${v.bright ? 'checked' : ''}></div>
       <table class="dv-keys wide">${HELP.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}<tr><td>Next level (test)</td><td>N</td></tr></table>
       <div class="dv-row wide"><button class="btn primary big" type="submit">Delve</button></div>
     </form>`;
@@ -49,7 +50,7 @@ function setup() {
     e.preventDefault();
     const q = (id) => box.querySelector('#' + id);
     const s = { seed: Math.max(1, +q('seed').value || 1), layer: +q('layer').value, pick: +q('pick').value, hearts: Math.max(1, +q('hearts').value || 2),
-      kit: Math.max(0, +q('kit').value || 0), god: q('god').checked, random: q('random').checked };
+      kit: Math.max(0, +q('kit').value || 0), god: q('god').checked, bright: q('bright').checked, random: q('random').checked };
     saved = { ...s, seed: s.random ? 1 + Math.floor(Math.random() * 99999) : s.seed };
     try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch { /* private mode */ }
     play(s);
@@ -61,7 +62,7 @@ function play(s) {
   const skip = (e) => { if (e.code === 'KeyN' && !e.repeat && ui) ui.game.skip(); };
   window.addEventListener('keydown', skip);
   ui = openDelve({
-    run: { seed: s.seed, hearts: s.hearts, pick: s.pick, damage: 1 }, data: G.data, startLayer: s.layer, god: s.god, bombs: s.kit, ropes: s.kit,
+    run: { seed: s.seed, hearts: s.hearts, pick: s.pick, damage: 1 }, data: G.data, startLayer: s.layer, god: s.god, bright: s.bright, bombs: s.kit, ropes: s.kit,
     onEnd: async (r) => ({ text: `Test run, seed ${s.seed}: ${r.result} after ${r.levels} levels in ${Math.round(r.seconds)} s. Nothing is saved.` }),
     closeLabel: 'Done', onClose: () => { window.removeEventListener('keydown', skip); setup(); },
   });

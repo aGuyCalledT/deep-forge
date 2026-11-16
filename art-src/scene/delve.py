@@ -1,6 +1,6 @@
 # Block 11: the delve (static/js/delve/), the adventurer's run through the mine. Tiles are 48 x 48. Rock uses the
 # placeholder 'rockd' (the game swaps it for the layer's rock), so every layer gets its own stone.
-#   delve_block        4 frames: one block of solid rock, chunks with joints, lit from the top left (48 x 48, anchor top left)
+#   delve_rocktex      the rock all blocks are cut from: 192 x 192, seamless both ways (the game cuts jagged blocks from it)
 #   delve_wall         the layer wall: banded hard stone held by iron straps, a crack down the middle (48 x 48)
 #   delve_ladder       a ladder segment (48 x 48, anchor top left), repeats downwards
 #   delve_rope         a rope segment (48 x 48, anchor top left), delve_rope_end the frayed end, delve_hook the grapnel
@@ -11,6 +11,9 @@
 #   delve_arrowtrap    a carved face in a rock block with a slot for its mouth (48 x 48, anchor top left; faces right)
 #   delve_arrow        an arrow in flight (24 x 5, anchor middle; flies right)
 #   delve_stal         a loose stalactite (anchor top middle)
+#   delve_vine_0..2    vines from the ceiling, delve_glowworms_0/1 glowing threads (anchor top middle)
+#   delve_fern_0/1, delve_shrooms_0/1, delve_tuft_0/1, delve_bones   on the floor (anchor bottom middle)
+#   delve_mosstop      moss over the top of a block (48 wide), delve_puddle 4 frames, delve_drop one falling drop
 #   python3 delve.py <out dir>     a preview (delve_x3.png)
 import sys, os, math
 import numpy as np
@@ -24,17 +27,31 @@ T = 48
 def clamp(t): return max(0, min(4, t))
 
 # ------------------------------------------------------------------ rock
-def block(frame=0):
-    """A block of rock: a few chunks, a dark joint between them, lit top and left rims."""
-    g = grid(T, T)
-    ids = voronoi(T, T, 18, 16, 40 + frame, wrap=False)
-    b = blocks(ids, 'rockd', lambda i: (2, 2, 3, 1)[hsh(i, frame) % 4], wrap=False)
-    for y in range(T):
-        for x in range(T):
-            g[y, x] = b[y, x] if b[y, x] is not None else ('rockd', 2)
-    for k in range(3 + frame % 2):                      # a few pits and scratches where picks have been
-        x, y = 6 + hsh(frame, k) % 36, 6 + hsh(frame, k, 3) % 36
-        g[y, x] = ('rockd', 0); g[y, x + 1] = ('rockd', 1)
+TEX = 192
+def rocktex():
+    """The rock all blocks are cut from: one seamless sheet (192 x 192, tiles both ways) of stones in beds, so
+    neighbouring blocks run on without a seam. Bedding planes run across, a few cracks split stones."""
+    ids = voronoi(TEX, TEX, 24, 16, 61, wrap=True, wrap_y=True)
+    big = voronoi(TEX, TEX, 64, 48, 62, wrap=True, wrap_y=True)          # big slabs: stones of one slab share a tone
+    tone = lambda i: (2, 2, 3, 1, 2, 2)[hsh(i, 5) % 6]
+    of = {}                                              # each stone belongs to the slab its first pixel lies in
+    for y in range(TEX):
+        for x in range(TEX): of.setdefault(ids[y, x], big[y, x])
+    shift = lambda i: (0, 0, 0, 1, -1)[hsh(of[i], 9) % 5]
+    g = blocks(ids, 'rockd', lambda i: max(1, min(3, tone(i) + shift(i))), wrap=True, wrap_y=True)
+    for k in range(4):                                   # bedding planes: a dark seam, the stone above it lit
+        y0 = k * 48 + 20
+        for x in range(TEX):
+            y = (y0 + round(3 * math.sin((x + k * 37) * 2 * math.pi / TEX * 2) + 2 * math.sin((x * 3 + k * 11) * 2 * math.pi / TEX))) % TEX
+            g[y, x] = ('rockd', 0)
+            g[(y - 1) % TEX, x] = ('rockd', 1)
+            g[(y + 1) % TEX, x] = ('rockd', 3 if g[(y + 1) % TEX, x][1] > 0 else 0)
+    for k in range(6):                                   # cracks: wander down through a few stones
+        x, y = hsh(k, 71) % TEX, hsh(k, 72) % TEX
+        for i in range(10 + hsh(k, 73) % 12):
+            X, Y = round(x) % TEX, round(y) % TEX
+            g[Y, X] = ('rockd', 0); g[Y, (X + 1) % TEX] = ('rockd', 3)
+            x += ((hsh(k, i, 74) % 3) - 1) * 0.9; y += 1
     return {'grid': g, 'anchor': (0, 0)}
 
 def wall():
@@ -172,11 +189,8 @@ def spikes():
     return {'grid': g, 'anchor': (0, h - 1)}
 
 def arrowtrap():
-    """A block of rock with a stern carved face; its mouth is the slot the arrow flies from (right side)."""
-    b = block(1)['grid']
+    """A stern face carved into the rock (laid over the rock texture); its mouth is the slot the arrow flies from (right side)."""
     g = grid(T, T)
-    for y in range(T):
-        for x in range(T): g[y, x] = b[y, x]
     for y in range(8, 42):                              # the carved plaque
         for x in range(8, 44):
             edge = y in (8, 41) or x in (8, 43)
@@ -213,12 +227,135 @@ def stal():
                 g[y, x] = ('rockd', t)
     return {'grid': g, 'anchor': (11, 0)}
 
+
+# ------------------------------------------------------------------ growing things and water (the delve's decor)
+def _put(g, x, y, v):
+    if 0 <= y < g.shape[0] and 0 <= x < g.shape[1]: g[y, x] = v
+
+def vine(n=0):
+    """A vine hanging from the ceiling: a stem swaying a little, leaves in pairs, darker towards the tip."""
+    L = (46, 64, 34)[n]
+    g = grid(16, L + 2)
+    x = 7.5
+    for y in range(L):
+        x += math.sin((y + n * 9) / 7) * 0.35
+        X = round(x)
+        _put(g, X, y, ('leaf', 1 if y > L * 0.6 else 2))
+        if y % 5 == 2 + n % 2:                            # a pair of leaves, the one on the light side lighter
+            side = 1 if (y // 5) % 2 else -1
+            for k, (dx, dy) in enumerate(((1, 0), (2, 0), (3, 1), (2, 1), (1, 1))):
+                _put(g, X + side * dx, y + dy, ('leaf', 4 if side < 0 and k < 2 else 3 if k < 3 else 1))
+    _put(g, round(x), L, ('leaf', 3)); _put(g, round(x), L + 1, ('leaf', 1))
+    for y in range(3): _put(g, 7, y, ('bark', 1)); _put(g, 8, y, ('bark', 2))
+    return {'grid': g, 'anchor': (8, 0)}
+
+def fern(n=0):
+    """A fern on the floor: fronds arching out from the middle, leaflets along each frond."""
+    g = grid(34, 30)
+    fronds = ((-0.95, 15), (-0.5, 21), (-0.12, 25), (0.22, 23), (0.62, 18), (0.98, 13)) if n == 0 else ((-0.8, 14), (-0.3, 20), (0.18, 19), (0.7, 15))
+    for a, ln in fronds:
+        x, y = 17.0, 29.0
+        dx, dy = math.sin(a) * 1.0, -math.cos(a) * 1.0
+        for i in range(ln):
+            dy += 0.028                                    # the frond bends over under its weight
+            x += dx; y += dy
+            X, Y = round(x), round(y)
+            _put(g, X, Y, ('leaf', 2))
+            if i % 2 == 0 and i > 2:                       # leaflets either side, shorter towards the tip
+                k = 1 + (ln - i) // 6
+                for j in range(1, k + 1):
+                    _put(g, X - j, Y - (1 if j > 1 else 0), ('leaf', 4 if j == 1 else 3))
+                    _put(g, X + j, Y + (1 if j > 1 else 0), ('leaf', 1))
+    for x in range(14, 21): _put(g, x, 29, ('bark', 1))
+    return {'grid': g, 'anchor': (17, 29)}
+
+def shrooms(n=0):
+    """Cave mushrooms in a clump: pale stems, brown or red caps lit from above."""
+    g = grid(30, 20)
+    caps = ('clay', 'cream') if n == 0 else ('brick', 'cream')
+    for k, (x, h, r) in enumerate(((8, 7, 4), (15, 12, 5.5), (22, 5, 3), (19, 8, 3.5)) if n == 0 else ((10, 9, 5), (18, 6, 3.5), (24, 4, 2.5))):
+        for y in range(19 - h, 20): _put(g, x, y, ('cream', 3)); _put(g, x + 1, y, ('cream', 2))
+        top = 19 - h
+        for yy_ in range(top - round(r * 0.7), top + 1):
+            for xx_ in range(round(x - r), round(x + r + 2)):
+                if ((xx_ - x - 0.5) / (r + 0.5)) ** 2 + ((yy_ - top) / (r * 0.7 + 0.5)) ** 2 <= 1:
+                    t = 4 if yy_ < top - r * 0.35 and xx_ < x else 3 if yy_ < top - 1 else 1
+                    _put(g, xx_, yy_, (caps[0], t))
+        for xx_ in range(round(x - r) + 1, round(x + r + 1)): _put(g, xx_, top + 1, ('cream', 1))   # gills
+        if n == 1: _put(g, x - 1, top - 2, ('cream', 4)); _put(g, x + 2, top - 1, ('cream', 4))     # white spots
+    return {'grid': g, 'anchor': (15, 19)}
+
+def tuft(n=0):
+    """A tuft of pale cave grass on the top of a block."""
+    g = grid(20, 12)
+    blades = ((3, 6, -1), (6, 10, 0), (9, 8, 1), (12, 11, 0), (15, 7, 1), (17, 5, 1))[n % 2::1 + n % 2]
+    for x, h, lean in blades:
+        for i in range(h):
+            X = x + round(lean * i * i / (h * 2.2))
+            _put(g, X, 11 - i, ('moss', 4 if i > h - 3 else 3 if i > 2 else 2))
+    return {'grid': g, 'anchor': (10, 11)}
+
+def mosstop():
+    """Moss over the top of a block, a few strands hanging over its edge."""
+    g = grid(T, 10)
+    for x in range(T):
+        h = 3 + (hsh(x // 3, 5) % 3)
+        for y in range(h): _put(g, x, 9 - y, ('moss', 4 if y == h - 1 else 3 if y == h - 2 else 2))
+    return {'grid': g, 'anchor': (0, 6)}
+
+def bones():
+    """An old skull and two bones on the floor."""
+    g = grid(28, 12)
+    for (x, y) in ((4, 10), (5, 10), (6, 10), (7, 10), (8, 10), (9, 10), (10, 10), (11, 10)):
+        _put(g, x, y, ('cream', 3)); _put(g, x, y + 1, ('cream', 1))
+    for x, y in ((3, 9), (3, 11), (12, 9), (12, 11)): _put(g, x, y, ('cream', 3))
+    for k in range(7):                                     # a second bone lying across
+        _put(g, 14 + k, 11 - k // 2, ('cream', 2 + (k % 2)))
+    for y in range(2, 12):                                 # the skull
+        for x in range(17, 27):
+            if ((x - 21.5) / 5) ** 2 + ((y - 6.5) / 5) ** 2 <= 1: _put(g, x, y, ('cream', 4 if y < 5 and x < 22 else 3 if y < 9 else 2))
+    for x, y in ((19, 6), (20, 6), (23, 6), (24, 6), (21, 8), (22, 8)): _put(g, x, y, ('bark', 0))
+    for x in (19, 21, 23): _put(g, x, 10, ('cream', 1))
+    return {'grid': g, 'anchor': (14, 11)}
+
+def puddle(frame=0):
+    """A puddle on the floor where the drips land; a glint wanders over it."""
+    g = grid(40, 4)
+    for x in range(40):
+        d = 3 if 4 <= x < 36 else 2 if 2 <= x < 38 else 1
+        for y in range(4 - d, 4): _put(g, x, y, ('water', 2 if y == 4 - d else 1))
+    for k in range(3):
+        gx = 6 + (frame * 7 + k * 11) % 28
+        _put(g, gx, 1, ('water', 4)); _put(g, gx + 1, 1, ('water', 3))
+    return {'grid': g, 'anchor': (20, 3)}
+
+def glowworms(n=0):
+    """Glow-worm threads hanging from the ceiling, a bead of light at each end."""
+    g = grid(24, 40)
+    for k, (x, L) in enumerate(((3, 22), (8, 34), (12, 16), (17, 28), (21, 12)) if n == 0 else ((5, 18), (11, 30), (18, 24))):
+        for y in range(L): _put(g, x, y, ('cream', 1 if y % 3 else 2))
+        _put(g, x, L, ('glow', 4)); _put(g, x, L + 1, ('glow', 3)); _put(g, x, L - 1, ('glow', 2))
+        if L > 20: _put(g, x, L // 2, ('glow', 3))
+    return {'grid': g, 'anchor': (12, 0)}
+
+def drop():
+    """One drop of water falling (the game moves it)."""
+    g = grid(3, 5)
+    for (x, y, t) in ((1, 0, 2), (1, 1, 3), (0, 2, 2), (1, 2, 4), (2, 2, 3), (0, 3, 2), (1, 3, 3), (2, 3, 2), (1, 4, 1)): g[y, x] = ('water', t)
+    return {'grid': g, 'anchor': (1, 4)}
+
 R.setdefault('smoke', ['#1e1a20', '#3a3238', '#5e5458', '#8a7e7e', '#b4a8a2'])
 
-DELVE = {'delve_block': block, 'delve_wall': wall, 'delve_ladder': ladder,
+DELVE = {'delve_rocktex': rocktex, 'delve_wall': wall, 'delve_ladder': ladder,
          'delve_rope': lambda: rope_seg(False), 'delve_rope_end': lambda: rope_seg(True), 'delve_hook': hook,
          'delve_ropes': coil, 'delve_bomb': bomb, 'delve_boom': boom, 'delve_spikes': spikes,
-         'delve_arrowtrap': arrowtrap, 'delve_arrow': arrow, 'delve_stal': stal}
+         'delve_arrowtrap': arrowtrap, 'delve_arrow': arrow, 'delve_stal': stal,
+         'delve_vine_0': lambda: vine(0), 'delve_vine_1': lambda: vine(1), 'delve_vine_2': lambda: vine(2),
+         'delve_fern_0': lambda: fern(0), 'delve_fern_1': lambda: fern(1),
+         'delve_shrooms_0': lambda: shrooms(0), 'delve_shrooms_1': lambda: shrooms(1),
+         'delve_tuft_0': lambda: tuft(0), 'delve_tuft_1': lambda: tuft(1), 'delve_mosstop': mosstop, 'delve_bones': bones,
+         'delve_puddle': puddle, 'delve_glowworms_0': lambda: glowworms(0), 'delve_glowworms_1': lambda: glowworms(1),
+         'delve_drop': drop}
 
 if __name__ == '__main__':
     from PIL import Image

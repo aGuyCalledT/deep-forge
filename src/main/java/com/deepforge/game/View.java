@@ -138,6 +138,10 @@ public final class View {
             m.put("skills", lv);
             if (x.job.equals("miner")) m.put("rate", round(minerRate(f, x, f.layers.get(x.layer))));
             m.put("pickHardness", pickHardness(x));
+            if (x.job.equals("adventurer")) {                       // what a training run in the delve starts with
+                m.put("delveHearts", com.deepforge.game.rules.Delve.hearts(x));
+                m.put("delveDamage", com.deepforge.game.rules.Delve.damage(x));
+            }
             m.put("rank", rank(x));
             List<Map<String, Object>> ws = new ArrayList<>();
             for (Object[] w : wishes(f, x)) ws.add(Map.of("label", w[0], "ok", w[1]));
