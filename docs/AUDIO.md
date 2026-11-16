@@ -71,6 +71,8 @@ Ersatz-Sound oder gar nichts. So kann jeder Platzhalter jetzt schon im Code steh
 | `expedition` | `expedition-depart` | Expedition bricht auf |
 | `error` | `error` | Aktion abgelehnt |
 
+Im Höhlenspiel (`delve/game.js`) laufen die vorhandenen Sounds: `pickaxe` (Schlag), `parry` (zu hart), `ore` und `coinsLittle` (Erz aufgehoben, Kauf), `hit` (verletzt), `slash` (Gegner getroffen), `critter`/`monster` (Gegner stirbt, Fledermaus fliegt auf, Troll stürmt los), `hit2`+`slash3` tief (Bombe), `shuttle` (Seil), `parry2` hoch (Pfeilfalle), `grind` (Stalaktit wackelt), `horn` (Händler wütend), `anvilGood` (bessere Spitzhacke), `slosh` (Ale), `doorOpen` (neues Level), `cart` (Wand bricht, Lift), `fanfare` (neue Schicht, zurück), `defeat` und `death` (Sturz); Schleife `mine`.
+
 Ein Kampf (Überfall, Monster, Belagerung) spielt eine kurze Folge aus Schwert-Sounds und am Ende `cheer` oder
 `defeat`.
 

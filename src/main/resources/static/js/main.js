@@ -11,6 +11,7 @@ import { mineScreen, mineLayer } from './scene/mine.js';
 import { openSmithy, smithyUpdate, nameArtifact, askForNames, smithyState } from './games/smithy.js';
 import { gameUpdate, gameState } from './games/minigame.js';
 import { openRoomGame, openVein } from './games/games.js';
+import { delve } from './delve/run.js';
 import { openRoomSheet, openDwarfSheet, openWayLooks, openPlanSheet } from './ui/popups.js';
 import { openBuildMenu } from './ui/buildmenu.js';
 import { berlinTime } from './core/sun.js';
@@ -176,6 +177,7 @@ bus.render = () => render();
 bus.smithy = () => openSmithy();
 bus.minigame = (id) => openRoomGame(id);
 bus.vein = (layer) => openVein(layer);
+bus.delve = (id) => delve(id);
 bus.nameArtifact = (id) => nameArtifact(id);
 bus.go = (tab) => go(tab);
 
@@ -475,6 +477,7 @@ function renderToolbar() {
       h('span', { class: 'tool-label' }, name),
       h('button', { class: 'tool', 'aria-label': 'Layer below', disabled: i === G.data.layers.length - 1, onclick: () => showLayer(i + 1) }, img(S.icon('down'), 'icon s')),
       F().layers[i] && F().layers[i].unlocked ? h('button', { class: 'tool', title: 'Break a vein out of the rock yourself', onclick: () => openVein(i) }, img(S.icon('mines'), 'icon s'), 'Vein') : null,
+      h('button', { class: 'tool', title: 'Play an adventurer down through the mine', onclick: () => delve() }, img(S.icon('explore'), 'icon s'), 'Delve'),
       wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom in', onclick: () => zoomBy(1) }, img(S.icon('zoom_in'), 'icon s')) : null,
       wide() ? h('button', { class: 'tool', 'aria-label': 'Zoom out', onclick: () => zoomBy(-1) }, img(S.icon('zoom_out'), 'icon s')) : null));
     return;

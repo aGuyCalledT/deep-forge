@@ -296,13 +296,14 @@ export function buildingName(b) {
 }
 
 export function jobLabel(d) {
-  if (d.busy) return d.busy.startsWith('caravan') ? 'With a caravan' : 'On an expedition';
+  if (d.busy) return d.busy === 'delve' ? 'Delving' : d.busy.startsWith('caravan') ? 'With a caravan' : 'On an expedition';
   switch (d.job) {
     case 'miner': return 'Miner · ' + G.data.layers[d.layer].name;
     case 'worker': { const b = building(d.building); return b ? buildingName(b) : 'Worker'; }
     case 'warrior': return d.post === 'mine' ? 'Warrior · mine patrol' : 'Guard · entrance hall';
     case 'merchant': return 'Merchant';
     case 'foreman': return 'Foreman';
+    case 'adventurer': return 'Adventurer';
     default: return 'Idle';
   }
 }

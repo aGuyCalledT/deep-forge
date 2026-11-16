@@ -13,6 +13,16 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [x] Die Schublade wird bei jedem Abruf (alle 5 s) neu gezeichnet: getippter Text, Fokus und Cursor bleiben jetzt erhalten (`typedFields` in `main.js`).
 - [ ] Ziffer 5 sieht in Pixelify Sans aus wie ein S.
 
+## Höhlenspiel (Delve)
+
+- [x] Beruf Adventurer, Run vom Server (Seed, Herzen, Spitzhacke), Beute gedeckelt, Ruhe nach Sturz
+- [x] Level aus dem Seed, Laufen, Springen, Kanten greifen, Leitern, Seile, Bomben, Graben nach Härte, Fallen, Gegner, Laden
+- [x] Testseite `delve.html` ohne Konto
+- [ ] Mehr Raum-Vorlagen statt nur zufälliger Simsen (Spelunky-artige Raumtypen)
+- [ ] Schatztruhen, Schlüssel, Geheimräume; Gegner, die Erz fallen lassen
+- [ ] Eigene Sounds für Sprung, Bombe, Pfeil, Stalaktit (bis dahin vorhandene)
+- [ ] Bestenliste je Schicht
+
 ## Aufräumen
 
 - [x] Projekt sortiert: alte 24-px-Grafik (Räume, Welt, Höhlen, Figuren, altes Zwerg-Kit), Vorschaubilder, fremde

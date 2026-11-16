@@ -965,3 +965,39 @@ label.rc-unless { display: inline; margin: 0; cursor: pointer; }
 .account-who .icon { vertical-align: -3px; }
 .account-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .account-btns .btn { min-height: 40px; }
+
+/* ---------- the delve (js/delve/): the adventurer's run, full screen over everything */
+.delve { position: fixed; inset: 0; z-index: 1000; background: #050308; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.delve .dv-canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+.dv-hud { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px; font: 400 16px/1 var(--f-body); color: var(--ink);
+  background: linear-gradient(180deg, rgba(5, 3, 8, 0.85), rgba(5, 3, 8, 0)); pointer-events: none; }
+.dv-hud > * { display: flex; align-items: center; gap: 4px; }
+.dv-hud .dv-pause { pointer-events: auto; margin: 0 0 0 auto; }
+.dv-ico { width: 24px; height: 24px; object-fit: contain; image-rendering: pixelated; }
+.dv-n { margin-right: 6px; color: var(--gold); }
+.dv-dim { color: var(--dim); }
+.dv-where { color: var(--muted); }
+.dv-pad { position: absolute; left: 0; right: 0; bottom: 0; display: none; justify-content: space-between; align-items: flex-end;
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); pointer-events: auto; }
+.dv-move { display: grid; grid-template-columns: 56px 56px; grid-template-rows: 48px 56px; gap: 4px 6px; }
+.dv-move .dv-up { grid-column: 1; grid-row: 1; } .dv-move .dv-down { grid-column: 2; grid-row: 1; }
+.dv-move [data-k=left] { grid-column: 1; grid-row: 2; } .dv-move [data-k=right] { grid-column: 2; grid-row: 2; }
+.dv-act { display: grid; grid-template-columns: 56px 64px; grid-template-rows: 48px 56px; gap: 4px 6px; }
+.dv-b { min-height: 48px; padding: 2px 4px 8px; margin: 0; opacity: 0.88; }
+.dv-b.dv-jump { font-size: 16px; }
+.dv-arrow { width: 18px; height: 18px; image-rendering: pixelated; }
+.dv-bico { max-width: 30px; max-height: 26px; image-rendering: pixelated; }
+@media (pointer: coarse), (max-width: 760px) { .dv-pad { display: flex; } }
+.dv-menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 2, 6, 0.6); }
+.dv-menu[hidden] { display: none; }
+.dv-card { width: min(420px, 100%); max-height: 100%; overflow: auto; padding: 16px 18px; border-radius: var(--r); color: var(--ink);
+  font: 400 16px/1.35 var(--f-body); background: var(--sheet-metal); background-size: var(--sheet-size); box-shadow: var(--shadow), inset 0 0 0 2px var(--iron-0), inset 0 0 0 4px var(--iron-3); }
+.dv-card h2 { margin: 0 0 8px; font: 400 24px/1.1 var(--f-title); color: var(--gold); }
+.dv-card p { margin: 6px 0; }
+.dv-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.dv-keys { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dv-keys td { padding: 3px 0; vertical-align: top; } .dv-keys td:first-child { color: var(--muted); padding-right: 8px; }
+.dv-loot { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0; }
+.dv-loot > span { display: flex; align-items: center; gap: 4px; }
+.dv-lost { filter: grayscale(1) brightness(0.6); }

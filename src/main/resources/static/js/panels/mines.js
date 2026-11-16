@@ -4,6 +4,7 @@ import { h, img, goodIcon, bar, bus, ico, info, statusIco, hourglass } from '../
 import { mineLayer } from '../scene/mine.js';
 import * as S from '../art/sprites.js';
 import { costBtn, upgradeBtn } from './base.js';
+import { adventurers } from '../delve/run.js';
 
 export function renderMines() {
   const f = F(), d = D();
@@ -19,6 +20,17 @@ export function renderMines() {
     bar(d.used / d.capacity),
     f.storageFull ? h('p', { class: 'bad-t small' }, 'Warehouse full - mining has stopped. Smelt or sell, or upgrade the warehouse.') : null,
     h('div', { class: 'row', style: { marginTop: '8px' } }, upgradeBtn(building('lift')), upgradeBtn(building('warehouse')))));
+
+  // the delve: play an adventurer down through the mine
+  const adv = adventurers();
+  out.push(h('div', { class: 'card' },
+    h('div', { class: 'row between' }, h('h3', null, 'Delve ', info(`Play an adventurer yourself: run, jump and dig down through the mine. Ore from the veins comes home when you ride the lift at the end of a layer, about an hour of a miner's work per layer. A pick hard enough breaks the wall into the next layer. Fall, and everything found is lost and the dwarf rests ${G.data.delve.restHours} h. Helm and armor give more hearts.`))),
+    adv.length ? adv.map(({ d: x, rest, away }) => h('div', { class: 'row between', style: { marginTop: '6px' } },
+      h('span', null, img(S.portrait(x), 'icon'), ' ', x.first),
+      rest ? h('span', { class: 'muted small' }, 'hurt, back in ', h('span', { 'data-until': x.delveRest }, dur(rest)))
+        : away ? h('span', { class: 'muted small' }, 'away')
+        : h('button', { class: 'btn small primary', onclick: () => bus.delve(x.id) }, ico('mines'), 'Delve')))
+      : h('p', { class: 'small muted' }, 'No adventurer yet. Give a dwarf the adventurer job in the Dwarves tab.')));
 
   // pickaxes: spares in the warehouse, miners on the makeshift pick, swapping by themselves
   const miners = f.dwarves.filter((x) => x.job === 'miner' && !x.busy);

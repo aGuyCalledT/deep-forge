@@ -372,3 +372,20 @@ Masterwork 2, Artifact 3.
 | Runen, Edelstein, Webstuhl | je Treffer bis 1 (Runen: schneller getippt mehr; Edelstein und Schiffchen nach Abstand zur Marke) |
 | Dünger (Pilzfarm) | alle 2 h einmal: +60 % × Anteil der bedüngten Pilze (`FERT_MAX`, `FERT_TIME`); der Sack reicht für 10 s Streuen |
 | Ader (Mine) | je Schicht alle 4 h eine (`VEIN_WAIT`), bis zu 3 warten (`VEINS_MAX`, `Rules.veins`): `24 + 6 × Schachtstufe` Erz (`Rules.veinOre`) nach den Erz-Gewichten der Schicht direkt in den Wagen. Ausdauer 100, ein Schlag kostet 20 und erholt sich mit 45/s ab 0,25 s nach dem Schlag; Schlagkraft `0,4 + 0,6 × Ausdauer` (müde 0,15); Fels um die Ader hält `1 + ⌊Schicht/2⌋` Treffer (+1 innen) |
+
+## Delve (`Delve.java`, `static/js/delve/`)
+
+| Was | Wert |
+|---|---|
+| Levels | 4 je Schicht (`LEVELS_PER_LAYER`), immer ab Shallow Caves. Am Ende der Schicht: Lift nach Hause (Erz bleibt) oder die Wand in die nächste Schicht brechen |
+| Wand | in Schicht k braucht Spitzhacken-Härte `k + 1` (`wallHardness`); Bomben brechen sie nicht |
+| Herzen | 2 (`BASE_HEARTS`), +1 mit Helm, +2 mit Rüstung; Ale im Laden +1 |
+| Erz je Level | Erzadern: `⌊Rate/4 + Zufall⌋` (Rate der Schicht pro Bergarbeiter-Stunde), je Ader 1 Erz, 15 % 2 |
+| Obergrenze | der Server behält je Level höchstens `⌈Rate/4 × 1,6⌉` (`ORE_SLACK`), nur Erze der erreichten Schichten, die die Spitzhacke (+1 für die Laden-Spitzhacke) bricht; kein Stein, Kalk, Rohstein (`NO_DELVE_ORE`) |
+| Zeit | höchstens ein Level je 15 s (`MIN_LEVEL_SECONDS`); ein Run, der länger als 3 h offen ist, verfällt (`RUN_HOURS`) |
+| Tod | alles Gefundene ist weg, Gesundheit höchstens 25, 3 h Ruhe (`REST_HOURS`) |
+| Laden | Bomben ×3: 1 Erz, Seile ×3: 1 Erz, Ale: 2 Erz, bessere Spitzhacke (+1 Härte für den Run): 3 Erz, je 2 Schichten +1. Bezahlt wird mit Erz aus dem Beutel. Diebstahl macht den Händler wütend (auch in späteren Läden des Runs) |
+| Start-Ausrüstung | 2 Bomben, 2 Seile |
+| Graben | Fels braucht `4 + (Schicht+1) − Härte` Schläge (1–5), Erzader 2, Wand 4 |
+| Schaden | Gegner, Pfeil 1; Sturz über 7 Kacheln 1, über 11 Kacheln 2; Stacheln beim Hineinfallen 2; Stalaktit 2; Bombe 3 |
+| Gegner | je Level `2 + Schicht + ⌊Level/2⌋` (+0–1) aus den Monstern der Schicht, dazu Fledermäuse; Leben 1 (Ratte) bis 6 (Wyrm) |

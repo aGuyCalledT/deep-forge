@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#23252d">
+  <title>Deep Forge – test delve</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { margin: 0; min-height: 100vh; background: var(--sheet-metal); background-size: var(--sheet-size); color: var(--ink); font: 400 16px/1.35 var(--f-body); }
+    .dt { display: flex; justify-content: center; padding: 24px 16px; }
+    .dt form { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; }
+    .dt label { color: var(--muted); }
+    .dt .wide { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <main class="dt"><div class="dv-card" id="setup"><h2>Test delve</h2><p class="dv-dim">Loading…</p></div></main>
+  <script type="module" src="js/delve/test.js"></script>
+</body>
+</html>

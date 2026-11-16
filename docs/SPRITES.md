@@ -131,6 +131,12 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   (40 × 230), Vordergrund-Felsen `mine_fg_rock_0..2`, große Tropfsteine `mine_fg_stal_0..1`, Felsnadeln `mine_spire_0..1`,
   Erzadern `ore_seam_0..2` (Platzhalter `ingot` = Erzfarbe), Tunnelloch `mine_hole`, Erzwagen `minecart` (5 Bilder:
   leer bis voll, Haufen in `ingot`), Schiene `rail` (Kachel). Fels überall in `rockd`, gezeichnet in `scene/mine.js`.
+- **Delve** (`art-src/scene/delve.py`, Gruppe `delve`, Kacheln 48 × 48): Felsblock `delve_block` (4 Bilder), Schichtwand
+  `delve_wall` (Bänder mit Eisenspangen, Riss), Leiter `delve_ladder`, Seil `delve_rope`/`delve_rope_end` mit Haken
+  `delve_hook`, Seilrolle `delve_ropes`, Bombe `delve_bomb` (4 Bilder, Lunte brennt ab), Explosion `delve_boom` (4 Bilder,
+  leuchtet), Stacheln `delve_spikes`, Pfeilfalle `delve_arrowtrap` (Gesicht im Fels, Mund nach rechts), Pfeil `delve_arrow`,
+  loser Stalaktit `delve_stal`. Fels in `rockd`. Zwerg-Posen dafür: `jump`, `fall`, `hang` (Seitenarme 6: Hände über dem
+  Kopf), `climb` (Rückenarme 6/7: abwechselnd eine Hand oben).
 
 ### Raumvorlagen (Editor)
 

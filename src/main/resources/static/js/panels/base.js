@@ -163,7 +163,7 @@ export function renderDwarves() {
   const f = F(), d = D();
   const avg = f.dwarves.length ? f.dwarves.reduce((s, x) => s + x.happiness, 0) / f.dwarves.length : 0;
   const idle = f.dwarves.filter((x) => x.job === 'idle' && !x.busy).length;
-  const jobs = ['all', 'idle', 'miner', 'worker', 'warrior', 'merchant', 'away'];
+  const jobs = ['all', 'idle', 'miner', 'worker', 'warrior', 'merchant', 'adventurer', 'away'];
   const list = f.dwarves.filter((x) => dwarfFilter === 'all' || (dwarfFilter === 'away' ? x.busy : !x.busy && x.job === dwarfFilter));
   return [
     h('div', { class: 'card' },
@@ -231,14 +231,15 @@ function jobSkill(x) {
   if (x.job === 'miner') return 'mining';
   if (x.job === 'warrior') return 'combat';
   if (x.job === 'merchant') return 'trading';
+  if (x.job === 'adventurer') return 'mining';
   if (x.job === 'worker') { const b = F().buildings.find((q) => q.id === x.building); return b ? byId.buildings[b.type].skill : null; }
   return null;
 }
 
 /** The profession as an engraved badge: what the dwarf does, its icon and the skill it works with. */
 function profession(x, dd) {
-  const kind = x.busy ? (x.busy.startsWith('caravan') ? 'trade' : 'lore') : { miner: 'mine', worker: 'forge', warrior: 'war', merchant: 'trade' }[x.job] || 'idle';
-  const icon = x.busy ? (x.busy.startsWith('caravan') ? 'trade' : 'explore') : { miner: 'mines', worker: 'work', warrior: 'war', merchant: 'trade' }[x.job] || 'idle';
+  const kind = x.busy ? (x.busy.startsWith('caravan') ? 'trade' : 'lore') : { miner: 'mine', worker: 'forge', warrior: 'war', merchant: 'trade', adventurer: 'lore' }[x.job] || 'idle';
+  const icon = x.busy ? (x.busy.startsWith('caravan') ? 'trade' : 'explore') : { miner: 'mines', worker: 'work', warrior: 'war', merchant: 'trade', adventurer: 'explore' }[x.job] || 'idle';
   const sk = jobSkill(x), lvl = sk && dd.skills ? dd.skills[sk] || 0 : null;
   return h('div', { class: 'profession ' + kind },
     ico(icon), h('b', null, jobLabel(x)),
@@ -266,6 +267,7 @@ export function jobSheet(x) {
     opt('Guard in the entrance hall', `defends the gate, chases critters · ${D().guards}/${D().hallSeats} posted`, { job: 'warrior', post: 'hall' }, x.job === 'warrior' && x.post !== 'mine'),
     opt('Warrior on mine patrol', 'fights monsters in the mine', { job: 'warrior', post: 'mine' }, x.job === 'warrior' && x.post === 'mine'),
     opt('Merchant', 'leads caravans', { job: 'merchant' }, x.job === 'merchant'),
+    opt('Adventurer', 'you play them in the delve: down through the mine for ore', { job: 'adventurer' }, x.job === 'adventurer'),
     f.level >= D().foremanLevel ? opt('Foreman', 'keeps the day plan going: 36 h at full pace, 48 h for a master', { job: 'foreman' }, x.job === 'foreman') : null,
     opt('Idle', 'rests in the tavern', { job: 'idle' }, x.job === 'idle')));
 }
