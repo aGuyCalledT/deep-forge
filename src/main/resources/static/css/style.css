@@ -1,8 +1,9 @@
 /* Deep Forge: a dwarven interface. Riveted iron sheets, forged windows with trim, gems and runes, buttons that press
    in, quests and expeditions on paper, hourglasses for time. The metal and the gem say what a window is about. */
-@font-face { font-family: "Alagard"; src: url("../fonts/alagard.ttf") format("truetype"); font-display: swap; }
+/* Jacquard 12 is drawn on a 21 px grid; size-adjust puts one font pixel on one screen pixel at 16 px (and x1.5 at 24, x3 at 48) */
+@font-face { font-family: "Jacquard 12"; src: url("../fonts/jacquard-12.ttf") format("truetype"); font-display: swap;
+  size-adjust: 131.25%; ascent-override: 76%; descent-override: 20%; line-gap-override: 0%; }
 @font-face { font-family: "Pixelify Sans"; src: url("../fonts/pixelify-sans.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Fantastic Boogaloo"; src: url("../fonts/fantastic-boogaloo.ttf") format("truetype"); font-display: swap; }
 
 :root {
   /* iron and steel */
@@ -32,10 +33,10 @@
   --rose: #e9a0aa;
 
   /* pixel fonts: one weight each; emphasis is colour, never bold */
-  --f-title: "Alagard", "Pixelify Sans", monospace;
+  --f-title: "Jacquard 12", "Pixelify Sans", monospace;
   --f-body: "Pixelify Sans", monospace;
   --f-sc: "Pixelify Sans", monospace;
-  --f-hand: "Fantastic Boogaloo", "Pixelify Sans", monospace;
+  --f-hand: "Pixelify Sans", monospace;   /* writing on paper: the body face in ink, headings in the title face */
   --hl: var(--gold);            /* emphasised words on dark metal */
 
   --r: 10px;
@@ -272,7 +273,7 @@ label input, label select { display: block; width: 100%; margin-top: 4px; }
     radial-gradient(ellipse at 0 0, rgba(80, 50, 20, 0.2), transparent 16%);
 }
 .paper > * { position: relative; z-index: 1; }
-.paper h3 { font: 400 24px/1.1 var(--f-hand); margin: 0 0 4px; color: #3a2614; text-shadow: none; }
+.paper h3 { font: 400 24px/1.1 var(--f-title); margin: 0 0 4px; color: #3a2614; text-shadow: none; }
 .paper .who { font-size: 16px; color: var(--paper-soft); margin: 0 0 10px; }
 .paper p { margin: 4px 0 8px; }
 .paper .muted, .paper .dim { color: var(--paper-soft); }
@@ -945,3 +946,22 @@ label.rc-unless { display: inline; margin: 0; cursor: pointer; }
 .bm-room.off b { color: var(--muted, #a89a8a); }
 .bm-need { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 8px 12px;
   text-align: center; font-size: 16px; color: #fbf4e6; text-shadow: 0 2px 0 #000, 0 -1px 0 #000, 2px 0 0 #000, -2px 0 0 #000; }
+
+/* first steps (Hold tab): the next step stands out, the rest waits in soft ink */
+.first-steps .todo li { align-items: center; min-height: 40px; }
+.first-steps .todo li .box { translate: none; }
+.first-steps .todo li:not(.done):not(.next) span { color: var(--paper-soft); }
+.first-steps .todo li .btn { flex: none; }
+.first-steps .todo li small { display: block; font-size: 12px; color: var(--paper-soft); }
+.paper .linkish { color: var(--paper-soft); text-decoration-color: rgba(60, 40, 20, 0.45); }
+.paper .linkish:hover { color: var(--paper-red); }
+
+/* accounts (More tab, admins): one engraved row per account, its buttons underneath */
+.accounts { display: grid; gap: 8px; }
+.accounts > p { margin: 0; }
+.account { display: grid; gap: 8px; padding: 10px 12px; border-radius: 6px; background: rgba(0, 0, 0, 0.25); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.account-who { min-width: 0; overflow-wrap: anywhere; }
+.account-who .chip { margin-left: 6px; }
+.account-who .icon { vertical-align: -3px; }
+.account-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.account-btns .btn { min-height: 40px; }

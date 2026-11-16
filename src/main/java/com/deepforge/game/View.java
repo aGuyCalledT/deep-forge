@@ -18,6 +18,40 @@ public final class View {
         return of(f, now, false);
     }
 
+    /**
+     * First steps for a new hold: what to do, where (tab, room) and whether it is done. Read from what the hold has
+     * already done, so nothing extra is saved. Null once every step is done or the player put the list away.
+     */
+    public static List<Map<String, Object>> tutorial(Fortress f) {
+        if (f.tutorialOff) return null;
+        Building forge = f.buildings.stream().filter(b -> b.type.equals("forge") && b.level > 0).findFirst().orElse(null);
+        boolean smith = forge != null && f.dwarves.stream().anyMatch(x -> "worker".equals(x.job) && x.building != null
+                && building(f, x.building) != null && building(f, x.building).type.equals("forge"));
+        List<Map<String, Object>> steps = new ArrayList<>();
+        steps.add(step("smelt", "Smelt 5 bars at the smelter.", "It is already at work. Click it to watch.",
+                "work", "smelter-1", f.stats.barsSmelted >= 5));
+        steps.add(step("smith", "Give the forge a smith.", "Click the forge and pick a dwarf.",
+                "dwarves", forge == null ? null : forge.id, smith || f.stats.itemsCrafted > 0));
+        steps.add(step("forge", "Forge your first goods.", "Add an order at the forge.",
+                "work", forge == null ? null : forge.id, f.stats.itemsCrafted > 0));
+        steps.add(step("sell", "Sell goods for coin.", "Open Trade and sell what you made.",
+                "trade", null, f.stats.coinsEarned > 0));
+        steps.add(step("grow", "Reach fortress level 2.", "Smelting, forging and upgrading rooms all count.",
+                "fortress", null, f.level >= 2));
+        return steps.stream().allMatch(m -> Boolean.TRUE.equals(m.get("done"))) ? null : steps;
+    }
+
+    private static Map<String, Object> step(String id, String text, String hint, String tab, String room, boolean done) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id);
+        m.put("text", text);
+        m.put("hint", hint);
+        m.put("tab", tab);
+        if (room != null) m.put("room", room);
+        m.put("done", done);
+        return m;
+    }
+
     public static Map<String, Object> of(Fortress f, double now, boolean cheats) {
         Layouts.ensure(f);
         Map<String, Object> v = new LinkedHashMap<>();
@@ -65,6 +99,8 @@ public final class View {
         d.put("planFull", planFull(f));
         d.put("planUntil", f.lastVisit <= 0 ? 0 : f.lastVisit + planFull(f));
         d.put("foremanLevel", FOREMAN_LEVEL);
+        List<Map<String, Object>> steps = tutorial(f);
+        if (steps != null) d.put("tutorial", steps);
         Building cons = underConstruction(f, now);
         if (cons != null) d.put("building", Map.of("id", cons.id, "until", cons.upUntil, "level", cons.level + 1));
         d.put("minePower", power(f, warriors(f, "mine")));

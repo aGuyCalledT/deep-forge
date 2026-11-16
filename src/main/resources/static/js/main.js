@@ -234,6 +234,12 @@ function alerts() {
   if (idle) a.push(['idle', 'dwarves', `${idle} idle dwarf(s). Give them a job.`]);
   const empty = f.buildings.filter((b) => b.level > 0 && byId.buildings[b.type].kind !== 'passive' && !d.buildings[b.id].worker);
   if (empty.length && !idle) a.push(['idle', 'work', `${empty.length} workshop(s) without a worker.`, empty[0].id]);
+  // the next of the first steps, behind anything that is on fire
+  const step = (d.tutorial || []).find((s) => !s.done);
+  if (step) {
+    const at = a.findIndex(([k]) => k !== 'bad' && k !== 'stop');
+    a.splice(at < 0 ? a.length : at, 0, ['idle', step.tab, 'First steps: ' + step.text, step.room, 'tutorial']);
+  }
   const news = unseenNotes();
   if (news) a.push(['good', 'more', `New in ${news.version}: ${news.title}. Open More to read.`]);
   if (d.traditionPoints > 0) a.push(['good', 'more', `${d.traditionPoints} tradition point(s) to spend.`]);
@@ -329,6 +335,8 @@ function render() {
     return;
   }
   const py = fresh ? 0 : scroller().scrollTop;
+  const typed = !fresh && p.dataset.tab === tab[0] ? typedFields(p) : null;
+  p.dataset.tab = tab[0];
   setMaterial(p, MATERIAL[tab[0]]);
   const stores = storesView(false);
   const body = [tab[2]()].flat(3).filter(Boolean);
@@ -340,8 +348,35 @@ function render() {
         h('button', { class: 'icon-btn', 'aria-label': 'Close the menu', title: 'Close', onclick: closeDrawer })),
       ...(box ? [box] : []), ...body));
   p.hidden = false;
+  if (typed) typed.restore();
   scroller().scrollTop = py;
   if (fresh) slideIn(p, drawerSide());
+}
+
+/**
+ * The drawer is drawn anew with every poll. What the player typed into its fields must survive that: remember every
+ * field that was edited (and where the cursor is), and put it back into the same field of the new drawer.
+ */
+const FIELDS = 'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), textarea';
+function typedFields(p) {
+  const old = [...p.querySelectorAll(FIELDS)], fe = document.activeElement;
+  const at = old.indexOf(fe);
+  if (at < 0 && !old.some((el) => el.dataset.typed)) return null;
+  const sel = at >= 0 ? [fe.selectionStart, fe.selectionEnd] : null;
+  return {
+    restore() {
+      const now = [...p.querySelectorAll(FIELDS)];
+      if (now.length !== old.length) return;   // the drawer changed shape: the fields are not the same ones any more
+      old.forEach((el, i) => {
+        if (el.type !== now[i].type) return;
+        if (el.dataset.typed) { now[i].value = el.value; now[i].dataset.typed = '1'; }
+        if (i === at) {
+          now[i].focus({ preventScroll: true });
+          try { now[i].setSelectionRange(sel[0], sel[1]); } catch { /* number fields have no selection */ }
+        }
+      });
+    },
+  };
 }
 
 /** Look at a room and open its window next to it. Used by the Work tab and by alerts. */
@@ -515,6 +550,7 @@ async function start() {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
     if (G.build) { G.build.held = null; renderToolbar(); } else closeDrawer();
   });
+  $('panel').addEventListener('input', (e) => { if (e.target.matches(FIELDS)) e.target.dataset.typed = '1'; });
   setInterval(poll, 5000);
   setInterval(ambience, 1000);
   $('audio-btn').addEventListener('click', openAudioSheet);
@@ -545,7 +581,7 @@ function artToCss() {
 }
 
 async function boot() {
-  try { await Promise.all(['16px "Alagard"', '16px "Pixelify Sans"', '16px "Fantastic Boogaloo"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
+  try { await Promise.all(['16px "Jacquard 12"', '16px "Pixelify Sans"'].map((f) => document.fonts.load(f))); } catch { /* fine */ }
   await Promise.all([S.loadArt(), loadSceneArt(), loadNotes()]);
   artToCss();
   const [data, audio] = await Promise.all([api.get('/data'), api.get('/audio').catch(() => ({}))]);

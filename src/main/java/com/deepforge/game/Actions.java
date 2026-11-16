@@ -84,6 +84,7 @@ public final class Actions {
             case "upgradeLayer" -> upgradeLayer(f, a);
             case "cartRule" -> cartRule(f, a);
             case "autoPicks" -> autoPicks(f, a);
+            case "tutorial" -> f.tutorialOff = Boolean.TRUE.equals(a.get("off")) || "true".equals(str(a, "off"));
             case "quickSell" -> quickSell(f, a, t);
             case "sellVisitor" -> sellVisitor(f, a, t);
             case "fillContract" -> fillContract(f, a, t);

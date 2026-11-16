@@ -6,10 +6,6 @@ import com.deepforge.game.world.*;
 
 import com.deepforge.auth.AuthInterceptor;
 import com.deepforge.auth.AuthService;
-import com.deepforge.game.Actions;
-import com.deepforge.game.content.Content;
-import com.deepforge.game.GameService;
-import com.deepforge.game.world.RoomTemplates;
 import com.deepforge.store.Store;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -150,10 +146,56 @@ public class ApiController {
         return game.players();
     }
 
+    // ---------------------------------------------------------------- the own account
+
+    @PostMapping("/account/password")
+    public Map<String, Object> changePassword(@RequestBody Map<String, String> b, HttpServletRequest req) {
+        AuthService.Session s = auth.changePassword(user(req), b.get("old"), b.get("password"));
+        return Map.of("token", s.token());
+    }
+
+    @PostMapping("/account/delete")
+    public Map<String, Object> deleteAccount(@RequestBody Map<String, String> b, HttpServletRequest req) {
+        Store.User u = user(req);
+        auth.confirmPassword(u, b.get("password"));
+        game.deleteAccount(u.id());
+        return Map.of("ok", true);
+    }
+
+    // ---------------------------------------------------------------- admins: every account
+
+    private Store.User admin(HttpServletRequest req) {
+        Store.User u = user(req);
+        if (!auth.isAdmin(u)) throw new AuthService.AuthException("Admins only.");
+        return u;
+    }
+
+    @GetMapping("/admin/users")
+    public List<Map<String, Object>> accounts(HttpServletRequest req) {
+        admin(req);
+        return game.accounts(n -> auth.isAdmin(auth.userByName(n)));
+    }
+
     @PostMapping("/admin/password")
     public Map<String, Object> resetPassword(@RequestBody Map<String, String> b, HttpServletRequest req) {
-        if (!auth.isAdmin(user(req))) throw new AuthService.AuthException("Admins only.");
+        admin(req);
         auth.resetPassword(b.get("name"), b.get("password"));
+        return Map.of("ok", true);
+    }
+
+    /** Logs a player out on every device. */
+    @PostMapping("/admin/logout")
+    public Map<String, Object> adminLogout(@RequestBody Map<String, String> b, HttpServletRequest req) {
+        admin(req);
+        auth.logoutEverywhere(auth.userByName(b.get("name")));
+        return Map.of("ok", true);
+    }
+
+    @PostMapping("/admin/delete")
+    public Map<String, Object> adminDelete(@RequestBody Map<String, String> b, HttpServletRequest req) {
+        Store.User me = admin(req), u = auth.userByName(b.get("name"));
+        if (u.id() == me.id()) throw new AuthService.AuthException("Delete your own account under Settings.");
+        game.deleteAccount(u.id());
         return Map.of("ok", true);
     }
 
