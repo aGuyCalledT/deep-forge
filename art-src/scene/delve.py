@@ -13,7 +13,7 @@
 #   delve_stal         a loose stalactite (anchor top middle)
 #   delve_vine_0..2    vines from the ceiling, delve_glowworms_0/1 glowing threads (anchor top middle)
 #   delve_fern_0/1, delve_shrooms_0/1, delve_tuft_0/1, delve_bones   on the floor (anchor bottom middle)
-#   delve_coin (4 frames), delve_chest_0/1, delve_scroll_<light|quake|mend|stone|blink>, delve_boots, delve_spring,
+#   delve_shredder (4 frames, the shop's ore shredder), delve_coin (4 frames), delve_chest_0/1, delve_scroll_<light|quake|mend|stone|blink>, delve_boots, delve_spring,
 #   delve_heartgem, delve_whetstone, delve_feather   loot of a run (anchor bottom middle)
 #   delve_mosstop      moss over the top of a block (48 wide), delve_puddle 4 frames, delve_drop one falling drop
 #   python3 delve.py <out dir>     a preview (delve_x3.png)
@@ -488,6 +488,49 @@ def feather():
 
 R.setdefault('smoke', ['#1e1a20', '#3a3238', '#5e5458', '#8a7e7e', '#b4a8a2'])
 
+def shredder(frame=0):
+    """The shop's ore shredder: a hopper on an iron box with turning jaws, a crank on the side and a tray where the
+    cave coins drop out (44 x 48, 4 frames: the jaws and the crank turn, a coin falls). Anchor bottom middle."""
+    w, h = 44, 48
+    g = grid(w, h)
+    for y in range(0, 12):                              # the hopper, wide at the top
+        x0, x1 = 3 + y, w - 9 - y
+        for x in range(x0, x1):
+            g[y, x] = ('wood', 0 if x in (x0, x1 - 1) or y == 0 else 1 if y < 3 else 3 if (x - x0) % 6 == 0 else 2)
+    for x in range(14, w - 18): g[1, x] = ('rockd', 0); g[2, x] = ('rockd', 1)   # dark mouth, a bit of ore in it
+    g[2, 18] = ('gold', 2); g[1, 22] = ('rockd', 3)
+    for y in range(12, 38):                             # the iron box with rivets
+        for x in range(6, w - 6):
+            edge = x in (6, w - 7) or y in (12, 37)
+            g[y, x] = ('steel', 0 if edge else 3 if y == 13 else 2 if x < 10 else 1)
+    for (rx, ry) in ((8, 14), (w - 9, 14), (8, 35), (w - 9, 35)): g[ry, rx] = ('steel', 4)
+    for y in range(16, 25):                             # the window onto the jaws
+        for x in range(11, w - 11): g[y, x] = ('rockd', 0)
+    for k in range(6):                                  # two rows of teeth turning past each other
+        for row, d in ((18, 1), (22, -1)):
+            tx = 11 + (k * 4 + d * frame + 40) % 22
+            if 11 <= tx < w - 12:
+                g[row, tx] = ('steel', 4); g[row - d, tx] = ('steel', 3); g[row, tx + 1] = ('steel', 2)
+    cx, cy = w - 5, 24                                  # the crank wheel and its handle
+    for y in range(cy - 5, cy + 6):
+        for x in range(cx - 5, cx + 6):
+            d2 = (x - cx) ** 2 + (y - cy) ** 2
+            if 0 <= x < w and 13 <= d2 <= 21: g[y, x] = ('wood', 1)
+    import math
+    a = frame * math.pi / 2
+    hx, hy = round(cx + math.cos(a) * 4), round(cy + math.sin(a) * 4)
+    for t in range(5): 
+        x, y = round(cx + (hx - cx) * t / 4), round(cy + (hy - cy) * t / 4)
+        if 0 <= x < w: g[y, x] = ('steel', 3)
+    if 0 <= hx < w: g[hy, hx] = ('gold', 3)
+    for y in range(38, 46):                             # the chute and the tray in front
+        for x in range(10, 22): g[y, x] = ('wood', 0 if y == 45 or x in (10, 21) else 2 if y < 41 else 3)
+    for x in range(12, 20): g[40, x] = ('rockd', 0)
+    if frame in (1, 2): g[39 + frame * 2, 15] = ('gold', 4); g[39 + frame * 2, 16] = ('gold', 2)
+    for (lx) in (7, w - 9):                             # legs
+        for y in range(38, 48): g[y, lx] = ('wood', 0); g[y, lx + 1] = ('wood', 1)
+    return {'grid': g, 'anchor': (w // 2, h - 1)}
+
 DELVE = {'delve_rocktex': rocktex, 'delve_wall': wall, 'delve_ladder': ladder,
          'delve_rope': lambda: rope_seg(False), 'delve_rope_end': lambda: rope_seg(True), 'delve_hook': hook,
          'delve_ropes': coil, 'delve_bomb': bomb, 'delve_boom': boom, 'delve_spikes': spikes,
@@ -500,7 +543,8 @@ DELVE = {'delve_rocktex': rocktex, 'delve_wall': wall, 'delve_ladder': ladder,
          'delve_drop': drop, 'delve_coin': coin, 'delve_chest_0': lambda: chest(0), 'delve_chest_1': lambda: chest(1),
          'delve_scroll_light': lambda: scroll('light'), 'delve_scroll_quake': lambda: scroll('quake'), 'delve_scroll_mend': lambda: scroll('mend'),
          'delve_scroll_stone': lambda: scroll('stone'), 'delve_scroll_blink': lambda: scroll('blink'),
-         'delve_boots': boots, 'delve_spring': spring, 'delve_heartgem': heartgem, 'delve_whetstone': whetstone, 'delve_feather': feather}
+         'delve_boots': boots, 'delve_spring': spring, 'delve_heartgem': heartgem, 'delve_whetstone': whetstone, 'delve_feather': feather,
+         'delve_shredder': shredder}
 
 if __name__ == '__main__':
     from PIL import Image

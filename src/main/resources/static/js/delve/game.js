@@ -16,6 +16,7 @@ const GRAV = 1500, MAXFALL = 820, SPEED = 200, ACC = 1900, AIRACC = 1300, JUMP =
 const PW = 22, PH = 40;                       // the dwarf's box (feet at y)
 const HURT_FALL = 7 * T, BAD_FALL = 11 * T;   // falls longer than this hurt (1 or 2 hearts)
 const FUSE = 2.4, BLAST = 1.6 * T, BOMB_DMG = 3, ROPE_LEN = 7;
+const ARM = 0.8, ARROW_SPEED = 520;            // an arrow trap glows this long before it shoots: time to jump away
 // the shop sells for cave coins; ore pays the rest (one ore = ORE_COINS coins). Prices rise by 3 every 2 layers.
 export const WARES = [
   { id: 'bombs', name: 'Bombs ×3', price: 6, icon: 'delve_bomb' },
@@ -66,7 +67,7 @@ export function createGame(canvas, opts) {
   const speed = () => SPEED * (1 + 0.15 * has('boots'));
   const jump = () => JUMP * (1 + 0.1 * has('spring'));
   const fallHurts = () => HURT_FALL + 4 * T * has('feather'), fallBad = () => BAD_FALL + 4 * T * has('feather');
-  let drips = [], coins = [], chests = [], finds = [], chalkC = null, P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
+  let shred = null, drips = [], coins = [], chests = [], finds = [], chalkC = null, P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
   look = opts.look || { sex: 'm', hair: 'short', beard: 'full', hat: 'miner', vest: true, mood: 'neutral', ramps: {} };
   if (!look.hat) look = { ...look, hat: 'miner' };
 
@@ -81,7 +82,7 @@ export function createGame(canvas, opts) {
     G.introFree = !L.intro; G.introDone = true; chalkC = null;
     coins = (L.coins || []).map((c) => coin((c.x + 0.5) * T + c.dx, (c.y + 1) * T - 1, c.n, 0, 0));
     chests = (L.chests || []).map((c) => ({ x: (c.x + 0.5) * T, y: (c.y + 1) * T - 1, w: 28, h: 20, vx: 0, vy: 0, open: false, loot: c.loot }));
-    finds = [];
+    finds = []; shred = null;
     ramps = { rockd: Art.depthRamp(G.layer), wall: Art.depthRamp(Math.min(4, G.layer + 1)) };
     tiles.clear(); seams.clear(); terrain = null; dirty = null;
     drips = (L.drips || []).map((d) => ({ ...d, t: d.off / 10, drop: null }));
@@ -103,6 +104,7 @@ export function createGame(canvas, opts) {
         wares.push(ware);
       });
       L.shopBox = { x0: X * T, x1: (X + 10) * T, y0: Y * T, y1: (Y + 8) * T };
+      shred = { x: back * T + T / 2 + (L.shop.door < 0 ? -40 : 40), y: (Y + 7) * T, t: 0 };   // the ore shredder by the counter
     }
     P = { x: (L.entrance.x + 0.5) * T, y: (L.entrance.y + 1) * T, vx: 0, vy: 0, w: PW, h: PH, face: 1, ground: false, state: 'walk',
       inv: 1.2, stun: 0, apex: null, swing: 0, swingCD: 0, climbCD: 0, hangCD: 0, coyote: 0, anim: 0, hurtFlash: 0, dead: 0 };
@@ -497,13 +499,24 @@ export function createGame(canvas, opts) {
     if (noise) { noise.t -= dt; if (noise.t <= 0) noise = null; }
     // arrow traps watch their corridor
     for (const q of G.L.traps) {
+      if (q.flash) q.flash = Math.max(0, q.flash - dt);
       if (q.fired) continue;
       const row = q.y * T;
+      if (q.arm != null) {                            // winding up: the eyes glow, then it shoots
+        q.arm += dt;
+        if (q.arm >= ARM) {
+          q.fired = true; q.flash = 0.45; q.arm = null;
+          const mx = (q.x + 0.5) * T + q.dir * 28;
+          arrows.push({ x: mx, y: row + 34, w: 20, h: 6, vx: q.dir * ARROW_SPEED, stuck: 0 });
+          for (let i = 0; i < 8; i++) parts.push({ x: mx, y: row + 34, vx: q.dir * (80 + Math.random() * 160), vy: (Math.random() - 0.5) * 120, t: 0, life: 0.3, c: i % 2 ? '#ffd27a' : '#ff7a3a', s: 2 });
+          A.sfx('parry2', { rate: 1.5, vol: 0.6 }); A.sfx('slash3', { rate: 1.3, vol: 0.4 });
+        }
+        continue;
+      }
       const sees = (b) => b.y > row + 6 && b.y - b.h < row + T - 6 && Math.sign(b.x - (q.x + 0.5) * T) === q.dir && Math.abs(b.x - (q.x + 0.5) * T) < 8 * T && clearRow(q, b.x);
       if (sees(P) || mons.some((m) => !m.dead && m.ai !== 'fly' && sees(m))) {
-        q.fired = true;
-        arrows.push({ x: (q.x + 0.5) * T + q.dir * 28, y: row + 34, w: 20, h: 6, vx: q.dir * 600, stuck: 0 });
-        A.sfx('parry2', { rate: 1.5, vol: 0.6 });
+        q.arm = 0;
+        A.sfx('grind', { rate: 1.9, vol: 0.6 }); A.sfx('click', { rate: 0.7 });
       }
     }
     for (const a of arrows) {
@@ -607,6 +620,20 @@ export function createGame(canvas, opts) {
     if (chest) {
       G.prompt = 'Up: open the chest';
       if (pressed('up')) openChest(chest);
+      return;
+    }
+    if (shred) shred.t = Math.max(0, shred.t - dt);
+    if (shred && Math.abs(shred.x - P.x) < 26 && Math.abs(shred.y - P.y) < 10) {
+      const ore = bagTotal();
+      G.prompt = ore ? `Up: shred 1 ore into ${ORE_COINS} cave coins. You have ${ore} ore.` : `Ore shredder: 1 ore gives ${ORE_COINS} cave coins. You carry no ore.`;
+      if (pressed('up')) {
+        if (!ore) { A.sfx('error'); return; }
+        pay({ coins: 0, ore: 1 }); G.coins += ORE_COINS; shred.t = 0.7;
+        A.sfx('grind', { rate: 0.9 }); A.sfx('coinsLittle', { vol: 0.7 });
+        for (let i = 0; i < 6; i++) parts.push({ x: shred.x - 6, y: shred.y - 6, vx: (Math.random() - 0.5) * 120, vy: -80 - Math.random() * 120, t: 0, life: 0.45, c: i % 2 ? '#ffd27a' : ramps.rockd[2], s: 2 });
+        float(shred.x, shred.y - 70, `+${ORE_COINS} coins`, '#ffd27a', 1.4);
+        hud();
+      }
       return;
     }
     const wa = wares.find((w) => Math.abs(w.x - P.x) < 22 && Math.abs(w.y - P.y) < 10);
@@ -750,7 +777,8 @@ export function createGame(canvas, opts) {
     const ore = result === 'exit' ? { ...G.bag } : {};
     if (result === 'exit') A.sfx('fanfare');
     hud();
-    opts.onEnd && opts.onEnd({ result, levels, ore, layer: G.layer, seconds: performance.now() / 1000 - G.started, found: { ...G.bag } });
+    opts.onEnd && opts.onEnd({ result, levels, ore, layer: G.layer, seconds: performance.now() / 1000 - G.started, found: { ...G.bag },
+      cave: { coins: G.coins, items: { ...G.items }, scrolls: [...G.scrolls], bombs: G.bombs, ropes: G.ropes } });
   }
 
   // ---------------------------------------------------------------- little effects
@@ -791,10 +819,18 @@ export function createGame(canvas, opts) {
   const rgbOf = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const hash3 = (a, b, c) => { let v = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177); v = Math.imul(v ^ (v >>> 13), 1103515245); return (v ^ (v >>> 16)) >>> 0; };
   // how deep the edge bites into the block at this point along an open face: 0 .. JAG pixels, a tooth every 5-6 px
+  // Three things make the edge: broad lumps (about every 16 px), teeth of uneven width on top, and now and then a notch.
+  function vnoise(x, a, b) {
+    const i = Math.floor(x), f = x - i, sm = f * f * (3 - 2 * f);
+    const h0 = hash3(i, a, b) / 4294967296, h1 = hash3(i + 1, a, b) / 4294967296;
+    return h0 + (h1 - h0) * sm;
+  }
   function bite(along, line, side) {
-    const i = Math.floor(along / 6), f = along / 6 - i;
-    const at = (k) => { const h = hash3(k, line, side); return k & 1 ? h % 3 : 3 + h % (JAG - 2); };   // teeth: shallow, deep, shallow
-    return Math.round(at(i) + (at(i + 1) - at(i)) * f);
+    const lump = vnoise(along / 16 + side * 3.7, line, side), tooth = vnoise(along / 4.3 + line * 1.3, line, side + 7);
+    let d = 0.5 + lump * 6 + tooth * tooth * 5;
+    const n = hash3(along >> 2, line, side + 13);
+    if (n % 19 === 0) d += 3; else if (n % 23 === 0) d -= 2;
+    return Math.max(0, Math.min(JAG + 2, Math.round(d)));
   }
   function touch(tx, ty) {
     const d = dirty || (dirty = { x0: tx, y0: ty, x1: tx, y1: ty });
@@ -896,6 +932,37 @@ export function createGame(canvas, opts) {
     }
     return seams.get(k);
   }
+  // The front lip of every floor: the top of the rock is drawn again over whoever stands on it, so the jagged edge
+  // hides their feet a little (bodies stand SINK px into the floor). Moss and puddles go back on top of it.
+  const SINK = 4, LIP = 13;
+  function lip(c0, c1, r0, r1, t) {
+    const L0 = G.L, tc = terrainCanvas();
+    for (let ty = Math.max(1, r0); ty <= r1 + 1 && ty < H; ty++) for (let tx = c0; tx <= c1; tx++) {
+      if (!isRock(L0.at(tx, ty)) || isRock(L0.at(tx, ty - 1)) || L0.at(tx, ty - 1) === SPIKES) continue;
+      ctx.drawImage(tc, tx * T, ty * T, T, LIP, tx * T, ty * T, T, LIP);
+    }
+    for (const d of L0.decor) if ((d.cover || d.kind === 'delve_puddle') && d.x >= c0 - 1 && d.x <= c1 + 1 && d.y >= r0 - 1 && d.y <= r1 + 1) {
+      const [fr0, x, y] = decorAt(d);
+      if (d.kind === 'delve_puddle') Art.draw(ctx, d.kind, Math.floor(t * 3 + d.x) % 4, x, y, { recolour: { rockd: ramps.rockd }, flip: d.flip });
+      else ctx.drawImage(fr0.canvas, Math.round(x - fr0.ax), Math.round(y - fr0.ay));
+    }
+  }
+  // an arrow trap that has seen someone: the eyes and the mouth slot glow, brighter until it shoots
+  function trapGlow(q, t) {
+    const k = q.arm != null ? Math.min(1, q.arm / ARM) : (q.flash || 0) / 0.45;
+    if (k <= 0) return;
+    const X = q.x * T, Y = q.y * T, mir = (x, w) => (q.dir > 0 ? X + x : X + T - x - w);
+    const blink = q.arm != null && k > 0.6 && Math.floor(t * 18) % 2 ? 0.6 : 1;
+    ctx.fillStyle = `rgba(255,${Math.round(150 - 90 * k)},40,${(0.35 + 0.65 * k) * blink})`;
+    for (const ex of [14, 30]) ctx.fillRect(mir(ex + 1, 5), Y + 17, 5, 3);
+    ctx.fillStyle = `rgba(255,${Math.round(220 - 60 * k)},120,${0.25 + 0.75 * k})`;
+    ctx.fillRect(mir(18, 30), Y + 33, 30, 3);
+    if (q.flash > 0) {                                // the shot: a flash out of the mouth
+      const fx = (q.x + 0.5) * T + q.dir * 30, a = q.flash / 0.45;
+      ctx.fillStyle = `rgba(255,230,150,${a})`; ctx.fillRect(fx - 6, Y + 31, 12, 7);
+      ctx.fillStyle = `rgba(255,140,60,${a * 0.7})`; ctx.fillRect(fx - 10 + q.dir * 4, Y + 29, 20, 11);
+    }
+  }
   let bgPat = null, bgLayer = -1, lightC = null;
   function draw(t) {
     const dpr = window.devicePixelRatio || 1;
@@ -928,7 +995,7 @@ export function createGame(canvas, opts) {
       const X = L0.shop.x * T, Y = L0.shop.y * T, back = L0.shop.door < 0 ? X + 7.5 * T : X + 2.5 * T;
       Art.draw(ctx, 'shelf', 0, back + (L0.shop.door < 0 ? 40 : -40), Y + 7 * T);
       Art.draw(ctx, 'lantern', 0, X + 5 * T, Y + 3 * T);
-      Art.draw(ctx, 'scales', 0, back + (L0.shop.door < 0 ? -40 : 40), Y + 7 * T);
+
     }
     if (L0.chalk) ctx.drawImage(chalkBoard(), L0.chalk.x * T, L0.chalk.y * T);
     for (const q of L0.torches) if (q.x >= c0 - 1 && q.x <= c1 + 1) Art.draw(ctx, 'torch', Math.floor(t * 8 + q.x) % 4, (q.x + 0.5) * T, (q.y + 1) * T - 8);
@@ -952,6 +1019,7 @@ export function createGame(canvas, opts) {
           ctx.fillStyle = `rgba(255,248,220,${a})`; ctx.fillRect(gx, gy - 2, 1, 5); ctx.fillRect(gx - 2, gy, 5, 1); }
       }
       else if (tt === LADDER) ctx.drawImage(Art.frame('delve_ladder', 0).canvas, X, Y);
+      else if (tt === TRAP) { const q = L0.traps.find((a) => a.x === tx && a.y === ty); if (q) trapGlow(q, t); }
       else if (tt === SPIKES) Art.draw(ctx, 'delve_spikes', 0, X, Y + T - 1, { recolour: { rockd: ramps.rockd } });
       const hp = tileHp.get(ty * W + tx);
       if (hp) cracks(X, Y, hp, tx * 31 + ty);
@@ -969,11 +1037,17 @@ export function createGame(canvas, opts) {
       Art.draw(ctx, 'delve_coin', 0, lx + 4, ly + 6);
       text(ctx, lbl, lx + 11, ly, '#ffe9a8');
     }
-    for (const c of chests) Art.draw(ctx, c.open ? 'delve_chest_1' : 'delve_chest_0', 0, c.x, c.y + 1);
-    for (const c of coins) Art.draw(ctx, 'delve_coin', Math.floor(t * 8 + c.spin) % 4, c.x, c.y + 1);
+    if (shred) {
+      const near = Math.abs(shred.x - P.x) < 60 && Math.abs(shred.y - P.y) < 30;
+      Art.draw(ctx, 'delve_shredder', shred.t > 0 ? Math.floor(t * 14) % 4 : 0, shred.x, shred.y + SINK, { recolour: { rockd: ramps.rockd } });
+      const lbl = `1 ORE = ${ORE_COINS}`, lx = Math.round(shred.x - (lbl.length * 4 + 12) / 2), ly = shred.y - 60;
+      if (!near) { text(ctx, lbl, lx, ly, '#ffe9a8'); Art.draw(ctx, 'delve_coin', 0, lx + lbl.length * 4 + 6, ly + 6); }
+    }
+    for (const c of chests) Art.draw(ctx, c.open ? 'delve_chest_1' : 'delve_chest_0', 0, c.x, c.y + SINK);
+    for (const c of coins) Art.draw(ctx, 'delve_coin', Math.floor(t * 8 + c.spin) % 4, c.x, c.y + (c.ground ? 3 : 1));
     for (const f of finds) {
       const img = lootIcon(f.kind, f.id), bob = f.ground ? Math.round(Math.sin(t * 3 + f.x) * 2) : 0;
-      ctx.drawImage(img, Math.round(f.x - img.width / 2), Math.round(f.y - img.height + bob));
+      ctx.drawImage(img, Math.round(f.x - img.width / 2), Math.round(f.y - img.height + bob + (f.ground ? 3 : 0)));
       if (Math.floor(t * 2 + f.x) % 3 === 0) { ctx.fillStyle = 'rgba(255,248,220,0.9)'; ctx.fillRect(Math.round(f.x + img.width / 2 - 3), Math.round(f.y - img.height + bob), 1, 3); }
     }
     for (const n of nuggets) { const img = S.ore(n.ore); ctx.drawImage(img, Math.round(n.x - img.width / 2), Math.round(n.y - img.height)); }
@@ -981,6 +1055,7 @@ export function createGame(canvas, opts) {
     for (const s of stals) Art.draw(ctx, 'delve_stal', 0, s.x + (s.state === 'shake' ? Math.round(Math.sin(s.t * 70) * 1.5) : 0), s.y, { recolour: { rockd: ramps.rockd } });
     for (const m of mons) drawMonster(m, t);
     drawDwarf(t);
+    lip(c0, c1, r0, r1, t);
     for (const b of bombs) Art.draw(ctx, 'delve_bomb', Math.min(3, Math.floor((1 - b.fuse / FUSE) * 4)), b.x, b.y);
     for (const a of arrows) Art.draw(ctx, 'delve_arrow', 0, a.x, a.y, { flip: a.vx < 0 });
     for (const b of booms) Art.draw(ctx, 'delve_boom', Math.min(3, Math.floor(b.t / 0.5 * 4)), b.x, b.y);
@@ -1022,7 +1097,7 @@ export function createGame(canvas, opts) {
       const c = DW.frame(look, 'idleSide', 0);
       ctx.save(); ctx.translate(Math.round(P.x), Math.round(P.y)); ctx.rotate(-Math.PI / 2 * Math.min(1, P.dead * 4)); ctx.drawImage(c, -24, -62); ctx.restore();
     }
-    else DW.draw(ctx, look, pose, f, P.x, P.y + 1, { flip: P.face < 0 && pose !== 'climb' });
+    else DW.draw(ctx, look, pose, f, P.x, P.y + (P.ground ? SINK : 1), { flip: P.face < 0 && pose !== 'climb' });
     if (G.stoneT > 0 && (G.stoneT > 2 || Math.floor(t * 8) % 2)) { ctx.fillStyle = 'rgba(200,200,215,0.35)'; ctx.fillRect(P.x - 16, P.y - 46, 32, 46); }
     if (P.hurtFlash > 0) { ctx.fillStyle = 'rgba(255,60,40,0.25)'; ctx.fillRect(P.x - 18, P.y - 46, 36, 46); }
   }
@@ -1031,7 +1106,7 @@ export function createGame(canvas, opts) {
     if (m.kind === 'keeper') {
       const kl = keeperLook();
       const pose = m.calm ? 'idle' : Math.abs(m.vx) > 20 ? 'walk' : 'idleSide';
-      DW.draw(ctx, kl, pose, Math.floor(t * 8) % 4, m.x, m.y + 1, { flip: !m.calm && m.face < 0 });
+      DW.draw(ctx, kl, pose, Math.floor(t * 8) % 4, m.x, m.y + (m.ground ? SINK : 1), { flip: !m.calm && m.face < 0 });
       if (!m.calm) text(ctx, '!', m.x, m.y - 56, '#ff6a5a', 'center');
       return;
     }
@@ -1041,7 +1116,7 @@ export function createGame(canvas, opts) {
       return;
     }
     const fr = Art.frame(m.kind, Math.floor(t * (m.state === 'rush' ? 10 : 6)) % 4, { flip: m.face < 0 });   // drawn facing right
-    ctx.drawImage(fr.canvas, Math.round(m.x - fr.ax), Math.round(m.y + 1 - fr.ay));
+    ctx.drawImage(fr.canvas, Math.round(m.x - fr.ax), Math.round(m.y + (m.ground ? SINK : 1) - fr.ay));
     if (m.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(m.x - m.w / 2, m.y - m.h, m.w, m.h); }
   }
   // ---------------------------------------------------------------- the chalk marks of the first level
@@ -1129,9 +1204,15 @@ export function createGame(canvas, opts) {
     hole(P.x + P.face * 6, P.y - PH + 4, 200 * (1 + 0.4 * has('lamp')) * flick, 1);
     for (const q of G.L.torches) hole((q.x + 0.5) * T, (q.y + 1) * T - 30, 130 * (1 + Math.sin(t * 7 + q.x) * 0.04), 0.95);
     if (G.L.shop) hole((G.L.shop.x + 5) * T, (G.L.shop.y + 4) * T, 230, 1);
+    if (shred && shred.t > 0) hole(shred.x, shred.y - 20, 60, 0.6);
     hole((G.L.entrance.x + 0.5) * T, (G.L.entrance.y + 0.5) * T, 110, 0.6);
     if (G.L.lift) hole((G.L.lift.x + 0.5) * T, (G.L.lift.y + 0.5) * T, 140, 0.8);
     for (const b of bombs) hole(b.x, b.y - 18, 40, 0.8);
+    for (const q of G.L.traps) {
+      const k = q.arm != null ? Math.min(1, q.arm / ARM) : (q.flash || 0) / 0.45;
+      if (k > 0) hole((q.x + 0.5) * T + q.dir * 10, q.y * T + 26, (q.flash > 0 ? 150 : 60 + 60 * k), 0.6 + 0.4 * k);
+    }
+    for (const a of arrows) if (!a.stuck) hole(a.x, a.y + 3, 40, 0.6);
     for (const b of booms) hole(b.x, b.y, 300 * (1 - b.t / 0.5), 1);
     for (const m of mons) if (!m.dead && m.glow) hole(m.x, m.y - m.h / 2, 80, 0.7);
     for (const [k] of G.L.veins) hole((k % W + 0.5) * T, (Math.floor(k / W) + 0.5) * T, 46, 0.45 + 0.15 * Math.sin(t * 3 + k));
@@ -1150,6 +1231,14 @@ export function createGame(canvas, opts) {
       const gr = ctx.createRadialGradient(x, y, 0, x, y, 110);
       gr.addColorStop(0, 'rgba(255,150,60,0.16)'); gr.addColorStop(1, 'rgba(255,150,60,0)');
       ctx.fillStyle = gr; ctx.fillRect(x - 110, y - 110, 220, 220);
+    }
+    for (const q of G.L.traps) {                    // red glow of a trap about to shoot
+      const k = q.arm != null ? Math.min(1, q.arm / ARM) : (q.flash || 0) / 0.45;
+      if (k <= 0) continue;
+      const x = (q.x + 0.5) * T, y = q.y * T + 26, R = 90;
+      const gr = ctx.createRadialGradient(x, y, 0, x, y, R);
+      gr.addColorStop(0, `rgba(255,90,40,${0.3 * k})`); gr.addColorStop(1, 'rgba(255,90,40,0)');
+      ctx.fillStyle = gr; ctx.fillRect(x - R, y - R, R * 2, R * 2);
     }
     if (G.flash > 0) { ctx.fillStyle = `rgba(255,200,120,${G.flash * 0.5})`; ctx.fillRect(x0, y0, vw, vh); }
     ctx.restore();

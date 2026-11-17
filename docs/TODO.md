@@ -24,6 +24,8 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [ ] Mehr Raum-Vorlagen statt nur zufälliger Simsen (Spelunky-artige Raumtypen)
 - [x] Beute nur für den Run: Cave Coins, Truhen, stapelbare Funde, Spruchrollen; Laden in Münzen (Erz zahlt den Rest)
 - [x] Startzelle zum Freihacken und Steuerung als Kreide an der Wand; Deko und Stacheln zerbrechen mit ihrem Block
+- [x] Rucksack-Fenster (I/Tab, Knöpfe „Take home“/„Cave only“): klar getrennt, was nach Hause geht; Endkarte ebenso; Name des Zwergs im HUD
+- [x] Erz-Schredder im Laden, Pfeilfallen mit Vorwarnung und Licht, unregelmäßige Felskanten vor den Füßen
 - [ ] Schlüssel, Geheimräume; Gegner, die Erz fallen lassen
 - [ ] Mehr Funde mit Nachteil (Isaac-artig), Flüche, Altäre
 - [ ] Eigene Sounds für Sprung, Bombe, Pfeil, Stalaktit (bis dahin vorhandene)

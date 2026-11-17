@@ -14,7 +14,7 @@ const KEYS = {
 };
 export const HELP = [
   ['Move, climb', 'Arrows or WASD'], ['Jump', 'Space'], ['Swing the pick', 'E (hold Down or Up to dig there)'],
-  ['Bomb', 'Q (Down: drop it)'], ['Rope', 'R'], ['Read a scroll', 'F'], ['Buy, open, go down, ride the lift', 'Up or W'], ['Pause', 'Esc'],
+  ['Bomb', 'Q (Down: drop it)'], ['Rope', 'R'], ['Read a scroll', 'F'], ['Your pack: what goes home', 'I or Tab'], ['Buy, open, go down, ride the lift', 'Up or W'], ['Pause', 'Esc'],
 ];
 
 const url = new Map();
@@ -49,7 +49,10 @@ export function openDelve(o) {
   el.className = 'delve';
   el.innerHTML = `
     <canvas class="dv-canvas"></canvas>
-    <div class="dv-hud"><div class="dv-hearts"></div><div class="dv-kit"></div><div class="dv-bag"></div><div class="dv-finds"></div><div class="dv-where"></div>
+    <div class="dv-hud"><div class="dv-who"><span class="dv-name"></span><div class="dv-hearts"></div></div><div class="dv-kit"></div>
+      <button class="dv-pack dv-home" aria-label="Your pack: what goes home"><span class="dv-tag"></span><span class="dv-bag"></span></button>
+      <button class="dv-pack dv-cave" aria-label="Your pack: what stays in the cave"><span class="dv-tag">Cave only</span><span class="dv-finds"></span></button>
+      <div class="dv-where"></div>
       <button class="btn small dv-pause" aria-label="Pause">Pause</button></div>
     <div class="dv-pad">
       <div class="dv-move">
@@ -71,6 +74,13 @@ export function openDelve(o) {
   el.querySelector('[data-k=pick]').appendChild(pic(S.item('pickaxe', 'iron'), 'pick', 'dv-bico'));
   el.querySelector('[data-k=scroll]').appendChild(pic(lootIcon('scroll', 'light'), 'scrollbtn', 'dv-bico'));
   const touch = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 760;
+  const name = o.name || 'Your dwarf';
+  const oreName = {};
+  for (const x of o.data.ores || []) oreName[x.id] = x.name;
+  $('.dv-name').textContent = name;
+  $('.dv-home .dv-tag').textContent = o.training ? 'Training' : 'Take home';
+  if (o.training) $('.dv-home').classList.add('dv-off');
+  let lastH = null;
 
   let report = null;
   const game = createGame(canvas, {
@@ -86,31 +96,31 @@ export function openDelve(o) {
 
   // ---------------------------------------------------------------- the HUD
   function hud(h) {
+    lastH = h;
     const hearts = $('.dv-hearts');
     hearts.replaceChildren();
     for (let i = 0; i < Math.max(h.hearts, 0); i++) hearts.appendChild(pic(S.icon('heart'), 'heart'));
     if (h.hearts <= 0) hearts.appendChild(pic(S.icon('skull'), 'skull'));
     const kit = $('.dv-kit');
-    kit.replaceChildren(pic(Art.frame('delve_bomb', 0).canvas, 'bomb'), num(h.bombs), pic(Art.frame('delve_ropes', 0).canvas, 'ropes'), num(h.ropes),
-      pic(lootIcon('coin', 0), 'coin'), num(h.coins));
-    // finds of this run (copies as a number) and the scrolls, the next one to read first
+    kit.replaceChildren(pic(Art.frame('delve_bomb', 0).canvas, 'bomb'), num(h.bombs), pic(Art.frame('delve_ropes', 0).canvas, 'ropes'), num(h.ropes));
+    h.scrolls.forEach((id, i) => {                   // scrolls, the next one to read first
+      const p = pic(lootIcon('scroll', id), 'scroll' + id, i ? 'dv-ico dv-later' : 'dv-ico dv-next'); p.title = `${SCROLLS[id].name}: ${SCROLLS[id].text}`;
+      kit.appendChild(p);
+    });
+    // what stays in the cave: coins and the finds (copies as a number)
     const finds = $('.dv-finds');
-    finds.replaceChildren();
+    finds.replaceChildren(pic(lootIcon('coin', 0), 'coin'), num(h.coins));
     for (const [id, n] of Object.entries(h.items)) {
       const p = pic(lootIcon('item', id), 'find' + id); p.title = `${ITEMS[id].name}: ${ITEMS[id].text}`;
       finds.appendChild(p); if (n > 1) finds.appendChild(num(n));
     }
-    h.scrolls.forEach((id, i) => {
-      const p = pic(lootIcon('scroll', id), 'scroll' + id, i ? 'dv-ico dv-later' : 'dv-ico dv-next'); p.title = `${SCROLLS[id].name}: ${SCROLLS[id].text}`;
-      finds.appendChild(p);
-    });
     const sb = el.querySelector('[data-k=scroll]');
     sb.disabled = !h.scrolls.length;
     sb.querySelector('img').src = src(lootIcon('scroll', h.scrolls[0] || 'light'), 'scrollbtn' + (h.scrolls[0] || 'light'));
     const bag = $('.dv-bag');
     bag.replaceChildren();
     const ores = Object.entries(h.bag);
-    if (!ores.length) bag.appendChild(Object.assign(document.createElement('span'), { className: 'dv-dim', textContent: 'No ore yet' }));
+    if (!ores.length) bag.appendChild(Object.assign(document.createElement('span'), { className: 'dv-dim', textContent: 'No ore' }));
     for (const [k, n] of ores) { bag.appendChild(pic(S.ore(k), 'ore' + k)); bag.appendChild(num(n)); }
     $('.dv-where').textContent = `${o.training ? 'Training: ' : ''}${h.layerName} ${h.depth + 1}-${h.levels}`;
   }
@@ -120,6 +130,7 @@ export function openDelve(o) {
   const down = (k) => game.press(k), up = (k) => game.release(k);
   const onKey = (e) => {
     if (e.code === 'Escape' || e.code === 'KeyP') { if (e.type === 'keydown') togglePause(); e.preventDefault(); return; }
+    if (e.code === 'KeyI' || e.code === 'Tab') { if (e.type === 'keydown' && !e.repeat) togglePack(); e.preventDefault(); return; }
     const k = KEYS[e.code];
     if (!k || e.target.closest && e.target.closest('input, select, textarea')) return;
     e.preventDefault();
@@ -144,37 +155,70 @@ export function openDelve(o) {
   for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(t, (e) => setFinger(e.pointerId, null));
   pad.addEventListener('contextmenu', (e) => e.preventDefault());
   $('.dv-pause').addEventListener('click', () => togglePause());
+  for (const b of el.querySelectorAll('.dv-pack')) b.addEventListener('click', () => togglePack());
 
-  // ---------------------------------------------------------------- pause and the end
+  // ---------------------------------------------------------------- pause, the pack and the end
   const menu = $('.dv-menu');
+  let mode = null;                                    // 'pause' | 'pack' | 'end'
+  function closeMenu() { menu.hidden = true; mode = null; game.pause(false); }
+  function openMenu(m, html) { mode = m; game.pause(true); menu.hidden = false; menu.innerHTML = html; }
   function togglePause() {
     if (game.G.over) return;
-    const on = menu.hidden;
-    game.pause(on);
-    menu.hidden = !on;
-    if (!on) return;
-    menu.innerHTML = `<div class="dv-card"><h2>Paused</h2>
+    if (mode) { closeMenu(); return; }
+    openMenu('pause', `<div class="dv-card"><h2>Paused</h2>
       <table class="dv-keys">${HELP.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>
-      <p class="dv-dim">Find ore in the veins and climb out by the lift at the end of a layer. If you fall, everything you found is lost. Coins, finds and scrolls stay in the cave. In the shop one ore counts as 5 coins.</p>
-      <div class="dv-row"><button class="btn primary" data-a="resume">Resume</button><button class="btn danger" data-a="quit">Give up</button></div></div>`;
-    menu.querySelector('[data-a=resume]').onclick = () => togglePause();
-    menu.querySelector('[data-a=quit]').onclick = () => { menu.hidden = true; game.pause(false); game.giveUp(); };
+      <p class="dv-dim">Find ore in the veins and climb out by the lift at the end of a layer. Only ore goes home: coins, finds and scrolls stay in the cave. In the shop one ore counts as 5 coins.</p>
+      <div class="dv-row"><button class="btn" data-a="pack">Your pack</button><button class="btn danger" data-a="quit">Give up</button><button class="btn primary" data-a="resume">Resume</button></div></div>`);
+    menu.querySelector('[data-a=resume]').onclick = () => closeMenu();
+    menu.querySelector('[data-a=pack]').onclick = () => { closeMenu(); togglePack(); };
+    menu.querySelector('[data-a=quit]').onclick = () => { closeMenu(); game.giveUp(); };
+  }
+  // one line of the pack: picture, name, number, what it does
+  const line = (img, key, title, n, text) => `<li><img class="dv-ico" src="${src(img, key)}" alt=""><span><span class="dv-li-t">${title}</span>${n != null ? ` <span class="dv-n">${n}</span>` : ''}${text ? `<br><span class="dv-dim">${text}</span>` : ''}</span></li>`;
+  const st = (k) => `<img class="dv-st" src="${src(S.icon(k), 'st' + k)}" alt="">`;
+  function homeList(bag, lost) {
+    const ores = Object.entries(bag);
+    if (!ores.length) return `<p class="dv-dim">${lost ? 'Nothing.' : 'No ore yet. Break the glinting veins with your pick.'}</p>`;
+    return `<ul class="dv-list${lost ? ' dv-lost' : ''}">${ores.map(([k, n]) => line(S.ore(k), 'ore' + k, oreName[k] || k, n)).join('')}</ul>`;
+  }
+  function caveList(c) {
+    const out = [line(lootIcon('coin', 0), 'coin', 'Cave coins', c.coins, 'Pay the shop down here.')];
+    if (c.bombs != null) out.push(line(Art.frame('delve_bomb', 0).canvas, 'bomb', 'Bombs', c.bombs), line(Art.frame('delve_ropes', 0).canvas, 'ropes', 'Ropes', c.ropes));
+    for (const [id, n] of Object.entries(c.items)) out.push(line(lootIcon('item', id), 'find' + id, ITEMS[id].name, n > 1 ? n : null, ITEMS[id].text));
+    for (const id of c.scrolls) out.push(line(lootIcon('scroll', id), 'scroll' + id, SCROLLS[id].name, null, SCROLLS[id].text));
+    return `<ul class="dv-list">${out.join('')}</ul>`;
+  }
+  function togglePack() {
+    if (game.G.over || mode === 'end') return;
+    if (mode === 'pack') { closeMenu(); return; }
+    const h = lastH || { bag: {}, coins: 0, items: {}, scrolls: [], bombs: 0, ropes: 0 };
+    openMenu('pack', `<div class="dv-card"><h2>${esc(name)}'s pack</h2>
+      <section class="dv-sec dv-sec-home${o.training ? ' dv-off' : ''}"><h3>${st(o.training ? 'warn' : 'good')}${o.training ? 'Training: nothing goes home' : 'Goes home'}</h3>
+        <p class="dv-dim">${o.training ? 'This is only practice. Nothing found here is kept.' : 'Ride the lift up and this ore goes to the stores of the hold. Fall, and it is lost.'}</p>
+        ${homeList(h.bag, false)}</section>
+      <section class="dv-sec dv-sec-cave"><h3>${st('idle')}Stays in the cave</h3>
+        <p class="dv-dim">Yours only for this run. Gone when you leave the mine.</p>
+        ${caveList(h)}</section>
+      <div class="dv-row"><button class="btn primary" data-a="resume">Back to the cave</button></div></div>`);
+    menu.querySelector('[data-a=resume]').onclick = () => closeMenu();
   }
   function showEnd(r, rep) {
-    menu.hidden = false;
-    const found = Object.entries(r.result === 'exit' ? r.ore : r.found);
-    const title = o.training ? 'Training over' : r.result === 'exit' ? 'Back in the light' : r.result === 'dead' ? 'Carried out of the mine' : 'Turned back';
-    const line = o.training ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'}. Nothing is kept.` : r.result === 'exit' ? `${r.levels} ${r.levels === 1 ? 'level' : 'levels'} deep. Coins and finds stay in the cave.`
-      : r.result === 'dead' ? 'Badly hurt. Everything found is lost.' : 'Nothing found is kept.';
-    menu.innerHTML = `<div class="dv-card"><h2>${title}</h2><p>${line}</p><div class="dv-loot"></div>
-      <p class="dv-dim dv-rep">${rep === null ? 'Reporting to the hold…' : rep && rep.error ? rep.error : rep && rep.text ? rep.text : ''}</p>
+    mode = 'end'; menu.hidden = false;
+    const home = r.result === 'exit' && !o.training;
+    const title = o.training ? 'Training over' : r.result === 'exit' ? `${esc(name)} is back in the light` : r.result === 'dead' ? `${esc(name)} was carried out` : 'Turned back';
+    const deep = `${r.levels} ${r.levels === 1 ? 'level' : 'levels'} deep.`;
+    const lead = o.training ? `${deep} Nothing is kept.` : r.result === 'exit' ? deep : r.result === 'dead' ? 'Badly hurt. Everything found is lost.' : 'Nothing found is kept.';
+    const bag = r.result === 'exit' ? r.ore : r.found;
+    menu.innerHTML = `<div class="dv-card"><h2>${title}</h2><p>${lead}</p>
+      <section class="dv-sec dv-sec-home${home ? '' : ' dv-off'}"><h3>${st(home ? 'good' : 'stop')}${home ? 'Brought home' : 'Lost'}</h3>${homeList(bag, !home)}</section>
+      <section class="dv-sec dv-sec-cave"><h3>${st('idle')}Left in the cave</h3>${r.cave ? caveList({ ...r.cave, bombs: null }) : ''}</section>
+      <p class="dv-dim dv-rep">${rep === null ? 'Reporting to the hold…' : rep && rep.error ? esc(rep.error) : rep && rep.text ? esc(rep.text) : ''}</p>
       <div class="dv-row">${o.again ? '<button class="btn" data-a="again">Again</button>' : ''}<button class="btn primary" data-a="close">${o.closeLabel || 'Back to the mine'}</button></div></div>`;
-    const loot = menu.querySelector('.dv-loot');
-    for (const [k, n] of found) { const s = document.createElement('span'); s.className = r.result === 'exit' && !o.training ? 'dv-got' : 'dv-lost'; s.append(pic(S.ore(k), 'ore' + k), num(n)); loot.appendChild(s); }
     menu.querySelector('[data-a=close]').onclick = () => close();
     const again = menu.querySelector('[data-a=again]');
     if (again) again.onclick = () => { close(); o.again(); };
   }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   function close() {
     game.stop();
     window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); window.removeEventListener('blur', blur);

@@ -26,7 +26,7 @@ export async function delve(id) {
   if (!s || !F().delve) return;
   const run = F().delve, d = F().dwarves.find((x) => x.id === run.dwarf);
   window.__delve = openDelve({
-    run, data: G.data, look: look48(d, { hat: 'miner' }),
+    run, data: G.data, look: look48(d, { hat: 'miner' }), name: fullName(d),
     onEnd: async (r) => {
       const res = await bus.act({ type: 'delveEnd', id: run.id, result: r.result, levels: r.levels, ore: r.ore }, true, true);
       const log = res && res.fortress.log;
@@ -43,7 +43,7 @@ export function training(id) {
   const dv = (D() && D().dwarves && D().dwarves[a.d.id]) || {};
   const run = { seed: 1 + Math.floor(Math.random() * 1999999999), hearts: dv.delveHearts || G.data.delve.baseHearts, pick: dv.pickHardness || 1, damage: dv.delveDamage || 1 };
   window.__delve = openDelve({
-    run, data: G.data, look: look48(a.d, { hat: 'miner' }), training: true,
+    run, data: G.data, look: look48(a.d, { hat: 'miner' }), name: fullName(a.d), training: true,
     onEnd: async () => ({ text: 'Only training: nothing found is kept, and nobody got hurt.' }),
     again: () => training(a.d.id), closeLabel: 'Back to the hold',
   });

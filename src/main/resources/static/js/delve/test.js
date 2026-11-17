@@ -62,7 +62,7 @@ function play(s) {
   const skip = (e) => { if (e.code === 'KeyN' && !e.repeat && ui) ui.game.skip(); };
   window.addEventListener('keydown', skip);
   ui = openDelve({
-    run: { seed: s.seed, hearts: s.hearts, pick: s.pick, damage: 1 }, data: G.data, startLayer: s.layer, god: s.god, bright: s.bright, bombs: s.kit, ropes: s.kit,
+    run: { seed: s.seed, hearts: s.hearts, pick: s.pick, damage: 1 }, data: G.data, name: 'Test Delver', startLayer: s.layer, god: s.god, bright: s.bright, bombs: s.kit, ropes: s.kit,
     onEnd: async (r) => ({ text: `Test run, seed ${s.seed}: ${r.result} after ${r.levels} levels in ${Math.round(r.seconds)} s. Nothing is saved.` }),
     closeLabel: 'Done', onClose: () => { window.removeEventListener('keydown', skip); setup(); },
   });
