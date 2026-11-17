@@ -3,7 +3,7 @@ import { G, F, D, byId, fmt, dur, goodName, buildingName, now, stock, isItem, pa
   wordChances, baseValue, moneyText } from '../core/data.js';
 import { h, img, goodIcon, bar, openSheet, closeSheet, refreshSheet, bus, toast, ico, inputChips, missingName, info, hourglass, setSand, statusIco } from '../ui/ui.js';
 import * as A from '../core/audio.js';
-const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'mechanic', 'tailor', 'wizard', 'farm', 'brewery', 'barracks'];
+const HALL_ORDER = ['tavern', 'quarters', 'warehouse', 'vault', 'smelter', 'forge', 'grindstone', 'engraver', 'jeweler', 'mechanic', 'tailor', 'wizard', 'antiquarium', 'farm', 'brewery', 'barracks'];
 import * as S from '../art/sprites.js';
 import { upgradeBtn, costBtn } from './base.js';
 import { jobOf } from '../scene/hold.js';

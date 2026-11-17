@@ -1,0 +1,58 @@
+{
+ "version": 1,
+ "type": "antiquarium",
+ "part": "room",
+ "cells": 6,
+ "wall": "wall_hewn",
+ "floor": "floor_planks",
+ "vault": true,
+ "name": "starter",
+ "props": [
+  {
+   "s": "studytable",
+   "x": 120,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "crate",
+   "x": 216,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "lantern",
+   "x": 150,
+   "y": 0,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 112,
+   "y": 108
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "sit": true,
+   "x": 120,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 100,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 150,
+   "y": 28
+  }
+ ]
+}

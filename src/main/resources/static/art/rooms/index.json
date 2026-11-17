@@ -174,5 +174,12 @@
    "furnished",
    "starter"
   ]
+ },
+ "antiquarium": {
+  "bay": [],
+  "room": [
+   "furnished",
+   "starter"
+  ]
  }
 }

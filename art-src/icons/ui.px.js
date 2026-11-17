@@ -244,6 +244,7 @@ const MARKS = {
   gear: [[4, 3, "b"], [5, 3, "a"], [6, 3, "a"], [4, 4, "a"], [6, 4, "a"], [4, 5, "a"], [5, 5, "a"], [6, 5, "a"]],
   rune: [[4, 3, "a"], [4, 4, "a"], [4, 5, "a"], [5, 3, "b"], [6, 4, "a"], [5, 4, "a"]],
   stitch: [[4, 3, "a"], [6, 3, "a"], [5, 4, "b"], [4, 5, "a"], [6, 5, "a"]],
+  lens: [[4, 2, "a"], [5, 2, "a"], [3, 3, "a"], [4, 3, "b"], [6, 3, "a"], [3, 4, "a"], [6, 4, "a"], [4, 5, "a"], [5, 5, "a"], [6, 6, "a"]],
 };
 // keys: H L B D E (plate), mark, a b (mark colours)
 const WS_PLATES = {
@@ -255,6 +256,7 @@ const WS_PLATES = {
   wizard: ["Nnb1s", "star", "j0"],         // night blue, a star
   mechanic: ["@^~vw", "gear", "57"],       // bronze, a steel cog
   tailor: ["CcUuV", "stitch", "fF"],       // linen, a red cross-stitch
+  antiquarium: ["uVvWw", "lens", "o8"],    // old oak, a brass loupe
 };
 for (const [ws, [keys, mark, ab]] of Object.entries(WS_PLATES)) {
   const map = (g) => wide(g).replace(/[HLBDE]/g, (ch) => keys["HLBDE".indexOf(ch)]);

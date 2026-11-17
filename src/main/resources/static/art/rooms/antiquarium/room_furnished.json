@@ -1,0 +1,106 @@
+{
+ "version": 1,
+ "type": "antiquarium",
+ "part": "room",
+ "cells": 6,
+ "wall": "wall_panel",
+ "floor": "floor_planks",
+ "vault": true,
+ "name": "furnished",
+ "props": [
+  {
+   "s": "shelf",
+   "x": 44,
+   "y": 87,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "rug",
+   "x": 132,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "studytable",
+   "x": 132,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "vitrine",
+   "x": 232,
+   "y": 135,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "candle",
+   "x": 160,
+   "y": 113,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "chandelier",
+   "x": 132,
+   "y": 14,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  },
+  {
+   "s": "banner",
+   "x": 186,
+   "y": 40,
+   "flip": false,
+   "z": 0,
+   "frame": null
+  }
+ ],
+ "spots": [
+  {
+   "kind": "work",
+   "x": 124,
+   "y": 108
+  },
+  {
+   "kind": "worker",
+   "face": "back",
+   "sit": true,
+   "x": 132,
+   "y": 135
+  },
+  {
+   "kind": "light",
+   "r": 130,
+   "c": "#ffd98e",
+   "p": 0.75,
+   "x": 132,
+   "y": 40
+  },
+  {
+   "kind": "light",
+   "r": 44,
+   "c": "#ffd98e",
+   "p": 0.4,
+   "x": 160,
+   "y": 103
+  },
+  {
+   "kind": "light",
+   "r": 60,
+   "c": "#bfe8e0",
+   "p": 0.35,
+   "x": 232,
+   "y": 100
+  }
+ ]
+}

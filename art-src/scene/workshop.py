@@ -293,10 +293,65 @@ def mushbed(stage=2):
             p.c[84 - h, x] = ('cream', 4)
     return crop(p)
 
+# ------------------------------------------------------------------ antiquarium
+def studytable():
+    """The antiquary's table: a helm half out of its crust of rock, brushes in a pot, a loupe on an arm, notes."""
+    p = bench(16, 79, 74)
+    helm = ell(40, 70, 9, 7.5) & (yy <= 73)
+    p.fill(helm, 'copper', idx=shade(helm, 0.1, 1.0))                                        # cleaned bronze (right)
+    p.fill(rect_m(30, 72, 50, 73), 'copper', idx=np.where(yy == 72, 3, 1))                   # brim
+    crust = helm & (xx < 41 + (yy % 3) - 1)
+    p.fill(crust, 'stone', idx=shade(crust, 0.0, 0.9), outline=False)                        # rock crust (left)
+    for (x, y) in ((33, 66), (36, 64), (35, 69), (38, 67)): p.c[y, x] = ('clay', 2)          # rust in the crust
+    for (x, y) in ((32, 68), (37, 63)): p.c[y, x] = ('moss', 3)
+    for x in range(41, 49, 3): p.c[68, x] = ('gold', 4)                                      # a rune line shows through
+    p.c[64, 44] = ('copper', 4); p.c[65, 45] = ('copper', 4)                                 # shine
+    for (x, y) in ((24, 73), (26, 73), (53, 73), (55, 72)): p.c[y, x] = ('stone', 2)         # bits picked off
+    pot = rect_m(58, 66, 63, 73)
+    p.fill(pot, 'clay', idx=faces(pot, 1))                                                   # brush pot
+    for (a, b, r) in (((59, 66), (57, 57), 'oak'), ((61, 66), (62, 56), 'wood'), ((62, 66), (66, 59), 'oak')):
+        p.fill(cap(a, b, 0.6), r, bias=0.1, outline=False)
+    p.px([(57, 56), (62, 55), (66, 58)], 'cream', 4)                                         # bristles
+    p.fill(rect_m(68, 71, 76, 73), 'cream', idx=np.where(yy == 71, 4, 3))                    # notes
+    for x in range(69, 76, 2): p.c[72, x] = ('cream', 1)
+    p.fill(rect_m(21, 72, 24, 73), 'gold', idx=faces(rect_m(21, 72, 24, 73), 0))            # loupe stand
+    p.fill(cap((22, 72), (22, 58), 0.7), 'gold', bias=0.1, outline=False)
+    p.fill(cap((22, 58), (29, 58), 0.7), 'gold', bias=0.1, outline=False)
+    p.fill(ell(31.5, 60, 3.4, 3.4) & ~ell(31.5, 60, 2.2, 2.2), 'gold', bias=0.1, outline=False)
+    p.fill(ell(31.5, 60, 2.2, 2.2), 'teal', idx=np.where(xx < 31, 4, 3), outline=False)     # lens
+    return crop(p)
+def vitrine():
+    """A glass case on a carved base: studied relics on cushions, a highlight across the glass."""
+    p = Part()
+    board(p, 26, 80, 69, 95, 'oak', top_rows=2, seams=(47,))
+    p.fill(rect_m(30, 86, 43, 91), 'oak', idx=np.full((H, W), 1), outline=False)             # carved panels
+    p.fill(rect_m(51, 86, 65, 91), 'oak', idx=np.full((H, W), 1), outline=False)
+    glass = rect_m(28, 48, 67, 79)
+    gi = np.where(yy > 74, 1, 0)
+    p.fill(glass, 'teal', idx=gi, outline=False)                                              # dark glass
+    cush = rect_m(31, 74, 45, 78)
+    p.fill(cush, 'quilt', idx=faces(cush, 1), outline=False)
+    cup = poly([(34, 60), (43, 60), (41, 68), (36, 68)])                                      # a chalice
+    p.fill(cup, 'gold', idx=shade(cup, 0.1, 0.9), outline=False)
+    p.fill(rect_m(38, 68, 39, 72), 'gold', idx=np.full((H, W), 2), outline=False)
+    p.fill(rect_m(35, 72, 42, 73), 'gold', idx=np.where(xx < 38, 4, 2), outline=False)
+    cush2 = rect_m(50, 74, 64, 78)
+    p.fill(cush2, 'quilt', idx=faces(cush2, 1), outline=False)
+    crown = poly([(51, 66), (63, 66), (63, 73), (51, 73)]) & ~((yy < 69) & (((xx - 51) % 4) >= 2))
+    p.fill(crown, 'gold', idx=shade(crown, 0.1, 0.8), outline=False)
+    p.c[70, 54] = ('quilt', 4); p.c[70, 57] = ('teal', 4); p.c[70, 60] = ('quilt', 4)        # stones in the crown
+    for k in range(6):                                                                        # highlight across the glass
+        for x, y in ((31 + k, 54 - k + 6), (33 + k, 54 - k + 6)): p.c[y, x] = ('teal', 3)
+    for k in range(4): p.c[64 - k + 6, 58 + k] = ('teal', 3)
+    for x0 in (26, 66): board(p, x0, 46, x0 + 3, 80, 'oak', top_rows=0)                      # posts
+    board(p, 25, 43, 70, 47, 'oak', top_rows=2)                                               # top
+    p.fill(rect_m(45, 41, 50, 42), 'gold', idx=np.where(xx < 47, 4, 2))                       # finial
+    return crop(p)
+
 WORK = {'forge': forge, 'anvil': anvil, 'quench': quench, 'bellows': bellows, 'smelter': smelter,
         'ore_pile': lambda: pile('ore'), 'coal_pile': lambda: pile('coal'), 'grindstone': grindstone,
         'engraver': engraver, 'jeweler': jeweler, 'loom': loom, 'sewing': sewing, 'brewkettle': brewkettle,
-        'vats': vats, 'altar': altar, 'lectern': lectern, 'mushbed_0': lambda: mushbed(0), 'mushbed_1': lambda: mushbed(1), 'mushbed_2': lambda: mushbed(2)}
+        'vats': vats, 'altar': altar, 'lectern': lectern, 'studytable': studytable, 'vitrine': vitrine, 'mushbed_0': lambda: mushbed(0), 'mushbed_1': lambda: mushbed(1), 'mushbed_2': lambda: mushbed(2)}
 ANIM = ('forge', 'bellows', 'smelter', 'grindstone', 'brewkettle', 'altar')
 
 if __name__ == '__main__':

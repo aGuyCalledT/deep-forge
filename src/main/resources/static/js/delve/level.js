@@ -345,6 +345,26 @@ export function makeLevel(opts) {
     else if (v < 0.6 * green) decor.push({ x, y: y - 1, kind: r() < 0.5 ? 'delve_tuft_0' : 'delve_tuft_1', front: true, dx: r.int(24) - 12, flip: r() < 0.5 });
   }
 
+  // the gems and the relic the server hid in this level (Delve.java): its own dice, so the rest of the level stays the same
+  const rg = rng(opts.seed + 7919);
+  const gemFaces = faces.filter((f) => at(f.x, f.y) === ROCK && !busy.has(key(f.x, f.y)));
+  (opts.gems || []).forEach((g, i) => {
+    const chest = i > 0 && chests.find((c) => !c.loot.gem);
+    if (chest) { chest.loot.gem = g; return; }
+    if (!gemFaces.length) return;
+    const f = gemFaces.splice(rg.int(gemFaces.length), 1)[0];
+    set(f.x, f.y, ORE); veins.set(key(f.x, f.y), { gem: g, n: 1 });
+  });
+  if (opts.relic) {                                      // the floor furthest from the way in, in a quiet corner
+    let best = null, bd = -1;
+    for (const f of floors) {
+      if (busy.has(key(f.x, f.y)) || at(f.x, f.y) !== AIR || at(f.x, f.y - 1) !== AIR) continue;
+      const d = Math.abs(f.x - entrance.x) + Math.abs(f.y - entrance.y) + rg() * 6;
+      if (d > bd) { bd = d; best = f; }
+    }
+    if (best) { out.relic = { x: best.x, y: best.y }; busy.add(key(best.x, best.y)); }
+  }
+
   return { seed: opts.seed, layer: opts.layer, depth: opts.depth, last: !!opts.last, tiles, at, set, veins, entrance, ...out,
     shop: shop && { ...shop, x: ox(shop.rx), y: oy(shop.ry) }, traps, stals, spawns, torches, decor, drips, ladders, room, soft, intro, chalk, coins, chests };
 
@@ -355,5 +375,5 @@ export function makeLevel(opts) {
   }
 }
 
-/** Ore lying in a vein at x, y: {ore, n}, or null. */
+/** Ore lying in a vein at x, y: {ore, n} (or {gem, n} for a rough gem), or null. */
 export function veinAt(L, x, y) { return L.veins.get(y * W + x) || null; }

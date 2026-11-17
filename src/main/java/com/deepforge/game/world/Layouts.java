@@ -21,7 +21,7 @@ public final class Layouts {
     public static final int SHAFT = 2;   // shaft width in columns
     public static final Map<String, Integer> ROOM_CELLS = new LinkedHashMap<>();
     public static final List<String> ORDER = List.of("tavern", "quarters", "warehouse", "vault", "smelter", "forge",
-            "grindstone", "engraver", "jeweler", "mechanic", "tailor", "farm", "brewery", "barracks", "trade_depot", "expedition_hall", "wizard");
+            "grindstone", "engraver", "jeweler", "mechanic", "tailor", "farm", "brewery", "barracks", "trade_depot", "expedition_hall", "wizard", "antiquarium");
 
     // every room has one cell more than its furniture needs: a free strip by the side wall (a hook with a cloak)
     static {
@@ -42,6 +42,7 @@ public final class Layouts {
         ROOM_CELLS.put("trade_depot", 7);
         ROOM_CELLS.put("expedition_hall", 7);
         ROOM_CELLS.put("wizard", 5);
+        ROOM_CELLS.put("antiquarium", 6);
     }
 
     /** Extra cells each additional machine adds to the right of a workshop. */

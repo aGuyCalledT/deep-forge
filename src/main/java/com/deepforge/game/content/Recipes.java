@@ -19,6 +19,7 @@ public final class Recipes {
             "engraver", List.of("engrave", "inlay"),
             "jeweler", List.of("cutgem"),
             "wizard", List.of("enchant"),
+            "antiquarium", List.of("study"),
             "mechanic", List.of("gears", "assemble"),
             "tailor", List.of("weave", "sew"));
 
@@ -78,6 +79,9 @@ public final class Recipes {
             case "cutgem" -> {
                 if (e.itype != null && !Gems.isRough(e.itype)) return "Choose a rough gem.";
             }
+            case "study" -> {
+                if (e.itype != null && !Relics.isRelic(e.itype)) return "Choose a crusted relic.";
+            }
             case "weave" -> {
             }
             case "sew" -> {
@@ -125,6 +129,10 @@ public final class Recipes {
             case "enchant" -> {
                 String g = findGem(f, e);
                 in.put(g != null ? g : e.itype != null ? e.itype : "cut_gem", 1);
+            }
+            case "study" -> {
+                String g = e.itype != null ? e.itype : Relics.inStock(f).stream().findFirst().orElse(null);
+                in.put(g != null ? g : "relic:any", 1);
             }
             case "weave" -> in.put("food", WEAVE_FOOD);
             case "sew" -> in.put("cloth", Content.CLOTHES.get(e.itype).cloth());
@@ -202,6 +210,7 @@ public final class Recipes {
             case "smelt" -> prefix = "bar:" + Content.ORES.get(e.mat).metal();
             case "alloy" -> prefix = "bar:" + e.mat;
             case "cutgem" -> prefix = "gem:";
+            case "study" -> { return 0; }
             case "enchant" -> {
                 int n = 0;
                 for (Map.Entry<String, Integer> s : f.stock.entrySet()) {
@@ -283,6 +292,10 @@ public final class Recipes {
                 j.time = Magic.ENCHANT_SECONDS;
                 j.inItem = in.keySet().iterator().next();
                 if (j.inItem.equals("cut_gem")) j.inItem = Magic.gemKey(1, Gems.OLD_KIND, Gems.OLD_SHAPE);
+            }
+            case "study" -> {                          // what it is shows when it is done (Sim.complete)
+                j.time = Relics.STUDY_HOURS * 3600;
+                j.inItem = in.keySet().iterator().next();
             }
             case "gears" -> {
                 j.time = 120;

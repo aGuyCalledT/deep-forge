@@ -28,7 +28,7 @@ export async function delve(id) {
   window.__delve = openDelve({
     run, data: G.data, look: look48(d, { hat: 'miner' }), name: fullName(d),
     onEnd: async (r) => {
-      const res = await bus.act({ type: 'delveEnd', id: run.id, result: r.result, levels: r.levels, ore: r.ore }, true, true);
+      const res = await bus.act({ type: 'delveEnd', id: run.id, result: r.result, levels: r.levels, ore: r.ore, gems: r.gems, relic: !!r.relic }, true, true);
       const log = res && res.fortress.log;
       return { text: log && log.length ? log[log.length - 1].text : '' };
     },

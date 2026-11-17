@@ -117,6 +117,13 @@ export function recipesFor(b) {
         ins: goods({ [gem]: 1 }), outs: [{ icon: () => img(S.sprite('gem_' + sc.id)), n: 1, name: sc.name + ' gem' }], gemPick: true,
         note: 'The stars choose the effect and its strength. A finer gem, a better cut and a more skilled wizard roll higher.' }));
     }
+  } else if (b.type === 'antiquarium') {
+    const relics = (D.relics && D.relics.list) || [];
+    const study = (k, name, sub) => row({ id: 'study:' + k, recipe: 'study', itype: k === 'any' ? undefined : k, name, sub, ins: goods({ [k === 'any' ? 'relic:any' : k]: 1 }),
+      outs: [{ icon: () => img(S.artifact()), n: 1, name: 'Artifact' }],
+      note: 'The crust comes off and the relic is known again: an artifact with a legendary effect that a dwarf can wear.' });
+    out.push(study('any', 'Study a relic', 'the next crusted relic in store'));
+    for (const r of relics) if (stock('relic:' + r.id) > 0) out.push(study('relic:' + r.id, 'Study the relic', r.hint));
   } else if (b.type === 'tailor') {
     out.push(row({ id: 'weave', recipe: 'weave', name: 'Cloth', sub: 'woven from mushroom fibre', ins: goods({ food: 3 }),
       outs: [{ icon: () => goodIcon('cloth'), n: 2, name: 'Cloth', key: 'cloth' }], note: 'Cloth for the tailor to sew.' }));

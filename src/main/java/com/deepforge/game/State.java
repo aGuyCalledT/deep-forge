@@ -400,6 +400,9 @@ public final class State {
         public int hearts;
         public int pick;              // hardness the pick breaks
         public int damage;
+        public List<List<String>> gems = new ArrayList<>();   // rough gem kinds hidden in each level (index = level)
+        public int relicLevel = -1;   // the level holding a relic (-1: none in this run)
+        public String relic;          // its id (Relics)
     }
 
     public static class Report {

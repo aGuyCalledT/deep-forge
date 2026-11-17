@@ -85,6 +85,7 @@ export const NEEDS = {
   engraver: { worker: 1, work: 1, light: 1 },
   jeweler: { worker: 1, work: 1, light: 1 },
   wizard: { worker: 1, work: 1, light: 1 },
+  antiquarium: { worker: 1, work: 1, light: 1 },
   mechanic: { worker: 1, work: 1, light: 1 },
   tailor: { worker: 1, work: 1, light: 1 },
   farm: { worker: 1, light: 1 },

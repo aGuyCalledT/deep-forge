@@ -62,11 +62,21 @@ function play(s) {
   const skip = (e) => { if (e.code === 'KeyN' && !e.repeat && ui) ui.game.skip(); };
   window.addEventListener('keydown', skip);
   ui = openDelve({
-    run: { seed: s.seed, hearts: s.hearts, pick: s.pick, damage: 1 }, data: G.data, name: 'Test Delver', startLayer: s.layer, god: s.god, bright: s.bright, bombs: s.kit, ropes: s.kit,
+    run: { seed: s.seed, hearts: s.hearts, pick: s.pick, damage: 1, ...testFinds(s) }, data: G.data, name: 'Test Delver', startLayer: s.layer, god: s.god, bright: s.bright, bombs: s.kit, ropes: s.kit,
     onEnd: async (r) => ({ text: `Test run, seed ${s.seed}: ${r.result} after ${r.levels} levels in ${Math.round(r.seconds)} s. Nothing is saved.` }),
     closeLabel: 'Done', onClose: () => { window.removeEventListener('keydown', skip); setup(); },
   });
   window.__delve = ui;
+}
+
+/** Gems in every level and a relic in the second one of the first layer played, as the server would hide them. */
+function testFinds(s) {
+  const kinds = G.data.gems.kinds, relics = G.data.delve.relics.list, n = G.data.delve.levelsPerLayer * G.data.layers.length;
+  let a = s.seed;
+  const r = () => ((a = (a * 16807) % 2147483647) / 2147483647);
+  const gems = [];
+  for (let k = 0; k < n; k++) gems.push(r() < 0.7 ? [kinds[Math.floor(r() * kinds.length)].id].concat(r() < 0.3 ? [kinds[Math.floor(r() * kinds.length)].id] : []) : []);
+  return { gems, relicLevel: s.layer * G.data.delve.levelsPerLayer + 1, relic: relics[Math.floor(r() * relics.length)].id };
 }
 
 boot().catch((e) => { box.innerHTML = `<h2>Test delve</h2><p>Could not start: ${e.message}</p>`; console.error(e); });

@@ -531,6 +531,68 @@ def shredder(frame=0):
         for y in range(38, 48): g[y, lx] = ('wood', 0); g[y, lx + 1] = ('wood', 1)
     return {'grid': g, 'anchor': (w // 2, h - 1)}
 
+def gemseam(frame=0):
+    """A gem seam: a dark pocket in the rock with a cluster of crystal points in the 'ingot' ramp (recoloured to the
+    kind's colour in the game). 44 x 40, the 4 frames are 4 different clusters. Anchor in the middle."""
+    w, h = 44, 40
+    g = grid(w, h)
+    cx, cy = 22, 20
+    for y in range(h):
+        for x in range(w):
+            if ((x - cx) / (15 + hsh(frame, y) % 3)) ** 2 + ((y - cy) / 11) ** 2 <= 1: g[y, x] = ('rockd', 1)
+    import math
+    n = 4 + frame % 2
+    for k in range(n):                                  # crystal points from a common root, fanned out
+        a = -math.pi / 2 + (k - (n - 1) / 2) * (0.55 + 0.05 * (frame % 3)) + ((hsh(frame, k) % 5) - 2) * 0.06
+        L = 9 + hsh(frame, k, 3) % 7
+        rx, ry = cx + (hsh(frame, k, 4) % 5) - 2, cy + 6
+        for t in range(L):
+            px, py = rx + math.cos(a) * t, ry + math.sin(a) * t
+            hw = 2.2 if t < L - 3 else 2.2 * (L - t) / 3
+            nx, ny = -math.sin(a), math.cos(a)
+            for s_ in range(-3, 4):
+                u = s_ / 1.5
+                if abs(u) > hw: continue
+                x, y = round(px + nx * u), round(py + ny * u)
+                if 0 <= x < w and 0 <= y < h:
+                    g[y, x] = ('ingot', 4 if u < -0.8 and t > 1 else 3 if u < 0.2 else 2 if u < 1.2 else 1)
+        tx, ty = round(rx + math.cos(a) * (L - 1)), round(ry + math.sin(a) * (L - 1))
+        if 0 <= tx < w and 0 <= ty < h: g[ty, tx] = ('ingot', 4)
+    for x in range(cx - 7, cx + 8):                    # the root sits in broken rock
+        for y in (cy + 6, cy + 7):
+            if g[y, x] is None or g[y, x][0] != 'ingot' or y == cy + 7: g[y, x] = ('rockd', 0 if y == cy + 7 else 2)
+    return {'grid': g, 'anchor': (w // 2, h // 2)}
+
+def relic(frame=0):
+    """A crusted relic on an old stone plinth: a lump of rock and rust with the edge of something golden showing.
+    A glint runs over the gold (4 frames). 36 x 44, anchor bottom middle."""
+    w, h = 36, 44
+    g = grid(w, h)
+    for y in range(32, 44):                             # the plinth: a dressed block with a carved band
+        x0, x1 = (6, w - 6) if y >= 35 else (4, w - 4)
+        for x in range(x0, x1):
+            edge = x in (x0, x1 - 1) or y in (32, 43)
+            g[y, x] = ('rockd', 0 if edge else 4 if y == 33 else 1 if y == 39 else 3 if x < x0 + 3 else 2)
+    for x in (10, 17, 24): g[39, x] = ('gold', 2)       # runes in the band, worn
+    cx, cy = 18, 23
+    for y in range(10, 32):                             # the lump
+        for x in range(4, w - 4):
+            d = ((x - cx) / 11) ** 2 + ((y - cy) / 10) ** 2 + 0.12 * math.sin(x * 1.7 + y)
+            if d <= 1 and y <= 31:
+                t = 4 if d < 0.25 and x < cx and y < cy else 3 if x < cx - 2 and y < cy + 3 else 2 if d < 0.7 else 1
+                g[y, x] = ('stone', 0 if d > 0.9 else t)
+    for (x, y) in ((11, 20), (14, 27), (22, 16), (25, 26), (9, 24)): g[y, x] = ('clay', 2)   # rust
+    for (x, y) in ((12, 17), (24, 22)): g[y, x] = ('moss', 3)
+    for x in range(17, 28):                             # the gold showing through: a rim with a rune
+        y = 19 + (x - 17) // 4
+        g[y, x] = ('gold', 3); g[y + 1, x] = ('gold', 1)
+    g[18, 21] = ('gold', 4)
+    gx = 17 + frame * 3                                 # the glint runs along the rim
+    for (dx, dy, t) in ((0, 0, 4), (-1, 0, 3), (1, 0, 3), (0, -1, 3), (0, 1, 3)):
+        x, y = gx + dx, 19 + (gx - 17) // 4 + dy
+        if 0 <= x < w and 0 <= y < h and (dx == 0 or frame % 2 == 0): g[y, x] = ('gold', t) if (dx, dy) != (0, 0) else ('cream', 4)
+    return {'grid': g, 'anchor': (w // 2, h - 1)}
+
 DELVE = {'delve_rocktex': rocktex, 'delve_wall': wall, 'delve_ladder': ladder,
          'delve_rope': lambda: rope_seg(False), 'delve_rope_end': lambda: rope_seg(True), 'delve_hook': hook,
          'delve_ropes': coil, 'delve_bomb': bomb, 'delve_boom': boom, 'delve_spikes': spikes,
@@ -544,7 +606,7 @@ DELVE = {'delve_rocktex': rocktex, 'delve_wall': wall, 'delve_ladder': ladder,
          'delve_scroll_light': lambda: scroll('light'), 'delve_scroll_quake': lambda: scroll('quake'), 'delve_scroll_mend': lambda: scroll('mend'),
          'delve_scroll_stone': lambda: scroll('stone'), 'delve_scroll_blink': lambda: scroll('blink'),
          'delve_boots': boots, 'delve_spring': spring, 'delve_heartgem': heartgem, 'delve_whetstone': whetstone, 'delve_feather': feather,
-         'delve_shredder': shredder}
+         'delve_shredder': shredder, 'delve_gemseam': gemseam, 'delve_relic': relic}
 
 if __name__ == '__main__':
     from PIL import Image

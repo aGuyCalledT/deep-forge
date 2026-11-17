@@ -181,6 +181,7 @@ export function good(key) {
   }
   if (key.startsWith('gem:') || key.startsWith('rough:') || key === 'rough_gem' || key === 'cut_gem') return gem(key);
   if (key.startsWith('bar:')) return bar(key.slice(4));
+  if (key.startsWith('relic:')) return sprite('relic');
   if (byId.ores[key]) return ore(key);
   return raw(key);
 }

@@ -46,6 +46,11 @@ export function createGame(canvas, opts) {
   const layers = data.layers, hardness = data.rockHardness || {};
   const oreName = {};
   for (const o of data.ores || []) oreName[o.id] = o.name;
+  const gemKind = {};                                    // rough gems the server hid in the levels (Gems.java kinds)
+  for (const k of (data.gems && data.gems.kinds) || []) gemKind[k.id] = k;
+  const gemName = (id) => 'Rough ' + ((gemKind[id] && gemKind[id].name) || 'gem').toLowerCase();
+  const gemColour = (id) => (gemKind[id] && gemKind[id].color) || '#dde8ee';
+  const relicDef = opts.relic && ((D.relics && D.relics.list) || []).find((x) => x.id === opts.relic.id);
   const input = { left: false, right: false, up: false, down: false, jump: false, pick: false, bomb: false, rope: false, scroll: false };
   const prev = { ...input };
   const pressed = (k) => input[k] && !prev[k];
@@ -62,12 +67,14 @@ export function createGame(canvas, opts) {
     L: null, shake: 0, flash: 0, banner: null, prompt: null, time: 0,
     // what the cave gives for this run only: coins, finds (id -> copies), scrolls, the timers of scrolls in use
     coins: 0, items: {}, scrolls: [], stoneT: 0, lightT: 0, introDone: false, introFree: true,
+    // what goes home besides ore: rough gems (kind -> n) and the relic, if one was found
+    gems: {}, relic: false,
   };
   const has = (id) => G.items[id] || 0;
   const speed = () => SPEED * (1 + 0.15 * has('boots'));
   const jump = () => JUMP * (1 + 0.1 * has('spring'));
   const fallHurts = () => HURT_FALL + 4 * T * has('feather'), fallBad = () => BAD_FALL + 4 * T * has('feather');
-  let shred = null, drips = [], coins = [], chests = [], finds = [], chalkC = null, P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
+  let relic = null, shred = null, drips = [], coins = [], chests = [], finds = [], chalkC = null, P, mons, bombs, booms, arrows, stals, nuggets, wares, parts, floats, ropes, ropeList, tileHp, noise, look, ramps;
   look = opts.look || { sex: 'm', hair: 'short', beard: 'full', hat: 'miner', vest: true, mood: 'neutral', ramps: {} };
   if (!look.hat) look = { ...look, hat: 'miner' };
 
@@ -76,13 +83,16 @@ export function createGame(canvas, opts) {
   function enter() {
     const lay = layers[G.layer];
     const last = G.depth === D.levelsPerLayer - 1, deepest = G.layer >= layers.length - 1;
+    const idx = G.layer * D.levelsPerLayer + G.depth;   // the level's number in the run, as the server counts
     G.L = makeLevel({ seed: levelSeed(), layer: G.layer, depth: G.depth, last, deepest, shop: G.depth === 1, intro: !G.introDone,
+      gems: (opts.gems && opts.gems[idx]) || [], relic: !!(opts.relic && opts.relic.level === idx && !G.relic),
       data: { weights: lay.weights, noOre: D.noOre, orePerLevel: D.orePerLevel[G.layer], monsters: lay.monsters } });
     const L = G.L;
     G.introFree = !L.intro; G.introDone = true; chalkC = null;
     coins = (L.coins || []).map((c) => coin((c.x + 0.5) * T + c.dx, (c.y + 1) * T - 1, c.n, 0, 0));
     chests = (L.chests || []).map((c) => ({ x: (c.x + 0.5) * T, y: (c.y + 1) * T - 1, w: 28, h: 20, vx: 0, vy: 0, open: false, loot: c.loot }));
     finds = []; shred = null;
+    relic = L.relic ? { x: (L.relic.x + 0.5) * T, y: (L.relic.y + 1) * T } : null;
     ramps = { rockd: Art.depthRamp(G.layer), wall: Art.depthRamp(Math.min(4, G.layer + 1)) };
     tiles.clear(); seams.clear(); terrain = null; dirty = null;
     drips = (L.drips || []).map((d) => ({ ...d, t: d.off / 10, drop: null }));
@@ -288,7 +298,7 @@ export function createGame(canvas, opts) {
     let need;
     if (t === BEDROCK) { clink(cx, cy, 'Bedrock. Not even a pick of starsteel.'); return; }
     if (t === ORE) {
-      const v = veinAt(G.L, tx, ty), h = hardness[v.ore] || 1;
+      const v = veinAt(G.L, tx, ty), h = v.gem ? 1 : hardness[v.ore] || 1;
       if (G.pick < h) { clink(cx, cy, `Too hard for this pick. ${oreName[v.ore] || v.ore} needs a better one.`); return; }
       need = 2;
     } else if (t === WALL) {
@@ -301,7 +311,7 @@ export function createGame(canvas, opts) {
     need = Math.max(1, need - has('grip'));
     const hp = (tileHp.get(k) || 0) + 1;
     A.sfx('pickaxe', { rate: 0.9 + Math.random() * 0.25 });
-    chips(cx - P.face * 16, cy, t === ORE ? oreColour(veinAt(G.L, tx, ty).ore) : null);
+    chips(cx - P.face * 16, cy, t === ORE ? veinColour(veinAt(G.L, tx, ty)) : null);
     if (hp < need) { tileHp.set(k, hp); return; }
     breakTile(tx, ty);
   }
@@ -315,7 +325,8 @@ export function createGame(canvas, opts) {
     if (t === BEDROCK || (t === WALL && byBomb)) return;
     if (t === ORE) {
       const v = veinAt(G.L, tx, ty);
-      for (let i = 0; i < v.n; i++) nuggets.push({ ore: v.ore, x: (tx + 0.5) * T, y: (ty + 0.7) * T, w: 14, h: 12, vx: (Math.random() - 0.5) * 160, vy: -260, t: 0 });
+      if (v.gem) spark((tx + 0.5) * T, (ty + 0.5) * T, gemColour(v.gem), 10);
+      for (let i = 0; i < v.n; i++) nuggets.push({ ore: v.ore, gem: v.gem, x: (tx + 0.5) * T, y: (ty + 0.7) * T, w: 14, h: 12, vx: (Math.random() - 0.5) * 160, vy: -260, t: 0 });
       G.L.veins.delete(k);
       A.sfx('ore');
     }
@@ -560,9 +571,17 @@ export function createGame(canvas, opts) {
       move(n, dt, { bounce: 0.3 });
       if (n.ground) n.vx *= 0.85;
       if (n.t > 0.35 && !P.dead && overlap(n, { x: P.x, y: P.y, w: PW + 10, h: PH })) {
-        n.got = true; G.bag[n.ore] = (G.bag[n.ore] || 0) + 1;
-        A.sfx('ore', { vol: 1.2 }); A.sfx('coinsLittle', { vol: 0.5 });
-        float(n.x, n.y - 20, `+1 ${oreName[n.ore] || n.ore}`, '#9fe08a', 1.6);
+        n.got = true;
+        if (n.gem) {
+          G.gems[n.gem] = (G.gems[n.gem] || 0) + 1;
+          A.sfx('collect', { vol: 0.9 }); A.sfx('coinsLittle', { vol: 0.6, rate: 1.4 });
+          float(n.x, n.y - 30, `+1 ${gemName(n.gem)}`, '#9fe08a', 2);
+          float(n.x, n.y - 20, 'It goes home with you', '#fbf4e6', 2);
+        } else {
+          G.bag[n.ore] = (G.bag[n.ore] || 0) + 1;
+          A.sfx('ore', { vol: 1.2 }); A.sfx('coinsLittle', { vol: 0.5 });
+          float(n.x, n.y - 20, `+1 ${oreName[n.ore] || n.ore}`, '#9fe08a', 1.6);
+        }
         hud();
       }
     }
@@ -616,6 +635,18 @@ export function createGame(canvas, opts) {
       G.prompt = opts.touch ? 'Pick: swing at the rock to dig out' : 'E: swing the pick at the rock to dig out';
       return;
     }
+    if (relic && Math.abs(relic.x - P.x) < 26 && Math.abs(relic.y - P.y) < 12) {
+      G.prompt = opts.training ? 'An old relic. In training it stays where it is.' : 'Up: take the crusted relic';
+      if (pressed('up') && !opts.training) {
+        G.relic = true; relic = null;
+        A.sfx('fanfare', { vol: 0.7 }); A.sfx('rune', { vol: 0.8 });
+        spark(P.x, P.y - PH, '#ffd27a', 14);
+        float(P.x, P.y - PH - 26, 'A crusted relic!', '#ffd27a', 2.6);
+        float(P.x, P.y - PH - 14, 'It goes home. The antiquarium can find out what it is.', '#fbf4e6', 3);
+        hud();
+      }
+      return;
+    }
     const chest = chests.find((c) => !c.open && Math.abs(c.x - P.x) < 30 && Math.abs(c.y - P.y) < 12);
     if (chest) {
       G.prompt = 'Up: open the chest';
@@ -657,7 +688,7 @@ export function createGame(canvas, opts) {
       G.prompt = next ? `Up: break through into ${next.name}` : 'Up: go deeper';
       if (pressed('up')) nextLevel();
     } else if (L0.lift && Math.abs(tx - L0.lift.x) <= 0 && ty === L0.lift.y) {
-      G.prompt = opts.training ? 'Up: ride the lift up, the training is over' : `Up: ride the lift home with ${bagTotal()} ore`;
+      G.prompt = opts.training ? 'Up: ride the lift up, the training is over' : `Up: ride the lift home with ${homeText()}`;
       if (pressed('up')) { A.sfx('cart'); finish('exit'); }
     } else if (L0.wall && Math.abs(tx - L0.wall.x) <= 1 && ty === L0.wall.y1 && L0.at(L0.wall.x, L0.wall.y1) === WALL) {
       const h = D.walls[G.layer + 1];
@@ -675,6 +706,13 @@ export function createGame(canvas, opts) {
   }
   const inBox = (b, x, y) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1;
   const bagTotal = () => Object.values(G.bag).reduce((s, n) => s + n, 0);
+  const gemTotal = () => Object.values(G.gems).reduce((s, n) => s + n, 0);
+  function homeText() {
+    const p = [`${bagTotal()} ore`];
+    if (gemTotal()) p.push(`${gemTotal()} ${gemTotal() === 1 ? 'gem' : 'gems'}`);
+    if (G.relic) p.push('the relic');
+    return p.join(', ');
+  }
   // coins first; ore pays the rest, one ore for every ORE_COINS coins (rounded up). null: not enough.
   function billFor(price) {
     const c = Math.min(G.coins, price), ore = Math.ceil((price - c) / ORE_COINS);
@@ -703,6 +741,7 @@ export function createGame(canvas, opts) {
     c.open = true;
     A.sfx('doorOpen', { rate: 1.3 }); A.sfx('coinsLittle');
     for (let i = 0; i < c.loot.coins; i++) coins.push(coin(c.x, c.y - 14, 1, (Math.random() - 0.5) * 240, -260 - Math.random() * 180));
+    if (c.loot.gem) { nuggets.push({ gem: c.loot.gem, x: c.x, y: c.y - 16, w: 14, h: 12, vx: (Math.random() < 0.5 ? 1 : -1) * 90, vy: -340, t: 0 }); spark(c.x, c.y - 20, gemColour(c.loot.gem), 8); }
     const kind = c.loot.item ? 'item' : 'scroll', id = c.loot.item || c.loot.scroll;
     finds.push({ kind, id, x: c.x, y: c.y - 16, w: 22, h: 20, vx: (Math.random() < 0.5 ? -1 : 1) * 60, vy: -380, t: 0 });
     spark(c.x, c.y - 18, '#ffe9a8', 10);
@@ -775,9 +814,11 @@ export function createGame(canvas, opts) {
     G.over = true;
     const levels = G.levelsDone + (result === 'exit' ? 1 : 0);
     const ore = result === 'exit' ? { ...G.bag } : {};
+    const gems = {};                                     // as stock keys: rough:<kind>
+    if (result === 'exit') for (const [k, n] of Object.entries(G.gems)) gems['rough:' + k] = n;
     if (result === 'exit') A.sfx('fanfare');
     hud();
-    opts.onEnd && opts.onEnd({ result, levels, ore, layer: G.layer, seconds: performance.now() / 1000 - G.started, found: { ...G.bag },
+    opts.onEnd && opts.onEnd({ result, levels, ore, gems, relic: result === 'exit' && G.relic, layer: G.layer, seconds: performance.now() / 1000 - G.started, found: { ...G.bag }, foundGems: { ...G.gems }, foundRelic: G.relic,
       cave: { coins: G.coins, items: { ...G.items }, scrolls: [...G.scrolls], bombs: G.bombs, ropes: G.ropes } });
   }
 
@@ -790,11 +831,12 @@ export function createGame(canvas, opts) {
   function chips(x, y, c) { for (let i = 0; i < 4; i++) parts.push({ x, y, vx: -P.face * (60 + Math.random() * 140), vy: -80 - Math.random() * 160, t: 0, life: 0.35, c: c || ramps.rockd[3], s: 2 }); }
   function spark(x, y, c, n) { for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.7) * 260, t: 0, life: 0.25, c, s: 1 }); }
   const oreColour = (k) => { const o = (data.ores || []).find((x) => x.id === k); return (o && o.color) || '#c8c6d6'; };
+  const veinColour = (v) => (v.gem ? gemColour(v.gem) : oreColour(v.ore));
 
   // ---------------------------------------------------------------- the HUD (drawn by ui.js from this summary)
   let lastHud = '';
   function hud() {
-    const h = { hearts: G.hearts, maxHearts: G.maxHearts, bombs: G.bombs, ropes: G.ropes, bag: { ...G.bag }, pick: G.pick,
+    const h = { hearts: G.hearts, maxHearts: G.maxHearts, bombs: G.bombs, ropes: G.ropes, bag: { ...G.bag }, gems: { ...G.gems }, relic: G.relic && (relicDef ? relicDef.hint : true), pick: G.pick,
       coins: G.coins, items: { ...G.items }, scrolls: [...G.scrolls], stone: G.stoneT > 0, light: G.lightT > 0,
       layer: G.layer, layerName: layers[G.layer].name, depth: G.depth, levels: D.levelsPerLayer, prompt: G.prompt, over: G.over };
     const s = JSON.stringify(h);
@@ -902,7 +944,7 @@ export function createGame(canvas, opts) {
     tg.save(); tg.globalCompositeOperation = 'source-atop'; tg.imageSmoothingEnabled = false;
     for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
       const t = L0.at(tx, ty), X = tx * T, Y = ty * T, v = (tx * 7 + ty * 13) & 3;
-      if (t === ORE) tg.drawImage(seamImg(veinAt(L0, tx, ty).ore, v), X, Y);
+      if (t === ORE) { const vn = veinAt(L0, tx, ty); tg.drawImage(vn.gem ? gemSeamImg(vn.gem, v) : seamImg(vn.ore, v), X, Y); }
       else if (t === WALL) tg.drawImage(tileImg('delve_wall', 0, 'wall'), X, Y);
       else if (t === TRAP) {
         const q = L0.traps.find((a) => a.x === tx && a.y === ty);
@@ -918,6 +960,16 @@ export function createGame(canvas, opts) {
     return terrain;
   }
   const seams = new Map();
+  function gemSeamImg(gem, v) {                       // a gem seam: crystals in the colour of the kind
+    const k = 'gem:' + gem + v;
+    if (!seams.has(k)) {
+      const c = S.mk(T, T), g = c.getContext('2d');
+      const fr = Art.frame('delve_gemseam', v % 4, { recolour: { rockd: ramps.rockd, ingot: DW.ramp(gemColour(gem)) } });
+      g.drawImage(fr.canvas, Math.round(T / 2 - fr.ax), Math.round(T / 2 - fr.ay));
+      seams.set(k, c);
+    }
+    return seams.get(k);
+  }
   function seamImg(ore, v) {                          // ore seams on a clear tile, laid over the rock texture
     const k = ore + v;
     if (!seams.has(k)) {
@@ -1050,7 +1102,11 @@ export function createGame(canvas, opts) {
       ctx.drawImage(img, Math.round(f.x - img.width / 2), Math.round(f.y - img.height + bob + (f.ground ? 3 : 0)));
       if (Math.floor(t * 2 + f.x) % 3 === 0) { ctx.fillStyle = 'rgba(255,248,220,0.9)'; ctx.fillRect(Math.round(f.x + img.width / 2 - 3), Math.round(f.y - img.height + bob), 1, 3); }
     }
-    for (const n of nuggets) { const img = S.ore(n.ore); ctx.drawImage(img, Math.round(n.x - img.width / 2), Math.round(n.y - img.height)); }
+    for (const n of nuggets) { const img = n.gem ? S.good('rough:' + n.gem) : S.ore(n.ore); ctx.drawImage(img, Math.round(n.x - img.width / 2), Math.round(n.y - img.height)); }
+    if (relic) {
+      Art.draw(ctx, 'delve_relic', Math.floor(t * 6) % 4, relic.x, relic.y + SINK, { recolour: { rockd: ramps.rockd } });
+      if (Math.abs(relic.x - P.x) > 60) { const lbl = 'RELIC'; text(ctx, lbl, Math.round(relic.x - lbl.length * 2), Math.round(relic.y - 58), '#ffd27a'); }
+    }
     // stalactites, monsters, the dwarf
     for (const s of stals) Art.draw(ctx, 'delve_stal', 0, s.x + (s.state === 'shake' ? Math.round(Math.sin(s.t * 70) * 1.5) : 0), s.y, { recolour: { rockd: ramps.rockd } });
     for (const m of mons) drawMonster(m, t);
@@ -1215,6 +1271,8 @@ export function createGame(canvas, opts) {
     for (const a of arrows) if (!a.stuck) hole(a.x, a.y + 3, 40, 0.6);
     for (const b of booms) hole(b.x, b.y, 300 * (1 - b.t / 0.5), 1);
     for (const m of mons) if (!m.dead && m.glow) hole(m.x, m.y - m.h / 2, 80, 0.7);
+    if (relic) hole(relic.x, relic.y - 24, 90 + 10 * Math.sin(t * 2), 0.8);
+    for (const [k, vn] of G.L.veins) if (vn.gem) hole((k % W + 0.5) * T, (Math.floor(k / W) + 0.5) * T, 70, 0.6 + 0.2 * Math.sin(t * 4 + k));
     for (const [k] of G.L.veins) hole((k % W + 0.5) * T, (Math.floor(k / W) + 0.5) * T, 46, 0.45 + 0.15 * Math.sin(t * 3 + k));
     for (const f of finds) hole(f.x, f.y - 10, 44, 0.55);
     for (const c of chests) if (c.open) hole(c.x, c.y - 16, 50, 0.5);
@@ -1271,7 +1329,7 @@ export function createGame(canvas, opts) {
   }
   return {
     G, input, press, release,
-    debug: () => ({ P, mons, wares, nuggets, stals, bombs, coins, chests, finds }),
+    debug: () => ({ P, mons, wares, nuggets, stals, bombs, coins, chests, finds, relic }),
     debugBreak: (tx, ty) => breakTile(tx, ty),
     start() { enter(); last = 0; raf = requestAnimationFrame(frame); },
     stop() { cancelAnimationFrame(raf); },

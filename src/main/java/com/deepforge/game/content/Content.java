@@ -396,6 +396,8 @@ public final class Content {
                 "Raiders cannot steal what is locked away.");
         building("trade_depot", "Trade depot", "passive", null, false, 0, goods(), 40000, 40, 1.7, 1,
                 "Caravans leave from here. Set rules that send goods on their own, and post what you want to buy.");
+        building("antiquarium", "Antiquarium", "queue", "arcana", true, 45000, goods("stone", 30, "bar:bronze", 6), 24000, 20, 1.6, 0,
+                "Studies the crusted relics from the delve. A studied relic becomes an artifact a dwarf can wear.");
         building("expedition_hall", "Adventurers' guild", "passive", null, false, 0, goods(), 50000, 40, 1.75, 1,
                 "More expeditions at once, bigger parties, more offers.");
 
@@ -499,6 +501,7 @@ public final class Content {
     public static String category(String key) {
         if (isWear(key)) return "clothing";
         if (Magic.isGem(key) || Gems.isRough(key)) return "gems";
+        if (Relics.isRelic(key)) return "relics";
         if (isItem(key)) return ITEMS.get(parseItem(key)[0]).category();
         if (isBar(key)) return "bars";
         if (ORES.containsKey(key)) return "ore";
@@ -562,6 +565,7 @@ public final class Content {
         }
         if (Magic.isGem(key)) return Magic.gemValue(key);
         if (Gems.isRough(key)) return Gems.kindOf(key).value();
+        if (Relics.isRelic(key)) return 0;
         if (isBar(key)) return METALS.get(key.substring(4)).value();
         if (ORES.containsKey(key)) return ORES.get(key).value();
         Raw r = RAWS.get(key);
@@ -586,6 +590,7 @@ public final class Content {
         }
         if (Magic.isGem(key)) return Magic.gemName(key);
         if (Gems.isRough(key)) return Gems.roughName(key);
+        if (Relics.isRelic(key)) return Relics.crustedName(key);
         if (isBar(key)) return METALS.get(key.substring(4)).name() + " bar";
         if (ORES.containsKey(key)) return ORES.get(key).name();
         Raw r = RAWS.get(key);
@@ -725,6 +730,7 @@ public final class Content {
         d.put("magic", Magic.asData());
         d.put("delve", com.deepforge.game.rules.Delve.asData());
         d.put("gems", Gems.asData());
+        d.put("relics", Relics.asData());
         return d;
     }
 }

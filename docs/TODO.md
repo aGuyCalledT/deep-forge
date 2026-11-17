@@ -27,9 +27,37 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [x] Rucksack-Fenster (I/Tab, Knöpfe „Take home“/„Cave only“): klar getrennt, was nach Hause geht; Endkarte ebenso; Name des Zwergs im HUD
 - [x] Erz-Schredder im Laden, Pfeilfallen mit Vorwarnung und Licht, unregelmäßige Felskanten vor den Füßen
 - [ ] Schlüssel, Geheimräume; Gegner, die Erz fallen lassen
-- [ ] Mehr Funde mit Nachteil (Isaac-artig), Flüche, Altäre
+- [x] Rohe Edelsteine in Adern und Truhen, vom Server versteckt; gehen mit nach Hause
+- [x] Relikte (7 Arten) und Antiquarium: Relikt studieren → tragbares Artefakt mit legendärer Wirkung
+- [ ] Rucksack mit begrenztem Platz, Funde ablegen, um mehr mitzunehmen
+- [ ] Tasten vereinfachen: nur WASD laufen, Leertaste Sprung, E/K Schlag, Q/J Bombe, L/R Magie, I Inventar; so auch an der Kreidewand
+- [ ] Schlag mit mehr Reichweite und eigener Animation; Schlagkombo
+- [ ] Aktiver Gegenstand ist immer Magie; einen Edelstein aus der Festung mitnehmen für Vorteile
+- [ ] Keine Funde, die die Schmiede auch baut
+- [ ] Miniboss
+- [ ] Gefangene Zwerge befreien (seltenes Ereignis, ziehen in die Festung)
+- [ ] Mehr Meta-Fortschritt zwischen Runs
+- [ ] Verfluchte Funde in Cthulhu-Räumen (gruselige Optik): Run-Werte sinken (am häufigsten), Monster greifen die Festung an, dauerhafter Malus für einen Zwerg oder ein Zwerg wird verletzt
+- [ ] Synergien zwischen Funden (mehr davon)
+- [ ] Altäre in der Höhle, auch mit guten Wirkungen für die Festung
+- [ ] Schlüssel und verschlossene Kammern
+- [ ] Schwarzmarkt-Gnom mit Glücksspiel
+- [ ] Vogel im Käfig als Fund: warnt mit Ton und Bild vor Fallen
+- [ ] Loren unterwegs: ein paar Funde vorab an die Oberfläche schicken und so sichern
+- [ ] Wandsprung und Wandrutschen
+- [ ] Werfen und Tragen (Steine, Töpfe, Gegner)
+- [ ] Lagerfeuer zum Ausruhen (wie ein Leuchtfeuer in Dark Souls)
+- [ ] Tägliche Höhle (gleicher Seed für alle)
+- [ ] Bestiarium
 - [ ] Eigene Sounds für Sprung, Bombe, Pfeil, Stalaktit (bis dahin vorhandene)
 - [ ] Bestenliste je Schicht
+
+## Festung: neue Wünsche
+
+- [ ] Casino in der Festung: erst Black Jack gegen den Computer (auf Dauer ±0), später Roulette und Texas Hold'em
+- [ ] Zuwanderer kommen regelmäßig (nach Größe der Festung) und fragen, ob sie bleiben dürfen (wie in Fallout Shelter)
+- [ ] Unterwegs-Screen für Karawanen, Expeditionen usw.: Zwerge (mit Wagen) laufen sehen, Ziel, Zeit, kleines Log
+- [ ] Je Missionsart mindestens 100 Ereignisse für das Log („found a silver talent by the road“); unterwegs kann jeder verletzt werden
 
 ## Aufräumen
 

@@ -619,6 +619,7 @@ public final class Sim {
             case "gears" -> "cutting gears";
             case "inlay" -> "inlaying " + (j.inItem == null ? "" : Content.goodName(j.inItem).toLowerCase());
             case "cutgem" -> "cutting " + (j.inItem == null ? "a gem" : Content.goodName(j.inItem).toLowerCase());
+            case "study" -> "studying " + Content.goodName(j.inItem).toLowerCase();
             case "enchant" -> "enchanting a gem (" + Magic.SCHOOLS.get(j.mat).name().toLowerCase() + ")";
             case "weave" -> "weaving cloth";
             case "sew" -> "sewing a " + Content.goodName(Content.wearKey(j.itype, j.mat)).toLowerCase();
@@ -682,6 +683,23 @@ public final class Sim {
             if (cut >= 3 || (kind != null && kind.tier() >= 3)) log(f, at, "good", "The jeweler cut a gem: " + Content.goodName(key).toLowerCase() + "!");
             fortressXp(f, 3);
             b.job = null;
+            return;
+        }
+        if (j.recipe.equals("study")) {         // the crust comes off: the relic becomes an artifact with its old name
+            Relics.Relic rl = Relics.of(j.inItem);
+            b.job = null;
+            if (rl == null) return;
+            Artifact a = new Artifact();
+            a.id = f.nextId++;
+            a.item = Content.itemKey(rl.itype(), rl.metal(), Content.ARTIFACT, "", "", rl.legend());
+            a.name = rl.name();
+            a.desc = rl.story() + " Found in the delve" + (w == null ? "." : ", studied by " + fullName(w) + ".");
+            a.value = Content.baseValue(a.item);
+            f.artifacts.add(a);
+            if (w != null) addXp(w, "arcana", 20);
+            fortressXp(f, 30);
+            log(f, at, "good", "The antiquarium cleaned the relic: it is the " + rl.name() + "! "
+                    + Magic.LEGENDS.get(rl.legend()).name() + ": " + Magic.LEGENDS.get(rl.legend()).note());
             return;
         }
         if (j.recipe.equals("enchant")) {       // school chosen, effect and strength rolled

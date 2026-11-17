@@ -143,7 +143,7 @@ Räume sind keine fertigen Bilder mehr, sondern werden aus Teilen zusammengesetz
   loser Stalaktit `delve_stal`. Beute des Runs: Münze `delve_coin` (4 Bilder, dreht sich), Truhe `delve_chest_0/1` (zu/offen),
   Spruchrollen `delve_scroll_<light|quake|mend|stone|blink>` (Siegelfarbe je Wirkung), Funde `delve_boots`, `delve_spring`,
   `delve_heartgem`, `delve_whetstone`, `delve_feather` (die übrigen Funde nutzen Waren-Symbole), Erz-Schredder `delve_shredder`
-  (4 Bilder: Zähne und Kurbel drehen sich, eine Münze fällt in die Schale; steht im Laden statt der Waage). Fels in `rockd`. Zwerg-Posen dafür: `jump`, `fall`, `hang` (Seitenarme 6: Hände über dem
+  (4 Bilder: Zähne und Kurbel drehen sich, eine Münze fällt in die Schale; steht im Laden statt der Waage). Edelstein-Ader `delve_gemseam` (4 Varianten, Kristalle im Platzhalter `ingot`, im Spiel in der Farbe der Art), Relikt `delve_relic` (4 Bilder: Glanz läuft über den goldenen Rand; Klumpen auf einem Steinsockel). Antiquarium-Möbel in `workshop.py`: Studiertisch `studytable` (halb gereinigter Helm, Pinsel, Lupe), Vitrine `vitrine`. Symbol `relic` in `goods.px.js`. Fels in `rockd`. Zwerg-Posen dafür: `jump`, `fall`, `hang` (Seitenarme 6: Hände über dem
   Kopf), `climb` (Rückenarme 6/7: abwechselnd eine Hand oben).
 
 ### Raumvorlagen (Editor)

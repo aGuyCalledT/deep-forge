@@ -854,6 +854,7 @@ label.inline input { display: inline-block; margin: 0; }
 .ws-wizard { --plate-iron: var(--plate-ws-wizard); --plate-iron-down: var(--plate-ws-wizard-down); }
 .ws-mechanic { --plate-iron: var(--plate-ws-mechanic); --plate-iron-down: var(--plate-ws-mechanic-down); }
 .ws-tailor { --plate-iron: var(--plate-ws-tailor); --plate-iron-down: var(--plate-ws-tailor-down); }
+.ws-antiquarium { --plate-iron: var(--plate-ws-antiquarium); --plate-iron-down: var(--plate-ws-antiquarium-down); }
 .ws-theme .btn:not(.primary):not(.good):not(.danger):not(.gold):not(.collect):not(.ghost) {
   border-image: var(--plate) 7 8 7 8 fill / 14px 16px 14px 16px stretch;
 }

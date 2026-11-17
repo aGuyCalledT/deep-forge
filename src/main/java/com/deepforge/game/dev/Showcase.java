@@ -26,6 +26,7 @@ public final class Showcase {
         Rules.add(f, "ale", 2000);
         for (String k : Content.ORES.keySet()) Rules.add(f, k, 200);
         for (Content.Metal m : Content.METALS.values()) Rules.add(f, "bar:" + m.id(), 150);
+        for (String id : List.of("rune_helm", "clan_ring")) Rules.add(f, Relics.key(id), 1);   // something for the antiquarium
         for (Content.ItemType it : Content.ITEMS.values())
             for (Content.Metal m : Content.METALS.values())
                 if (Content.metalFits(it, m) && List.of("copper", "bronze", "iron", "steel", "nickel_steel", "star_steel", "gold", "silver").contains(m.id()))

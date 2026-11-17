@@ -82,5 +82,13 @@ sprite("artifact", { w: 14, h: 14, outline: "k" }, (c) => {
   c.rect(3, 10, 8, 3, "O"); c.hline(3, 10, 8, "j"); c.hline(3, 12, 8, "o");
 });
 
+// a crusted relic from the delve: a lump of grey rock with rust, and a golden rim showing through it
+sprite("relic", { w: 14, h: 14, outline: "k" }, (c) => {
+  lumpShape(c, "}", "]", "6");
+  c.line(6, 6, 12, 8, "O"); c.line(6, 7, 12, 9, "o"); c.px(8, 6, "j"); c.px(11, 7, "8");
+  for (const [x, y] of [[4, 9], [9, 11], [5, 4]]) c.px(x, y, "#a0503a");
+  c.px(3, 7, "#62945a");
+});
+
 // gems by school of magic and the plain cut gem: tools.px.js (drawn symmetric)
 sprite("socket", { w: 8, h: 8, outline: "k" }, (c) => { c.ring(4, 4, 3, "4"); c.circ(4, 4, 2, "s"); c.px(3, 3, "2"); c.px(2, 2, "6"); });

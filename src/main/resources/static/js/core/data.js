@@ -36,6 +36,9 @@ export function parseItem(k) { const p = k.split(':'); return { type: p[1], meta
 const MG = () => G.data.magic;
 export const isGem = (k) => k.startsWith('gem:');
 export const isRough = (k) => k.startsWith('rough:');
+/** A crusted relic from the delve (relic:<id>, Relics.java): studied at the antiquarium it becomes an artifact. */
+export const isRelic = (k) => k.startsWith('relic:');
+export const relicOf = (k) => ((G.data.relics && G.data.relics.list) || []).find((r) => 'relic:' + r.id === k) || null;
 const OLD_KIND = 'rock_crystal', OLD_SHAPE = 'round_brilliant';
 /** "gem:2:ruby:rose:smithq:3" -> {cut, kind, shape, effect, word}; a plain cut gem has no effect. Old keys read as rock crystal. */
 export function parseGem(k) {
@@ -121,6 +124,7 @@ export function goodName(k) {
   }
   if (isGem(k)) return gemName(k);
   if (isRough(k)) return 'Rough ' + gemKind(k).name.toLowerCase();
+  if (isRelic(k)) { const r = relicOf(k); return r ? `Crusted relic (${r.hint})` : 'Crusted relic'; }
   if (k.startsWith('wear:')) {
     const p = k.split(':'), c = byId.clothes && byId.clothes[p[1]];
     return c ? p[2][0].toUpperCase() + p[2].slice(1) + ' ' + c.name.toLowerCase() : k;
@@ -135,6 +139,7 @@ export function goodName(k) {
 export function category(k) {
   if (k.startsWith('wear:')) return 'clothing';
   if (isGem(k) || isRough(k)) return 'gems';
+  if (isRelic(k)) return 'relics';
   if (isItem(k)) return byId.items[parseItem(k).type].category;
   if (isBar(k)) return 'bars';
   if (byId.ores[k]) return 'ore';
@@ -331,6 +336,7 @@ export function stock(k) {
     for (const [x, v] of Object.entries(F().stock)) if (x === k || (k === 'cut_gem' ? isPlainGem(x) : isRough(x))) n += v;
     return n;
   }
+  if (k === 'relic:any') return Object.entries(F().stock).reduce((n, [x, v]) => n + (isRelic(x) ? v : 0), 0);
   return F().stock[k] || 0;
 }
 /** Plain cut gems (or rough gems) in stock, the ones that take magic best first. */
@@ -372,6 +378,7 @@ export function contextResources() {
         { title: 'Cut gems', keys: gemsInStock().slice(0, 12), empty: 'None yet.' }];
       if (t === 'wizard') return [{ title: 'Gems to enchant', keys: [...gemsInStock().slice(0, 8), ...gemsInStock(true).slice(0, 4)], empty: 'No gems. Cut some at the jeweler.' },
         { title: 'Enchanted gems', keys: stockKeys((k) => isGem(k) && !!parseGem(k).effect).slice(0, 12), empty: 'None yet.' }];
+      if (t === 'antiquarium') return [{ title: 'Crusted relics', keys: stockKeys((k) => isRelic(k)), empty: 'None. Adventurers find them deep in the delve.' }];
       return [prov];
     }
     case 'trade': return [{ title: 'Your goods', keys: ['coins', ...stockKeys((k) => k !== 'food' && k !== 'ale').slice(0, 16)] }, prov];

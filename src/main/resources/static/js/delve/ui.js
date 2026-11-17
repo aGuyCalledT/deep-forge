@@ -85,6 +85,7 @@ export function openDelve(o) {
   let report = null;
   const game = createGame(canvas, {
     seed: o.run.seed, hearts: o.run.hearts, pick: o.run.pick, damage: o.run.damage, look: o.look, data: o.data,
+    gems: o.run.gems, relic: o.run.relic && o.run.relicLevel >= 0 ? { level: o.run.relicLevel, id: o.run.relic } : null,
     startLayer: o.startLayer || 0, god: o.god, bright: o.bright, training: o.training, bombs: o.bombs, ropes: o.ropes, touch,
     onHud: hud,
     onEnd: async (r) => {
@@ -119,9 +120,11 @@ export function openDelve(o) {
     sb.querySelector('img').src = src(lootIcon('scroll', h.scrolls[0] || 'light'), 'scrollbtn' + (h.scrolls[0] || 'light'));
     const bag = $('.dv-bag');
     bag.replaceChildren();
-    const ores = Object.entries(h.bag);
-    if (!ores.length) bag.appendChild(Object.assign(document.createElement('span'), { className: 'dv-dim', textContent: 'No ore' }));
+    const ores = Object.entries(h.bag), gems = Object.entries(h.gems || {});
+    if (!ores.length && !gems.length && !h.relic) bag.appendChild(Object.assign(document.createElement('span'), { className: 'dv-dim', textContent: 'No ore' }));
     for (const [k, n] of ores) { bag.appendChild(pic(S.ore(k), 'ore' + k)); bag.appendChild(num(n)); }
+    for (const [k, n] of gems) { bag.appendChild(pic(S.good('rough:' + k), 'gem' + k)); bag.appendChild(num(n)); }
+    if (h.relic) bag.appendChild(pic(S.good('relic:any'), 'relic'));
     $('.dv-where').textContent = `${o.training ? 'Training: ' : ''}${h.layerName} ${h.depth + 1}-${h.levels}`;
   }
   const num = (n) => Object.assign(document.createElement('span'), { className: 'dv-n', textContent: n });
@@ -167,7 +170,7 @@ export function openDelve(o) {
     if (mode) { closeMenu(); return; }
     openMenu('pause', `<div class="dv-card"><h2>Paused</h2>
       <table class="dv-keys">${HELP.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>
-      <p class="dv-dim">Find ore in the veins and climb out by the lift at the end of a layer. Only ore goes home: coins, finds and scrolls stay in the cave. In the shop one ore counts as 5 coins.</p>
+      <p class="dv-dim">Find ore in the veins and climb out by the lift at the end of a layer. Ore, rough gems and relics go home: coins, finds and scrolls stay in the cave. In the shop one ore counts as 5 coins.</p>
       <div class="dv-row"><button class="btn" data-a="pack">Your pack</button><button class="btn danger" data-a="quit">Give up</button><button class="btn primary" data-a="resume">Resume</button></div></div>`);
     menu.querySelector('[data-a=resume]').onclick = () => closeMenu();
     menu.querySelector('[data-a=pack]').onclick = () => { closeMenu(); togglePack(); };
@@ -176,11 +179,15 @@ export function openDelve(o) {
   // one line of the pack: picture, name, number, what it does
   const line = (img, key, title, n, text) => `<li><img class="dv-ico" src="${src(img, key)}" alt=""><span><span class="dv-li-t">${title}</span>${n != null ? ` <span class="dv-n">${n}</span>` : ''}${text ? `<br><span class="dv-dim">${text}</span>` : ''}</span></li>`;
   const st = (k) => `<img class="dv-st" src="${src(S.icon(k), 'st' + k)}" alt="">`;
-  function homeList(bag, lost) {
-    const ores = Object.entries(bag);
-    if (!ores.length) return `<p class="dv-dim">${lost ? 'Nothing.' : 'No ore yet. Break the glinting veins with your pick.'}</p>`;
-    return `<ul class="dv-list${lost ? ' dv-lost' : ''}">${ores.map(([k, n]) => line(S.ore(k), 'ore' + k, oreName[k] || k, n)).join('')}</ul>`;
+  // gems: kind -> n; relic: its hint ("a helm-shaped lump"), true, or nothing
+  function homeList(bag, gems, relic, lost) {
+    const out = Object.entries(bag).map(([k, n]) => line(S.ore(k), 'ore' + k, oreName[k] || k, n));
+    for (const [k, n] of Object.entries(gems || {})) out.push(line(S.good('rough:' + k), 'gem' + k, gemName(k), n, lost ? '' : 'The jeweler cuts it at home.'));
+    if (relic) out.push(line(S.good('relic:any'), 'relic', 'Crusted relic', null, typeof relic === 'string' ? `${relic[0].toUpperCase() + relic.slice(1)}. ${lost ? '' : 'The antiquarium finds out what it is.'}` : ''));
+    if (!out.length) return `<p class="dv-dim">${lost ? 'Nothing.' : 'No ore yet. Break the glinting veins with your pick.'}</p>`;
+    return `<ul class="dv-list${lost ? ' dv-lost' : ''}">${out.join('')}</ul>`;
   }
+  const gemName = (k) => { const g = ((o.data.gems && o.data.gems.kinds) || []).find((x) => x.id === k); return 'Rough ' + (g ? g.name.toLowerCase() : 'gem'); };
   function caveList(c) {
     const out = [line(lootIcon('coin', 0), 'coin', 'Cave coins', c.coins, 'Pay the shop down here.')];
     if (c.bombs != null) out.push(line(Art.frame('delve_bomb', 0).canvas, 'bomb', 'Bombs', c.bombs), line(Art.frame('delve_ropes', 0).canvas, 'ropes', 'Ropes', c.ropes));
@@ -194,8 +201,8 @@ export function openDelve(o) {
     const h = lastH || { bag: {}, coins: 0, items: {}, scrolls: [], bombs: 0, ropes: 0 };
     openMenu('pack', `<div class="dv-card"><h2>${esc(name)}'s pack</h2>
       <section class="dv-sec dv-sec-home${o.training ? ' dv-off' : ''}"><h3>${st(o.training ? 'warn' : 'good')}${o.training ? 'Training: nothing goes home' : 'Goes home'}</h3>
-        <p class="dv-dim">${o.training ? 'This is only practice. Nothing found here is kept.' : 'Ride the lift up and this ore goes to the stores of the hold. Fall, and it is lost.'}</p>
-        ${homeList(h.bag, false)}</section>
+        <p class="dv-dim">${o.training ? 'This is only practice. Nothing found here is kept.' : 'Ride the lift up and this goes to the stores of the hold. Fall, and it is lost.'}</p>
+        ${homeList(h.bag, h.gems, h.relic, false)}</section>
       <section class="dv-sec dv-sec-cave"><h3>${st('idle')}Stays in the cave</h3>
         <p class="dv-dim">Yours only for this run. Gone when you leave the mine.</p>
         ${caveList(h)}</section>
@@ -209,8 +216,9 @@ export function openDelve(o) {
     const deep = `${r.levels} ${r.levels === 1 ? 'level' : 'levels'} deep.`;
     const lead = o.training ? `${deep} Nothing is kept.` : r.result === 'exit' ? deep : r.result === 'dead' ? 'Badly hurt. Everything found is lost.' : 'Nothing found is kept.';
     const bag = r.result === 'exit' ? r.ore : r.found;
+    const gems = r.foundGems, relic = r.foundRelic && (lastH && lastH.relic || true);
     menu.innerHTML = `<div class="dv-card"><h2>${title}</h2><p>${lead}</p>
-      <section class="dv-sec dv-sec-home${home ? '' : ' dv-off'}"><h3>${st(home ? 'good' : 'stop')}${home ? 'Brought home' : 'Lost'}</h3>${homeList(bag, !home)}</section>
+      <section class="dv-sec dv-sec-home${home ? '' : ' dv-off'}"><h3>${st(home ? 'good' : 'stop')}${home ? 'Brought home' : 'Lost'}</h3>${homeList(bag, gems, relic, !home)}</section>
       <section class="dv-sec dv-sec-cave"><h3>${st('idle')}Left in the cave</h3>${r.cave ? caveList({ ...r.cave, bombs: null }) : ''}</section>
       <p class="dv-dim dv-rep">${rep === null ? 'Reporting to the hold…' : rep && rep.error ? esc(rep.error) : rep && rep.text ? esc(rep.text) : ''}</p>
       <div class="dv-row">${o.again ? '<button class="btn" data-a="again">Again</button>' : ''}<button class="btn primary" data-a="close">${o.closeLabel || 'Back to the mine'}</button></div></div>`;

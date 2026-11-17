@@ -848,6 +848,7 @@ public final class Actions {
         int units = 0;
         for (Map.Entry<String, Integer> e : cargo.entrySet()) {
             check(stock(f, e.getKey()) >= e.getValue(), "Not enough " + Content.goodName(e.getKey()) + ".");
+            check(!Relics.isRelic(e.getKey()), "Nobody buys a crusted relic. Study it at the antiquarium first.");
             units += e.getValue();
         }
         int cap = caravanCapacity(f) * ms.size();
