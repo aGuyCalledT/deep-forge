@@ -250,12 +250,6 @@ public final class Layouts {
             l.rooms.put(b.id, new int[]{spot[0], spot[1]});
             connect(f, spot);
         }
-        // workshops from before rooms grew with their level: let them catch up where there is dug-out space
-        for (Building b : f.buildings)
-            while (hasRoom(b) && !b.machinesByHand && l.rooms.containsKey(b.id) && Rules.machines(b) < Rules.maxMachines(b) && canGrow(f, b)) {
-                grow(f, b);
-                b.machines = Rules.machines(b) + 1;
-            }
         if (old) {
             // old saves: rooms without a hallway beside them get one (later, a lonely room just stands still)
             for (Building b : f.buildings) {

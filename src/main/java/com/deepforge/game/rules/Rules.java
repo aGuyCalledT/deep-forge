@@ -173,9 +173,17 @@ public final class Rules {
         return out;
     }
 
-    /** What another machine costs when it is put back after being taken out. */
+    /** Coins for the second machine of a workshop; the third costs twice that, and so on. */
+    public static final double MACHINE_COINS = 5000;
+
+    /** What the next machine costs: the n-th one (n = machines now) pays n times the base price and goods. */
     public static Cost machineCost(Building b) {
-        return new Cost(6000 * b.level, Map.of("stone", 15 * b.level));
+        int n = machines(b);
+        Map<String, Integer> g = new LinkedHashMap<>();
+        Content.MachineType mt = Content.MACHINES.get(b.type);
+        if (mt != null) mt.goods().forEach((k, v) -> g.put(k, v * n));
+        else g.put("stone", 15 * n);
+        return new Cost(MACHINE_COINS * n, g);
     }
 
     /** Everyone assigned to the building, in a stable order (by id). */
@@ -190,7 +198,8 @@ public final class Rules {
         return Math.max(1, b.machines);
     }
 
-    /** Workshops (queue and continuous kinds) get one machine per level, at most 5: the room grows with every upgrade. */
+    /** Workshops (queue and continuous kinds) have room for one machine per level, at most 5. Each one past the first
+     *  is built by the player (Actions.addMachine) and widens the room. */
     public static int maxMachines(Building b) {
         if (!isWorkshop(b) || !Layouts.MACHINE_CELLS.containsKey(b.type)) return 1;
         return Math.max(1, Math.min(MAX_MACHINES, b.level));

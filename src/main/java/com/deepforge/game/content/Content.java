@@ -145,6 +145,22 @@ public final class Content {
                 growth, startLevel, note));
     }
 
+    /** The machine a workshop works with: a furnace, an anvil, a mushroom bed. An upgrade makes room for one more
+     *  (up to Rules.MAX_MACHINES); the player builds it (Actions.addMachine). goods: what the second one costs, the
+     *  third twice that, and so on (Rules.machineCost). */
+    public record MachineType(String id, String name, Map<String, Integer> goods) {}
+    public static final Map<String, MachineType> MACHINES = new LinkedHashMap<>();
+
+    private static void machine(String building, String name, Map<String, Integer> goods) {
+        MACHINES.put(building, new MachineType(building, name, goods));
+    }
+
+    /** "furnace", or "machine" for a building without its own. */
+    public static String machineName(String building) {
+        MachineType m = MACHINES.get(building);
+        return m == null ? "machine" : m.name();
+    }
+
     private static Map<String, Double> bias(Object... kv) {
         Map<String, Double> m = new LinkedHashMap<>();
         for (int i = 0; i < kv.length; i += 2) m.put((String) kv[i], (Double) kv[i + 1]);
@@ -398,6 +414,16 @@ public final class Content {
                 "Caravans leave from here. Set rules that send goods on their own, and post what you want to buy.");
         building("antiquarium", "Antiquarium", "queue", "arcana", true, 45000, goods("stone", 30, "bar:bronze", 6), 24000, 20, 1.6, 0,
                 "Studies the crusted relics from the delve. A studied relic becomes an artifact a dwarf can wear.");
+
+        machine("smelter", "furnace", goods("stone", 25, "bar:copper", 3));
+        machine("forge", "anvil", goods("stone", 10, "bar:copper", 8));
+        machine("grindstone", "grinding wheel", goods("stone", 30));
+        machine("engraver", "engraving bench", goods("stone", 15, "bar:bronze", 5));
+        machine("jeweler", "jeweler's bench", goods("stone", 15, "bar:bronze", 5));
+        machine("mechanic", "precision bench", goods("stone", 15, "bar:brass", 5));
+        machine("tailor", "loom", goods("stone", 15, "bar:copper", 2));
+        machine("farm", "mushroom bed", goods("stone", 20));
+        machine("brewery", "brewing vat", goods("stone", 10, "bar:copper", 4));
         building("expedition_hall", "Adventurers' guild", "passive", null, false, 0, goods(), 50000, 40, 1.75, 1,
                 "More expeditions at once, bigger parties, more offers.");
 
@@ -698,6 +724,7 @@ public final class Content {
         d.put("layers", LAYERS);
         d.put("monsters", MONSTERS.values());
         d.put("buildings", BUILDINGS.values());
+        d.put("machines", MACHINES);
         d.put("traits", TRAITS.values());
         d.put("cities", CITIES.values());
         d.put("traditions", TRADITIONS.values());

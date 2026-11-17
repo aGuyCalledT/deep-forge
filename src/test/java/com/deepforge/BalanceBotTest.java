@@ -487,6 +487,10 @@ class BalanceBotTest {
             // more food and ale: a new room stands at once, so build one when all seats are taken
             if (food < 0 && !seatFree("farm")) act(t, "type", "build", "building", "farm");
             if (ale < 0 && !seatFree("brewery")) act(t, "type", "build", "building", "brewery");
+            // a free slot in a busy workshop: build the machine (furnace, anvil, mushroom bed) when it can be paid
+            for (Building b : f.buildings)
+                if (b.level > 0 && Rules.machines(b) < Rules.maxMachines(b) && Rules.canPay(f, Rules.machineCost(b))
+                        && Rules.assigned(f, b).size() >= Rules.machines(b)) act(t, "type", "addMachine", "building", b.id);
             if (Rules.underConstruction(f, t) != null) return;
             List<String> wanted = new ArrayList<>();
             if (food < 0) wanted.add("farm");

@@ -140,8 +140,8 @@ export function upgradeBtn(b) {
     h('span', { class: 'small' }, `Builders at work on level ${cons.level}. Ready in `, h('span', { 'data-until': cons.until }, dur(cons.until - now())), '.'));
   if (cons && b.level > 0) return costBtn(`Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`, c, null, `Builders are busy with the ${buildingName(building(cons.id)).toLowerCase()}.`);
   const label = b.level === 0 ? 'Build ' + byId.buildings[b.type].name.toLowerCase() : `Upgrade ${buildingName(b).toLowerCase()} to ${b.level + 1}`;
-  if (info.canGrow === false) return costBtn(label, c, null, 'It gets wider when upgraded, but no floor has space for it. Dig out more of the hold.');
-  return costBtn(info.canGrow ? label + ', +1 machine' : label, c, { type: 'upgrade', building: b.id });
+  const room = info.machineName && b.level > 0 && b.level < (G.data.plan?.maxMachines || 5);
+  return costBtn(room ? `${label}, room for ${/^[aeiou]/.test(info.machineName) ? "an" : "a"} ${info.machineName}` : label, c, { type: 'upgrade', building: b.id });
 }
 
 /** Same as Rules.buildTime: 10 min × level^1.6, at most a day; a new room 15 min. */

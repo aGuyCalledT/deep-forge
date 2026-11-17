@@ -2,6 +2,11 @@
 
 Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebaut. Offen ist, was nicht abgehakt ist.
 
+## Werkstätten
+
+- [x] Mehr Arbeitsplätze durch Ausbau: jede Stufe macht Platz für eine Maschine mehr (bis 5), Ofen, Amboss, Pilzbeet usw. baut der Spieler selbst im Raumfenster (`Content.MACHINES`, `Rules.machineCost`, Aktion `addMachine`); kein Gratis-Wachstum mehr beim Ausbau
+- [ ] Zaubererturm und Antiquarium: eigene Erweiterung (`bay`-Vorlage) für einen zweiten Platz
+
 ## Erster Release (0.1.0)
 
 - [x] Schriften nur noch mit freier Lizenz (Jacquard 12, Pixelify Sans, beide OFL); Alagard und Fantastic Boogaloo entfernt.

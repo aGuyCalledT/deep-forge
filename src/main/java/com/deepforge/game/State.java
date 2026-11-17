@@ -225,7 +225,7 @@ public final class State {
         public String status;     // human readable why idle
         public int machines = 1;  // workstations in the room; each one needs its own worker
         public boolean practice;  // practice mode: half the output, three times the learning
-        public boolean machinesByHand;   // the player took a machine out: the hold no longer adds them back on its own
+        public boolean machinesByHand;   // the player took a machine out (kept for old saves; machines are always built by hand now)
         public List<Job> more = new ArrayList<>();   // jobs of machines 2..n (null = idle); machine 1 uses job
         public String look = "";  // room template (art/rooms), "" = the first; bays use the same name if there is one
     }

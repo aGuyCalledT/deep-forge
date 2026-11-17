@@ -125,6 +125,7 @@ export function workCard(b) {
 function machinesBlock(b) {
   const f = F(), t = byId.buildings[b.type], bi = D().buildings[b.id] || {};
   const n = bi.machines || 1, seats = bi.seats || bi.workers || [];
+  const mn = bi.machineName || 'machine', Mn = mn[0].toUpperCase() + mn.slice(1), max = bi.maxMachines || 1;
   const rows = [];
   for (let i = 0; i < n; i++) {
     const w = seats[i] != null ? f.dwarves.find((x) => x.id === seats[i]) : null;
@@ -137,21 +138,26 @@ function machinesBlock(b) {
       h('span', { class: 'machine-no' }, String(i + 1)),
       w ? img(S.portrait(w), 'icon') : h('span', { class: 'machine-seat' }, ico('dwarf')),
       h('div', { class: 'grow' },
-        h('div', null, w ? w.first + ' ' + w.clan : 'Free machine', w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
+        h('div', null, w ? w.first + ' ' + w.clan : 'Free ' + mn, w && t.skill ? h('span', { class: 'small muted' }, ` · ${t.skill} ${D().dwarves[w.id].skills[t.skill]}`) : null),
         j ? h('div', { class: 'busy' }, hourglass({ job: b.id, machine: i }, 's'), what, h('span', { class: 'small gold-t', 'data-eta': b.id, 'data-machine': i })) : what),
       h('div', { class: 'machine-btns' },
         h('button', { class: 'btn small', onclick: () => assignSheet(b, i) }, w ? 'Change' : 'Assign'),
         w ? h('button', { class: 'btn small', title: 'Send ' + w.first + ' to rest', onclick: () => bus.act({ type: 'assign', dwarf: w.id, job: 'idle' }) }, 'Free') : null,
-        n > 1 ? h('button', { class: 'btn small', disabled: !!busyJob, title: busyJob ? 'Wait until this machine is done.' : 'Take this machine out. The room gets narrower.',
-          onclick: () => { if (confirm('Take machine ' + (i + 1) + ' out? ' + (w ? w.first + ' will rest. ' : '') + 'Putting it back costs money and stone.')) bus.act({ type: 'removeMachine', building: b.id, machine: i }); } }, 'Remove') : null)));
+        n > 1 ? h('button', { class: 'btn small', disabled: !!busyJob, title: busyJob ? 'Wait until this ' + mn + ' is done.' : 'Take this ' + mn + ' out. The room gets narrower.',
+          onclick: () => { if (confirm('Take ' + mn + ' ' + (i + 1) + ' out? ' + (w ? w.first + ' will rest. ' : '') + 'Building it again costs money and materials.')) bus.act({ type: 'removeMachine', building: b.id, machine: i }); } }, 'Remove') : null)));
   }
   const waiting = (bi.waiting || []).map((id) => f.dwarves.find((x) => x.id === id)).filter(Boolean);
   return h('div', { class: 'machines' },
-    h('div', { class: 'row between' }, h('h3', null, 'Machines', info('One dwarf per machine. Upgrade the workshop for another machine (up to 5). Pick who works where, or take a machine out to make the room narrower.')),
+    h('div', { class: 'row between' }, h('h3', null, Mn + 's', info(`One dwarf per ${mn}. Every upgrade makes room for one more ${mn} (up to 5); you build it here, and the room gets wider. More ${mn}s, more dwarves at work, more made. Pick who works where, or take one out to make the room narrower.`)),
       h('span', { class: 'small muted' }, `${seats.filter((x) => x != null).length} of ${n} staffed`)),
     rows,
-    bi.machineCost ? costBtn('Put back a machine', bi.machineCost, { type: 'addMachine', building: b.id }, bi.canGrow === false ? 'No floor has space for a wider room. Dig out more of the hold.' : null) : null,
-    waiting.length ? h('p', { class: 'small warn-t' }, waiting.map((x) => x.first).join(', ') + ' waiting for a free machine. Upgrade the workshop or give them other work.') : null);
+    bi.machineCost ? h('div', { class: 'machine empty' },
+      h('span', { class: 'machine-no' }, String(n + 1)),
+      h('div', { class: 'grow' }, h('div', null, 'Empty spot'), h('div', { class: 'small muted' }, `${n} of ${max} ${mn}s built`)),
+      costBtn('Build ' + (/^[aeiou]/.test(mn) ? 'an ' : 'a ') + mn, bi.machineCost, { type: 'addMachine', building: b.id }, bi.canGrow === false ? 'No floor has space for a wider room. Dig out more of the hold.' : null)) : null,
+    bi.machineName && !bi.machineCost && max < (G.data.plan?.maxMachines || 5) && n >= max
+      ? h('p', { class: 'small muted' }, `Upgrade the workshop to make room for another ${mn}.`) : null,
+    waiting.length ? h('p', { class: 'small warn-t' }, waiting.map((x) => x.first).join(', ') + ` waiting for a free ${mn}. Build another one or give them other work.`) : null);
 }
 
 function jobBlock(b, i = 0) {

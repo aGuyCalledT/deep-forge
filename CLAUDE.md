@@ -96,7 +96,8 @@ Idle-Spiel mit Zwergenfestung. Spieltexte auf **Englisch**, Doku und Gespräche 
   (`BY_BUILDING`, `validate`, `inputs`, `start`) und Eintrag in der Rezeptliste (`recipesFor` in `orders.js`), Knopf-Platte `wsbtn_<Typ>` in `art-src/icons/ui.px.js` mit Klasse `.ws-<Typ>` (`style.css`) und `artToCss` (`main.js`). Passiv: Wirkung in
   `Rules`/`Sim`, Text in `EFFECT` (`panels/base.js`), Raum als eingebaute Vorlage (siehe „Neue Raumvorlage“), fehlende Möbel in `art-src/scene/`,
   Breite in `Layouts.ROOM_CELLS`, Vorräte für den Tab in `contextResources()`, Pfeil-Logik in `hold.js` (`hasInputs`).
-  Werkstatt mit Maschinen: Breite einer Erweiterung in `Layouts.MACHINE_CELLS`, Grafik als Vorlage mit Teil `bay`
+  Werkstatt mit Maschinen: Breite einer Erweiterung in `Layouts.MACHINE_CELLS`, Name und Kosten der Maschine in
+  `Content.MACHINES` (`machine(...)`; ein Ausbau macht Platz, der Spieler baut sie mit `addMachine`), Grafik als Vorlage mit Teil `bay`
   im Editor.
 - **Neue Raumvorlage:** Spieler bauen sie im Spiel (Raumfenster → „Change look“). Eingebaute Vorlagen im lokalen
   Editor (`python3 tools/room-editor/serve.py`) bauen und speichern; ein neuer Raumtyp braucht mindestens

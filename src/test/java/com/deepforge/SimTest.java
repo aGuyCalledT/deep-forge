@@ -402,7 +402,7 @@ class SimTest {
     }
 
     @Test
-    void upgradingAWorkshopAddsAMachineForASecondSmith() {
+    void upgradingAWorkshopMakesRoomForASecondAnvilThePlayerBuilds() {
         Fortress f = fresh(12);
         Market m = Market.inMemory(12, T0);
         f.stock.put("bar:copper", 30);
@@ -418,7 +418,15 @@ class SimTest {
         Dwarf a = f.dwarves.get(0), b = f.dwarves.get(1), x = f.dwarves.get(2);
         act(f, m, T0, "type", "assign", "dwarf", a.id, "job", "worker", "building", "forge-1");
         upgradeNow(f, m, T0, forge);
+        assertEquals(1, Rules.machines(forge), "an upgrade only makes room");
+        assertEquals(2, Rules.maxMachines(forge));
+        Rules.Cost mc = Rules.machineCost(forge);
+        assertEquals(8, mc.goods().get("bar:copper"));
+        f.coins += mc.coins();
+        mc.goods().forEach((k, v) -> f.stock.merge(k, v, Integer::sum));
+        act(f, m, T0, "type", "addMachine", "building", "forge-1");
         assertEquals(2, forge.machines);
+        assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "addMachine", "building", "forge-1"), "no room for a third");
         assertEquals(Layouts.ROOM_CELLS.get("forge") + Layouts.MACHINE_CELLS.get("forge"), Layouts.width(forge));
         // the room grew over the cells to its right: nothing else may stand there
         assertThrows(Actions.GameException.class, () -> act(f, m, T0, "type", "mark", "cells", List.of(List.of(27, 5))));
@@ -658,6 +666,9 @@ class SimTest {
         Building forge = Rules.building(f, "forge-1");
         open(f, Layouts.SHAFT, Layouts.COLS - 1, 0, 1, 2, 3, 4, 5, 6, 7);
         while (forge.level < 3) upgradeNow(f, m, T0, forge);
+        assertEquals(1, Rules.machines(forge));
+        act(f, m, T0, "type", "addMachine", "building", forge.id);
+        act(f, m, T0, "type", "addMachine", "building", forge.id);
         assertEquals(3, Rules.machines(forge));
         List<Dwarf> ds = f.dwarves.stream().filter(d -> d.busy == null).limit(3).toList();
         for (Dwarf d : ds) act(f, m, T0, "type", "assign", "dwarf", d.id, "job", "idle");

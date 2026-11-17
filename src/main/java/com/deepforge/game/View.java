@@ -227,6 +227,7 @@ public final class View {
             for (Dwarf x : seats(f, b)) seatIds.add(x == null ? null : x.id);
             m.put("seats", seatIds);
             if (isWorkshop(b) && machines(b) < maxMachines(b)) m.put("machineCost", machineCost(b));
+            if (Layouts.MACHINE_CELLS.containsKey(b.type)) m.put("machineName", Content.machineName(b.type));
             List<Integer> waiting = new ArrayList<>();
             for (Dwarf x : assigned(f, b)) if (!wids.contains(x.id)) waiting.add(x.id);
             m.put("waiting", waiting);

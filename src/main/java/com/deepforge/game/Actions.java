@@ -212,7 +212,7 @@ public final class Actions {
                     List<Dwarf> at = assigned(f, b);
                     if (at.size() >= machines(b)) {
                         // all machines taken: with one machine the newcomer takes over, otherwise say what to do
-                        check(machines(b) == 1, "All " + machines(b) + " machines are taken. Add a machine or free a worker first.");
+                        check(machines(b) == 1, "All " + machines(b) + " " + Content.machineName(b.type) + "s are taken. Build another one or free a worker first.");
                         for (Dwarf o : at) o.job = "idle";
                     }
                     d.machine = -1;
@@ -250,21 +250,26 @@ public final class Actions {
         log(f, "info", "A machine was taken out of the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
     }
 
-    /** Put a machine back that was taken out (up to one per level, at most 5). */
+    /** Build another machine (furnace, anvil, mushroom bed ...): one per level of the workshop, at most 5. The room gets wider. */
     public static void addMachine(Fortress f, Map<String, Object> a) {
         Building b = building(f, str(a, "building"));
         check(b != null && isWorkshop(b), "No such workshop.");
-        check(machines(b) < maxMachines(b), "Upgrade the workshop for another machine.");
+        String room = Content.BUILDINGS.get(b.type).name().toLowerCase(), m = Content.machineName(b.type);
+        check(Layouts.MACHINE_CELLS.containsKey(b.type), "The " + room + " has room for just one " + m + ".");
+        check(machines(b) < maxMachines(b), "No room for another " + m + ". Upgrade the " + room + " first.");
         Cost c = machineCost(b);
-        check(canPay(f, c), "Not enough money or stone for another machine.");
+        check(canPay(f, c), "Not enough money or materials for another " + m + ".");
         Layouts.ensure(f);
         int[] spot = Layouts.spaceToGrow(f, b);
-        check(spot != null, "There is no dug-out space for a wider " + Content.BUILDINGS.get(b.type).name().toLowerCase()
+        check(spot != null, "There is no dug-out space for a wider " + room
                 + ": it needs " + Layouts.MACHINE_CELLS.getOrDefault(b.type, 0) + " more cells beside it. Mark rock with the Dig tool, and your miners dig it out.");
         pay(f, c);
+        int[] p = f.layout.rooms.get(b.id);
+        boolean moved = p != null && (p[1] != spot[1] || Math.abs(p[0] - spot[0]) > Layouts.MACHINE_CELLS.getOrDefault(b.type, 0));
         Layouts.growTo(f, b, spot);
         b.machines = machines(b) + 1;
-        log(f, "info", "A new machine stands in the " + Content.BUILDINGS.get(b.type).name().toLowerCase() + ".");
+        log(f, "good", "A new " + m + " stands in the " + room + ". Put a dwarf to work there."
+                + (moved ? " The room needed more space, so it moved to floor " + (f.layout.rooms.get(b.id)[1] + 1) + "." : ""));
     }
 
     public static void equip(Fortress f, Map<String, Object> a) {
@@ -612,9 +617,6 @@ public final class Actions {
         Cost c = upgradeCost(b);
         check(canPay(f, c), "Not enough money or materials.");
         Layouts.ensure(f);
-        boolean grows = grows(f, b);
-        check(!grows || Layouts.spaceToGrow(f, b) != null, "The " + name.toLowerCase() + " gets wider when upgraded, but there is no dug-out space for it. "
-                + "Mark rock beside it with the Dig tool, and your miners dig it out.");
         if (b.level == 0 && a.containsKey("col") && Layouts.ROOM_CELLS.containsKey(b.type)) {   // placed by the player
             check(f.layout.plans.stream().noneMatch(p -> b.id.equals(p.building)), "The " + name.toLowerCase() + " is planned already. Take that plan back first to move it.");
             int col = num(a, "col", -1), fl = num(a, "floor", -1);
@@ -630,11 +632,7 @@ public final class Actions {
                 + Rules.duration(b.upUntil - t) + ". It keeps working meanwhile.");
     }
 
-    public static boolean grows(Fortress f, Building b) {
-        return isWorkshop(b) && machines(b) < Math.min(MAX_MACHINES, b.level + 1) && f.layout.rooms.containsKey(b.id);
-    }
-
-    /** The builders are done: the building gains its level (a workshop also grows by a machine where there is room). */
+    /** The builders are done: the building gains its level (a workshop gets room for one more machine, built by the player). */
     public static void raise(Fortress f, Building b, double t) {
         raise(f, b, t, null);
     }
@@ -643,25 +641,15 @@ public final class Actions {
     public static void raise(Fortress f, Building b, double t, int[] at) {
         Layouts.ensure(f);
         String name = Content.BUILDINGS.get(b.type).name();
-        boolean grows = grows(f, b);
-        int[] spot = grows ? Layouts.spaceToGrow(f, b) : null;
-        if (grows && spot == null) grows = false;
         boolean fresh = b.level == 0 && Layouts.ROOM_CELLS.containsKey(b.type) && !f.layout.rooms.containsKey(b.id);
         if (fresh) Layouts.place(f, b, at != null ? at : Layouts.spotForNew(f, b.type));
-        boolean moved = false;
-        if (grows) {   // move first, while the level is unchanged, so ensure() does not grow it on its own
-            int[] p = f.layout.rooms.get(b.id);
-            moved = p[1] != spot[1] || Math.abs(p[0] - spot[0]) > Layouts.MACHINE_CELLS.getOrDefault(b.type, 0);
-            Layouts.growTo(f, b, spot);
-            b.machines = machines(b) + 1;
-        }
+        boolean slot = b.level > 0 && Layouts.MACHINE_CELLS.containsKey(b.type) && isWorkshop(b) && b.level < MAX_MACHINES;
         b.level++;
         b.upUntil = 0;
         Layouts.ensure(f);
         fortressXp(f, 5 * b.level);
         log(f, t, "good", name + (b.level == 1 ? " built." : " upgraded to level " + b.level + "."
-                + (moved ? " It needed more space, so it moved to floor " + (f.layout.rooms.get(b.id)[1] + 1) + "." : "")
-                + (grows ? " A new machine stands in it: put another dwarf to work there." : "")));
+                + (slot ? " There is room for another " + Content.machineName(b.type) + " now: build it in the room window." : "")));
     }
 
     /** When a layer's ore cart goes up the lift: this full (percent), or this many minutes after the first ore (0: off). */
