@@ -1,5 +1,5 @@
 // What a delve can find that only lasts for the run: cave coins (they pay the shop), passive finds that stack like
-// in Isaac-style roguelikes, and magic scrolls used once (key F). None of it leaves the cave: the server only ever
+// in Isaac-style roguelikes, and magic scrolls used once (key L or R). None of it leaves the cave: the server only ever
 // hears about ore (Delve.java). Chests hold one find or scroll and a few coins; the shop sells one find too.
 import * as Art from '../art/scene.js';
 import * as S from '../art/sprites.js';
@@ -17,7 +17,7 @@ export const ITEMS = {
   ring: { name: 'Lucky Ring', text: 'More coins from everything', icon: ['item', 'ring', 'gold'] },
   feather: { name: 'Feather Charm', text: 'Long falls hurt less', icon: ['art', 'delve_feather'] },
 };
-/** Scrolls: used once with F (or the scroll button). */
+/** Scrolls: used once with L or R (or the scroll button). */
 export const SCROLLS = {
   light: { name: 'Scroll of Light', text: 'Lights the whole level for a while' },
   quake: { name: 'Scroll of Quake', text: 'Breaks the rock around you' },

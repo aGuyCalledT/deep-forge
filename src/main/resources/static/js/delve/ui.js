@@ -8,13 +8,14 @@ import * as A from '../core/audio.js';
 import { createGame } from './game.js';
 import { ITEMS, SCROLLS, lootIcon } from './loot.js';
 
+// few keys: WASD to move, Space to jump, two keys for every action (left hand or right hand)
 const KEYS = {
-  ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
-  Space: 'jump', KeyE: 'pick', KeyQ: 'bomb', KeyR: 'rope', KeyF: 'scroll', Enter: 'up',
+  KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', Space: 'jump',
+  KeyE: 'pick', KeyK: 'pick', KeyQ: 'bomb', KeyJ: 'bomb', KeyL: 'scroll', KeyR: 'scroll',
 };
 export const HELP = [
-  ['Move, climb', 'Arrows or WASD'], ['Jump', 'Space'], ['Swing the pick', 'E (hold Down or Up to dig there)'],
-  ['Bomb', 'Q (Down: drop it)'], ['Rope', 'R'], ['Read a scroll', 'F'], ['Your pack: what goes home', 'I or Tab'], ['Buy, open, go down, ride the lift', 'Up or W'], ['Pause', 'Esc'],
+  ['Move, climb, go in', 'W A S D'], ['Jump', 'Space'], ['Swing the pick', 'E or K (hold W or S to dig up or down)'],
+  ['Bomb', 'Q or J (hold S: drop it)'], ['Rope', 'W + Q (or W + J)'], ['Magic', 'L or R'], ['Your pack: what goes home', 'I'], ['Pause', 'Esc'],
 ];
 
 const url = new Map();
@@ -132,8 +133,8 @@ export function openDelve(o) {
   // ---------------------------------------------------------------- input
   const down = (k) => game.press(k), up = (k) => game.release(k);
   const onKey = (e) => {
-    if (e.code === 'Escape' || e.code === 'KeyP') { if (e.type === 'keydown') togglePause(); e.preventDefault(); return; }
-    if (e.code === 'KeyI' || e.code === 'Tab') { if (e.type === 'keydown' && !e.repeat) togglePack(); e.preventDefault(); return; }
+    if (e.code === 'Escape') { if (e.type === 'keydown') togglePause(); e.preventDefault(); return; }
+    if (e.code === 'KeyI') { if (e.type === 'keydown' && !e.repeat) togglePack(); e.preventDefault(); return; }
     const k = KEYS[e.code];
     if (!k || e.target.closest && e.target.closest('input, select, textarea')) return;
     e.preventDefault();

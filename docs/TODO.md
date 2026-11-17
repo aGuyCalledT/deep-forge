@@ -30,8 +30,8 @@ Stand: Grafik, Festungs-Plan, Zwergen-Leben und Bedienung im Spiel sind eingebau
 - [x] Rohe Edelsteine in Adern und Truhen, vom Server versteckt; gehen mit nach Hause
 - [x] Relikte (7 Arten) und Antiquarium: Relikt studieren → tragbares Artefakt mit legendärer Wirkung
 - [ ] Rucksack mit begrenztem Platz, Funde ablegen, um mehr mitzunehmen
-- [ ] Tasten vereinfachen: nur WASD laufen, Leertaste Sprung, E/K Schlag, Q/J Bombe, L/R Magie, I Inventar; so auch an der Kreidewand
-- [ ] Schlag mit mehr Reichweite und eigener Animation; Schlagkombo
+- [x] Tasten vereinfachen: nur WASD laufen, Leertaste Sprung, E/K Schlag, Q/J Bombe, W+Q Seil, L/R Magie (Spruchrolle), I Rucksack, Esc Pause; so auch an der Kreidewand (`KEYS`/`HELP` in `delve/ui.js`, `chalkLines` in `game.js`)
+- [x] Schlag mit mehr Reichweite (Gegner 60 px vor dem Zwerg, Fels 42 px) und Bogen aus Pixeln (`drawSlash`); Kombo: drei Schläge in 0,7 s, der dritte trifft doppelt und schleudert zurück
 - [ ] Aktiver Gegenstand ist immer Magie; einen Edelstein aus der Festung mitnehmen für Vorteile
 - [ ] Keine Funde, die die Schmiede auch baut
 - [ ] Miniboss

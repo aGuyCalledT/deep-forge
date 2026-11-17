@@ -117,7 +117,7 @@ export function createGame(canvas, opts) {
       shred = { x: back * T + T / 2 + (L.shop.door < 0 ? -40 : 40), y: (Y + 7) * T, t: 0 };   // the ore shredder by the counter
     }
     P = { x: (L.entrance.x + 0.5) * T, y: (L.entrance.y + 1) * T, vx: 0, vy: 0, w: PW, h: PH, face: 1, ground: false, state: 'walk',
-      inv: 1.2, stun: 0, apex: null, swing: 0, swingCD: 0, climbCD: 0, hangCD: 0, coyote: 0, anim: 0, hurtFlash: 0, dead: 0 };
+      inv: 1.2, stun: 0, apex: null, swing: 0, swingCD: 0, combo: 0, comboT: 0, climbCD: 0, hangCD: 0, coyote: 0, anim: 0, hurtFlash: 0, dead: 0 };
     cam.x = P.x; cam.y = P.y - PH;
     G.banner = { text: `${opts.training ? 'Training: ' : ''}${lay.name} ${G.depth + 1}-${D.levelsPerLayer}`, t: 2.6 };
     A.sfx('doorOpen');
@@ -197,7 +197,8 @@ export function createGame(canvas, opts) {
   function updatePlayer(dt) {
     const ax = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     P.inv = Math.max(0, P.inv - dt); P.hurtFlash = Math.max(0, P.hurtFlash - dt);
-    P.swing = Math.max(0, P.swing - dt); P.swingCD = Math.max(0, P.swingCD - dt);
+    P.swing = Math.max(0, P.swing - dt); P.swingCD = Math.max(0, P.swingCD - dt); P.comboT = Math.max(0, P.comboT - dt);
+    if (P.comboT <= 0) P.combo = 0;
     P.climbCD = Math.max(0, P.climbCD - dt); P.hangCD = Math.max(0, P.hangCD - dt); P.stun = Math.max(0, P.stun - dt);
     if (P.dead) {
       P.dead += dt; P.vx *= 0.9; P.vy = Math.min(MAXFALL, P.vy + GRAV * dt); move(P, dt);
@@ -259,22 +260,32 @@ export function createGame(canvas, opts) {
     }
     // the pick
     if (pressed('pick') && P.swingCD <= 0 && P.state !== 'climb') swing();
-    if (pressed('bomb') && G.bombs > 0) throwBomb();
+    if (pressed('bomb') && input.up && !opts.touch) { if (G.ropes > 0) throwRope(); }   // W + bomb key: a rope up
+    else if (pressed('bomb') && G.bombs > 0) throwBomb();
     if (pressed('rope') && G.ropes > 0) throwRope();
     if (pressed('scroll')) readScroll();
     if (P.y > H * T) hurt(99);
   }
 
+  const SWING = 0.3, COMBO = 3, COMBO_WINDOW = 0.7;
   function swing() {
-    P.swing = 0.3; P.swingCD = 0.38 * Math.pow(0.7, has('grip'));
-    // monsters in front of the dwarf first
-    const box = { x: P.x + P.face * 26, y: P.y - 4, w: 40, h: PH - 2 };
+    // a combo: swings in quick succession count 1, 2, 3; the third blow hits twice as hard and throws the foe back
+    P.combo = P.comboT > 0 ? P.combo % COMBO + 1 : 1; P.comboT = COMBO_WINDOW;
+    const big = P.combo === COMBO;
+    P.swing = SWING; P.swingCD = (big ? 0.5 : 0.3) * Math.pow(0.7, has('grip'));
+    P.slash = { t: SWING, dir: input.down && P.ground ? 'down' : input.up ? 'up' : 'side', big, face: P.face, n: P.combo };
+    // monsters in front of the dwarf first: every one the arc touches
+    const box = { x: P.x + P.face * 34, y: P.y - 4, w: big ? 72 : 60, h: PH + 6 };
+    let hit = false;
     for (const m of mons) if (!m.dead && overlap(box, m)) {
       if (m.kind === 'keeper' && m.calm) anger(m);
-      damage(m, G.damage, P.x); A.sfx('slash'); return;
+      damage(m, G.damage * (big ? 2 : 1), P.x);
+      if (big && !m.dead) { m.vx = P.face * 320; m.vy = -220; }
+      hit = true;
     }
+    if (hit) { A.sfx(big ? 'slash3' : 'slash', big ? { rate: 0.8 } : undefined); if (big) G.shake = Math.max(G.shake, 0.15); return; }
     // in front: the first tile within reach of the front of the body (at chest height, else at the feet)
-    const front = P.x + P.face * PW / 2, REACH = 30;
+    const front = P.x + P.face * PW / 2, REACH = 42;
     let tx = Math.floor((front + P.face * 2) / T), ty = Math.floor((P.y - PH / 2) / T);
     const edge = (x) => (P.face > 0 ? x * T - front : front - (x + 1) * T);
     const row = (y) => { for (let x = tx, k = 0; k < 2; k++, x += P.face) if (edge(x) <= REACH && solid(x, y)) return x; return null; };
@@ -632,7 +643,7 @@ export function createGame(canvas, opts) {
     const tx = Math.floor(P.x / T), ty = Math.floor((P.y - 1) / T);
     if (!G.introFree && G.L.intro && (Math.floor(P.x / T) !== G.L.intro.x || ty !== G.L.intro.y)) G.introFree = true;   // out some other way
     if (!G.introFree && G.L.intro) {
-      G.prompt = opts.touch ? 'Pick: swing at the rock to dig out' : 'E: swing the pick at the rock to dig out';
+      G.prompt = opts.touch ? 'Pick: swing at the rock to dig out' : 'E or K: swing the pick at the rock to dig out';
       return;
     }
     if (relic && Math.abs(relic.x - P.x) < 26 && Math.abs(relic.y - P.y) < 12) {
@@ -749,13 +760,13 @@ export function createGame(canvas, opts) {
   function collect(f) {
     if (f.kind === 'scroll') {
       if (G.scrolls.length >= MAX_SCROLLS) {
-        if (!f.full) { float(f.x, f.y - 24, `You carry ${MAX_SCROLLS} scrolls. Read one first (${opts.touch ? 'Scroll' : 'F'}).`, '#ffcf6a', 2); f.full = 2.5; }
+        if (!f.full) { float(f.x, f.y - 24, `You carry ${MAX_SCROLLS} scrolls. Read one first (${opts.touch ? 'Scroll' : 'L or R'}).`, '#ffcf6a', 2); f.full = 2.5; }
         return;
       }
       f.got = true; G.scrolls.push(f.id);
       A.sfx('collect', { vol: 0.8 }); A.sfx('coinsLittle', { vol: 0.4, rate: 1.5 });
       const s0 = SCROLLS[f.id];
-      float(P.x, P.y - PH - 22, s0.name, '#c8b0ff', 2.2); float(P.x, P.y - PH - 12, `${s0.text}. ${opts.touch ? 'Scroll button' : 'F'} reads it.`, '#fbf4e6', 2.4);
+      float(P.x, P.y - PH - 22, s0.name, '#c8b0ff', 2.2); float(P.x, P.y - PH - 12, `${s0.text}. ${opts.touch ? 'Scroll button' : 'L or R'} reads it.`, '#fbf4e6', 2.4);
       hud();
       return;
     }
@@ -1111,6 +1122,7 @@ export function createGame(canvas, opts) {
     for (const s of stals) Art.draw(ctx, 'delve_stal', 0, s.x + (s.state === 'shake' ? Math.round(Math.sin(s.t * 70) * 1.5) : 0), s.y, { recolour: { rockd: ramps.rockd } });
     for (const m of mons) drawMonster(m, t);
     drawDwarf(t);
+    drawSlash();
     lip(c0, c1, r0, r1, t);
     for (const b of bombs) Art.draw(ctx, 'delve_bomb', Math.min(3, Math.floor((1 - b.fuse / FUSE) * 4)), b.x, b.y);
     for (const a of arrows) Art.draw(ctx, 'delve_arrow', 0, a.x, a.y, { flip: a.vx < 0 });
@@ -1140,11 +1152,37 @@ export function createGame(canvas, opts) {
     }
   }
   const LIT = ['#fff2c0'];
+  /** The arc of the pick: chunky pixels sweeping from behind the head to in front of the feet (up/down: a short
+   *  arc above or below). The third blow of a combo leaves a wider, warmer arc. */
+  function drawSlash() {
+    const sl = P.slash;
+    if (!sl || P.swing <= 0) return;
+    const p = 1 - P.swing / SWING;                  // 0 .. 1 through the swing
+    const r = sl.big ? 40 : 32, cx = P.x, cy = P.y - PH / 2 - 2;
+    let a0, a1;                                      // angles, 0 = forward, positive = down
+    if (sl.dir === 'up') { a0 = -Math.PI * 0.95; a1 = -Math.PI * 0.15; }
+    else if (sl.dir === 'down') { a0 = Math.PI * 0.15; a1 = Math.PI * 0.85; }
+    else { a0 = -Math.PI * 0.6; a1 = Math.PI * 0.45; }
+    const head = a0 + (a1 - a0) * Math.min(1, p * 1.6), tail = a0 + (a1 - a0) * Math.max(0, p * 1.6 - 0.7);
+    const cols = sl.big ? ['#fff2c0', '#ffcf6a', '#e07a30'] : ['#ffffff', '#d8e4f0', '#8fa4bc'];
+    const steps = 14, fade = Math.min(1, (1 - p) * 2.5);
+    ctx.globalAlpha = fade;
+    for (let i = 0; i <= steps; i++) {
+      const a = tail + (head - tail) * (i / steps), k = i / steps;
+      const x = cx + Math.cos(a) * r * sl.face, y = cy + Math.sin(a) * r;
+      const w = k > 0.75 ? 4 : k > 0.35 ? 3 : 2;
+      ctx.fillStyle = cols[k > 0.75 ? 0 : k > 0.35 ? 1 : 2];
+      ctx.fillRect(Math.round(x - w / 2), Math.round(y - w / 2), w, w);
+      if (sl.big && k > 0.5) { ctx.fillStyle = cols[2]; ctx.fillRect(Math.round(x - w / 2 - Math.cos(a) * 4 * sl.face), Math.round(y - w / 2 - Math.sin(a) * 4), 2, 2); }
+    }
+    ctx.globalAlpha = 1;
+    if (sl.n > 1) text(ctx, sl.big ? 'x3!' : 'x' + sl.n, P.x, P.y - PH - 16 - p * 6, sl.big ? '#ffcf6a' : '#d8e4f0', 'center');
+  }
   function drawDwarf(t) {
     if (P.inv > 0 && !P.dead && Math.floor(t * 14) % 2 && P.inv < 1.2) return;
     let pose = 'idleSide', f = 0;
     if (P.dead) pose = 'sleep';
-    else if (P.swing > 0) { pose = 'mine'; f = Math.min(3, Math.floor((1 - P.swing / 0.3) * 4)); }
+    else if (P.swing > 0) { pose = 'mine'; f = Math.min(3, Math.floor((1 - P.swing / SWING) * 4)); }
     else if (P.state === 'climb') { pose = 'climb'; f = Math.floor(P.anim) % 4; }
     else if (P.state === 'hang') pose = 'hang';
     else if (!P.ground) pose = P.vy < 0 ? 'jump' : P.y - (P.apex ?? P.y) > 3 * T ? 'fall' : 'jump';
@@ -1187,11 +1225,10 @@ export function createGame(canvas, opts) {
       [['k', 'UP'], ['t', 'BUY / OPEN CHESTS']],
     ];
     return [
-      [['k', 'A'], ['k', 'D'], ['t', 'WALK'], ['k', 'W'], ['k', 'S'], ['t', 'CLIMB']],
-      [['k', 'SPACE'], ['t', 'JUMP']],
-      [['k', 'E'], ['t', 'DIG +'], ['k', 'W'], ['t', 'OR'], ['k', 'S'], ['t', 'UP/DOWN']],
-      [['k', 'Q'], ['t', 'BOMB'], ['k', 'R'], ['t', 'ROPE'], ['k', 'F'], ['t', 'SCROLL']],
-      [['k', 'W'], ['t', 'GO IN / BUY / OPEN']],
+      [['k', 'W'], ['k', 'A'], ['k', 'S'], ['k', 'D'], ['t', 'MOVE'], ['k', 'SPACE'], ['t', 'JUMP']],
+      [['k', 'E'], ['k', 'K'], ['t', 'HIT'], ['k', 'Q'], ['k', 'J'], ['t', 'BOMB']],
+      [['k', 'L'], ['k', 'R'], ['t', 'MAGIC'], ['k', 'I'], ['t', 'PACK']],
+      [['k', 'W'], ['t', '+'], ['k', 'Q'], ['t', 'ROPE'], ['k', 'W'], ['t', 'GO IN']],
     ];
   }
   function chalkBoard() {
@@ -1200,7 +1237,7 @@ export function createGame(canvas, opts) {
     const r = S.rand(levelSeed() + 99);
     let y = 2;
     for (const line of chalkLines()) {
-      let x = 4 + Math.floor(r() * 3);
+      let x = 3 + Math.floor(r() * 2);
       for (const [kind, word] of line) {
         const tw = word.length * 4 - 1;
         if (kind === 'k') {                           // a key: a box drawn by hand, a little crooked
@@ -1211,7 +1248,7 @@ export function createGame(canvas, opts) {
           for (let j = 1; j < bh - 1; j++) { if (r() > 0.1) g.fillRect(bx, by + j, 1, 1); if (r() > 0.08) g.fillRect(bx + bw - 1, by + j, 1, 1); }
           text(g, word, x, y, CHALK, 'left', null);
           x += tw + 9;
-        } else { text(g, word, x, y, CHALK, 'left', null); x += tw + 5; }
+        } else { text(g, word, x, y, CHALK, 'left', null); x += tw + 7; }
       }
       y += 10;
       if (y + 6 > BH / 2) break;
