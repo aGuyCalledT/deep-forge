@@ -17,7 +17,7 @@ async function call(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   const t = token();
   if (t) headers.Authorization = 'Bearer ' + t;
-  const res = await fetch('/api' + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const res = await fetch('api' + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
   let data = null;
   try { data = await res.json(); } catch { /* empty */ }
   if (!res.ok) throw new ApiError((data && data.error) || 'Something went wrong (' + res.status + ').', res.status);

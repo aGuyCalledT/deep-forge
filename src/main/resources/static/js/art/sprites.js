@@ -13,12 +13,12 @@ const cache = new Map();
 
 export async function loadArt() {
   const [json, meta] = await Promise.all([
-    fetch('/art/icons/atlas.json').then((r) => r.json()),
-    fetch('/art/icons/meta.json').then((r) => r.json()),
+    fetch('art/icons/atlas.json').then((r) => r.json()),
+    fetch('art/icons/meta.json').then((r) => r.json()),
   ]);
   META = meta;
   for (const [k, v] of Object.entries(json.frames)) frames[k.replace(/\.png$/, '')] = v.frame;
-  sheet = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = '/art/icons/atlas.png'; });
+  sheet = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'art/icons/atlas.png'; });
 }
 
 export function has(name) { return !!frames[name]; }

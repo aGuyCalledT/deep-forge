@@ -244,7 +244,7 @@ function playlist() {
 
 function load(name) {
   current = name;
-  music.src = '/music/' + name;
+  music.src = 'music/' + name;
   music.volume = 0;
   if (!settings.muted && unlocked) music.play().then(() => fadeMusic(settings.music)).catch(() => {});
   notify();

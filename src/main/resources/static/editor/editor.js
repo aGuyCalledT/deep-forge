@@ -544,7 +544,7 @@ function confirmLeave() { return !dirty || confirm('Drop the unsaved changes?');
 async function open(type, part, name) {
   cur = { type, part, name: name || '' };
   if (name) {
-    const d = await api(`/api/rooms/template?type=${type}&part=${part}&name=${encodeURIComponent(name)}`);
+    const d = await api(`../api/rooms/template?type=${type}&part=${part}&name=${encodeURIComponent(name)}`);
     tpl = d.error ? R.blank(type, part, cells()) : { ...R.blank(type, part, cells()), ...d };
   } else tpl = R.blank(type, part, cells());
   tpl.cells = cells();
@@ -565,7 +565,7 @@ async function save() {
   const taken = (((idx[cur.type] || {})[cur.part]) || []).includes(name);
   if (taken && name !== cur.name && !confirm(`Replace the look "${name}"?`)) return;
   tpl.cells = cells();
-  const d = await api('/api/rooms/save', { type: cur.type, part: cur.part, name, data: tpl });
+  const d = await api('../api/rooms/save', { type: cur.type, part: cur.part, name, data: tpl });
   if (d.error) { status(d.error); return; }
   applyList(d); cur.name = name; setDirty(false); fillTypes(); fillTemplates(); rights();
   tell({ saved: { type: cur.type, part: cur.part, name } });
@@ -582,7 +582,7 @@ $('close').onclick = () => { if (confirmLeave()) { setDirty(false); tell({ close
 $('close').hidden = !EMBED;
 $('del').onclick = async () => {
   if (!cur.name || !confirm(`Delete template "${cur.name}"?`)) return;
-  const d = await api('/api/rooms/delete', { type: cur.type, part: cur.part, name: cur.name });
+  const d = await api('../api/rooms/delete', { type: cur.type, part: cur.part, name: cur.name });
   if (d.error) { status(d.error); return; }
   tell({ deleted: { type: cur.type, part: cur.part, name: cur.name } });
   applyList(d); const l = (idx[cur.type] || {})[cur.part] || []; open(cur.type, cur.part, l[0]);
@@ -614,7 +614,7 @@ addEventListener('beforeunload', e => { if (dirty && !EMBED) e.preventDefault();
   const tiles = (pre, list) => [...new Set([...list, ...Art.names().filter((n) => n.startsWith(pre) && Art.info(n).kind === 'tile')])];
   for (const w of tiles('wall_', R.WALLS)) $('wall').append(el('option', { value: w, textContent: w.replace('wall_', '') }));
   for (const f of tiles('floor_', R.FLOORS)) $('floor').append(el('option', { value: f, textContent: f.replace('floor_', '') }));
-  const d = await api('/api/rooms');
+  const d = await api('../api/rooms');
   if (d.error) { status(d.error); return; }
   applyList(d);
   buildPalette();

@@ -166,7 +166,7 @@ export function blank(type, part, cells) {
 let idx = null, meta = {};
 const cache = new Map();
 export async function load() {
-  const d = await fetch('/api/rooms', { cache: 'no-store', headers: authHeaders() }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  const d = await fetch('api/rooms', { cache: 'no-store', headers: authHeaders() }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
   idx = d.index || {};
   meta = d.looks || {};
   return idx;
@@ -188,7 +188,7 @@ export async function get(type, part = 'room', name = '') {
   const k = `${type}/${part}_${pick}`;
   if (!cache.has(k)) {
     const q = `type=${encodeURIComponent(type)}&part=${part}&name=${encodeURIComponent(pick)}`;
-    cache.set(k, fetch('/api/rooms/template?' + q).then(r => r.ok ? r.json() : Promise.reject(new Error('look ' + k))));
+    cache.set(k, fetch('api/rooms/template?' + q).then(r => r.ok ? r.json() : Promise.reject(new Error('look ' + k))));
     cache.get(k).catch(() => cache.delete(k));
   }
   return cache.get(k);
