@@ -35,6 +35,15 @@ public class Store {
         return userByName(name);
     }
 
+    public Long userForSub(String sub) {
+        List<Long> l = db.query("SELECT user_id FROM sso_links WHERE sub = ?", (rs, i) -> rs.getLong(1), sub);
+        return l.isEmpty() ? null : l.get(0);
+    }
+
+    public void linkSub(String sub, long userId) {
+        db.update("INSERT INTO sso_links (sub, user_id) VALUES (?, ?)", sub, userId);
+    }
+
     public void setPassword(long userId, String pwHash) {
         db.update("UPDATE users SET pw_hash = ? WHERE id = ?", pwHash, userId);
         db.update("DELETE FROM sessions WHERE user_id = ?", userId);
@@ -57,6 +66,7 @@ public class Store {
     public void deleteUser(long userId) {
         db.update("DELETE FROM sessions WHERE user_id = ?", userId);
         db.update("DELETE FROM fortresses WHERE user_id = ?", userId);
+        db.update("DELETE FROM sso_links WHERE user_id = ?", userId);
         db.update("DELETE FROM users WHERE id = ?", userId);
     }
 

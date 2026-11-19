@@ -41,10 +41,11 @@ export function openPasswordSheet() {
 }
 
 export function openDeleteSheet() {
-  const pass = pw('current-password');
+  const sso = G.me && G.me.sso;
+  const pass = sso ? h('input', { type: 'text', autocomplete: 'off', required: true, placeholder: G.me.name }) : pw('current-password');
   formSheet('Delete account',
     `This removes ${G.me ? G.me.name : 'your account'} and the whole hold for good: dwarves, stores, artifacts. Nobody can bring it back.`,
-    [field('Your password, to be sure', pass)],
+    [field(sso ? 'Your player name, to be sure' : 'Your password, to be sure', pass)],
     { text: 'Delete my account', cls: 'danger' },
     async () => {
       await api.post('/account/delete', { password: pass.value });

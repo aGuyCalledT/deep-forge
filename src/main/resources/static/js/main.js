@@ -525,7 +525,23 @@ function tick() {
 async function showLogin() {
   $('login').hidden = false;
   drawLoginArt($('login-art'));
-  try { const i = await api.get('/auth/info'); $('invite-row').hidden = !i.inviteRequired; } catch { /* ignore */ }
+  let info = {};
+  try { info = await api.get('/auth/info'); $('invite-row').hidden = !info.inviteRequired; } catch { /* ignore */ }
+  if (info.sso) {
+    // one central account (see OIDC_* settings): the form becomes a single button, and we go there right away
+    const failed = new URLSearchParams(location.search).get('sso') === 'failed';
+    const form = $('login-form');
+    form.querySelectorAll('label, .row').forEach((el) => { el.hidden = true; });
+    const btn = document.createElement('a');
+    btn.className = 'btn primary'; btn.href = 'api/auth/sso/start'; btn.textContent = info.ssoName ? 'Sign in with ' + info.ssoName : 'Sign in';
+    const note = document.createElement('p');
+    note.className = 'small muted';
+    note.textContent = failed ? 'Signing in did not work. Try again.' : (info.ssoName ? 'One account for all of ' + info.ssoName + '.' : 'One central account.') + ' New here? You can sign up there.';
+    form.insertBefore(note, $('login-error')); form.insertBefore(btn, note);
+    form.addEventListener('submit', (e) => e.preventDefault());
+    if (!failed) location.href = 'api/auth/sso/start';
+    return;
+  }
   let mode = 'login';
   $('login-form').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode; }));
   $('login-form').addEventListener('submit', async (e) => {

@@ -25,11 +25,13 @@ public class ApiController {
     private final String staticLocations;
     private final boolean cheatsForAll;
     private final RoomTemplates looks;
+    private final com.deepforge.auth.SsoController sso;
 
-    public ApiController(AuthService auth, GameService game, RoomTemplates looks,
+    public ApiController(AuthService auth, GameService game, RoomTemplates looks, com.deepforge.auth.SsoController sso,
                          @Value("${spring.web.resources.static-locations:}") String staticLocations,
                          @Value("${deepforge.cheats:false}") boolean cheatsForAll) {
         this.cheatsForAll = cheatsForAll;
+        this.sso = sso;
         this.looks = looks;
         this.auth = auth;
         this.game = game;
@@ -49,17 +51,22 @@ public class ApiController {
 
     @GetMapping("/auth/info")
     public Map<String, Object> info() {
-        return Map.of("inviteRequired", auth.inviteRequired(), "delveTest", cheatsForAll);   // delveTest: /delve.html may play without login
+        if (sso.enabled())
+            return Map.of("inviteRequired", false, "sso", true, "accountUrl", sso.accountUrl(), "logoutUrl", sso.logoutUrl(),
+                    "ssoName", sso.name(), "delveTest", cheatsForAll);
+        return Map.of("inviteRequired", auth.inviteRequired(), "sso", false, "delveTest", cheatsForAll);   // delveTest: /delve.html may play without login
     }
 
     @PostMapping("/auth/register")
     public Map<String, Object> register(@RequestBody Map<String, String> b, HttpServletRequest req) {
+        if (sso.enabled()) throw new AuthService.AuthException("Sign in with your central account.");
         AuthService.Session s = auth.register(b.get("name"), b.get("password"), b.get("invite"), ip(req));
         return Map.of("token", s.token(), "name", s.name());
     }
 
     @PostMapping("/auth/login")
     public Map<String, Object> login(@RequestBody Map<String, String> b, HttpServletRequest req) {
+        if (sso.enabled()) throw new AuthService.AuthException("Sign in with your central account.");
         AuthService.Session s = auth.login(b.get("name"), b.get("password"), ip(req));
         return Map.of("token", s.token(), "name", s.name());
     }
@@ -114,7 +121,8 @@ public class ApiController {
     @GetMapping("/me")
     public Map<String, Object> me(HttpServletRequest req) {
         Store.User u = user(req);
-        return Map.of("name", u.name(), "admin", auth.isAdmin(u));
+        return Map.of("name", u.name(), "admin", auth.isAdmin(u), "sso", sso.enabled(),
+                "accountUrl", sso.enabled() ? sso.accountUrl() : "", "logoutUrl", sso.enabled() ? sso.logoutUrl() : "");
     }
 
     @GetMapping("/state")
@@ -157,7 +165,10 @@ public class ApiController {
     @PostMapping("/account/delete")
     public Map<String, Object> deleteAccount(@RequestBody Map<String, String> b, HttpServletRequest req) {
         Store.User u = user(req);
-        auth.confirmPassword(u, b.get("password"));
+        if (sso.enabled()) {   // central account, no own password: type the player name to confirm
+            if (b.get("password") == null || !b.get("password").trim().equalsIgnoreCase(u.name()))
+                throw new AuthService.AuthException("Type your player name to confirm.");
+        } else auth.confirmPassword(u, b.get("password"));
         game.deleteAccount(u.id());
         return Map.of("ok", true);
     }

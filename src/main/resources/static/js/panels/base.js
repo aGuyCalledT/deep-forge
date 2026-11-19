@@ -430,8 +430,14 @@ export function renderMore() {
     h('h3', null, 'Account'),
     h('p', { class: 'small muted' }, `Logged in as ${G.me ? G.me.name : ''}.`),
     h('div', { class: 'row' },
-      h('button', { class: 'btn small', onclick: openPasswordSheet }, 'Change password'),
-      h('button', { class: 'btn small', onclick: async () => { try { await api.post('/auth/logout'); } catch { /* ignore */ } setToken(null); location.reload(); } }, 'Log out'),
+      G.me && G.me.sso ? h('a', { class: 'btn small', href: G.me.accountUrl || '#' }, 'Manage account')
+        : h('button', { class: 'btn small', onclick: openPasswordSheet }, 'Change password'),
+      h('button', { class: 'btn small', onclick: async () => {
+        try { await api.post('/auth/logout'); } catch { /* ignore */ }
+        setToken(null);
+        // signed in over the central account: sign out there too
+        if (G.me && G.me.sso && G.me.logoutUrl) location.href = G.me.logoutUrl; else location.reload();
+      } }, 'Log out'),
       h('button', { class: 'btn small danger', onclick: openDeleteSheet }, 'Delete account')))));
 
   if (G.state.cheats) out.push(...section('Cheats', cheatsSection()));

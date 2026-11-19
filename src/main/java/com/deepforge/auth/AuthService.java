@@ -118,6 +118,30 @@ public class AuthService {
         store.setPassword(u.id(), bcrypt.encode(password));
     }
 
+    /** A session for someone who logged in over the central account. */
+    public Session sessionFor(Store.User u) {
+        return newSession(u);
+    }
+
+    /** The player for a central account; made on the first login, named like the account. */
+    public synchronized Store.User ssoUser(String sub, String wanted) {
+        Long id = store.userForSub(sub);
+        if (id != null) {
+            Store.User u = store.userById(id);
+            if (u != null) return u;
+        }
+        String base = wanted == null ? "" : wanted.replaceAll("[^A-Za-z0-9_\\-]", "");
+        if (base.length() > 18) base = base.substring(0, 18);
+        if (base.length() < 3) base = "dwarf";
+        String name = base;
+        for (int n = 2; store.userByName(name) != null; n++) name = base + n;
+        byte[] b = new byte[24];
+        random.nextBytes(b);
+        Store.User u = store.createUser(name, bcrypt.encode(Base64.getEncoder().encodeToString(b)));   // no usable password
+        store.linkSub(sub, u.id());
+        return u;
+    }
+
     private Session newSession(Store.User u) {
         byte[] b = new byte[32];
         random.nextBytes(b);

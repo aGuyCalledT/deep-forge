@@ -5,6 +5,12 @@ CREATE TABLE IF NOT EXISTS users (
     created_at BIGINT NOT NULL
 );
 
+-- central accounts (OpenID Connect `sub`) linked to players
+CREATE TABLE IF NOT EXISTS sso_links (
+    sub VARCHAR(128) PRIMARY KEY,
+    user_id BIGINT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
     token_hash VARCHAR(64) PRIMARY KEY,
     user_id BIGINT NOT NULL,
